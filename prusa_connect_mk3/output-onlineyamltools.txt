@@ -1,0 +1,3273 @@
+﻿{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "connect-api",
+    "version": "1.0",
+    "description": "# API Rules\n* All json requests must be valid json.\n* Null values are not sent / received.\n* Object IDs are **always** sent in list methods, but are **ignored** in create / update methods.\n* All request and response objects are at the root of the returned structure, if they contain only one entity.\n* Response of multiple entities is returned as an object that contains the list of entities and a structure `pager`, if necessary.\n\nAdditional documentation for values is [here](docs/api_values)\n\n### HTTP Status\n* 200 - OK, response contains data (usually the entire entity)\n* 201 - OK, entry created; response contains data as required\n* 204 - OK, no response\n* 400 - Invalid request / invalid input (SDK error)\n* 401 - Endpoint is being accessed without credentials (SDK error)\n* 403 - Request can't be served, usually due to insufficient rights (user error)\n* 404 - Entity not found (user error or outdated data)\n* 409 - Conflict with the state of target resource (user error)\n* 50x - Server side error\n\n### We distinguish two kinds of errors:\n* SDK error - can be processed in the client application.\n* User error - no semi-automatic processing of the error is possible. It can be only forwarded to the user. "
+  },
+  "servers": [
+    {
+      "url": "http://{hostname}:8000",
+      "description": "Local development server",
+      "variables": {
+        "hostname": {
+          "default": "localhost",
+          "description": "Developer hostname"
+        }
+      }
+    },
+    {
+      "url": "http://{subdomain}.connect.prusa:8000",
+      "description": "Internal Servers",
+      "variables": {
+        "subdomain": {
+          "default": "dev"
+        }
+      }
+    }
+  ],
+  "paths": {
+    "/p/register": {
+      "post": {
+        "summary": "Create a printer register request in Connect",
+        "tags": [
+          "printer",
+          "register"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mac": {
+                    "type": "string",
+                    "description": "Mac address",
+                    "example": "10:9C:70:00:00:01"
+                  },
+                  "sn": {
+                    "type": "string",
+                    "description": "Serial number",
+                    "example": "CZPX3917X003XK36890"
+                  },
+                  "uuid": {
+                    "type": "string",
+                    "description": "MCU UUID",
+                    "example": "003f005a-374e5014-2038374b"
+                  },
+                  "type": {
+                    "type": "integer",
+                    "description": "Printer type, defined [here](docs/api_values#printer-types)",
+                    "minimum": 1
+                  },
+                  "version": {
+                    "type": "integer",
+                    "description": "Printer version, defined [here](docs/api_values#printer-types)",
+                    "minimum": 1
+                  },
+                  "firmware": {
+                    "type": "string",
+                    "description": "Firmware version in SemVer format.",
+                    "example": "4.0.2-rc2+r490"
+                  }
+                },
+                "required": [
+                  "mac",
+                  "sn",
+                  "uuid",
+                  "type",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "headers": {
+              "Temporary-Code": {
+                "description": "Temporary code from Connect",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "minLength": 10,
+                  "maxLength": 10,
+                  "example": "f4c8996fb9"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "get": {
+        "summary": "Check register request",
+        "tags": [
+          "printer",
+          "register"
+        ],
+        "parameters": [
+          {
+            "name": "Temporary-Code",
+            "in": "header",
+            "description": "Temporary code from Connect",
+            "schema": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 10,
+              "example": "f4c8996fb9"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**\nRegister request is accepted by the printer owner.",
+            "headers": {
+              "Printer-Token": {
+                "description": "Printer Token as security identifier",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "minLength": 20,
+                  "maxLength": 20
+                },
+                "example": "9TKC0M6mH7WNZTk4NbHG"
+              }
+            }
+          },
+          "206": {
+            "description": "**Accepted\nUser don't use Temporary-Code yet. Printer must call it one more time**"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "404": {
+            "description": "**Not Found**\nTemporary code does not exist or there was a timeout. The printer must call POST /p/register one more time."
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/p/refresh-token": {
+      "post": {
+        "summary": "Refresh printer token when is expired.",
+        "tags": [
+          "printer",
+          "register"
+        ],
+        "security": [
+          {
+            "PrinterToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**\nNew token was created. Old token can by used until new token was used by the printer for the first time (plus additional grace time).",
+            "headers": {
+              "Printer-Token": {
+                "description": "New Printer Token as security identifier",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "minLength": 20,
+                  "maxLength": 20,
+                  "example": "9TKC0MK25Opk7d44FF56"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/p/telemetry": {
+      "post": {
+        "summary": "Report printer telemetry",
+        "description": "Printer state data which could be periodical called by the printer each second. Response to request can be command. Detail information is in [external documentation](docs/api_values#commands).",
+        "tags": [
+          "printer",
+          "telemetry"
+        ],
+        "security": [
+          {
+            "PrinterToken": []
+          },
+          {
+            "PrinterHash": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Timestamp",
+            "in": "header",
+            "description": "Printer's timestamp - number of seconds from start",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "example": 123,
+              "default": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/telemetry"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "**OK**\nData was accepted by the server and a command for the printer was sent in the payload.",
+            "headers": {
+              "Content-Length": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "Command-Id": {
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "command": {
+                      "type": "string"
+                    },
+                    "args": {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "integer"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "command"
+                  ]
+                },
+                "examples": {
+                  "start_print": {
+                    "value": {
+                      "command": "start_print",
+                      "args": [
+                        "/some_gcode_on_usb.gcode"
+                      ]
+                    }
+                  },
+                  "pause_print": {
+                    "value": {
+                      "command": "pause_print"
+                    }
+                  },
+                  "upgrade_firmware": {
+                    "value": {
+                      "command": "upgrade_firmware",
+                      "args": [
+                        "4.2.23"
+                      ]
+                    }
+                  },
+                  "home": {
+                    "value": {
+                      "command": "home",
+                      "args": [
+                        "X",
+                        "Y"
+                      ]
+                    }
+                  }
+                }
+              },
+              "text/x.gcode": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "M117 Hello operator!\r\n"
+              }
+            }
+          },
+          "204": {
+            "description": "**No Content**\nData was accepted by server."
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/p/events": {
+      "post": {
+        "summary": "Report printer events.",
+        "description": "Errors, user notification and other user required action events. Detail information is in [external documentation](docs/api_values#events).",
+        "tags": [
+          "printer",
+          "events"
+        ],
+        "security": [
+          {
+            "PrinterToken": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "values": {
+                    "type": "object",
+                    "properties": {
+                      "x_axis": {
+                        "type": "number",
+                        "description": "X-axis position in millimeters"
+                      },
+                      "y_axis": {
+                        "type": "number",
+                        "description": "Y-axis position in millimeters"
+                      },
+                      "z_axis": {
+                        "type": "number",
+                        "description": "Z-axis position in millimeters"
+                      },
+                      "filament_sensor": {
+                        "type": "number",
+                        "description": "Value which is read from sensor",
+                        "example": 1
+                      },
+                      "state": {
+                        "type": "string",
+                        "description": "Printer state"
+                      }
+                    },
+                    "description": "Structure of event value",
+                    "example": {
+                      "x_axis": 100.25,
+                      "y_axis": 25.6,
+                      "z_axis": 45
+                    }
+                  },
+                  "command_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "args": {
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "integer"
+                        }
+                      ]
+                    }
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "$ref": "#/components/schemas/printer_state"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "**No Content**\nData was accepted by the server."
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/users/{user_id}/groups/{group_id}": {
+      "parameters": [
+        {
+          "name": "user_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        {
+          "name": "group_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "post": {
+        "summary": "Append user to group",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/group_rights"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "**Created**"
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "put": {
+        "summary": "Change user's rights to group",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/group_rights"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "**No Content**"
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove user from group",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "**No Content**"
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/printer-types": {
+      "get": {
+        "summary": "List of printer types.",
+        "tags": [
+          "printers"
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "printer_types": {
+                      "type": "array",
+                      "description": "List of printer types",
+                      "items": {
+                        "$ref": "#/components/schemas/printer_type"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/printers": {
+      "get": {
+        "summary": "List of printers associated with the user account.",
+        "tags": [
+          "printers"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group",
+            "in": "query",
+            "description": "filter by printer group",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "filter by printer state",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "printers": {
+                      "type": "array",
+                      "description": "List of printers",
+                      "items": {
+                        "$ref": "#/components/schemas/printer_detail_view"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a new printer to Connect",
+        "tags": [
+          "printers",
+          "register"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Printer's owner name",
+                    "example": "Liberec"
+                  },
+                  "location": {
+                    "type": "string",
+                    "example": "Workroom"
+                  },
+                  "code": {
+                    "type": "string",
+                    "description": "Temporary code used in /register requests."
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/printer"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/printers/{printer_id}": {
+      "parameters": [
+        {
+          "name": "printer_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Get the details of a single printer",
+        "tags": [
+          "printers"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/printer_detail_view"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "put": {
+        "summary": "Edit printer attributes",
+        "tags": [
+          "printers"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Printer's owner name",
+                    "example": "Liberec"
+                  },
+                  "location": {
+                    "type": "string",
+                    "example": "Workroom"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/printer"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/printers/{printer_id}/commands": {
+      "parameters": [
+        {
+          "name": "printer_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Get commands from printer queue",
+        "tags": [
+          "command queue"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "commands": {
+                      "type": "array",
+                      "description": "List of commands in queue",
+                      "items": {
+                        "$ref": "#/components/schemas/queue_command"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a command to printer queue",
+        "tags": [
+          "command queue"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command": {
+                    "type": "string",
+                    "description": "Command",
+                    "example": "PRINT"
+                  },
+                  "args": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "boolean"
+                        }
+                      ]
+                    },
+                    "description": "Command arguments",
+                    "default": [],
+                    "example": [
+                      "ultra_thin_vase.gcode"
+                    ]
+                  }
+                },
+                "required": [
+                  "command"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "**Created**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/queue_command"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete all commands from printer queue",
+        "tags": [
+          "command queue"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "**No Content**"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/printers/{printer_id}/commands/{command_id}": {
+      "delete": {
+        "summary": "Delete a single command from printer queue",
+        "parameters": [
+          {
+            "name": "printer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "command_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "tags": [
+          "command queue"
+        ],
+        "responses": {
+          "204": {
+            "description": "**No Content**"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/printers/{printer_id}/configuration": {
+      "get": {
+        "summary": "Get printer configuration file",
+        "parameters": [
+          {
+            "name": "printer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attachment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "tags": [
+          "printers"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string",
+                  "example": "attachment; filename=lan_settings.ini"
+                },
+                "required": false
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "description": "When code is not used a new INI file is generated with configuration for the printer."
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/printers/{printer_id}/telemetry": {
+      "parameters": [
+        {
+          "name": "printer_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Telemetry data from the printer",
+        "tags": [
+          "telemetry"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": -3600
+            },
+            "description": "Start time of requested data series. Negative value means NOW - value. Positiv value is UNIX timestamp."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 3600
+            },
+            "description": "Count of requested data series."
+          },
+          {
+            "name": "granularity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 1
+            },
+            "description": "Granularity of data values. 60 means that value is computed form 60 values/seconds."
+          },
+          {
+            "name": "data_series",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "temp_nozzle",
+                "temp_bed",
+                "progress",
+                "z_axis"
+              ]
+            },
+            "description": "Granularity of data values. 60 means that value is computed form 60 values/seconds."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data_series": {
+                      "type": "object",
+                      "properties": {
+                        "^.$": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          },
+                          "description": "Array of values of each requested data series. If server doesn't have value for requested time, value is null."
+                        }
+                      },
+                      "example": {
+                        "temp_nozzle": [
+                          20,
+                          25,
+                          26.2,
+                          null,
+                          28.9
+                        ],
+                        "temp_bed": [
+                          21,
+                          21.6,
+                          22.1,
+                          null,
+                          23.5
+                        ],
+                        "not_exist": [
+                          null,
+                          null,
+                          null,
+                          null,
+                          null
+                        ]
+                      }
+                    },
+                    "pager": {
+                      "type": "object",
+                      "properties": {
+                        "start": {
+                          "type": "number",
+                          "description": "UNIX timestamp of first (start) data value"
+                        },
+                        "end": {
+                          "type": "number",
+                          "description": "UNIX timestamp of last (end) data value"
+                        },
+                        "count": {
+                          "type": "number",
+                          "description": "Length of data array, that means count of values in each series"
+                        },
+                        "granulatiry": {
+                          "type": "number",
+                          "description": "Count of values from which is each value computed. So if granularity is 60, then values are per minutes.",
+                          "default": 1
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/printers/{printer_id}/events": {
+      "parameters": [
+        {
+          "name": "printer_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Events from the printer in time",
+        "tags": [
+          "events"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/printers/{printer_id}/photo": {
+      "parameters": [
+        {
+          "name": "printer_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Photos from the printer in time",
+        "tags": [
+          "photo"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/materials": {
+      "get": {
+        "summary": "List of material types.",
+        "tags": [
+          "printers"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "in",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "printers",
+                "history"
+              ]
+            },
+            "description": "Source of list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "materials": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/material"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/gcodes": {
+      "get": {
+        "summary": "Return list view of G-CODE templates",
+        "tags": [
+          "gcodes"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "printer_type_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": 1
+            },
+            "description": "Printer type id as filter"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 0
+            },
+            "description": "Return items start from offset"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 20
+            },
+            "description": "Return maximum count of items"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "gcodes": {
+                      "type": "array",
+                      "description": "List view of G-CODE templates",
+                      "items": {
+                        "$ref": "#/components/schemas/gcode_list_view"
+                      }
+                    },
+                    "pager": {
+                      "$ref": "#/components/schemas/pager"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create new G-CODE template",
+        "tags": [
+          "gcodes"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/gcode"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/gcode"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/gcodes/{gcode_id}": {
+      "parameters": [
+        {
+          "name": "gcode_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "minimum": 1
+          }
+        }
+      ],
+      "get": {
+        "summary": "Return G-CODE template",
+        "tags": [
+          "gcodes"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/gcode"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "put": {
+        "summary": "Modify G-CODE template",
+        "tags": [
+          "gcodes"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/gcode"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/gcode"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete G-CODE template",
+        "tags": [
+          "gcodes"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "**No Content**"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/commands/{printer_type_id}": {
+      "parameters": [
+        {
+          "name": "printer_type_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Printer type id"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Return supported commands, which could be send to printer",
+        "tags": [
+          "command queue"
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "commands": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "command": {
+                            "type": "string",
+                            "example": "MOVE_X"
+                          },
+                          "args": {
+                            "type": "array",
+                            "description": "Command arguments types",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "number",
+                                "integer",
+                                "string",
+                                "boolean"
+                              ]
+                            }
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "Command description / documentation",
+                            "example": "Moving command needs one float argument X position in millimeters."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app/print-files": {
+      "get": {
+        "summary": "Return list of gcodes in database",
+        "tags": [
+          "print files"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "printer_type_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": 1
+            },
+            "description": "Printer type id as filter"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 0
+            },
+            "description": "Return items start from offset"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 20
+            },
+            "description": "Return maximum count of items"
+          }
+        ],
+        "responses": {
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/users/groups": {
+      "get": {
+        "summary": "Get list of user groups",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "groups": {
+                      "type": "array",
+                      "description": "List of groups",
+                      "items": {
+                        "$ref": "#/components/schemas/user_group"
+                      }
+                    },
+                    "pager": {
+                      "$ref": "#/components/schemas/pager"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create new group",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/user_group_detail_view"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/users/groups/{group_id}": {
+      "parameters": [
+        {
+          "name": "group_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "minimum": 1
+          }
+        }
+      ],
+      "get": {
+        "summary": "Get user group detail",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/user_group_detail_view"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "put": {
+        "summary": "Create new group",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/user_group"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete user group",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "**No Content**"
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/users": {
+      "get": {
+        "summary": "Get list of users",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "users": {
+                      "type": "array",
+                      "items": {
+                        "allOf": [
+                          {
+                            "$ref": "#/components/schemas/user"
+                          }
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "password_is_generated": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "password_is_generated"
+                        ]
+                      }
+                    },
+                    "pager": {
+                      "$ref": "#/components/schemas/pager"
+                    }
+                  },
+                  "required": [
+                    "users",
+                    "pager"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create new user",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/user"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "**Created**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/user"
+                    }
+                  ],
+                  "properties": {
+                    "generated_password": {
+                      "type": "string",
+                      "example": "haluad",
+                      "description": "Server generated temporary password"
+                    }
+                  },
+                  "required": [
+                    "generated_password"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/users/{user_id}/password": {
+      "parameters": [
+        {
+          "name": "user_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "put": {
+        "summary": "Generate a new password for an user",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "password": {
+                      "type": "string",
+                      "example": "H9D1cb"
+                    }
+                  },
+                  "required": [
+                    "password"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/users/{user_id}": {
+      "parameters": [
+        {
+          "name": "user_id",
+          "in": "path",
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "User detail",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/user_view"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete user",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "**No Content**"
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update user",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/user"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/user"
+                    }
+                  ],
+                  "properties": {
+                    "password_is_generated": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "password_is_generated"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/login": {
+      "get": {
+        "summary": "Check login session - returns user info",
+        "tags": [
+          "login"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/user_view"
+                    }
+                  ],
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/user_view"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "put": {
+        "summary": "Set login/user attributes",
+        "tags": [
+          "login"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/user"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/user_view"
+                    }
+                  ],
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/user_view"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create login session",
+        "tags": [
+          "login"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "example": "prusa"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "TopSecret"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string",
+                  "example": "SESSID=\"D4AEPqmD6S3huDK0/TZaeIg9PDs+dDH==\"; Path=/"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/user_view"
+                    }
+                  ],
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/user_view"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/login/password": {
+      "put": {
+        "summary": "Change password",
+        "tags": [
+          "login"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "password": {
+                    "type": "string",
+                    "minLength": 6
+                  }
+                },
+                "required": [
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "**Ok**",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/user_view"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/app/logout": {
+      "post": {
+        "summary": "Drop login session",
+        "tags": [
+          "login"
+        ],
+        "security": [
+          {
+            "CookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "**OK**",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string",
+                  "example": "SESSID=\"Qlp+Iuofk+LuSKcKEgaS6fgg=\"; expires=Tue, 11 Feb 2020 11:50:10 GMT; Path=/"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "pager": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "description": "Start row of list",
+            "default": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum count of records in list"
+          },
+          "total": {
+            "type": "integer",
+            "example": 42,
+            "description": "Count of all records in database."
+          }
+        }
+      },
+      "printer_type": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "type": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 4
+          },
+          "is_manipulator": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "example": "i3 MK4"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "version",
+          "is_manipulator",
+          "name"
+        ]
+      },
+      "printer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cfed5dce-86f4-4d7c-a198-9a81b176369f",
+            "description": "ID associated to user"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name defined by user",
+            "example": "Olomouc"
+          },
+          "location": {
+            "type": "string",
+            "description": "Printer location",
+            "example": "Workroom"
+          },
+          "material": {
+            "$ref": "#/components/schemas/material"
+          },
+          "printer_type_id": {
+            "type": "number",
+            "minimum": 1,
+            "description": "type id"
+          },
+          "printer_type_name": {
+            "type": "string",
+            "description": "type as string",
+            "example": "i3 MK4"
+          },
+          "firmware": {
+            "type": "string",
+            "description": "firmware version in SemVer format",
+            "example": "3.2.0"
+          },
+          "sn": {
+            "type": "string",
+            "example": "CZPX3917X003XK36890",
+            "description": "Serial number"
+          },
+          "mac": {
+            "type": "string",
+            "example": "10:9C:70:00:00:01",
+            "description": "Ethernet HW Address"
+          },
+          "state": {
+            "$ref": "#/components/schemas/printer_state"
+          },
+          "created": {
+            "type": "integer",
+            "example": 1582534344,
+            "description": "Unix timestamp when printer is registered to Connect."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "location",
+          "state",
+          "created"
+        ]
+      },
+      "printer_detail_view": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/printer"
+          }
+        ],
+        "description": "Defail view of printer",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "temp_nozzle": {
+            "$ref": "#/components/schemas/temp_nozzle"
+          },
+          "temp_bed": {
+            "$ref": "#/components/schemas/temp_bed"
+          },
+          "target_nozzle": {
+            "$ref": "#/components/schemas/temp_nozzle"
+          },
+          "target_bed": {
+            "$ref": "#/components/schemas/temp_bed"
+          },
+          "z_axis": {
+            "$ref": "#/components/schemas/axis"
+          },
+          "material": {
+            "$ref": "#/components/schemas/material"
+          },
+          "job_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "progress": {
+            "$ref": "#/components/schemas/progress"
+          },
+          "printing_time": {
+            "type": "integer",
+            "description": "Total printing time in second"
+          },
+          "estimated_time": {
+            "type": "integer",
+            "description": "Estimated time in seconds to end of print"
+          },
+          "flow": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 100,
+            "description": "Printing flow value in percent."
+          },
+          "speed": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 100,
+            "description": "Printing speed value in percent."
+          },
+          "project": {
+            "type": "string",
+            "description": "Printing project name",
+            "example": "3D Benchy"
+          },
+          "state": {
+            "$ref": "#/components/schemas/printer_state"
+          },
+          "appendix": {
+            "type": "boolean",
+            "description": "False when appendix is broken off - developer licence",
+            "default": true
+          }
+        }
+      },
+      "printer_state": {
+        "type": "string",
+        "enum": [
+          "UNKNOWN",
+          "OFFLINE",
+          "READY",
+          "BUSSY",
+          "PRINTING",
+          "PAUSED",
+          "FINISHED",
+          "ERROR",
+          "ATTENTION",
+          "HARVEST"
+        ],
+        "default": "READY"
+      },
+      "queue_command": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "state": {
+            "$ref": "#/components/schemas/command_state"
+          },
+          "command": {
+            "type": "string",
+            "example": "print"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "example": [
+              "./green_vase.gcode"
+            ]
+          },
+          "received": {
+            "type": "integer",
+            "example": 1582534344
+          },
+          "ttl": {
+            "type": "integer",
+            "example": 344
+          },
+          "confirmed": {
+            "type": "integer",
+            "example": 1582534352
+          }
+        }
+      },
+      "command_state": {
+        "type": "string",
+        "enum": [
+          "CREATED",
+          "CONFIRMED"
+        ]
+      },
+      "material": {
+        "type": "string",
+        "example": "PLA",
+        "description": "Loaded printer Material."
+      },
+      "temp_nozzle": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000,
+        "description": "Nozzle temperature in °C.",
+        "example": 215
+      },
+      "temp_bed": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 200,
+        "description": "Bed temperature in °C.",
+        "example": 60,
+        "default": 0
+      },
+      "axis": {
+        "type": "number",
+        "description": "Axis position in millimeters.",
+        "example": 2.25
+      },
+      "progress": {
+        "type": "number",
+        "description": "Printing progress in percent, if available.",
+        "example": 100,
+        "default": 0
+      },
+      "telemetry": {
+        "type": "object",
+        "properties": {
+          "temp_nozzle": {
+            "$ref": "#/components/schemas/temp_nozzle"
+          },
+          "temp_bed": {
+            "$ref": "#/components/schemas/temp_bed"
+          },
+          "target_nozzle": {
+            "$ref": "#/components/schemas/temp_nozzle"
+          },
+          "target_bed": {
+            "$ref": "#/components/schemas/temp_bed"
+          },
+          "x_axis": {
+            "$ref": "#/components/schemas/axis"
+          },
+          "y_axis": {
+            "$ref": "#/components/schemas/axis"
+          },
+          "z_axis": {
+            "$ref": "#/components/schemas/axis"
+          },
+          "e_fan": {
+            "type": "number",
+            "minimum": 0,
+            "description": "RPM of extruder fan used for cooling the heat sink."
+          },
+          "p_fan": {
+            "type": "number",
+            "minimum": 0,
+            "description": "RPM of printer fan used for cooling printed filament."
+          },
+          "progress": {
+            "$ref": "#/components/schemas/progress"
+          },
+          "filament": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Filament length in millimeters which is to be extruded from the last success ``state`` sent. Changing filament is a separate operation and only the positive difference must be sent. This is the filament was extruded through the nozzle."
+          },
+          "flow": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 100,
+            "description": "Printing flow value in percent."
+          },
+          "speed": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 100,
+            "description": "Printing speed value in percent."
+          },
+          "printing_time": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Total printing time in seconds."
+          },
+          "estimated_time": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Estimated time in seconds to end of print."
+          },
+          "x_axis_length": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Total length in millimeters which axis has moved from the last success state data sent."
+          },
+          "y_axis_length": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Total length in millimeters the axis has moved from last success state data sent."
+          },
+          "z_axis_length": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Total length in millimeters the axis has moved from last success state data sent."
+          },
+          "e_axis_length": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Total length in millimeters the axis has moved from last success state data sent."
+          },
+          "material": {
+            "$ref": "#/components/schemas/material"
+          },
+          "state": {
+            "$ref": "#/components/schemas/printer_state"
+          }
+        },
+        "minProperties": 1
+      },
+      "group_rights": {
+        "type": "object",
+        "properties": {
+          "rights_ro": {
+            "type": "boolean",
+            "description": "User can READ entities in group."
+          },
+          "rights_use": {
+            "type": "boolean",
+            "description": "User can USE entities (printers) in group."
+          },
+          "rights_rw": {
+            "type": "boolean",
+            "description": "User can manage entities in group."
+          }
+        },
+        "required": [
+          "rights_ro",
+          "rights_use",
+          "rights_rw"
+        ]
+      },
+      "user": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "jonhndoe"
+          },
+          "first_name": {
+            "type": "string",
+            "example": "John"
+          },
+          "last_name": {
+            "type": "string",
+            "example": "Doe"
+          },
+          "public_name": {
+            "type": "string",
+            "example": "John Doe",
+            "description": "Public name string. If is not set, '{first_name} {last_name}' will be used."
+          },
+          "email": {
+            "type": "string",
+            "example": "johndoe@example.net"
+          }
+        },
+        "required": [
+          "username",
+          "first_name",
+          "last_name"
+        ]
+      },
+      "user_view": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "johndoe"
+          },
+          "first_name": {
+            "type": "string",
+            "example": "John"
+          },
+          "last_name": {
+            "type": "string",
+            "example": "Doe"
+          },
+          "public_name": {
+            "type": "string",
+            "example": "John Doe",
+            "description": "Server returned '{first_name} {last_name}' when is empty."
+          },
+          "password_is_generated": {
+            "type": "boolean"
+          },
+          "email": {
+            "type": "string",
+            "example": "johndoe@example.net"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/group_rights"
+                }
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "description": "Group ID"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Group name"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ]
+            }
+          }
+        },
+        "required": [
+          "username",
+          "first_name",
+          "last_name",
+          "public_name"
+        ]
+      },
+      "user_group": {
+        "type": "object",
+        "description": "User group, in fact real owner of all entities.",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "desription": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "user_group_detail_view": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/user_group"
+          }
+        ],
+        "properties": {
+          "users": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/group_rights"
+                }
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "username": {
+                  "type": "string",
+                  "example": "johndoe"
+                },
+                "email": {
+                  "type": "string",
+                  "format": "email",
+                  "example": "johndoe@example.net"
+                },
+                "public_name": {
+                  "type": "string",
+                  "example": "John Doe"
+                }
+              },
+              "required": [
+                "username",
+                "public_name"
+              ]
+            }
+          }
+        }
+      },
+      "gcode_list_view": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Internal G-CODE id in database. *Will be ignored in request.*"
+          },
+          "printer_type_id": {
+            "type": "number",
+            "description": "Printer type ID from database",
+            "minimum": 1
+          },
+          "printer_type_name": {
+            "type": "string",
+            "description": "Printer type name from database. *Will be ignored in request.*",
+            "example": "i3 MK4"
+          },
+          "name": {
+            "type": "string",
+            "description": "G-Code name",
+            "example": "Move in X and Y"
+          }
+        },
+        "required": [
+          "printer_type_id",
+          "name"
+        ]
+      },
+      "gcode": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/gcode_list_view"
+          }
+        ],
+        "description": "G-CODE template which is process on connect server and could be send to printer as low-level command.",
+        "properties": {
+          "created": {
+            "type": "integer",
+            "description": "Unix timestamp of this gcode's creation.",
+            "example": 1584958334
+          },
+          "description": {
+            "type": "string",
+            "description": "Documentation for template.",
+            "example": "Arguments are:\n* X position in millimeters * Y position in millimeters"
+          },
+          "template": {
+            "type": "string",
+            "description": "G-CODE template body",
+            "example": "G1 X{} Y{}"
+          },
+          "args": {
+            "type": "array",
+            "description": "List of arguments, which is used",
+            "items": {
+              "type": "string",
+              "enum": [
+                "string",
+                "number",
+                "integer",
+                "boolean"
+              ]
+            },
+            "example": [
+              "number",
+              "number"
+            ]
+          }
+        },
+        "required": [
+          "description",
+          "template",
+          "args"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "PrinterToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Printer-Token",
+        "description": "Printer token generate by connect server."
+      },
+      "PrinterHash": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Printer-Hash",
+        "description": "100xSHA1 of printer's UUID"
+      },
+      "CookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "SESSID"
+      }
+    },
+    "responses": {
+      "400": {
+        "description": "**Bad Request**\nSome data received is not valid. Typically this happens for POST requests with incorrect structure. Or a path argument was sent that is not defined in the URL."
+      },
+      "401": {
+        "description": "**Unauthorized**\nMissing security token or it is not valid."
+      },
+      "403": {
+        "description": "**Forbidden**\nSecurity token is not valid or is outdated. Or user doesn't have rights for perform action."
+      },
+      "404": {
+        "description": "**Not Found**\nEntity not found or invalid auth token."
+      },
+      "409": {
+        "description": "**Conflict**\nRequest could not be processed because the requested change would create a conflict in the database."
+      },
+      "503": {
+        "description": "**Service Unavailable**\nService is unavailable at this moment. Try again later."
+      }
+    }
+  }
+}
