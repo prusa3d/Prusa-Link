@@ -1,4 +1,5 @@
 import logging
+from enum import Enum
 
 from requests import Session
 
@@ -57,6 +58,7 @@ class Event(Dictable):
         self.command_id = None
         self.command = None
         self.values = None
+        self.reason = None
 
 
 class PrinterInfo(Dictable):
@@ -71,6 +73,14 @@ class PrinterInfo(Dictable):
         self.state = None
 
 
+class EmitEvents(Enum):
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+    FINISHED = "FINISHED"
+    INFO = "INFO"
+    STATE_CHANGED = "STATE_CHANGED"
+
+
 class ConnectCommunication:
 
     def __init__(self, address, port, token):
@@ -82,8 +92,7 @@ class ConnectCommunication:
         self.session = Session()
         self.session.headers['Printer-Token'] = token
 
-    def send_dictable(self, path: str, dictable: Dictable):
-        json_dict = dictable.to_dict()
+    def send_dict(self, path: str, json_dict: dict):
         log.info(f"Sending to connect {path}")
         log.debug(f"Sending a dict to: {path} data: {json_dict}")
         response = self.session.post(self.base_url + path, json=json_dict)
@@ -91,9 +100,12 @@ class ConnectCommunication:
         log.debug(f"Got a response: {response.content}")
         return response
 
+    def send_dictable(self, path: str, dictable: Dictable):
+        json_dict = dictable.to_dict()
+        return self.send_dict(path, json_dict)
+
     def send_telemetry(self, telemetry: Telemetry):
         return self.send_dictable("/p/telemetry", telemetry)
 
     def send_event(self, event: Event):
         return self.send_dictable("/p/events", event)
-

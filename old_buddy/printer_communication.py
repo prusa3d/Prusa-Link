@@ -10,7 +10,13 @@ from blinker import Signal
 
 log = logging.getLogger(__name__)
 
-OK_PATTERN = re.compile("^ok\n$")
+OK_PATTERN = re.compile("^( ?ok ?)|(echo:Unknown command: (\"[^\"]*\"))$")
+
+
+class UnknownCommandException(ValueError):
+    def __init__(self, *args, command):
+        super().__init__(*args)
+        self.command = command
 
 
 class Signals:
@@ -83,10 +89,10 @@ class PrinterCommunication:
             if line != "":
                 self.write_read_lock.acquire()
                 log.info(f"Printer says: '{line}'")
-                self.signals.received.send( line=line)
+                self.signals.received.send(line=line)
                 self.write_read_lock.release()
 
-    def write(self, message: str, wait_for_regex: re.Pattern = None, timeout=None) -> Union[None, re.Match]:
+    def write(self, message: str, wait_for_regex: re.Pattern = None, timeout: float = None) -> Union[None, re.Match]:
         """
         Writes a message, has an ability to wait for an arbitrary regex after that
 
@@ -109,6 +115,17 @@ class PrinterCommunication:
 
         if wait_for_regex is not None:
             return response_waiter.wait_for_output()
+
+    def write_wait_ok(self, message: str, timeout: float = None):
+        match = self.write(message, OK_PATTERN, timeout=timeout)
+        groups = match.groups()
+        log.debug(f"Captured groups {groups}")
+        if not groups[0]:
+            command = groups[2]
+            raise UnknownCommandException(f"Unknown command {command}", command=message)
+
+    def get_output_collector(self, regex: re.Pattern, timeout=None):
+        return OutputCollector(regex, self.signals.received, timeout=timeout)
 
     def register_output_handler(self, regex: re.Pattern, handler, *args, **kwargs):
         """

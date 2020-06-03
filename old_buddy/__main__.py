@@ -1,7 +1,7 @@
-from .prusa_drat import PrusaConnectMK3
+from .old_buddy import OldBuddy
 
 if __name__ == "__main__":
-    drat = PrusaConnectMK3()
+    drat = OldBuddy()
     try:
         drat.telemetry_trhead.join()
     except KeyboardInterrupt:

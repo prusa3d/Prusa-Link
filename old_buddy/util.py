@@ -1,6 +1,8 @@
 from typing import Callable
 from time import sleep, time
 
+import requests
+
 
 def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec, run_every_sec, to_run,
                         *arg_getters, **kwarg_getters):
@@ -27,3 +29,7 @@ def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec, r
             to_run(*args, **kwargs)
             last_refreshed = time()
         sleep(min(check_exit_every_sec, (last_refreshed + run_every_sec) - time()))
+
+
+def get_command_id(api_response: requests.Response):
+    return int(api_response.headers["Command-Id"])
