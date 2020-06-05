@@ -26,7 +26,7 @@ class Signals:
 
 
 class OutputCollector:
-    def __init__(self, regex: re.Pattern, received_signal, timeout=None):
+    def __init__(self, regex: re.Pattern, received_signal, timeout=None, debug=False):
         """
         When expecting a response on some command, ensure the response won't come earlier
         than you starting to wait for it.
@@ -36,12 +36,14 @@ class OutputCollector:
         :param regex: what to look for in the printer output
         :param received_signal: only the receive signal is supported now
         :param timeout: how long to wait
+        :param debug: print debug messages?
         :return: The regex match object
         """
 
         self.regex = regex
         self.received_signal = received_signal
         self.timeout = timeout
+        self.debug = debug
 
         self.event = Event()
         self.match = None
@@ -53,7 +55,7 @@ class OutputCollector:
         if match:
             self.match = match
             self.event.set()
-        else:
+        elif self.debug:
             log.debug(f"Message {line} did not match {self.regex.pattern}")
 
     def wait_for_output(self):
@@ -67,7 +69,10 @@ class OutputCollector:
 
 class PrinterCommunication:
 
-    def __init__(self, port="/dev/ttyAMA0", baudrate=115200, timeout=1, write_timeout=0, connection_write_delay=1):
+    def __init__(self, port="/dev/ttyAMA0", baudrate=115200, timeout=1, write_timeout=0, connection_write_delay=1,
+                 default_response_timeout=None):
+        self.default_response_timeout = default_response_timeout
+
         self.serial = serial.Serial(baudrate=baudrate, port=port, timeout=timeout, write_timeout=write_timeout)
 
         self.signals = Signals()
@@ -101,6 +106,9 @@ class PrinterCommunication:
         :param timeout: time in seconds to wait before giving up
         :return: the match object if any pattern was given. Otherwise None
         """
+        if timeout is None and self.default_response_timeout is not None:
+            timeout = self.default_response_timeout
+
         if message[-1] != "\n":
             message += "\n"
         message_bytes = message.encode("ASCII")
@@ -127,7 +135,7 @@ class PrinterCommunication:
     def get_output_collector(self, regex: re.Pattern, timeout=None):
         return OutputCollector(regex, self.signals.received, timeout=timeout)
 
-    def register_output_handler(self, regex: re.Pattern, handler, *args, **kwargs):
+    def register_output_handler(self, regex: re.Pattern, handler, *args, debug=False, **kwargs):
         """
         register an output handler for an arbitrary regex
         The regex will be searched each response from the printer
@@ -144,7 +152,7 @@ class PrinterCommunication:
             match = regex.fullmatch(line)
             if match:
                 handler_partial(match)
-            else:
+            elif debug:
                 log.debug(f"No match on: '{line}' pattern: '{regex.pattern}'")
 
         self.__garbage_collector_safehouse.add(read_filter)

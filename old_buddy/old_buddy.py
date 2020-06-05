@@ -3,7 +3,7 @@ import logging
 import re
 from json import JSONDecodeError
 from threading import Thread, Timer
-from time import time
+from typing import Callable, List
 
 from getmac import get_mac_address
 
@@ -11,6 +11,7 @@ from requests import RequestException
 
 from old_buddy.connect_communication import ConnectCommunication, Telemetry, Event, PrinterInfo, EmitEvents
 from old_buddy.printer_communication import PrinterCommunication, UnknownCommandException, OK_PATTERN
+from old_buddy.telemetry_gatherer import TelemetryGatherer
 from old_buddy.util import run_slowly_die_fast, get_command_id
 
 CONNECT_CONFIG_PATH = "/boot/lan_settings.ini"
@@ -36,6 +37,9 @@ FW_REGEX = re.compile(r"^FIRMWARE_NAME:Prusa-Firmware ?((\d+\.)*\d).*$")
 E_FAN_REGEX = re.compile(r"^E0:(\d+) ?RPM$")
 P_FAN_REGEX = re.compile(r"^PRN0:(\d+) ?RPM$")
 
+PRINT_TIME_REGEX = re.compile(r"^(Not SD printing)|((\d+):(\d{2}))$")
+PROGRESS_REGEX = re.compile(r"^NORMAL MODE: Percent done: (\d+);.*")
+
 PRINTER_TYPES = {
      300: (1, 3),
      200: (1, 2),
@@ -58,7 +62,10 @@ class OldBuddy:
 
         self.connect_communication = ConnectCommunication(address=address, port=port, token=token)
 
-        self.printer_communication = PrinterCommunication(port=PRINTER_PORT, baudrate=PRINTER_BAUDRATE)
+        self.printer_communication = PrinterCommunication(port=PRINTER_PORT, baudrate=PRINTER_BAUDRATE,
+                                                          default_response_timeout=PRINTER_RESPONSE_TIMEOUT)
+
+        self.state_gatherer = TelemetryGatherer(printer_communication=self.printer_communication)
 
         self.running = True
         self.telemetry_trhead = Thread(target=self._keep_updating_telemetry, name="telemetry_thread")
@@ -73,7 +80,7 @@ class OldBuddy:
         self.telemetry_trhead.join()
 
     def update_telemetry(self):
-        self.send_telemetry(self.get_telemetry())
+        self.send_telemetry(self.state_gatherer.gather_telemetry())
 
 # --- API calls ---
 
@@ -123,12 +130,12 @@ class OldBuddy:
         command_id = get_command_id(api_response)
 
         printer_info = PrinterInfo()
-        printer_info.printer_type, printer_info.printer_version = self.get_type_and_version()
+        printer_info = self.get_type_and_version(printer_info)
+        printer_info = self.get_firmware_version(printer_info)
         printer_info.state = "READY"
         printer_info.sn = "4206942069"
         printer_info.uuid = "00000000-0000-0000-0000-000000000000"
         printer_info.appendix = False
-        printer_info.firmware = self.get_firmware_version()
         printer_info.mac = get_mac_address()
 
         event_object = Event()
@@ -172,62 +179,27 @@ class OldBuddy:
         else:
             self.emit_event(EmitEvents.FINISHED, command_id)
 
-# --- printer info getters ---
+    # --- printer info getters ---
 
-    def get_telemetry(self):
-        telemetry = Telemetry()
-        telemetry = self.get_temperatures(telemetry)
-        telemetry = self.get_positions(telemetry)
-        telemetry = self.get_fans(telemetry)
-        telemetry.state = "READY"
-
-        return telemetry
-
-    def get_temperatures(self, telemetry):
+    def get_type_and_version(self, printer_info: PrinterInfo):
         try:
-            match = self.printer_communication.write("M105", TEMPERATURE_REGEX, PRINTER_RESPONSE_TIMEOUT)
+            match = self.printer_communication.write("M862.2 Q", wait_for_regex=INT_REGEX,
+                                                     timeout=PRINTER_RESPONSE_TIMEOUT)
         except TimeoutError:
-            log.exception("Printer failed to report temperatures in time")
+            log.exception("Printer failed to report printer type and version in time")
         else:
-            groups = match.groups()
-            telemetry.temp_nozzle = float(groups[0])
-            telemetry.target_nozzle = float(groups[1])
-            telemetry.temp_bed = float(groups[2])
-            telemetry.target_bed = float(groups[3])
-            return telemetry
+            code = int(match.groups()[0])
+            printer_info.printer_type, printer_info.printer_version = PRINTER_TYPES[code]
+        finally:
+            return printer_info
 
-    def get_positions(self, telemetry):
+    def get_firmware_version(self, printer_info: PrinterInfo):
         try:
-            match = self.printer_communication.write("M114", POSITION_REGEX, PRINTER_RESPONSE_TIMEOUT)
+            match = self.printer_communication.write("M115", wait_for_regex=FW_REGEX,
+                                                     timeout=PRINTER_RESPONSE_TIMEOUT)
         except TimeoutError:
-            log.exception("Printer failed to report positions in time")
+            log.exception("Printer failed to report fw version and version in time")
         else:
-            groups = match.groups()
-            telemetry.x_axis = float(groups[4])
-            telemetry.y_axis = float(groups[5])
-            telemetry.z_axis = float(groups[6])
-            return telemetry
-
-    def get_fans(self, telemetry):
-        try:
-            e_fan_match = self.printer_communication.write("PRUSA FAN", E_FAN_REGEX, PRINTER_RESPONSE_TIMEOUT)
-            p_fan_match = self.printer_communication.write("PRUSA FAN", P_FAN_REGEX, PRINTER_RESPONSE_TIMEOUT)
-        except TimeoutError:
-            log.exception("Printer failed to report fan RPMs in time")
-        else:
-            telemetry.e_fan = float(e_fan_match.groups()[0])
-            telemetry.p_fan = float(p_fan_match.groups()[0])
-            return telemetry
-
-    def get_type_and_version(self):
-        match = self.printer_communication.write("M862.2 Q", wait_for_regex=INT_REGEX, timeout=PRINTER_RESPONSE_TIMEOUT)
-        code = int(match.groups()[0])
-        return PRINTER_TYPES[code]
-
-    def get_firmware_version(self):
-        match = self.printer_communication.write("M115", wait_for_regex=FW_REGEX, timeout=PRINTER_RESPONSE_TIMEOUT)
-        fw_version = match.groups()[0]
-        return fw_version
-
-
-
+            printer_info.fw_version = match.groups()[0]
+        finally:
+            return printer_info
