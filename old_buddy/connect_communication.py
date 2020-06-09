@@ -54,7 +54,7 @@ class Event(Dictable):
     def __init__(self):
         self.event = None
         self.source = None
-        self.data = None
+        self.values = None
         self.command_id = None
         self.command = None
         self.values = None
@@ -66,6 +66,7 @@ class PrinterInfo(Dictable):
         self.type = None
         self.version = None
         self.firmware = None
+        self.ip = None
         self.mac = None
         self.sn = None
         self.uuid = None
@@ -109,3 +110,6 @@ class ConnectCommunication:
 
     def send_event(self, event: Event):
         return self.send_dictable("/p/events", event)
+
+    def stop(self):
+        self.session.close()

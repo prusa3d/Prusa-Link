@@ -1,9 +1,10 @@
 import configparser
 import logging
 import re
+import socket
+import threading
 from json import JSONDecodeError
 from threading import Thread, Timer
-from typing import Callable, List
 
 from getmac import get_mac_address
 
@@ -68,8 +69,8 @@ class OldBuddy:
         self.state_gatherer = TelemetryGatherer(printer_communication=self.printer_communication)
 
         self.running = True
-        self.telemetry_trhead = Thread(target=self._keep_updating_telemetry, name="telemetry_thread")
-        self.telemetry_trhead.start()
+        self.telemetry_thread = Thread(target=self._keep_updating_telemetry, name="telemetry_thread")
+        self.telemetry_thread.start()
 
     def _keep_updating_telemetry(self):
         run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL, TELEMETRY_INTERVAL, self.update_telemetry)
@@ -77,7 +78,14 @@ class OldBuddy:
     def stop(self):
         self.running = False
         self.printer_communication.stop()
-        self.telemetry_trhead.join()
+        log.debug("printer_communication stopped")
+        self.connect_communication.stop()
+        self.telemetry_thread.join()
+        log.debug("old_buddy should be stopped")
+
+        log.debug("Remaining threads, that could prevent us from quitting:")
+        for thread in threading.enumerate():
+            log.debug(thread)
 
     def update_telemetry(self):
         self.send_telemetry(self.state_gatherer.gather_telemetry())
@@ -94,7 +102,6 @@ class OldBuddy:
 
     def send_event(self, event: Event):
         try:
-            # Report printer telemetry
             api_response = self.connect_communication.send_event(event)
             self.handle_event_response(api_response)
         except RequestException:
@@ -106,20 +113,21 @@ class OldBuddy:
         event.event = emit_event.value
         if reason is not None:
             event.reason = reason
-        self.connect_communication.send_event(event)
+        self.send_event(event)
 
 # --- API response handlers ---
 
     def handle_telemetry_response(self, api_response):
         if api_response.status_code != 204:
-            try:
-                data = api_response.json()
-                if data["command"] == "SEND_INFO":
-                    self.respond_with_info(api_response)
-                elif api_response.headers["Content-Type"] == "text/x.gcode":
-                    self.execute_gcode(api_response)
-            except JSONDecodeError:
-                log.exception(f"Failed to decode a response {api_response}")
+            if api_response.headers["Content-Type"] == "text/x.gcode":
+                self.execute_gcode(api_response)
+            else:
+                try:
+                    data = api_response.json()
+                    if data["command"] == "SEND_INFO":
+                        self.respond_with_info(api_response)
+                except JSONDecodeError:
+                    log.exception(f"Failed to decode a response {api_response}")
 
     def handle_event_response(self, api_response):
         ...
@@ -132,6 +140,7 @@ class OldBuddy:
         printer_info = PrinterInfo()
         printer_info = self.get_type_and_version(printer_info)
         printer_info = self.get_firmware_version(printer_info)
+        printer_info = self.get_local_ip(printer_info)
         printer_info.state = "READY"
         printer_info.sn = "4206942069"
         printer_info.uuid = "00000000-0000-0000-0000-000000000000"
@@ -141,9 +150,10 @@ class OldBuddy:
         event_object = Event()
         event_object.event = event
         event_object.command_id = command_id
-        event_object.data = printer_info
+        event_object.values = printer_info
 
         self.send_event(event_object)
+        self.emit_event(EmitEvents.FINISHED, command_id)
 
     def execute_gcode(self, api_response):
         """
@@ -167,15 +177,17 @@ class OldBuddy:
             timeout_timer = Timer(LONG_GCODE_TIMEOUT, lambda: ...)
             timeout_timer.start()
 
-            # be ready to quit in a timely manner
-            while self.running and timeout_timer.is_alive():
-                output_collector = self.printer_communication.get_output_collector(OK_PATTERN, QUIT_INTERVAL)
-                try:
-                    output_collector.wait_for_output()
-                except TimeoutError:
-                    pass
-                else:
-                    self.emit_event(EmitEvents.FINISHED, command_id)
+            output_collector = self.printer_communication.get_output_collector(OK_PATTERN, QUIT_INTERVAL)
+            try:
+                # be ready to quit in a timely manner
+                output_collector.wait_until(lambda: self.running and timeout_timer.is_alive())
+            except TimeoutError:
+                if self.running:
+                    log.exception(f"Timed out waiting for printer to return ok after gcode '{gcode}'")
+            else:
+                self.emit_event(EmitEvents.FINISHED, command_id)
+                if timeout_timer.is_alive():
+                    timeout_timer.cancel()
         else:
             self.emit_event(EmitEvents.FINISHED, command_id)
 
@@ -189,7 +201,7 @@ class OldBuddy:
             log.exception("Printer failed to report printer type and version in time")
         else:
             code = int(match.groups()[0])
-            printer_info.printer_type, printer_info.printer_version = PRINTER_TYPES[code]
+            printer_info.type, printer_info.version = PRINTER_TYPES[code]
         finally:
             return printer_info
 
@@ -200,6 +212,18 @@ class OldBuddy:
         except TimeoutError:
             log.exception("Printer failed to report fw version and version in time")
         else:
-            printer_info.fw_version = match.groups()[0]
+            printer_info.firmware = match.groups()[0]
         finally:
             return printer_info
+
+    def get_local_ip(self, printer_info: PrinterInfo):
+        """
+        Gets the local ip used for connecting to MQTT_HOSTNAME
+        Code from https://stackoverflow.com/a/166589
+        """
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # does not matter if host is reachable or not, any client interface that is UP should suffice
+        s.connect(("8.8.8.8", 1))
+        printer_info.ip = s.getsockname()[0]
+        s.close()
+        return printer_info

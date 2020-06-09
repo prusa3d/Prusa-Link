@@ -3,7 +3,7 @@ import re
 from functools import partial
 from threading import Thread, Event, Lock
 from time import sleep, time
-from typing import Union
+from typing import Union, Callable
 
 import serial
 from blinker import Signal
@@ -60,11 +60,23 @@ class OutputCollector:
 
     def wait_for_output(self):
         success = self.event.wait(timeout=self.timeout)
+        self.received_signal.disconnect(self.handler)
         if not success:
             raise TimeoutError(f"Timed out waiting for match with regex '{self.regex.pattern}'")
-        self.received_signal.disconnect(self.handler)
 
         return self.match
+
+    def wait_until(self, should_keep_trying: Callable[[], bool]):
+        while should_keep_trying():
+            success = self.event.wait(timeout=self.timeout)
+            if not success:
+                self.event.clear()
+            else:
+                self.received_signal.disconnect(self.handler)
+                return self.match
+
+        self.received_signal.disconnect(self.handler)
+        raise TimeoutError(f"Timed out waiting for match with regex '{self.regex.pattern}'")
 
 
 class PrinterCommunication:
@@ -115,7 +127,7 @@ class PrinterCommunication:
 
         response_waiter = None
         if wait_for_regex is not None:
-            response_waiter = OutputCollector(wait_for_regex, self.signals.received, timeout=timeout)
+            response_waiter = self.get_output_collector(wait_for_regex, timeout=timeout)
 
         with self.write_read_lock:
             log.info(f"Sending to printer: {message_bytes}")
@@ -161,6 +173,7 @@ class PrinterCommunication:
 
     def stop(self):
         self.running = False
+        self.serial.close()
         self.read_thread.join()
 
 

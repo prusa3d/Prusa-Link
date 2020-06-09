@@ -1,8 +1,8 @@
 from .old_buddy import OldBuddy
 
 if __name__ == "__main__":
-    drat = OldBuddy()
+    old_buddy = OldBuddy()
     try:
-        drat.telemetry_trhead.join()
+        old_buddy.telemetry_thread.join()
     except KeyboardInterrupt:
-        drat.stop()
+        old_buddy.stop()
