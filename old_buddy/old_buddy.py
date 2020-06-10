@@ -5,6 +5,7 @@ import socket
 import threading
 from json import JSONDecodeError
 from threading import Thread, Timer
+from time import sleep
 
 from getmac import get_mac_address
 
@@ -43,6 +44,7 @@ PROGRESS_REGEX = re.compile(r"^NORMAL MODE: Percent done: (\d+);.*")
 
 PRINTER_TYPES = {
      300: (1, 3),
+     302: (1, 3),
      200: (1, 2),
 }
 
@@ -52,6 +54,8 @@ log = logging.getLogger(__name__)
 class OldBuddy:
 
     def __init__(self):
+
+        self.local_ip = ""
 
         self.config = configparser.ConfigParser()
         self.config.read(CONNECT_CONFIG_PATH)
@@ -65,6 +69,15 @@ class OldBuddy:
 
         self.printer_communication = PrinterCommunication(port=PRINTER_PORT, baudrate=PRINTER_BAUDRATE,
                                                           default_response_timeout=PRINTER_RESPONSE_TIMEOUT)
+
+        # Startup messages
+        self.printer_communication.write(f"M117 Old buddy says: Hi", wait_for_regex=OK_PATTERN)
+        sleep(2)
+        self.printer_communication.write(f"M117 Your RPi works, yay", wait_for_regex=OK_PATTERN)
+        sleep(2)
+        self.printer_communication.write(f"M117 Its IP address is:", wait_for_regex=OK_PATTERN)
+        sleep(2)
+        self.update_local_ip()
 
         self.state_gatherer = TelemetryGatherer(printer_communication=self.printer_communication)
 
@@ -89,6 +102,7 @@ class OldBuddy:
 
     def update_telemetry(self):
         self.send_telemetry(self.state_gatherer.gather_telemetry())
+        self.update_local_ip()
 
 # --- API calls ---
 
@@ -138,9 +152,9 @@ class OldBuddy:
         command_id = get_command_id(api_response)
 
         printer_info = PrinterInfo()
-        printer_info = self.get_type_and_version(printer_info)
-        printer_info = self.get_firmware_version(printer_info)
-        printer_info = self.get_local_ip(printer_info)
+        printer_info = self.insert_type_and_version(printer_info)
+        printer_info = self.insert_firmware_version(printer_info)
+        printer_info = self.insert_local_ip(printer_info)
         printer_info.state = "READY"
         printer_info.sn = "4206942069"
         printer_info.uuid = "00000000-0000-0000-0000-000000000000"
@@ -193,7 +207,7 @@ class OldBuddy:
 
     # --- printer info getters ---
 
-    def get_type_and_version(self, printer_info: PrinterInfo):
+    def insert_type_and_version(self, printer_info: PrinterInfo):
         try:
             match = self.printer_communication.write("M862.2 Q", wait_for_regex=INT_REGEX,
                                                      timeout=PRINTER_RESPONSE_TIMEOUT)
@@ -205,7 +219,7 @@ class OldBuddy:
         finally:
             return printer_info
 
-    def get_firmware_version(self, printer_info: PrinterInfo):
+    def insert_firmware_version(self, printer_info: PrinterInfo):
         try:
             match = self.printer_communication.write("M115", wait_for_regex=FW_REGEX,
                                                      timeout=PRINTER_RESPONSE_TIMEOUT)
@@ -216,7 +230,12 @@ class OldBuddy:
         finally:
             return printer_info
 
-    def get_local_ip(self, printer_info: PrinterInfo):
+    def insert_local_ip(self, printer_info: PrinterInfo):
+        printer_info.ip = self.get_local_ip()
+        return printer_info
+
+    @staticmethod
+    def get_local_ip():
         """
         Gets the local ip used for connecting to MQTT_HOSTNAME
         Code from https://stackoverflow.com/a/166589
@@ -224,6 +243,13 @@ class OldBuddy:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # does not matter if host is reachable or not, any client interface that is UP should suffice
         s.connect(("8.8.8.8", 1))
-        printer_info.ip = s.getsockname()[0]
+        local_ip = s.getsockname()[0]
         s.close()
-        return printer_info
+        return local_ip
+
+    def update_local_ip(self):
+        local_ip = self.get_local_ip()
+        if self.local_ip != local_ip:
+            self.local_ip = local_ip
+            self.get_local_ip()
+            self.printer_communication.write(f"M117 {self.local_ip}", wait_for_regex=OK_PATTERN)

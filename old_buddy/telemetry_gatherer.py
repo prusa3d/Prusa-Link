@@ -38,11 +38,11 @@ class TelemetryGatherer:
         self.current_telemetry.temp_bed = float(groups[1])
 
     def gather_telemetry(self, zero_out_telemetry=True):
-        telemetry_methods: List[Callable[[Telemetry], Telemetry]] = [self.get_temperatures,
-                                                                     self.get_positions,
-                                                                     self.get_fans,
-                                                                     self.get_printing_time,
-                                                                     self.get_progress
+        telemetry_methods: List[Callable[[Telemetry], Telemetry]] = [self.insert_temperatures,
+                                                                     self.insert_positions,
+                                                                     self.insert_fans,
+                                                                     self.insert_printing_time,
+                                                                     self.insert_progress
                                                                      ]
 
         for method in telemetry_methods:
@@ -57,7 +57,7 @@ class TelemetryGatherer:
 
         return telemetry_to_return
 
-    def get_temperatures(self, telemetry: Telemetry):
+    def insert_temperatures(self, telemetry: Telemetry):
         try:
             match = self.printer_communication.write("M105", TEMPERATURE_REGEX)
         except TimeoutError:
@@ -71,7 +71,7 @@ class TelemetryGatherer:
         finally:
             return telemetry
 
-    def get_positions(self, telemetry: Telemetry):
+    def insert_positions(self, telemetry: Telemetry):
         try:
             match = self.printer_communication.write("M114", POSITION_REGEX)
         except TimeoutError:
@@ -84,7 +84,7 @@ class TelemetryGatherer:
         finally:
             return telemetry
 
-    def get_fans(self, telemetry: Telemetry):
+    def insert_fans(self, telemetry: Telemetry):
         try:
             e_fan_match = self.printer_communication.write("PRUSA FAN", E_FAN_REGEX)
             p_fan_match = self.printer_communication.write("PRUSA FAN", P_FAN_REGEX)
@@ -96,7 +96,7 @@ class TelemetryGatherer:
         finally:
             return telemetry
 
-    def get_printing_time(self, telemetry: Telemetry):
+    def insert_printing_time(self, telemetry: Telemetry):
         try:
             match = self.printer_communication.write("M27", wait_for_regex=PRINT_TIME_REGEX)
         except TimeoutError:
@@ -111,7 +111,7 @@ class TelemetryGatherer:
         finally:
             return telemetry
 
-    def get_progress(self, telemetry: Telemetry):
+    def insert_progress(self, telemetry: Telemetry):
         try:
             match = self.printer_communication.write("M73", wait_for_regex=PROGRESS_REGEX)
         except TimeoutError:

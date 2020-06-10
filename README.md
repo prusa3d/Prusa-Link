@@ -1,14 +1,21 @@
-# Prusa Connect MK3
+# Old Buddy
 
 This program is a compatibility layer between old Prusa printers (MK3 only for the time being) ad Prusa Connect
 
-In its current form it reports basic printer telemetry using config to lan_settings.ini placed in /boot
+In its current form it reports basic printer telemetry using config to lan_settings.ini placed in /boot and
+can be sent GCODES remotely from the web
 
-To install, make sure you have all of the prerequisities
-`sudo apt install git python3-dev python3-venv libopenjp2-7-dev libtiff5 pigpiod libsystemd-dev python3-wheel`
+## Setup
+The RPi pre-configuration is the same as for OctoPrint, which is described in our
+[KnowledgeBase](https://help.prusa3d.com/en/article/octoprint-building-an-image-for-raspberry-pi-zero-w_2182)
+Basically, you need the bluetooth not handled by th Pis main UART interface, stop the linux shell from being available on the Pis serial interface and connect to the wifi
 
-ten set up your python3 environment using pip and requirements.txt
-finally, turn off bluetooth and disable the linux shell on serial while enabling the serial port in raspi-settings
+To install, make sure you have all of the prerequisites:  
+`sudo apt install git htop python3-dev python3-pip libsystemd-dev python3-wheel`
+
+then install the required Python modules:  
+`sudo pip3 install -r requirements.txt`
+
 
 ## Missing info
 
@@ -22,7 +29,7 @@ and how hard will it be to report them from FW
 > finished: probably can be reported from FW
 > error: FW cannot report this, maybe pi can switch to this state upon receiving an error
 > attention: FW can maybe report this
-> harvest: the printer does not know whether the build platfom is attached to it or not
+> harvest: the printer does not know whether the build platfrom is attached to it or not
 
 ### Telemetry data
 and how hard is it to get the values
