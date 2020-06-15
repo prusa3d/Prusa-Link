@@ -142,7 +142,6 @@ class PrinterCommunication:
     def write_wait_ok(self, message: str, timeout: float = None):
         match = self.write(message, REACTION_REGEX, timeout=timeout)
         groups = match.groups()
-        log.debug(f"Captured groups {groups}")
         if not groups[0]:
             command = groups[2]
             raise UnknownCommandException(f"Unknown command {command}", command=message)

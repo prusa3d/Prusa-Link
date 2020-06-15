@@ -3,14 +3,13 @@ import re
 from enum import auto, Enum
 from threading import Thread
 from time import sleep
-from typing import Union
+from typing import Union, Set
 
 from old_buddy.connect_communication import Telemetry
 from old_buddy.printer.inserters import telemetry_inserters
 from old_buddy.printer_communication import PrinterCommunication
 from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL_SEC
-from old_buddy.util import run_slowly_die_fast
-
+from old_buddy.util import run_slowly_die_fast, get_command_id
 
 log = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ RESUMED_REGEX = re.compile("^// action:resumed$")
 START_PRINT_REGEX = re.compile(r"^echo:enqueing \"M24\"$")
 PRINT_DONE_REGEX = re.compile(r"^Done printing file$")
 
-SD_PRINTING_REGEX = re.compile(r"^(Not SD printing)|(\d+:\d+)$")
+SD_PRINTING_REGEX = re.compile(r"^(Not SD printing)$|^(\d+:\d+)$")
 
 
 class States(Enum):
@@ -38,6 +37,16 @@ class States(Enum):
 PRINTING_STATES = {States.PRINTING, States.PAUSED, States.FINISHED}
 
 
+class Action:
+    def __init__(self, api_response, result_state: Union[States, Set[States]]):
+        if isinstance(result_state, States):
+            self.anticipated_states: Set[States] = {result_state}
+        else:
+            self.anticipated_states: Set[States] = result_state
+
+        self.api_response = api_response
+
+
 class StateManager:
 
     def __init__(self, printer_communication: PrinterCommunication, state_changed_callback):
@@ -45,8 +54,15 @@ class StateManager:
         self.base_state: States = States.READY
         self.override_state: Union[None, States] = None
 
-        self.last_state = None
-        self.current_state = None
+        # Reported state history
+        self.last_state = self.get_state()
+        self.current_state = self.get_state()
+
+        # Another anti-ideal thing is, that with this observational approach to state detection
+        # we cannot correlate actions with reactions nicely. My first approach is to have an action,
+        # that's supposed to change the state and to wich statethat shall be
+        # if we observe such a transition, we'll say the action caused the state change
+        self.state_changing_action: Union[None, Action] = None
 
         self.printer_communication: PrinterCommunication = printer_communication
         self.state_changed_callback = state_changed_callback
@@ -62,14 +78,12 @@ class StateManager:
         self.state_thread = Thread(target=self._keep_updating_state, name="State updater")
         self.state_thread.start()
 
-    def get_state(self):
-        if self.override_state is not None:
-            return self.override_state
-        else:
-            return self.base_state
-
     def _keep_updating_state(self):
         run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL, STATUS_UPDATE_INTERVAL_SEC, self.update_state)
+
+    def stop(self):
+        self.running = False
+        self.state_thread.join()
 
     def update_state(self):
         if self.base_state == States.PRINTING:
@@ -82,8 +96,6 @@ class StateManager:
             else:
                 if progress == 100:
                     self.finished()
-                    # Wait a bit, so if anything on the server expects finished, it has the time to react
-                    sleep(2)  # TODO: maybe do this more cleanly (?)
 
         try:
             match = self.printer_communication.write("M27", SD_PRINTING_REGEX)
@@ -96,66 +108,13 @@ class StateManager:
             else:  # Printing
                 self.printing()
 
-    # --- State changing methods ---
-    # call_callback should be False (default, if the state change is not originating from the printer)
-
-    def printing(self, command_id=None):
-        if self.base_state not in PRINTING_STATES:
-            log.debug(f"Changing state from {self.base_state} to PRINTING")
-            self.base_state = States.PRINTING
-            self.state_changed(command_id)
-
-    def not_printing(self, command_id=None):
-        if self.base_state in PRINTING_STATES:
-            log.debug(f"Changing state from {self.base_state} to READY")
-            self.base_state = States.READY
-            self.state_changed(command_id)
-
-    def finished(self, command_id=None):
-        if self.base_state == States.PRINTING:
-            log.debug(f"Changing state from {self.base_state} to FINISHED")
-            self.base_state = States.FINISHED
-            self.state_changed(command_id)
-
-    def busy(self, command_id=None):
-        if self.base_state == States.READY:
-            log.debug(f"Changing state from BUSY to READY")
-            self.base_state = States.BUSY
-            self.state_changed(command_id)
-
-    def paused(self, call_callback=None):
-        if self.base_state == States.PRINTING:
-            log.debug(f"Changing state from PRINTING to PAUSED")
-            self.base_state = States.PAUSED
-            self.state_changed(call_callback)
-
-    def resumed(self, command_id=None):
-        if self.base_state == States.PAUSED:
-            log.debug(f"Changing state from PAUSED to PRINTING")
-            self.base_state = States.PRINTING
-            self.state_changed(command_id)
-
-    def ok(self, command_id=None):
+    def get_state(self):
         if self.override_state is not None:
-            log.debug(f"No longer having state {self.override_state}")
-            self.override_state = None
-            self.state_changed(command_id)
+            return self.override_state
+        else:
+            return self.base_state
 
-        if self.base_state == States.FINISHED:
-            log.debug(f"Changing state from FINISHED to READY")
-            self.base_state = States.READY
-            self.state_changed(command_id)
-
-        if self.base_state == States.BUSY:
-            log.debug(f"Changing state from BUSY to READY")
-            self.base_state = States.READY
-            self.state_changed(command_id)
-
-    def attention(self, call_callback=None):
-        self.override_state = States.ATTENTION
-        self.state_changed(call_callback)
-
-    def state_changed(self, command_id=None):
+    def state_changed(self):
         self.last_state = self.current_state
         self.current_state = self.get_state()
 
@@ -163,10 +122,72 @@ class StateManager:
         if self.last_state == self.current_state:
             return
 
+        command_id = None
+
         if self.override_state:
-            log.debug(f"Status is overridden by {self.override_state}")
+            log.debug(f"State is overridden by {self.override_state}")
+
+        # If the state changed to something anticipated, then send its command_id
+        if self.state_changing_action is not None and self.get_state() in self.state_changing_action.anticipated_states:
+            command_id = get_command_id(self.state_changing_action.api_response)
+
+        self.state_changing_action = None
         self.state_changed_callback(command_id)
 
-    def stop(self):
-        self.running = False
-        self.state_thread.join()
+    # --- State changing methods ---
+
+    def printing(self):
+        if self.base_state not in PRINTING_STATES:
+            log.debug(f"Changing state from {self.base_state} to PRINTING")
+            self.base_state = States.PRINTING
+            self.state_changed()
+
+    def not_printing(self):
+        if self.base_state in PRINTING_STATES:
+            log.debug(f"Changing state from {self.base_state} to READY")
+            self.base_state = States.READY
+            self.state_changed()
+
+    def finished(self):
+        if self.base_state == States.PRINTING:
+            log.debug(f"Changing state from {self.base_state} to FINISHED")
+            self.base_state = States.FINISHED
+            self.state_changed()
+
+    def busy(self):
+        if self.base_state == States.READY:
+            log.debug(f"Changing state from BUSY to READY")
+            self.base_state = States.BUSY
+            self.state_changed()
+
+    def paused(self):
+        if self.base_state == States.PRINTING:
+            log.debug(f"Changing state from PRINTING to PAUSED")
+            self.base_state = States.PAUSED
+            self.state_changed()
+
+    def resumed(self):
+        if self.base_state == States.PAUSED:
+            log.debug(f"Changing state from PAUSED to PRINTING")
+            self.base_state = States.PRINTING
+            self.state_changed()
+
+    def ok(self):
+        if self.override_state is not None:
+            log.debug(f"No longer having state {self.override_state}")
+            self.override_state = None
+            self.state_changed()
+
+        if self.base_state == States.FINISHED:
+            log.debug(f"Changing state from FINISHED to READY")
+            self.base_state = States.READY
+            self.state_changed()
+
+        if self.base_state == States.BUSY:
+            log.debug(f"Changing state from BUSY to READY")
+            self.base_state = States.READY
+            self.state_changed()
+
+    def attention(self, call_callback=None):
+        self.override_state = States.ATTENTION
+        self.state_changed()

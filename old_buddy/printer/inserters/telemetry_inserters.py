@@ -14,7 +14,7 @@ POSITION_REGEX = re.compile(r"^X: ?(-?\d+\.\d+) ?Y: ?(-?\d+\.\d+) ?Z: ?(-?\d+\.\
                             r"Count ?X: ?(-?\d+\.\d+) ?Y: ?(-?\d+\.\d+) ?Z: ?(-?\d+\.\d+) ?E: ?(-?\d+\.\d+)$")
 E_FAN_REGEX = re.compile(r"^E0:(\d+) ?RPM$")
 P_FAN_REGEX = re.compile(r"^PRN0:(\d+) ?RPM$")
-PRINT_TIME_REGEX = re.compile(r"^(Not SD printing)|((\d+):(\d{2}))$")
+PRINT_TIME_REGEX = re.compile(r"^(Not SD printing)$|^((\d+):(\d{2}))$")
 PROGRESS_REGEX = re.compile(r"^NORMAL MODE: Percent done: (\d+);.*")
 TIME_REMAINING_REGEX = re.compile(r"^SILENT MODE: Percent done: (\d+); print time remaining in mins: (\d+) ?$")
 
@@ -74,6 +74,7 @@ def insert_progress(printer_communication: PrinterCommunication, telemetry: Tele
 
 
 def insert_time_remaining(printer_communication: PrinterCommunication, telemetry: Telemetry):
+    # FIXME: Using the more conservative values from silent mode, need to know in which mode we are
     match = printer_communication.write("M73", TIME_REMAINING_REGEX)
     if match is not None:
         groups = match.groups()
