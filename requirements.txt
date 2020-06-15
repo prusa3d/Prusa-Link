@@ -3,3 +3,4 @@ blinker
 pyserial
 requests
 getmac
+elevate

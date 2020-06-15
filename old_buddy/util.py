@@ -1,3 +1,4 @@
+import socket
 from typing import Callable
 from time import sleep, time
 
@@ -33,3 +34,15 @@ def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec, r
 
 def get_command_id(api_response: requests.Response):
     return int(api_response.headers["Command-Id"])
+
+def get_local_ip():
+    """
+    Gets the local ip used for connecting to MQTT_HOSTNAME
+    Code from https://stackoverflow.com/a/166589
+    """
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # does not matter if host is reachable or not, any client interface that is UP should suffice
+    s.connect(("8.8.8.8", 1))
+    local_ip = s.getsockname()[0]
+    s.close()
+    return local_ip

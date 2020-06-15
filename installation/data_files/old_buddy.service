@@ -1,0 +1,13 @@
+[Unit]
+Description=Restart script listening on GPIO
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/old_buddy
+User=pi
+StandardOutput=journal
+StandardError=journal
+
+
+[Install]
+WantedBy=multi-user.target

@@ -1,8 +1,13 @@
 from .old_buddy import OldBuddy
 
-if __name__ == "__main__":
+
+def main():
     old_buddy = OldBuddy()
     try:
-        old_buddy.telemetry_thread.join()
+        old_buddy.stopped_event.wait()
     except KeyboardInterrupt:
         old_buddy.stop()
+
+
+if __name__ == '__main__':
+    main()

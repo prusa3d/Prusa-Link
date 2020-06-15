@@ -10,7 +10,10 @@ from blinker import Signal
 
 log = logging.getLogger(__name__)
 
-OK_PATTERN = re.compile("^( ?ok ?)|(echo:Unknown command: (\"[^\"]*\"))$")
+REACTION_REGEX = re.compile("^( ?ok ?)|(echo:Unknown command: (\"[^\"]*\"))$")
+
+# using M113 as sort of a ping, because there is a very low chance anyone else will use it
+PING_REGEX = re.compile(r"^echo:M113 S\d+$")
 
 
 class UnknownCommandException(ValueError):
@@ -137,7 +140,7 @@ class PrinterCommunication:
             return response_waiter.wait_for_output()
 
     def write_wait_ok(self, message: str, timeout: float = None):
-        match = self.write(message, OK_PATTERN, timeout=timeout)
+        match = self.write(message, REACTION_REGEX, timeout=timeout)
         groups = match.groups()
         log.debug(f"Captured groups {groups}")
         if not groups[0]:
@@ -170,6 +173,15 @@ class PrinterCommunication:
         self.__garbage_collector_safehouse.add(read_filter)
         self.signals.received.connect(read_filter)
         return read_filter
+
+    def is_responsive(self):
+        """Check if printer is really ready to respond"""
+        try:
+            self.write("M113", PING_REGEX)
+        except TimeoutError:
+            return False
+        else:
+            return True
 
     def stop(self):
         self.running = False
