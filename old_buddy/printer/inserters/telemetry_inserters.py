@@ -16,7 +16,7 @@ E_FAN_REGEX = re.compile(r"^E0:(\d+) ?RPM$")
 P_FAN_REGEX = re.compile(r"^PRN0:(\d+) ?RPM$")
 PRINT_TIME_REGEX = re.compile(r"^(Not SD printing)$|^((\d+):(\d{2}))$")
 PROGRESS_REGEX = re.compile(r"^NORMAL MODE: Percent done: (\d+);.*")
-TIME_REMAINING_REGEX = re.compile(r"^SILENT MODE: Percent done: (\d+); print time remaining in mins: (\d+) ?$")
+TIME_REMAINING_REGEX = re.compile(r"^SILENT MODE: Percent done: (\d+); print time remaining in mins: (-?\d+) ?$")
 
 log = logging.getLogger(__name__)
 
