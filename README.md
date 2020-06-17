@@ -24,27 +24,11 @@ After that old buddy shall start with the pi
 
 ## Missing info
 
-### Printer states
-and how hard will it be to report them from FW
-> offline: can be detected from pi
-> unknown: don't know what state would this signalise
-> ready: difficult to report from fw
-> printing: difficult to report from fw
-> paused: FW can report this
-> finished: probably can be reported from FW
-> error: FW cannot report this, maybe pi can switch to this state upon receiving an error
-> attention: FW can maybe report this
-> harvest: the printer does not know whether the build platfrom is attached to it or not
-
 ### Telemetry data
 and how hard is it to get the values
-> progress: M73 but what mode are we in? Silent or Normal? if the info is absent from GCODE, (calc_percent_done() in Marlin_main.cpp)
-> filament: is reported periodically in farm mode
+
+> We need to know if we are in silent or normal mode for progress and esttimated_time
+> progress: if the info is absent from GCODE, (calc_percent_done() in Marlin_main.cpp)
+> filament: (extruded since last ) is reported periodically in farm mode
 > flow: M221 sets it, but how to get it? (extruder_multiply,  extrudemultiply a extruder_multiplier in Marlin_main.cpp)
 > speed: M220 sets it, but how to get it? (feedmultiply in Marlin_main.cpp)
-> printing_time: M31, does not stop when not printing, need to know printer state
->                M27, shown only while SD printing, but does not get paused when the print is paused
->                farm mode reports automatically
-> estimated_time: needs to know current normal/quiet mode, which the printer knows (of course) but does not report
-> x|y|z|e_axis_length: We cannot do this, we don't know this
-> material: We do not know anything about the material

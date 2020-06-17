@@ -82,6 +82,23 @@ class EmitEvents(Enum):
     STATE_CHANGED = "STATE_CHANGED"
 
 
+class Sources(Enum):
+    WUI = "WUI"
+    MARLIN = "MARLIN"
+    USER = "USER"
+    CONNECT = "CONNECT"
+
+
+class States(Enum):
+    READY = "READY"
+    BUSY = "BUSY"
+    PRINTING = "PRINTING"
+    PAUSED = "PAUSED"
+    FINISHED = "FINISHED"
+    ERROR = "ERROR"
+    ATTENTION = "ATTENTION"
+
+
 class ConnectCommunication:
 
     def __init__(self, address, port, token):

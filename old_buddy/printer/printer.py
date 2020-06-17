@@ -8,8 +8,9 @@ from typing import List, Callable, Any
 from getmac import get_mac_address
 from requests import RequestException
 
-from old_buddy.connect_communication import Telemetry, PrinterInfo, Dictable, ConnectCommunication, EmitEvents, Event
-from old_buddy.printer.state_manager import StateManager, States, PRINTING_STATES, Action
+from old_buddy.connect_communication import Telemetry, PrinterInfo, Dictable, ConnectCommunication, EmitEvents, Event, \
+    Sources
+from old_buddy.printer.state_manager import StateManager, States, PRINTING_STATES, StateChange
 from old_buddy.printer_communication import PrinterCommunication, UnknownCommandException, REACTION_REGEX
 from old_buddy.printer.inserters import telemetry_inserters, info_inserters
 from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL_SEC, LONG_GCODE_TIMEOUT, TELEMETRY_INTERVAL, \
@@ -35,6 +36,18 @@ HEATING_REGEX = re.compile(r"^T:(\d+\.\d+) E:\d+ B:(\d+\.\d+)$")
 OPEN_RESULT_REGEX = re.compile(r"^(File opened).*|^(open failed).*")
 
 log = logging.getLogger(__name__)
+
+
+def needs_responsive_printer(func):
+    def decorator(self, api_response, *args, **kwargs):
+        if not self.printer_communication.is_responsive():
+            self.state_manager.busy()
+            self.emit_event(EmitEvents.REJECTED, get_command_id(api_response), f"Printer looks busy")
+            return
+
+        func(self, api_response, *args, **kwargs)
+
+    return decorator
 
 
 class Printer:
@@ -78,9 +91,8 @@ class Printer:
             log.error("Failed getting the local IP, are we connected to LAN?")
             self.show_ip()
         else:
-            log.debug(self.local_ip)
-            log.debug(local_ip)
             if self.local_ip != local_ip:
+                log.debug(f"ip has changed. The new one is {local_ip}")
                 self.local_ip = local_ip
                 self.show_ip()
 
@@ -121,7 +133,10 @@ class Printer:
         if api_response.status_code == 200:
             log.debug(f"Command id -> {get_command_id(api_response)}")
             if api_response.headers["Content-Type"] == "text/x.gcode":
+                self.state_manager.expect_change(StateChange(api_response, default_source=Sources.CONNECT))
                 self.execute_gcode(api_response)
+                # If the gcode execution did not cause a state change, stop expecting it
+                self.state_manager.stop_expecting_change()
             else:
                 try:
                     data = api_response.json()
@@ -207,6 +222,7 @@ class Printer:
 
     # --- Execution ---
 
+    @needs_responsive_printer
     def execute_gcode(self, api_response, override_gcode=None):
         """
         Send a gcode to a printer, on Unknown command send REJECT
@@ -217,6 +233,7 @@ class Printer:
         :param override_gcode: this is an alternate method to provide gcode, if the api_response does not contain it
         """
 
+
         command_id = get_command_id(api_response)
 
         if override_gcode is None:
@@ -224,18 +241,13 @@ class Printer:
         else:
             gcode = override_gcode
 
-        # As of now, the printer needs to answer this fast, otherwise the command will be ignored.
-        if not self.printer_communication.is_responsive():
-            self.state_manager.busy()
-            self.emit_event(EmitEvents.REJECTED, command_id, f"Printer looks busy")
-            return
-
         try:  # Try executing a command
             self.printer_communication.write_wait_ok(gcode)
         except UnknownCommandException as e:  # No such command, Reject
             self.emit_event(EmitEvents.REJECTED, command_id, f"Unknown command '{e.command}')")
         except TimeoutError:  # The printer is taking time
             self.emit_event(EmitEvents.ACCEPTED, command_id)
+            self.state_manager.busy()
 
             timeout_on = time() + LONG_GCODE_TIMEOUT
             output_collector = self.printer_communication.get_output_collector(REACTION_REGEX, QUIT_INTERVAL)
@@ -250,31 +262,32 @@ class Printer:
         else:
             self.emit_event(EmitEvents.FINISHED, command_id)
 
+    @needs_responsive_printer
     def start_print(self, api_response):
         # This is complicated, it can fail, it is two gcodes at once. For now this cannot be done by execude_gcode
         command_id = get_command_id(api_response)
-
-        # If printer looks busy, reject right away. Same as in execute_gcode
-        # TODO: decorator?
-        if not self.printer_communication.is_responsive():
-            self.state_manager.busy()
-            self.emit_event(EmitEvents.REJECTED, command_id, f"Printer looks busy")
-            return
-
         file_name = api_response.json()["args"][0]
+
         match = self.printer_communication.write(f"M23 {file_name}", OPEN_RESULT_REGEX, timeout=3)
         if match.groups()[0] is None:  # Opening failed
             self.emit_event(EmitEvents.REJECTED, command_id, f"Wrong file name, or bad file")
         else:
-            self.state_manager.printing()
             self.resume_print(api_response)
+            self.state_manager.printing()
 
     def stop_print(self, api_response):
-        self.state_manager.state_changing_action = Action(api_response, States.READY)
+        if self.state_manager.get_state() != States.READY:
+            self.state_manager.expect_change(StateChange(api_response, to_states={States.READY: Sources.CONNECT}))
+
         command_id = get_command_id(api_response)
 
+        # Even if we think we are not printing, try stopping one time, for example if we are PAUSED
+        first_time = True
+
         # Try stopping again and again, until the state indicates success.
-        while self.state_manager.base_state in PRINTING_STATES:
+        while first_time or self.state_manager.base_state in PRINTING_STATES:
+            first_time = False
+
             log.debug("Trying to stop the print")
             output_collector = self.printer_communication.get_output_collector(REACTION_REGEX, QUIT_INTERVAL)
             self.printer_communication.write("M603")
@@ -283,15 +296,14 @@ class Printer:
                 output_collector.wait_until(lambda: self.running and time() < timeout_on)
             except TimeoutError:
                 pass
-            else:
-                self.emit_event(EmitEvents.FINISHED, command_id)
+        self.emit_event(EmitEvents.FINISHED, command_id)
 
     def pause_print(self, api_response):
-        self.state_manager.state_changing_action = Action(api_response, States.PAUSED)
+        self.state_manager.expect_change(StateChange(api_response, to_states={States.PAUSED: Sources.CONNECT}))
         self.execute_gcode(api_response, override_gcode=f"M25")
 
     def resume_print(self, api_response):
-        self.state_manager.state_changing_action = Action(api_response, States.PRINTING)
+        self.state_manager.expect_change(StateChange(api_response, to_states={States.PRINTING: Sources.CONNECT}))
         self.execute_gcode(api_response, override_gcode=f"M24")
 
     # --- Other ---
@@ -302,7 +314,7 @@ class Printer:
         else:
             self.printer_communication.write(f"M117 WiFi disconnected")
 
-    def state_changed(self, command_id=None):
+    def state_changed(self, command_id=None, source=None):
         state = self.state_manager.current_state
         # Some state changes imply telemetry data.
         # For example, if we were not printing and now we are, we have been printing for 0 min and we have 0% done
@@ -311,4 +323,4 @@ class Printer:
             self.additional_telemetry.printing_time = 0
 
         self.emit_event(EmitEvents.STATE_CHANGED, state=state.name,
-                        command_id=command_id)  # TODO: specify SOURCE
+                        command_id=command_id, source=source)
