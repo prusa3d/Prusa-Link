@@ -1,6 +1,7 @@
 import configparser
 import logging
 import threading
+from distutils.util import strtobool
 from time import sleep
 
 
@@ -30,8 +31,12 @@ class OldBuddy:
         address = connect_config["address"]
         port = connect_config["port"]
         token = connect_config["token"]
+        try:
+            tls = strtobool(connect_config["tls"])
+        except KeyError:
+            tls = False
 
-        self.connect_communication = ConnectCommunication(address=address, port=port, token=token)
+        self.connect_communication = ConnectCommunication(address=address, port=port, token=token, tls=tls)
 
         self.printer_communication = PrinterCommunication(port=PRINTER_PORT, baudrate=PRINTER_BAUDRATE,
                                                           default_response_timeout=PRINTER_RESPONSE_TIMEOUT)

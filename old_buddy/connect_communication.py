@@ -1,7 +1,7 @@
 import logging
 from enum import Enum
 
-from requests import Session
+from requests import Session, RequestException
 
 log = logging.getLogger(__name__)
 
@@ -101,11 +101,13 @@ class States(Enum):
 
 class ConnectCommunication:
 
-    def __init__(self, address, port, token):
+    def __init__(self, address, port, token, tls=False):
         self.address = address
         self.port = port
 
-        self.base_url = f"http://{address}:{port}"
+        protocol = "https" if tls else "http"
+
+        self.base_url = f"{protocol}://{address}:{port}"
         log.info(f"Prusa Connect is expected on address: {address}:{port}.")
         self.session = Session()
         self.session.headers['Printer-Token'] = token
@@ -123,10 +125,31 @@ class ConnectCommunication:
         return self.send_dict(path, json_dict)
 
     def send_telemetry(self, telemetry: Telemetry):
-        return self.send_dictable("/p/telemetry", telemetry)
+        try:
+            return self.send_dictable("/p/telemetry", telemetry)
+        except RequestException:
+            log.exception("Exception when calling sending telemetry")
 
     def send_event(self, event: Event):
-        return self.send_dictable("/p/events", event)
+        try:
+            return self.send_dictable("/p/events", event)
+        except RequestException:
+            log.exception("Exception while sending an event")
+
+    def emit_event(self, emit_event: EmitEvents, command_id: int = None, reason: str = None, state: str = None,
+                   source: str = None):
+        event = Event()
+        event.event = emit_event.value
+
+        if command_id is not None:
+            event.command_id = command_id
+        if reason is not None:
+            event.reason = reason
+        if state is not None:
+            event.state = state
+        if source is not None:
+            event.source = source
+        self.send_event(event)
 
     def stop(self):
         self.session.close()

@@ -21,9 +21,9 @@ RESUMED_REGEX = re.compile("^// action:resumed$")
 CANCEL_REGEX = re.compile("^// action:cancel$")
 START_PRINT_REGEX = re.compile(r"^echo:enqueing \"M24\"$")
 PRINT_DONE_REGEX = re.compile(r"^Done printing file$")
+ERROR_REGEX = re.compile(r"^Error:Printer stopped due to errors. Fix the error and use M999 to restart.*")
 
 SD_PRINTING_REGEX = re.compile(r"^(Not SD printing)$|^(\d+:\d+)$")
-
 
 PRINTING_STATES = {States.PRINTING, States.PAUSED, States.FINISHED}
 
@@ -79,7 +79,10 @@ class StateManager:
 
         # The ACTUAL states considered when reporting
         self.base_state: States = States.READY
+        self.printing_state: Union[None, States] = None
         self.override_state: Union[None, States] = None
+
+        #
 
         # Reported state history
         self.last_state = self.get_state()
@@ -102,6 +105,7 @@ class StateManager:
         self.printer_communication.register_output_handler(CANCEL_REGEX, lambda match: self.not_printing())
         self.printer_communication.register_output_handler(START_PRINT_REGEX, lambda match: self.printing())
         self.printer_communication.register_output_handler(PRINT_DONE_REGEX, lambda match: self.finished())
+        self.printer_communication.register_output_handler(ERROR_REGEX, lambda match: self.error())
 
         self.state_thread = Thread(target=self._keep_updating_state, name="State updater")
         self.state_thread.start()
@@ -114,7 +118,11 @@ class StateManager:
         self.state_thread.join()
 
     def update_state(self):
-        if self.base_state == States.PRINTING:
+        if self.base_state == States.BUSY:
+            log.debug("Not bothering with state updates, the printer looks busy anyway and would just ignore us")
+            return
+
+        if self.printing_state == States.PRINTING:
             # Using telemetry inserting function as a getter, if this would be done multiple times please separate
             # "inserters" from getters
             try:
@@ -133,7 +141,7 @@ class StateManager:
         else:
             groups = match.groups()
             # FIXME: Do not go out of the printing state when paused, cannot be detected/maintained otherwise
-            if groups[0] is not None and self.base_state != States.PAUSED:  # Not printing
+            if groups[0] is not None and self.printing_state != States.PAUSED:  # Not printing
                 self.not_printing()
             else:  # Printing
                 self.printing()
@@ -141,6 +149,8 @@ class StateManager:
     def get_state(self):
         if self.override_state is not None:
             return self.override_state
+        elif self.printing_state is not None:
+            return self.printing_state
         else:
             return self.base_state
 
@@ -205,7 +215,10 @@ class StateManager:
             command_id = None
             source = None
 
-            if self.override_state:
+            if self.printing_state is not None:
+                log.debug(f"We are printing - {self.printing_state}")
+
+            if self.override_state is not None:
                 log.debug(f"State is overridden by {self.override_state}")
 
             # If the state changed to something expected, then send the information about it
@@ -223,20 +236,20 @@ class StateManager:
     # This state change can change the state to "PRINTING"
     @state_influencer(StateChange(to_states={States.PRINTING: Sources.USER}))
     def printing(self):
-        if self.base_state not in PRINTING_STATES:
-            self.base_state = States.PRINTING
+        if self.printing_state is None:
+            self.printing_state = States.PRINTING
 
     @state_influencer(StateChange(from_states={States.PRINTING: Sources.MARLIN,
                                                States.PAUSED: Sources.MARLIN,
                                                States.FINISHED: Sources.MARLIN}))
     def not_printing(self):
-        if self.base_state in PRINTING_STATES:
-            self.base_state = States.READY
+        if self.printing_state is not None:
+            self.printing_state = None
 
     @state_influencer(StateChange(to_states={States.FINISHED: Sources.MARLIN}))
     def finished(self):
-        if self.base_state == States.PRINTING:
-            self.base_state = States.FINISHED
+        if self.printing_state == States.PRINTING:
+            self.printing_state = States.FINISHED
 
     @state_influencer(StateChange(to_states={States.BUSY: Sources.MARLIN}))
     def busy(self):
@@ -246,13 +259,13 @@ class StateManager:
     # Cannot distinguish pauses from the uuser and the gcode
     @state_influencer(StateChange(to_states={States.PAUSED: Sources.USER}))
     def paused(self):
-        if self.base_state == States.PRINTING:
-            self.base_state = States.PAUSED
+        if self.printing_state == States.PRINTING:
+            self.printing_state = States.PAUSED
 
     @state_influencer(StateChange(to_states={States.PRINTING: Sources.USER}))
     def resumed(self):
-        if self.base_state == States.PAUSED:
-            self.base_state = States.PRINTING
+        if self.printing_state == States.PAUSED:
+            self.printing_state = States.PRINTING
 
     @state_influencer(
         StateChange(to_states={States.READY: Sources.MARLIN}, from_states={States.ATTENTION: Sources.USER,
@@ -263,8 +276,8 @@ class StateManager:
             self.override_state = None
             self.state_may_have_changed()
 
-        if self.base_state == States.FINISHED:
-            self.base_state = States.READY
+        if self.printing_state == States.FINISHED:
+            self.printing_state = None
 
         if self.base_state == States.BUSY:
             self.base_state = States.READY
@@ -273,3 +286,8 @@ class StateManager:
     def attention(self):
         log.debug(f"Overriding the state with ATTENTION")
         self.override_state = States.ATTENTION
+
+    @state_influencer(StateChange(to_states={States.ERROR: Sources.WUI}))
+    def error(self):
+        log.debug(f"Overriding the state with ERROR")
+        self.override_state = States.ERROR
