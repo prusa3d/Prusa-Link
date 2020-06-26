@@ -1,5 +1,5 @@
 [Unit]
-Description=Restart script listening on GPIO
+Description=Old Buddy - making old MK3s learn new tricks
 
 [Service]
 Type=simple

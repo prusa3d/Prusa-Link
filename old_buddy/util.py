@@ -15,10 +15,14 @@ def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec, r
     by reference
     """
 
-    last_refreshed = 0
-    while should_loop():
-        if time() - last_refreshed > run_every_sec:
+    last_called = 0
+    last_checked_exit = 0
 
+    while should_loop():
+        last_checked_exit = time()
+        if time() - last_called > run_every_sec:  # if it's time to run the func
+
+            last_called = time()
             args = []
             for getter in arg_getters:
                 args.append(getter())
@@ -28,12 +32,16 @@ def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec, r
                 kwargs[name] = getter()
 
             to_run(*args, **kwargs)
-            last_refreshed = time()
-        sleep(min(check_exit_every_sec, (last_refreshed + run_every_sec) - time()))
+
+        # Wait until it's time to check, if we are still running, or it's time to run the func again
+        run_again_in = max(0, (last_called + run_every_sec) - time())  # wait at least 0s, don't wait negative amounts
+        check_exit_in = max(0, (last_checked_exit + check_exit_every_sec) - time())
+        sleep(min(check_exit_in, run_again_in))
 
 
 def get_command_id(api_response: requests.Response):
     return int(api_response.headers["Command-Id"])
+
 
 def get_local_ip():
     """

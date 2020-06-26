@@ -3,8 +3,8 @@
 import logging
 import re
 
-from old_buddy.connect_communication import Telemetry
-from old_buddy.printer_communication import PrinterCommunication
+from old_buddy.modules.connect_api import Telemetry
+from old_buddy.modules.serial import Serial
 
 
 TEMPERATURE_REGEX = re.compile(r"^ok ?T: ?(-?\d+\.\d+) ?/(-?\d+\.\d+) ?B: ?(-?\d+\.\d+) ?/(-?\d+\.\d+) ?"
@@ -17,11 +17,12 @@ P_FAN_REGEX = re.compile(r"^PRN0:(\d+) ?RPM$")
 PRINT_TIME_REGEX = re.compile(r"^(Not SD printing)$|^((\d+):(\d{2}))$")
 PROGRESS_REGEX = re.compile(r"^NORMAL MODE: Percent done: (\d+);.*")
 TIME_REMAINING_REGEX = re.compile(r"^SILENT MODE: Percent done: (\d+); print time remaining in mins: (-?\d+) ?$")
+PERCENT_REGEX = re.compile(r"^(\d+)%$")
 
 log = logging.getLogger(__name__)
 
 
-def insert_temperatures(printer_communication: PrinterCommunication, telemetry: Telemetry):
+def insert_temperatures(printer_communication: Serial, telemetry: Telemetry):
     match = printer_communication.write("M105", TEMPERATURE_REGEX)
     if match is not None:
         groups = match.groups()
@@ -32,7 +33,7 @@ def insert_temperatures(printer_communication: PrinterCommunication, telemetry: 
     return telemetry
 
 
-def insert_positions(printer_communication: PrinterCommunication, telemetry: Telemetry):
+def insert_positions(printer_communication: Serial, telemetry: Telemetry):
     match = printer_communication.write("M114", POSITION_REGEX)
     if match is not None:
         groups = match.groups()
@@ -42,7 +43,7 @@ def insert_positions(printer_communication: PrinterCommunication, telemetry: Tel
     return telemetry
 
 
-def insert_fans(printer_communication: PrinterCommunication, telemetry: Telemetry):
+def insert_fans(printer_communication: Serial, telemetry: Telemetry):
     e_fan_match = printer_communication.write("PRUSA FAN", E_FAN_REGEX)
     p_fan_match = printer_communication.write("PRUSA FAN", P_FAN_REGEX)
     if e_fan_match is not None and p_fan_match is not None:
@@ -51,7 +52,7 @@ def insert_fans(printer_communication: PrinterCommunication, telemetry: Telemetr
     return telemetry
 
 
-def insert_printing_time(printer_communication: PrinterCommunication, telemetry: Telemetry):
+def insert_printing_time(printer_communication: Serial, telemetry: Telemetry):
     match = printer_communication.write("M27", PRINT_TIME_REGEX)
     if match is not None:
         groups = match.groups()
@@ -63,7 +64,7 @@ def insert_printing_time(printer_communication: PrinterCommunication, telemetry:
     return telemetry
 
 
-def insert_progress(printer_communication: PrinterCommunication, telemetry: Telemetry):
+def insert_progress(printer_communication: Serial, telemetry: Telemetry):
     match = printer_communication.write("M73", PROGRESS_REGEX)
     if match is not None:
         groups = match.groups()
@@ -73,7 +74,7 @@ def insert_progress(printer_communication: PrinterCommunication, telemetry: Tele
     return telemetry
 
 
-def insert_time_remaining(printer_communication: PrinterCommunication, telemetry: Telemetry):
+def insert_time_remaining(printer_communication: Serial, telemetry: Telemetry):
     # FIXME: Using the more conservative values from silent mode, need to know in which mode we are
     match = printer_communication.write("M73", TIME_REMAINING_REGEX)
     if match is not None:
@@ -82,6 +83,26 @@ def insert_time_remaining(printer_communication: PrinterCommunication, telemetry
         secs_remaining = mins_remaining * 60
         if mins_remaining >= 0:
             telemetry.estimated_time = secs_remaining
+    return telemetry
+
+
+def insert_flow_rate(printer_communication: Serial, telemetry: Telemetry):
+    match = printer_communication.write("M221", PERCENT_REGEX)
+    if match is not None:
+        groups = match.groups()
+        flow = int(groups[0])
+        if 0 <= flow <= 100:
+            telemetry.flow = flow
+    return telemetry
+
+
+def insert_speed_multiplier(printer_communication: Serial, telemetry: Telemetry):
+    match = printer_communication.write("M220", PERCENT_REGEX)
+    if match is not None:
+        groups = match.groups()
+        speed = int(groups[0])
+        if 0 <= speed <= 100:
+            telemetry.speed = speed
     return telemetry
 
 

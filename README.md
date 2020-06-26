@@ -28,7 +28,7 @@ After that old buddy shall start with the pi
 ### Telemetry data
 and how hard is it to get the values
 
-> We need to know if we are in silent or normal mode for progress and esttimated_time
+> We need to know if we are in silent or normal mode for progress and estimated_time
 > progress: if the info is absent from GCODE, (calc_percent_done() in Marlin_main.cpp)
 > filament: (extruded ever) some variant of it is reported periodically in farm mode
 > flow: M221 sets it, but how to get it? (extruder_multiply,  extrudemultiply a extruder_multiplier in Marlin_main.cpp)

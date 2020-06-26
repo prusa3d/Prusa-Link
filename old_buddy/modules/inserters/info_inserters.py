@@ -1,7 +1,7 @@
 import re
 
-from old_buddy.connect_communication import PrinterInfo
-from old_buddy.printer_communication import PrinterCommunication
+from old_buddy.modules.connect_api import PrinterInfo
+from old_buddy.modules.serial import Serial
 from old_buddy.util import get_local_ip
 
 INT_REGEX = re.compile(r"^(-?\d+)$")
@@ -15,7 +15,7 @@ PRINTER_TYPES = {
 }
 
 
-def insert_type_and_version(printer_communication: PrinterCommunication, printer_info: PrinterInfo):
+def insert_type_and_version(printer_communication: Serial, printer_info: PrinterInfo):
     match = printer_communication.write("M862.2 Q", INT_REGEX)
     if match is not None:
         code = int(match.groups()[0])
@@ -23,13 +23,13 @@ def insert_type_and_version(printer_communication: PrinterCommunication, printer
     return printer_info
 
 
-def insert_firmware_version(printer_communication: PrinterCommunication, printer_info: PrinterInfo):
+def insert_firmware_version(printer_communication: Serial, printer_info: PrinterInfo):
     match = printer_communication.write("M115", FW_REGEX)
     if match is not None:
         printer_info.firmware = match.groups()[0]
     return printer_info
 
 
-def insert_local_ip(printer_communication: PrinterCommunication, printer_info: PrinterInfo):
+def insert_local_ip(printer_communication: Serial, printer_info: PrinterInfo):
     printer_info.ip = get_local_ip()
     return printer_info

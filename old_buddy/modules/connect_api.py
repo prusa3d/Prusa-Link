@@ -1,10 +1,14 @@
 import logging
 from enum import Enum
+from time import time
 
+from blinker import Signal
 from requests import Session, RequestException
 
-log = logging.getLogger(__name__)
+from old_buddy.settings import CONNECT_API_LOG_LEVEL
 
+log = logging.getLogger(__name__)
+log.setLevel(CONNECT_API_LOG_LEVEL)
 
 class Dictable:
     """The base class for all models making serialization to dict easy"""
@@ -72,6 +76,18 @@ class PrinterInfo(Dictable):
         self.uuid = None
         self.appendix = None
         self.state = None
+        self.files = None
+
+
+class FileTree(Dictable):
+    def __init__(self):
+        self.type = None
+        self.path = None
+        self.ro = None
+        self.size = None
+        self.m_date = None
+        self.m_time = None
+        self.children = None
 
 
 class EmitEvents(Enum):
@@ -99,11 +115,26 @@ class States(Enum):
     ATTENTION = "ATTENTION"
 
 
-class ConnectCommunication:
+class FileType(Enum):
+    FILE = "FILE"
+    DIR = "DIR"
+    MOUNT = "MOUNT"
+
+
+class ConnectAPI:
+
+    connection_error = Signal()  # kwargs: path: str, json_dict: Dict[str, Any]
+
+    instance = None  # Just checks if there is not more than one instance in existence, not a singleton!
 
     def __init__(self, address, port, token, tls=False):
+        if self.instance is not None:
+            raise AssertionError("If this is required, we need the signals moved from class to instance variables.")
+
         self.address = address
         self.port = port
+
+        self.started_on = time()
 
         protocol = "https" if tls else "http"
 
@@ -114,30 +145,28 @@ class ConnectCommunication:
 
     def send_dict(self, path: str, json_dict: dict):
         log.info(f"Sending to connect {path}")
-        log.debug(f"Sending a dict to: {path} data: {json_dict}")
-        response = self.session.post(self.base_url + path, json=json_dict)
+        log.debug(f"request data: {json_dict}")
+        timestamp = str(int(round(time() - self.started_on)))
+        timestamp_header = {"timestamp": timestamp}
+        try:
+            response = self.session.post(self.base_url + path, json=json_dict, headers=timestamp_header)
+        except RequestException:
+            self.connection_error.send(self, path=path, json_dict=json_dict)
+            raise
         log.info(f"Got a response: {response.status_code}")
-        log.debug(f"Got a response: {response.content}")
+        log.debug(f"Response contents: {response.content}")
         return response
 
     def send_dictable(self, path: str, dictable: Dictable):
         json_dict = dictable.to_dict()
         return self.send_dict(path, json_dict)
 
-    def send_telemetry(self, telemetry: Telemetry):
-        try:
-            return self.send_dictable("/p/telemetry", telemetry)
-        except RequestException:
-            log.exception("Exception when calling sending telemetry")
-
-    def send_event(self, event: Event):
-        try:
-            return self.send_dictable("/p/events", event)
-        except RequestException:
-            log.exception("Exception while sending an event")
-
     def emit_event(self, emit_event: EmitEvents, command_id: int = None, reason: str = None, state: str = None,
                    source: str = None):
+        """
+        Logs errors, but stops their propagation, as this is called many many times
+        and doing try/excepts everywhere would hinder readability
+        """
         event = Event()
         event.event = emit_event.value
 
@@ -149,7 +178,11 @@ class ConnectCommunication:
             event.state = state
         if source is not None:
             event.source = source
-        self.send_event(event)
+
+        try:
+            self.send_dictable("/p/events", event)
+        except RequestException:  # Errors get logged upstream, stop propagation, try/excepting these would be a chore
+            pass
 
     def stop(self):
         self.session.close()

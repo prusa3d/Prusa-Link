@@ -1,17 +1,18 @@
 import logging
 import re
-from enum import auto, Enum
 from threading import Thread
-from time import sleep
-from typing import Union, Set, Iterable, Dict
+from typing import Union, Dict
 
-from old_buddy.connect_communication import Telemetry, Sources, States
-from old_buddy.printer.inserters import telemetry_inserters
-from old_buddy.printer_communication import PrinterCommunication
-from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL_SEC
+from blinker import Signal
+
+from old_buddy.modules.connect_api import Telemetry, Sources, States
+from old_buddy.modules.inserters import telemetry_inserters
+from old_buddy.modules.serial import Serial
+from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL_SEC, STATE_MANAGER_LOG_LEVEL
 from old_buddy.util import run_slowly_die_fast, get_command_id
 
 log = logging.getLogger(__name__)
+log.setLevel(STATE_MANAGER_LOG_LEVEL)
 
 OK_REGEX = re.compile(r"^ok$")
 BUSY_REGEX = re.compile("^echo:busy: processing$")
@@ -73,8 +74,14 @@ def state_influencer(state_change: StateChange = None):
 
 
 class StateManager:
+    state_changed = Signal()  # kwargs: command_id: int, source: Sources
 
-    def __init__(self, printer_communication: PrinterCommunication, state_changed_callback):
+    instance = None  # Just checks if there is not more than one instance in existence, not a singleton!
+
+    def __init__(self, serial: Serial):
+        if self.instance is not None:
+            raise AssertionError("If this is required, we need the signals moved from class to instance variables.")
+
         self.running = True
 
         # The ACTUAL states considered when reporting
@@ -82,7 +89,8 @@ class StateManager:
         self.printing_state: Union[None, States] = None
         self.override_state: Union[None, States] = None
 
-        #
+        # Flag that can be flipped by base state, or internally, so nothing would be sent to the printer.
+        self.internal_busy = False
 
         # Reported state history
         self.last_state = self.get_state()
@@ -94,18 +102,17 @@ class StateManager:
         # if we observe such a transition, we'll say the action caused the state change
         self.expected_state_change: Union[None, StateChange] = None
 
-        self.printer_communication: PrinterCommunication = printer_communication
-        self.state_changed_callback = state_changed_callback
+        self.serial: Serial = serial
 
-        self.printer_communication.register_output_handler(OK_REGEX, lambda match: self.ok())
-        self.printer_communication.register_output_handler(BUSY_REGEX, lambda match: self.busy())
-        self.printer_communication.register_output_handler(ATTENTION_REGEX, lambda match: self.attention())
-        self.printer_communication.register_output_handler(PAUSED_REGEX, lambda match: self.paused())
-        self.printer_communication.register_output_handler(RESUMED_REGEX, lambda match: self.resumed())
-        self.printer_communication.register_output_handler(CANCEL_REGEX, lambda match: self.not_printing())
-        self.printer_communication.register_output_handler(START_PRINT_REGEX, lambda match: self.printing())
-        self.printer_communication.register_output_handler(PRINT_DONE_REGEX, lambda match: self.finished())
-        self.printer_communication.register_output_handler(ERROR_REGEX, lambda match: self.error())
+        self.serial.register_output_handler(OK_REGEX, lambda match: self.ok())
+        self.serial.register_output_handler(BUSY_REGEX, lambda match: self.busy())
+        self.serial.register_output_handler(ATTENTION_REGEX, lambda match: self.attention())
+        self.serial.register_output_handler(PAUSED_REGEX, lambda match: self.paused())
+        self.serial.register_output_handler(RESUMED_REGEX, lambda match: self.resumed())
+        self.serial.register_output_handler(CANCEL_REGEX, lambda match: self.not_printing())
+        self.serial.register_output_handler(START_PRINT_REGEX, lambda match: self.printing())
+        self.serial.register_output_handler(PRINT_DONE_REGEX, lambda match: self.finished())
+        self.serial.register_output_handler(ERROR_REGEX, lambda match: self.error())
 
         self.state_thread = Thread(target=self._keep_updating_state, name="State updater")
         self.state_thread.start()
@@ -118,15 +125,17 @@ class StateManager:
         self.state_thread.join()
 
     def update_state(self):
-        if self.base_state == States.BUSY:
-            log.debug("Not bothering with state updates, the printer looks busy anyway and would just ignore us")
+        if self.is_busy():
+            log.debug("Not bothering with state updates, sending PRUSA PING, for us to know, "
+                      "when the printer starts responding again")
+            self.serial.write("PRUSA PING")
             return
 
         if self.printing_state == States.PRINTING:
             # Using telemetry inserting function as a getter, if this would be done multiple times please separate
             # "inserters" from getters
             try:
-                progress = telemetry_inserters.insert_progress(self.printer_communication, Telemetry()).progress
+                progress = telemetry_inserters.insert_progress(self.serial, Telemetry()).progress
             except TimeoutError:
                 log.debug("Printer did not tell us the progress percentage in time")
             else:
@@ -135,7 +144,7 @@ class StateManager:
                     self.finished()
 
         try:
-            match = self.printer_communication.write("M27", SD_PRINTING_REGEX)
+            match = self.serial.write("M27", SD_PRINTING_REGEX)
         except TimeoutError:
             log.debug("Printer did not report if it's printing or not :(")
         else:
@@ -153,6 +162,14 @@ class StateManager:
             return self.printing_state
         else:
             return self.base_state
+
+    def is_busy(self):
+        """
+        There is two busy states, one is the printer observation one, which is stored in the base_state
+        the other one is internal_busy, which can be changed by Old Buddy components for stuff like writing a file
+        where every telemetry request would get mistakenly written to the file being created.
+        """
+        return self.internal_busy or self.base_state == States.BUSY
 
     def expect_change(self, change: StateChange):
         self.expected_state_change = change
@@ -229,7 +246,7 @@ class StateManager:
             else:
                 log.debug("Unexpected state change. This is weird")
             self.expected_state_change = None
-            self.state_changed_callback(command_id, source)
+            self.state_changed.send(self, command_id=command_id, source=source)
 
     # --- State changing methods ---
 
