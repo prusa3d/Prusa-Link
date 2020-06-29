@@ -26,6 +26,9 @@ class UnknownCommandException(ValueError):
         super().__init__(*args)
         self.command = command
 
+class WriteIgnored(Exception):
+    ...
+
 
 class Serial:
 
@@ -42,6 +45,10 @@ class Serial:
         self.instance = self
 
         self.default_response_timeout = default_response_timeout
+        # Sometimes, we need silence except for one specific source (writing files)
+        # With 0 as default, the writes without arguments succeed, any other number, and only writes with the same
+        # number don't get ignored
+        self.channel = 0
 
         self.serial = serial.Serial(baudrate=baudrate, port=port, timeout=timeout, write_timeout=write_timeout)
 
@@ -69,25 +76,21 @@ class Serial:
                     self.received.send(line=line)
                     self.write_read_lock.release()
 
-    def write(self, message: str, wait_for_regex: re.Pattern = None, timeout: float = None) -> Union[None, re.Match]:
+    def write(self, message: str, channel: int = 0):
         """
-        Writes a message, has an ability to wait for an arbitrary regex after that
+        Writes a message
 
         :param message: the message to be sent
-        :param wait_for_regex: regex pattern to wait for
-        :param timeout: time in seconds to wait before giving up
-        :return: the match object if any pattern was given. Otherwise None
+        :param channel: the channel to write to, if this does not match the current channel, the message is ignored
         """
-        if timeout is None and self.default_response_timeout is not None:
-            timeout = self.default_response_timeout
+        if self.channel != channel:
+            log.info(f"write '{message}' ignored because the message came from chhannel {channel} "
+                     f"but now we only pass messages from channel number {self.channel}.")
+            raise WriteIgnored()
 
         if message[-1] != "\n":
             message += "\n"
         message_bytes = message.encode("ASCII")
-
-        response_waiter = None
-        if wait_for_regex is not None:
-            response_waiter = SingleMatchCollector(wait_for_regex, timeout=timeout)
 
         with self.write_read_lock:
             log.debug(f"Sending to printer: {message_bytes}")
@@ -96,17 +99,36 @@ class Serial:
             except serial.SerialException:
                 log.error(f"Serial error when sending '{message}' to the printer")
 
-        if wait_for_regex is not None:
-            try:
-                return response_waiter.wait_for_output()
-            except TimeoutError:
-                log.debug(f"Timed out waiting for regex {wait_for_regex}")
-                raise
+    def write_wait_response(self, message: str, wait_for_regex: re.Pattern = None, timeout: float = None,
+                            channel: int = 0) -> Union[None, re.Match]:
+        """
+        Writes a message and waits for output matching the specified regex
+
+        :param message: the message to be sent
+        :param wait_for_regex: regex pattern to wait for
+        :param timeout: time in seconds to wait before giving up
+        :param channel: the channel to write to, if this does not match the current channel, the message is ignored
+        :return: the match object if any pattern was given. Otherwise None
+        """
+
+        if timeout is None and self.default_response_timeout is not None:
+            timeout = self.default_response_timeout
+
+        response_waiter = SingleMatchCollector(wait_for_regex, timeout=timeout)
+
+        self.write(message, channel=channel)
+
+        try:
+            return response_waiter.wait_for_output()
+        except TimeoutError:
+            log.debug(f"Timed out waiting for regex {wait_for_regex}")
+            raise
 
     def write_wait_ok(self, message: str, timeout: float = None):
-        match = self.write(message, REACTION_REGEX, timeout=timeout)
+
+        match = self.write_wait_response(message, REACTION_REGEX, timeout=timeout)
         groups = match.groups()
-        if not groups[0]:
+        if groups[1]:
             command = groups[2]
             raise UnknownCommandException(f"Unknown command {command}", command=message)
 
@@ -137,8 +159,8 @@ class Serial:
     def is_responsive(self):
         """Check if printer is really ready to respond"""
         try:
-            self.write("M113", PING_REGEX)
-        except TimeoutError:
+            self.write_wait_response("M113", PING_REGEX)
+        except (TimeoutError, WriteIgnored):
             return False
         else:
             return True

@@ -3,8 +3,9 @@ from queue import Queue, Empty
 from threading import Thread
 from time import sleep, time
 
+from old_buddy.modules.connect_api import States
+from old_buddy.modules.serial import Serial, WriteIgnored
 from old_buddy.modules.state_manager import StateManager
-from old_buddy.modules.serial import Serial
 from old_buddy.settings import QUIT_INTERVAL, LCD_PRINTER_LOG_LEVEL
 
 log = logging.getLogger(__name__)
@@ -44,14 +45,14 @@ class LCDPrinter:
     def print_text(self, text: str):
         while self.running:
             current_time = time()
-            if self.state_manager.is_busy():
+            if self.state_manager.base_state == States.BUSY:
                 sleep(QUIT_INTERVAL)
             elif self.wait_until > current_time:
                 sleep(min(QUIT_INTERVAL, self.wait_until - current_time))
             else:
                 try:
                     self.serial.write_wait_ok(f"M117 {text}")
-                except TimeoutError:  # Failed, seems busy
+                except (TimeoutError, WriteIgnored):  # Failed, seems busy
                     log.debug("Failed printing a message on the screen, will keep retrying.")
                     sleep(QUIT_INTERVAL)
                     continue

@@ -5,9 +5,9 @@ from time import time, sleep
 
 from old_buddy.modules.connect_api import ConnectAPI, EmitEvents, States, Sources
 from old_buddy.modules.state_manager import StateChange, StateManager
-from old_buddy.modules.serial import Serial, REACTION_REGEX, UnknownCommandException, SingleMatchCollector
-from old_buddy.settings import COMMAND_TIMEOUT, REPEAT_ACTION_EVERY, QUIT_INTERVAL, LONG_GCODE_TIMEOUT, \
-    COMMANDS_LOG_LEVEL
+from old_buddy.modules.serial import Serial, REACTION_REGEX, UnknownCommandException, SingleMatchCollector, WriteIgnored
+from old_buddy.settings import COMMAND_TIMEOUT, ACTION_INTERVAL, QUIT_INTERVAL, LONG_GCODE_TIMEOUT, \
+    COMMANDS_LOG_LEVEL, GCODE_RETRIES_TIMEOUT
 from old_buddy.util import get_command_id
 
 OPEN_RESULT_REGEX = re.compile(r"^(File opened).*|^(open failed).*")
@@ -65,25 +65,37 @@ class Commands:
         else:
             gcode = override_gcode
 
-        try:  # Try executing a command
-            self.serial.write_wait_ok(gcode)
-        except UnknownCommandException as e:  # No such command, Reject
-            self.connect_api.emit_event(EmitEvents.REJECTED, command_id, f"Unknown command '{e.command}')")
-        except TimeoutError:  # The printer is taking time
+        timeout_retries_on = time() + GCODE_RETRIES_TIMEOUT
+
+        while self.running and time() < timeout_retries_on:
+            try:  # Try executing a command
+                self.serial.write_wait_ok(gcode)
+                # FIXME: It waits only for ok, maybe enqueue some other command that will be better distinguishable
+            except UnknownCommandException as e:  # No such command, Reject
+                self.connect_api.emit_event(EmitEvents.REJECTED, command_id, f"Unknown command '{e.command}')")
+                return
+            except WriteIgnored:  # Serial ignores us, let's retry in awhile
+                sleep(QUIT_INTERVAL)
+            except TimeoutError:  # The printer is taking time, wait for it under the while section
+                break
+            else:  # Success, end right now
+                self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
+                return
+
+        if self.running and time() < timeout_retries_on:
             self.connect_api.emit_event(EmitEvents.ACCEPTED, command_id)
 
-            timeout_on = time() + LONG_GCODE_TIMEOUT
+            timeout_waiting_on = time() + LONG_GCODE_TIMEOUT
             output_collector = SingleMatchCollector(REACTION_REGEX, QUIT_INTERVAL)
             try:
                 # be ready to quit in a timely manner
-                output_collector.wait_until(lambda: self.running and time() < timeout_on)
+                output_collector.wait_until(lambda: self.running and time() < timeout_waiting_on)
             except TimeoutError:
                 if self.running:
                     log.exception(f"Timed out waiting for printer to return ok after gcode '{gcode}'")
             else:
                 self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
-        else:
-            self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
+
 
     def try_until_state(self, api_response, gcode: str, desired_state: States):
         command_id = get_command_id(api_response)
@@ -107,9 +119,12 @@ class Commands:
             if self.state_manager.get_state() != desired_state:
                 self.state_manager.expect_change(StateChange(api_response, to_states={desired_state: Sources.CONNECT}))
 
-            self.serial.write(gcode)
             try:
-                retry_timeout_on = time() + REPEAT_ACTION_EVERY
+                self.serial.write(gcode)
+            except WriteIgnored:
+                pass
+            try:
+                retry_timeout_on = time() + ACTION_INTERVAL
                 output_collector.wait_until(lambda: self.running and time() < retry_timeout_on)
             except TimeoutError:
                 pass
@@ -152,17 +167,19 @@ class Commands:
         self.state_manager.expect_change(StateChange(api_response, to_states={States.PRINTING: Sources.CONNECT}))
 
         try:
-            match = self.serial.write(f"M23 {file_name}", OPEN_RESULT_REGEX, timeout=3)
+            match = self.serial.write_wait_response(f"M23 {file_name}", OPEN_RESULT_REGEX, timeout=3)
         except TimeoutError:
             log.info("Start print failed. Printer did not respond with 'open failed', or 'file opened'")
             self.connect_api.emit_event(EmitEvents.REJECTED, command_id)
+        except WriteIgnored:
+            self.connect_api.emit_event(EmitEvents.REJECTED, command_id, f"Other things in progress.")
         else:
             if match.groups()[0] is None:  # Opening failed
                 self.connect_api.emit_event(EmitEvents.REJECTED, command_id, f"Wrong file name, or bad file")
             else:
                 try:
                     self.serial.write_wait_ok("M24")
-                except TimeoutError:
+                except (TimeoutError, WriteIgnored):
                     log.info("Start print failed. Printer stopped being responsive mid-command.")
                     self.connect_api.emit_event(EmitEvents.REJECTED, command_id)
                 else:

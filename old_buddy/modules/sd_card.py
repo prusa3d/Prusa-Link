@@ -4,9 +4,9 @@ from enum import Enum
 from threading import Thread
 from typing import Dict, Set, Callable
 
-from old_buddy.modules.connect_api import FileType, FileTree
+from old_buddy.modules.connect_api import FileType, FileTree, States
 from old_buddy.modules.state_manager import StateManager
-from old_buddy.modules.serial import Serial, OutputCollector
+from old_buddy.modules.serial import Serial, OutputCollector, WriteIgnored
 from old_buddy.settings import SD_LIST_TIMEOUT, SD_CARD_LOG_LEVEL, QUIT_INTERVAL, SD_INTERVAL
 from old_buddy.util import run_slowly_die_fast
 
@@ -20,6 +20,10 @@ END_FILES_REGEX = re.compile(r"^End file list$")
 
 SD_PRESENT_REGEX = re.compile(r"^(echo:SD card ok)|(echo:SD init fail)$")
 INSERTED_REGEX = re.compile(r"^(echo:SD card ok)$")
+
+
+class CouldNotConstructTree(RuntimeError):
+    ...
 
 
 class InternalFileTree:
@@ -154,7 +158,7 @@ class SDState:
         If there is nothing on the SD card or if we suspect there is no SD card, calling this should be fine
         """
         try:
-            match = self.serial.write("M21", wait_for_regex=SD_PRESENT_REGEX)
+            match = self.serial.write_wait_response("M21", wait_for_regex=SD_PRESENT_REGEX)
         except TimeoutError:
             log.debug("Failed determining the SD presence.")
         else:
@@ -184,18 +188,21 @@ class SDCard:
         run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL, SD_INTERVAL, self.update_sd_stuff)
 
     def update_sd_stuff(self):
-        if self.state_manager.is_busy():
+        if self.state_manager.base_state == States.BUSY:
             log.debug("Not bothering with updating file structure, printer looks busy")
             return
 
         self.previous_file_tree = self.file_tree
-        self.file_tree = self.construct_file_tree()
-
-        # If we do not know the sd state and no files were found, check the SD presence
-        # If there were files and now there is nothing, the SD was most likely ejected. So check for that
-        if not self.file_tree.descendants_set:
-            if self.previous_file_tree.descendants_set or self.sd_state == SDPresence.UNSURE:
-                self.sd_state.unsure()
+        try:
+            self.file_tree = self.construct_file_tree()
+        except CouldNotConstructTree:
+            log.error("No file tree could be constructed, printer seems busy")
+        else:
+            # If we do not know the sd state and no files were found, check the SD presence
+            # If there were files and now there is nothing, the SD was most likely ejected. So check for that
+            if not self.file_tree.descendants_set:
+                if self.previous_file_tree.descendants_set or self.sd_state == SDPresence.UNSURE:
+                    self.sd_state.unsure()
 
     def construct_file_tree(self):
         tree = InternalFileTree(path="SD Card", file_type=FileType.MOUNT)
@@ -206,8 +213,15 @@ class SDCard:
 
         collector = OutputCollector(begin_regex=BEGIN_FILES_REGEX, end_regex=END_FILES_REGEX,
                                     capture_regex=FILE_PATH_REGEX, timeout=SD_LIST_TIMEOUT, debug=True)
-        self.serial.write("M20")
-        output = collector.wait_for_output()
+        try:
+            self.serial.write("M20")
+        except WriteIgnored:
+            raise CouldNotConstructTree("No tree was constructed")
+
+        try:
+            output = collector.wait_for_output()
+        except TimeoutError:
+            raise CouldNotConstructTree()
 
         for match in output:
             tree.child_from_path(match.string)

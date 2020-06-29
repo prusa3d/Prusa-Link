@@ -1,47 +1,25 @@
 import configparser
 import logging
-import re
 import threading
 from distutils.util import strtobool
 from json import JSONDecodeError
-from threading import Thread
-from time import sleep, time
-from typing import List, Callable, Any
-
-from getmac import get_mac_address
+from time import time
 from requests import RequestException
 from serial import SerialException
 
 from old_buddy.modules.connect_api import ConnectAPI
-from old_buddy.modules.connect_api import Telemetry, PrinterInfo, Dictable, EmitEvents, Event, \
-    Sources
+from old_buddy.modules.connect_api import Telemetry, PrinterInfo, EmitEvents, Sources
 from old_buddy.modules.commands import Commands
-from old_buddy.modules.inserters import telemetry_inserters, info_inserters
+from old_buddy.modules.info_sender import InfoSender
+from old_buddy.modules.ip_updater import IPUpdater, NO_IP
 from old_buddy.modules.lcd_printer import LCDPrinter
 # from old_buddy.modules.sd_card import SDCard
-from old_buddy.modules.state_manager import StateManager, States, PRINTING_STATES, StateChange
+from old_buddy.modules.state_manager import StateManager, States, StateChange
 from old_buddy.modules.serial import Serial
-from old_buddy.settings import CONNECT_CONFIG_PATH, PRINTER_PORT, PRINTER_BAUDRATE, PRINTER_RESPONSE_TIMEOUT, \
-    SHOW_IP_INTERVAL
-from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL_SEC, TELEMETRY_INTERVAL, OLD_BUDDY_LOG_LEVEL
-from old_buddy.util import get_local_ip, run_slowly_die_fast, get_command_id
-
-TELEMETRY_GETTERS: List[Callable[[Serial, Telemetry], Telemetry]]
-TELEMETRY_GETTERS = [telemetry_inserters.insert_temperatures,
-                     telemetry_inserters.insert_positions,
-                     telemetry_inserters.insert_fans,
-                     telemetry_inserters.insert_printing_time,
-                     telemetry_inserters.insert_progress,
-                     telemetry_inserters.insert_time_remaining
-                     ]
-
-INFO_GETTERS = [info_inserters.insert_firmware_version,
-                info_inserters.insert_type_and_version,
-                info_inserters.insert_local_ip
-                ]
-
-HEATING_REGEX = re.compile(r"^T:(\d+\.\d+) E:\d+ B:(\d+\.\d+)$")
-HEATING_HOTEND_REGEX = re.compile(r"^T:(\d+\.\d+) E:([\?]|\d+) W:([\?]|\d+)$")
+from old_buddy.modules.telemetry_gatherer import TelemetryGatherer
+from old_buddy.settings import CONNECT_CONFIG_PATH, PRINTER_PORT, PRINTER_BAUDRATE, PRINTER_RESPONSE_TIMEOUT
+from old_buddy.settings import OLD_BUDDY_LOG_LEVEL
+from old_buddy.util import get_command_id
 
 log = logging.getLogger(__name__)
 log.setLevel(OLD_BUDDY_LOG_LEVEL)
@@ -85,6 +63,9 @@ class OldBuddy:
         self.state_manager = StateManager(self.serial)
         StateManager.state_changed.connect(self.state_changed)
 
+        self.telemetry_gatherer = TelemetryGatherer(self.serial, self.state_manager)
+        TelemetryGatherer.send_telemetry_signal.connect(self.send_telemetry)
+
         self.commands = Commands(self.serial, self.connect_api, self.state_manager)
         self.lcd_printer = LCDPrinter(self.serial, self.state_manager)
         # self.sd_card = SDCard(self.serial, self.state_manager)
@@ -94,31 +75,24 @@ class OldBuddy:
         self.additional_telemetry = Telemetry()
         self.printer_info = PrinterInfo()
 
-        self.serial.register_output_handler(HEATING_REGEX, self.heating_handler)
-        self.serial.register_output_handler(HEATING_HOTEND_REGEX, self.heating_hotend_handler)
-
-        self.running = True
-        self.telemetry_thread = Thread(target=self._send_telemetry, name="telemetry_thread")
-        self.telemetry_thread.start()
-
         # Greet the user
         self.lcd_printer.enqueue_message(f"Old Buddy says: Hi")
         self.lcd_printer.enqueue_message(f"RPi is operational")
         self.lcd_printer.enqueue_message(f"Its IP address is:")
-        self.update_local_ip()  # Guaranteed to print the IP first time it's called.
 
         # Start the ip updater after we enqueued the correct IP reporting message
-        self.ip_thread = Thread(target=self._keep_updating_ip, name="IP updater")
-        self.ip_thread.start()
+        self.ip_updater = IPUpdater(self.lcd_printer)
+
+        self.info_sender = InfoSender(self.serial, self.state_manager, self.connect_api, self.ip_updater)
+        # , self.sd_card)
 
     def stop(self):
-        self.running = False
         # self.sd_card.stop()
         self.lcd_printer.stop()
         self.commands.stop()
         self.state_manager.stop()
-        self.ip_thread.join()
-        self.telemetry_thread.join()
+        self.telemetry_gatherer.stop()
+        self.ip_updater.stop()
         self.serial.stop()
         self.connect_api.stop()
 
@@ -126,40 +100,6 @@ class OldBuddy:
         for thread in threading.enumerate():
             log.debug(thread)
         self.stopped_event.set()
-
-    def _send_telemetry(self):
-        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL, TELEMETRY_INTERVAL, self.update_telemetry)
-
-    def _keep_updating_ip(self):
-        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL, STATUS_UPDATE_INTERVAL_SEC, self.update_local_ip)
-
-    def update_telemetry(self):
-        telemetry = self.gather_telemetry()
-        try:
-            api_response = self.connect_api.send_dictable("/p/telemetry", telemetry)
-        except RequestException:
-            pass
-        else:
-            self.handle_telemetry_response(api_response)
-
-    def update_local_ip(self):
-        try:
-            local_ip = get_local_ip()
-        except:
-            log.error("Failed getting the local IP, are we connected to LAN?")
-            self.local_ip = ""  # Yeah empty string means disconnected :/ sorry
-            # FIXME: ip module with separate flag for no IP
-            self.show_ip()
-        else:
-            # Show the IP at least once every minute, so any errors printed won't stay forever displayed
-            # FIXME: Can be done cleaner
-            if self.local_ip != local_ip or time() - self.last_showed_ip > SHOW_IP_INTERVAL:
-                self.last_showed_ip = time()
-
-                if self.local_ip != local_ip:
-                    log.debug(f"Ip has changed, or we reconnected. The new one is {local_ip}")
-                self.local_ip = local_ip
-                self.show_ip()
 
     # --- API response handlers ---
 
@@ -175,7 +115,7 @@ class OldBuddy:
                 try:
                     data = api_response.json()
                     if data["command"] == "SEND_INFO":
-                        self.respond_with_info(api_response)
+                        self.info_sender.respond_with_info(api_response)
                     if data["command"] == "START_PRINT":
                         self.commands.start_print(api_response)
                     if data["command"] == "STOP_PRINT":
@@ -213,100 +153,7 @@ class OldBuddy:
                 self.lcd_printer.enqueue_message("501 But most likely")
                 self.lcd_printer.enqueue_message("501 Connect is down")
 
-    def respond_with_info(self, api_response):
-        command_id = get_command_id(api_response)
-
-        if self.state_manager.is_busy():
-            log.debug("The printer is busy at the moment, ignoring info request")
-            self.connect_api.emit_event(EmitEvents.REJECTED, command_id, reason="The printer is busy")
-            return
-
-        event = "INFO"
-
-        printer_info = self.gather_info()
-
-        event_object = Event()
-        event_object.event = event
-        event_object.command_id = command_id
-        event_object.values = printer_info
-
-        try:
-            self.connect_api.send_dictable("/p/events", event_object)
-            self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
-        except RequestException:
-            pass
-
-    # --- Gatherers ---
-
-    def fill(self, to_fill: Dictable,
-             functions: List[Callable[[Serial, Any], Any]]):
-        for getter in functions:
-            if self.state_manager.is_busy():  # Do not disturb, when the printer is busy
-                break
-
-            try:
-                to_fill = getter(self.serial, to_fill)
-            except TimeoutError:
-                log.debug(f"Function {getter.__name__} timed out waiting for serial.")
-        return to_fill
-
-    def gather_telemetry(self):
-        # start with telemetry gathered by listening to the printer
-        telemetry: Telemetry = self.additional_telemetry
-        self.additional_telemetry = Telemetry()  # reset it
-
-        # Do not poll the printer, when it's busy, no point
-        if not self.state_manager.is_busy():
-            # poll the majority of telemetry data
-            # yes, the assign is redundant, but I want to make it obvious, the values is being changed
-            telemetry = self.fill(telemetry, TELEMETRY_GETTERS)
-        else:
-            log.debug("Not bothering with telemetry, printer looks busy anyway.")
-
-        state = self.state_manager.get_state()
-        telemetry.state = state.name
-
-        # Make sure that even if the printer tells us print specific values, nothing will be sent out while not printing
-        if state not in PRINTING_STATES:
-            telemetry.printing_time = None
-            telemetry.estimated_time = None
-            telemetry.progress = None
-
-        return telemetry
-
-    def gather_info(self):
-        # At this time, no info is observed without polling, so start with a clean info object
-        printer_info: PrinterInfo = PrinterInfo()
-
-        # yes, the assign is redundant, but i want to hammer home the point that the variable is being modified
-        printer_info = self.fill(printer_info, INFO_GETTERS)
-
-        printer_info.state = self.state_manager.get_state().name
-        printer_info.sn = "4206942069"
-        printer_info.uuid = "00000000-0000-0000-0000-000000000000"
-        printer_info.appendix = False
-        printer_info.mac = get_mac_address()
-        #printer_info.files = self.sd_card.get_api_file_tree()
-        return printer_info
-
-    def heating_handler(self, match: re.Match):
-        groups = match.groups()
-
-        self.additional_telemetry.temp_nozzle = float(groups[0])
-        self.additional_telemetry.temp_bed = float(groups[1])
-
-    def heating_hotend_handler(self, match: re.Match):
-        groups = match.groups()
-
-        self.additional_telemetry.temp_nozzle = float(groups[0])
-
-    # --- Other ---
-
-    def show_ip(self):
-        if self.local_ip is not "":
-            self.lcd_printer.enqueue_message(f"{self.local_ip}", duration=0)
-        else:
-            self.lcd_printer.enqueue_message(f"WiFi disconnected", duration=0)
+    # --- Signal handlers ---
 
     def state_changed(self, sender, command_id=None, source=None):
         state = self.state_manager.current_state
@@ -322,7 +169,7 @@ class OldBuddy:
         log.debug(f"Connection failed while sending data to the api point {path}. Data: {json_dict}")
         self.lcd_printer.enqueue_message("Failed when talking")
         self.lcd_printer.enqueue_message("to the Connect API.")
-        if self.local_ip != "":
+        if self.local_ip != NO_IP:
             self.lcd_printer.enqueue_message("Could be")
             self.lcd_printer.enqueue_message("bad WiFi settings")
             self.lcd_printer.enqueue_message("because there's")
@@ -334,3 +181,11 @@ class OldBuddy:
 
     def serial_timed_out(self, sender):
         self.state_manager.busy()
+
+    def send_telemetry(self, sender, telemetry: Telemetry):
+        try:
+            api_response = self.connect_api.send_dictable("/p/telemetry", telemetry)
+        except RequestException:
+            pass
+        else:
+            self.handle_telemetry_response(api_response)
