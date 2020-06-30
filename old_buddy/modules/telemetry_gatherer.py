@@ -118,7 +118,7 @@ class TelemetryGatherer:
         self.current_telemetry.e_fan = float(match.groups()[0])
 
     def p_fan_handler(self, match: re.Match):
-        self.current_telemetry.e_fan = float(match.groups()[0])
+        self.current_telemetry.p_fan = float(match.groups()[0])
 
     def print_time_handler(self, match: re.Match):
         groups = match.groups()
