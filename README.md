@@ -8,18 +8,21 @@ can be sent GCODES remotely from the web. Now it also displays printer state sem
 ## Setup
 The RPi pre-configuration is the same as for OctoPrint, which is described in our
 [KnowledgeBase](https://help.prusa3d.com/en/article/octoprint-building-an-image-for-raspberry-pi-zero-w_2182)
-Basically, you need the bluetooth not handled by the Pis main UART interface, prevent the linux shell from being
-available on the Pis serial interface and you need to connect the Pi to the internet through wifi
+Basically, you need the bluetooth not handled by the Pis main UART interface,
+prevent the linux shell from being available on the Pis serial interface and you
+need to connect the Pi to the internet through wifi
 
-To install, make sure you have all of the prerequisites:  
-`sudo apt install git htop python3-dev python3-pip libsystemd-dev python3-wheel`
-`sudo pip3 install -r requirements.txt`
+To install, make sure you have all of the prerequisites:
+```bash
+# install system dependencies
+$ sudo apt install git python3-pip libsystemd-dev python3-wheel
 
-then install old buddy
-`sudo python3 setup.py install`
+# install python package from git, While git is private, you need installed deploy ssh key
+$ sudo pip3 install git+ssh://git@github.com/prusa3d/Prusa-Connect-MK3.git
 
-and let it configure its autostart service
-`sudo old_buddy_install`
+# configure as a service
+$ sudo old_buddy_install
+```
 
 After that old buddy shall start with the pi
 
