@@ -146,10 +146,10 @@ class ConnectAPI:
     def send_dict(self, path: str, json_dict: dict):
         log.info(f"Sending to connect {path}")
         log.debug(f"request data: {json_dict}")
-        timestamp = str(int(round(time() - self.started_on)))
-        timestamp_header = {"timestamp": timestamp}
+        timestamp_header = {"Timestamp": str(int(time()))}
         try:
-            response = self.session.post(self.base_url + path, json=json_dict, headers=timestamp_header)
+            response = self.session.post(self.base_url + path, json=json_dict,
+                                         headers=timestamp_header)
         except RequestException:
             self.connection_error.send(self, path=path, json_dict=json_dict)
             raise
