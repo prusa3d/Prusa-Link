@@ -67,13 +67,18 @@ class TelemetryGatherer:
         state = self.state_manager.get_state()
         self.current_telemetry.state = state.name
 
-        # Make sure that even if the printer tells us print specific values, nothing will be sent out while not printing
+        # Make sure that even if the printer tells us print specific values,
+        # nothing will be sent out while not printing
         if state not in PRINTING_STATES:
             self.current_telemetry.printing_time = None
             self.current_telemetry.estimated_time = None
             self.current_telemetry.progress = None
+        if state == States.PRINTING:
+            self.current_telemetry.axis_x = None
+            self.current_telemetry.axis_y = None
 
-        TelemetryGatherer.send_telemetry_signal.send(self, telemetry=self.current_telemetry)
+        TelemetryGatherer.send_telemetry_signal.send(
+            self, telemetry=self.current_telemetry)
 
     def update_telemetry(self):
         self.send_telemetry()
@@ -110,9 +115,9 @@ class TelemetryGatherer:
 
     def position_handler(self, match: re.Match):
         groups = match.groups()
-        self.current_telemetry.x_axis = float(groups[4])
-        self.current_telemetry.y_axis = float(groups[5])
-        self.current_telemetry.z_axis = float(groups[6])
+        self.current_telemetry.axis_x = float(groups[4])
+        self.current_telemetry.axis_y = float(groups[5])
+        self.current_telemetry.axis_z = float(groups[6])
 
     def e_fan_handler(self, match: re.Match):
         self.current_telemetry.e_fan = float(match.groups()[0])
