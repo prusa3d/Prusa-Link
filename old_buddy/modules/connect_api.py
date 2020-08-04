@@ -35,9 +35,9 @@ class Telemetry(Dictable):
         self.temp_bed = None
         self.target_nozzle = None
         self.target_bed = None
-        self.x_axis = None
-        self.y_axis = None
-        self.z_axis = None
+        self.axis_x = None
+        self.axis_y = None
+        self.axis_z = None
         self.e_fan = None
         self.p_fan = None
         self.progress = None
@@ -46,10 +46,10 @@ class Telemetry(Dictable):
         self.speed = None
         self.printing_time = None
         self.estimated_time = None
-        self.x_axis_length = None
-        self.y_axis_length = None
-        self.z_axis_length = None
-        self.e_axis_length = None
+        self.odometer_x = None
+        self.odometer_y = None
+        self.odometer_z = None
+        self.odometer_e = None
         self.material = None
         self.state = None
 
