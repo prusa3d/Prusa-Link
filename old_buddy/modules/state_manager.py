@@ -6,8 +6,9 @@ from typing import Union, Dict
 from blinker import Signal
 
 from old_buddy.modules.connect_api import Sources, States
-from old_buddy.modules.serial import Serial, WriteIgnored
-from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL_SEC, STATE_MANAGER_LOG_LEVEL
+from old_buddy.modules.serial import Serial
+from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL_SEC, \
+    STATE_MANAGER_LOG_LEVEL
 from old_buddy.util import run_slowly_die_fast, get_command_id
 
 log = logging.getLogger(__name__)
@@ -21,7 +22,8 @@ RESUMED_REGEX = re.compile("^// action:resumed$")
 CANCEL_REGEX = re.compile("^// action:cancel$")
 START_PRINT_REGEX = re.compile(r"^echo:enqueing \"M24\"$")
 PRINT_DONE_REGEX = re.compile(r"^Done printing file$")
-ERROR_REGEX = re.compile(r"^Error:Printer stopped due to errors. Fix the error and use M999 to restart.*")
+ERROR_REGEX = re.compile(r"^Error:Printer stopped due to errors. Fix the error "
+                         r"and use M999 to restart.*")
 
 PROGRESS_REGEX = re.compile(r"^NORMAL MODE: Percent done: (\d+);.*")
 
@@ -32,8 +34,10 @@ PRINTING_STATES = {States.PRINTING, States.PAUSED, States.FINISHED}
 
 class StateChange:
 
-    def __init__(self, api_response=None, to_states: Dict[States, Union[Sources, None]] = None,
-                 from_states: Dict[States, Union[Sources, None]] = None, default_source: Sources = None):
+    def __init__(self, api_response=None,
+                 to_states: Dict[States, Union[Sources, None]] = None,
+                 from_states: Dict[States, Union[Sources, None]] = None,
+                 default_source: Sources = None):
 
         self.to_states: Dict[States, Union[Sources, None]] = {}
         self.from_states: Dict[States, Union[Sources, None]] = {}
@@ -48,11 +52,13 @@ class StateChange:
 
 
 def state_influencer(state_change: StateChange = None):
+    """
+    This decorator makes it possible for each state change to have default
+    expected sources
+    This can be overridden by notifying the state manager about an
+    oncoming state change through expect_change
+    """
 
-    """
-    This decorator makes it possible for each state change to have default expected sources
-    This can be overridden by notifying the state manager about an oncoming state change through expect_change
-    """
     def inner(func):
         def wrapper(self, *args, **kwargs):
 
@@ -71,17 +77,22 @@ def state_influencer(state_change: StateChange = None):
                 self.stop_expecting_change()
 
         return wrapper
+
     return inner
 
 
 class StateManager:
     state_changed = Signal()  # kwargs: command_id: int, source: Sources
 
-    instance = None  # Just checks if there is not more than one instance in existence, not a singleton!
+    # Just checks if there is not more than one instance in existence,
+    # This is not a singleton!
+    instance = None
 
     def __init__(self, serial: Serial):
-        if self.instance is not None:
-            raise AssertionError("If this is required, we need the signals moved from class to instance variables.")
+        assert self.instance is None, "If running more than one instance" \
+                                      "is required, consider moving the " \
+                                      "signals from class to instance " \
+                                      "variables."
 
         self.serial: Serial = serial
 
@@ -94,40 +105,57 @@ class StateManager:
         self.last_state = self.get_state()
         self.current_state = self.get_state()
 
-        # Non ideal, we are expecting for someone to ask for progress or to tell us without us asking.
-        # Cannot take it from telemetry as it depends on us
+        # Non ideal, we are expecting for someone to ask for progress or
+        # to tell us without us asking. Cannot take it from telemetry
+        # as it depends on us
         self.progress = None
 
-        # Another anti-ideal thing is, that with this observational approach to state detection
-        # we cannot correlate actions with reactions nicely. My first approach is to have an action,
-        # that's supposed to change the state and to which statethat shall be
-        # if we observe such a transition, we'll say the action caused the state change
+        # Another anti-ideal thing is, that with this observational
+        # approach to state detection we cannot correlate actions with
+        # reactions nicely. My first approach is to have an action,
+        # that's supposed to change the state and to which state that shall be
+        # if we observe such a transition, we'll say the action
+        # caused the state change
         self.expected_state_change: Union[None, StateChange] = None
 
         self.serial.register_output_handler(OK_REGEX, lambda match: self.ok())
-        self.serial.register_output_handler(BUSY_REGEX, lambda match: self.busy())
-        self.serial.register_output_handler(ATTENTION_REGEX, lambda match: self.attention())
-        self.serial.register_output_handler(PAUSED_REGEX, lambda match: self.paused())
-        self.serial.register_output_handler(RESUMED_REGEX, lambda match: self.resumed())
-        self.serial.register_output_handler(CANCEL_REGEX, lambda match: self.not_printing())
-        self.serial.register_output_handler(START_PRINT_REGEX, lambda match: self.printing())
-        self.serial.register_output_handler(PRINT_DONE_REGEX, lambda match: self.finished())
-        self.serial.register_output_handler(ERROR_REGEX, lambda match: self.error())
+        self.serial.register_output_handler(BUSY_REGEX,
+                                            lambda match: self.busy())
+        self.serial.register_output_handler(ATTENTION_REGEX,
+                                            lambda match: self.attention())
+        self.serial.register_output_handler(PAUSED_REGEX,
+                                            lambda match: self.paused())
+        self.serial.register_output_handler(RESUMED_REGEX,
+                                            lambda match: self.resumed())
+        self.serial.register_output_handler(CANCEL_REGEX,
+                                            lambda match: self.not_printing())
+        self.serial.register_output_handler(START_PRINT_REGEX,
+                                            lambda match: self.printing())
+        self.serial.register_output_handler(PRINT_DONE_REGEX,
+                                            lambda match: self.finished())
+        self.serial.register_output_handler(ERROR_REGEX,
+                                            lambda match: self.error())
 
-        self.serial.register_output_handler(PROGRESS_REGEX, self.progress_handler)
-        self.serial.register_output_handler(SD_PRINTING_REGEX, self.sd_printing_handler)
+        self.serial.register_output_handler(PROGRESS_REGEX,
+                                            self.progress_handler)
+        self.serial.register_output_handler(SD_PRINTING_REGEX,
+                                            self.sd_printing_handler)
 
         self.running = True
-        self.state_thread = Thread(target=self._keep_updating_state, name="State updater")
+        self.state_thread = Thread(target=self._keep_updating_state,
+                                   name="State updater")
         self.state_thread.start()
 
     def _keep_updating_state(self):
-        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL, STATUS_UPDATE_INTERVAL_SEC, self.update_state)
+        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
+                            STATUS_UPDATE_INTERVAL_SEC, self.update_state)
 
     # --- Printer output handlers ---
 
-    # These are expecting an output from a printer, that is routinely retrieved by telemetry
-    # This module does not ask for these things, we are expecting telemetry to be asking for them
+    # These are expecting an output from a printer,
+    # which is routinely retrieved by telemetry
+    # This module does not ask for these things,
+    # we are expecting telemetry to be asking for them
 
     def progress_handler(self, match: re.Match):
         groups = match.groups()
@@ -137,10 +165,11 @@ class StateManager:
 
     def sd_printing_handler(self, match: re.Match):
         groups = match.groups()
-        # FIXME: Do not go out of the printing state when paused, cannot be detected/maintained otherwise
+        # FIXME: Do not go out of the printing state when paused,
+        #  cannot be detected/maintained otherwise
         #                            | | | | | | | | | | | | | | | | | | |
         #                            V V V V V V V V V V V V V V V V V V V
-        if groups[0] is not None and self.printing_state != States.PAUSED:  # Not printing
+        if groups[0] is not None and self.printing_state != States.PAUSED:
             self.not_printing()
         else:  # Printing
             self.printing()
@@ -152,7 +181,8 @@ class StateManager:
     def update_state(self):
         if self.printing_state == States.PRINTING:
             if self.progress == 100:
-                self.expect_change(StateChange(to_states={States.FINISHED: Sources.MARLIN}))
+                self.expect_change(
+                    StateChange(to_states={States.FINISHED: Sources.MARLIN}))
                 self.finished()
 
     def get_state(self):
@@ -195,13 +225,20 @@ class StateManager:
         if self.current_state in state_change.to_states:
             source_to = state_change.to_states[self.current_state]
 
-        # If there are conflicting sources, pick the one, paired with from_state as this is useful for leaving
-        # states like ATTENTION and ERROR
-        if source_from is not None and source_to is not None and source_to != source_from:
+        # If there are conflicting sources, pick the one, paired with
+        # from_state as this is useful for leaving states like
+        # ATTENTION and ERROR
+        if (source_from is not None and source_to is not None
+                and source_to != source_from):
             source = source_from
-        else:  # no conflict here, the sources are the same, or one or both of them are None
-            try:  # make a list throwing out Nones and get the next item (the first on)
-                source = next(item for item in [source_from, source_to] if item is not None)
+        else:
+            # no conflict here, the sources are the same,
+            # or one or both of them are None
+            try:
+                # make a list throwing out Nones and get the next item
+                # (the first one)
+                source = next(item for item in [source_from, source_to] if
+                              item is not None)
             except StopIteration:  # tried to get next from an empty list
                 source = None
 
@@ -209,18 +246,22 @@ class StateManager:
             source = state_change.default_source
 
         log.debug(f"Source has been determined to be {source}. "
-                  f"Default was: {state_change.default_source}, from: {source_from}, to: {source_to}")
+                  f"Default was: {state_change.default_source}, "
+                  f"from: {source_from}, to: {source_to}")
 
         return source
 
     def state_may_have_changed(self):
-        # Did our internal state change cause a change compared to our state history? If yes, update state stuff
+        # Did our internal state change cause our reported state to change?
+        # If yes, update state stuff
         if self.get_state() != self.current_state:
             self.last_state = self.current_state
             self.current_state = self.get_state()
-            log.debug(f"Changing state from {self.last_state} to {self.current_state}")
+            log.debug(f"Changing state from {self.last_state} to "
+                      f"{self.current_state}")
 
-            # Now let's find out if the state change was expected and what parameters can we deduce from that
+            # Now let's find out if the state change was expected
+            # and what parameters can we deduce from that
             command_id = None
             source = None
 
@@ -230,10 +271,12 @@ class StateManager:
             if self.override_state is not None:
                 log.debug(f"State is overridden by {self.override_state}")
 
-            # If the state changed to something expected, then send the information about it
+            # If the state changed to something expected,
+            # then send the information about it
             if self.is_expected():
                 if self.expected_state_change.api_response is not None:
-                    command_id = get_command_id(self.expected_state_change.api_response)
+                    command_id = get_command_id(
+                        self.expected_state_change.api_response)
                 source = self.get_expected_source().name
             else:
                 log.debug("Unexpected state change. This is weird")
@@ -250,7 +293,8 @@ class StateManager:
 
     @state_influencer(StateChange(from_states={States.PRINTING: Sources.MARLIN,
                                                States.PAUSED: Sources.MARLIN,
-                                               States.FINISHED: Sources.MARLIN}))
+                                               States.FINISHED: Sources.MARLIN
+                                               }))
     def not_printing(self):
         if self.printing_state is not None:
             self.printing_state = None
@@ -277,8 +321,9 @@ class StateManager:
             self.printing_state = States.PRINTING
 
     @state_influencer(
-        StateChange(to_states={States.READY: Sources.MARLIN}, from_states={States.ATTENTION: Sources.USER,
-                                                                           States.ERROR: Sources.USER}))
+        StateChange(to_states={States.READY: Sources.MARLIN},
+                    from_states={States.ATTENTION: Sources.USER,
+                                 States.ERROR: Sources.USER}))
     def ok(self):
         if self.override_state is not None:
             log.debug(f"No longer having state {self.override_state}")

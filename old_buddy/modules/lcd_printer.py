@@ -6,7 +6,8 @@ from time import sleep, time
 from old_buddy.modules.connect_api import States
 from old_buddy.modules.serial import Serial, WriteIgnored
 from old_buddy.modules.state_manager import StateManager
-from old_buddy.settings import QUIT_INTERVAL, LCD_PRINTER_LOG_LEVEL
+from old_buddy.settings import QUIT_INTERVAL, LCD_PRINTER_LOG_LEVEL, \
+    LCD_QUEUE_SIZE
 
 log = logging.getLogger(__name__)
 log.setLevel(LCD_PRINTER_LOG_LEVEL)
@@ -25,17 +26,20 @@ class LCDPrinter:
         self.state_manager = state_manager
         self.serial = serial
 
-        self.lcd_message_queue: Queue = Queue()
+        self.message_queue: Queue = Queue(maxsize=LCD_QUEUE_SIZE)
         self.wait_until: float = time()
 
         self.running = True
-        self.queue_thread: Thread = Thread(target=self.process_queue, name="LCDMessage")
+        self.queue_thread: Thread = Thread(target=self.process_queue,
+                                           name="LCDMessage")
         self.queue_thread.start()
 
     def process_queue(self):
         while self.running:
             try:
-                message: LCDMessage = self.lcd_message_queue.get(timeout=QUIT_INTERVAL)
+                # because having this inline is so unreadable
+                message: LCDMessage
+                message = self.message_queue.get(timeout=QUIT_INTERVAL)
             except Empty:
                 pass
             else:
@@ -53,7 +57,8 @@ class LCDPrinter:
                 try:
                     self.serial.write_wait_ok(f"M117 {text}")
                 except (TimeoutError, WriteIgnored):  # Failed, seems busy
-                    log.debug("Failed printing a message on the screen, will keep retrying.")
+                    log.debug("Failed printing a message on the screen, "
+                              "will keep retrying.")
                     sleep(QUIT_INTERVAL)
                     continue
                 else:  # Success, let's move on
@@ -61,7 +66,7 @@ class LCDPrinter:
         log.debug(f"Printed: '{text}' on the LCD.")
 
     def enqueue_message(self, text: str, duration: float = 2):
-        self.lcd_message_queue.put(LCDMessage(text, duration))
+        self.message_queue.put(LCDMessage(text, duration))
 
     def stop(self):
         self.running = False

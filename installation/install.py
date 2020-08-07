@@ -12,13 +12,16 @@ from pkg_resources import resource_filename
 # chmod bits for 644
 RW_R_R = S_IREAD | S_IWRITE | S_IRGRP | S_IROTH
 
+MODULE_PATH_TO_DATA_FILES = "installation.data_files"
 
-def file_copy(path_to, file_name, chmod_bits=None):
-    path_from = os.path.abspath(resource_filename('installation.data_files', file_name))
-    shutil.copy(path_from, path_to)
+
+def file_copy(full_path_to, file_name, chmod_bits=None,
+              module_path=MODULE_PATH_TO_DATA_FILES):
+    path_from = os.path.abspath(resource_filename(module_path, file_name))
+    shutil.copy(path_from, full_path_to)
 
     if chmod_bits is not None:
-        os.chmod(os.path.join(path_to, file_name), chmod_bits)
+        os.chmod(full_path_to, chmod_bits)
 
 
 def is_root():

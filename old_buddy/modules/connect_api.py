@@ -10,8 +10,18 @@ from old_buddy.settings import CONNECT_API_LOG_LEVEL
 log = logging.getLogger(__name__)
 log.setLevel(CONNECT_API_LOG_LEVEL)
 
+
 class Dictable:
     """The base class for all models making serialization to dict easy"""
+
+    @staticmethod
+    def member_should_be_sent(name, member):
+        is_not_protected = not name.startswith("__")
+        is_not_a_method = type(member).__name__ != "method"
+        is_not_a_function = type(member).__name__ != "function"
+        is_not_empty = member is not None
+        return (is_not_protected and is_not_a_method and
+                is_not_empty and is_not_a_function)
 
     def to_dict(self):
         member_names = dir(self)
@@ -20,7 +30,7 @@ class Dictable:
         for name in member_names:
             member = getattr(self, name)
 
-            if not name.startswith("__") and type(member).__name__ != "method" and member is not None:
+            if self.member_should_be_sent(name, member):
                 output_dict[name] = member
             if isinstance(member, Dictable):
                 output_dict[name] = member.to_dict()
@@ -125,11 +135,15 @@ class ConnectAPI:
 
     connection_error = Signal()  # kwargs: path: str, json_dict: Dict[str, Any]
 
-    instance = None  # Just checks if there is not more than one instance in existence, not a singleton!
+    # Just checks if there is not more than one instance in existence,
+    # but this is not a singleton!
+    instance = None
 
     def __init__(self, address, port, token, tls=False):
-        if self.instance is not None:
-            raise AssertionError("If this is required, we need the signals moved from class to instance variables.")
+        assert self.instance is None, "If running more than one instance" \
+                                      "is required, consider moving the " \
+                                      "signals from class to instance " \
+                                      "variables."
 
         self.address = address
         self.port = port
@@ -161,11 +175,11 @@ class ConnectAPI:
         json_dict = dictable.to_dict()
         return self.send_dict(path, json_dict)
 
-    def emit_event(self, emit_event: EmitEvents, command_id: int = None, reason: str = None, state: str = None,
-                   source: str = None):
+    def emit_event(self, emit_event: EmitEvents, command_id: int = None,
+                   reason: str = None, state: str = None, source: str = None):
         """
-        Logs errors, but stops their propagation, as this is called many many times
-        and doing try/excepts everywhere would hinder readability
+        Logs errors, but stops their propagation, as this is called many many
+        times and doing try/excepts everywhere would hinder readability
         """
         event = Event()
         event.event = emit_event.value
@@ -181,7 +195,9 @@ class ConnectAPI:
 
         try:
             self.send_dictable("/p/events", event)
-        except RequestException:  # Errors get logged upstream, stop propagation, try/excepting these would be a chore
+        except RequestException:
+            # Errors get logged upstream, stop propagation,
+            # try/excepting these would be a chore
             pass
 
     def stop(self):
