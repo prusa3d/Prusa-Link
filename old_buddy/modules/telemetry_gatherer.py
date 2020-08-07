@@ -9,23 +9,28 @@ from blinker import Signal
 from old_buddy.modules.connect_api import Telemetry, States
 from old_buddy.modules.serial import Serial, WriteIgnored
 from old_buddy.modules.state_manager import StateManager, PRINTING_STATES
-from old_buddy.settings import QUIT_INTERVAL, TELEMETRY_INTERVAL, TELEMETRY_GATHERER_LOG_LEVEL
+from old_buddy.settings import QUIT_INTERVAL, TELEMETRY_INTERVAL, \
+    TELEMETRY_GATHERER_LOG_LEVEL
 from old_buddy.util import run_slowly_die_fast
 
-TEMPERATURE_REGEX = re.compile(r"^ok ?T: ?(-?\d+\.\d+) ?/(-?\d+\.\d+) ?B: ?(-?\d+\.\d+) ?/(-?\d+\.\d+) ?"
-                               r"T0: ?(-?\d+\.\d+) ?/(-?\d+\.\d+) ?@: ?(-?\d+) ?B@: ?(-?\d+) ?P: ?(-?\d+\.\d+) ?"
-                               r"A: ?(-?\d+\.\d+)$")
-POSITION_REGEX = re.compile(r"^X: ?(-?\d+\.\d+) ?Y: ?(-?\d+\.\d+) ?Z: ?(-?\d+\.\d+) ?E: ?(-?\d+\.\d+) ?"
-                            r"Count ?X: ?(-?\d+\.\d+) ?Y: ?(-?\d+\.\d+) ?Z: ?(-?\d+\.\d+) ?E: ?(-?\d+\.\d+)$")
+TEMPERATURE_REGEX = re.compile(
+    r"^ok ?T: ?(-?\d+\.\d+) ?/(-?\d+\.\d+) ?B: ?(-?\d+\.\d+) ?/(-?\d+\.\d+) ?"
+    r"T0: ?(-?\d+\.\d+) ?/(-?\d+\.\d+) ?@: ?(-?\d+) ?B@: ?(-?\d+) ?"
+    r"P: ?(-?\d+\.\d+) ?A: ?(-?\d+\.\d+)$")
+POSITION_REGEX = re.compile(
+    r"^X: ?(-?\d+\.\d+) ?Y: ?(-?\d+\.\d+) ?Z: ?(-?\d+\.\d+) ?E: ?(-?\d+\.\d+) ?"
+    r"Count ?X: ?(-?\d+\.\d+) ?Y: ?(-?\d+\.\d+) ?Z: ?(-?\d+\.\d+) ?"
+    r"E: ?(-?\d+\.\d+)$")
 E_FAN_REGEX = re.compile(r"^E0:(\d+) ?RPM$")
 P_FAN_REGEX = re.compile(r"^PRN0:(\d+) ?RPM$")
 PRINT_TIME_REGEX = re.compile(r"^(Not SD printing)$|^((\d+):(\d{2}))$")
 PROGRESS_REGEX = re.compile(r"^NORMAL MODE: Percent done: (\d+);.*")
-TIME_REMAINING_REGEX = re.compile(r"^SILENT MODE: Percent done: (\d+); print time remaining in mins: (-?\d+) ?$")
+TIME_REMAINING_REGEX = re.compile(r"^SILENT MODE: Percent done: (\d+); "
+                                  r"print time remaining in mins: (-?\d+) ?$")
 HEATING_REGEX = re.compile(r"^T:(\d+\.\d+) E:\d+ B:(\d+\.\d+)$")
 HEATING_HOTEND_REGEX = re.compile(r"^T:(\d+\.\d+) E:([?]|\d+) W:([?]|\d+)$")
 
-TELEMETRY_GCODES = ["M105", "M114", "PRUSA FAN", "M27", "M73"] # "M221", "M220"
+TELEMETRY_GCODES = ["M105", "M114", "PRUSA FAN", "M27", "M73"]  # "M221", "M220"
 
 log = logging.getLogger(__name__)
 log.setLevel(TELEMETRY_GATHERER_LOG_LEVEL)
@@ -34,34 +39,47 @@ log.setLevel(TELEMETRY_GATHERER_LOG_LEVEL)
 class TelemetryGatherer:
     send_telemetry_signal = Signal()  # kwargs: telemetry: Telemetry
 
-    instance = None  # Just checks if there is not more than one instance in existence, not a singleton!
+    # Just checks if there is not more than one instance in existence,
+    # This is not a singleton!
+    instance = None
 
     def __init__(self, serial: Serial, state_manager: StateManager):
-        if self.instance is not None:
-            raise AssertionError("If this is required, we need the signals moved from class to instance variables.")
+        assert self.instance is None, "If running more than one instance" \
+                                      "is required, consider moving the " \
+                                      "signals from class to instance " \
+                                      "variables."
         self.instance = self
 
         self.state_manager = state_manager
         self.serial = serial
 
-        self.serial.register_output_handler(TEMPERATURE_REGEX, self.temperature_handler)
-        self.serial.register_output_handler(POSITION_REGEX, self.position_handler)
+        # Looked better wrapped to 120 characters. Just saying
+        self.serial.register_output_handler(TEMPERATURE_REGEX,
+                                            self.temperature_handler)
+        self.serial.register_output_handler(POSITION_REGEX,
+                                            self.position_handler)
         self.serial.register_output_handler(E_FAN_REGEX, self.e_fan_handler)
         self.serial.register_output_handler(P_FAN_REGEX, self.p_fan_handler)
-        self.serial.register_output_handler(PRINT_TIME_REGEX, self.print_time_handler)
-        self.serial.register_output_handler(PROGRESS_REGEX, self.progress_handler)
-        self.serial.register_output_handler(TIME_REMAINING_REGEX, self.time_remaining_handler)
+        self.serial.register_output_handler(PRINT_TIME_REGEX,
+                                            self.print_time_handler)
+        self.serial.register_output_handler(PROGRESS_REGEX,
+                                            self.progress_handler)
+        self.serial.register_output_handler(TIME_REMAINING_REGEX,
+                                            self.time_remaining_handler)
         self.serial.register_output_handler(HEATING_REGEX, self.heating_handler)
-        self.serial.register_output_handler(HEATING_HOTEND_REGEX, self.heating_hotend_handler)
+        self.serial.register_output_handler(HEATING_HOTEND_REGEX,
+                                            self.heating_hotend_handler)
 
         self.current_telemetry = Telemetry()
         self.last_telemetry = self.current_telemetry
         self.running = True
-        self.telemetry_thread = Thread(target=self.keep_updating_telemetry, name="telemetry_thread")
+        self.telemetry_thread = Thread(target=self.keep_updating_telemetry,
+                                       name="telemetry_thread")
         self.telemetry_thread.start()
 
     def keep_updating_telemetry(self):
-        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL, TELEMETRY_INTERVAL, self.update_telemetry)
+        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
+                            TELEMETRY_INTERVAL, self.update_telemetry)
 
     def send_telemetry(self):
         state = self.state_manager.get_state()
@@ -91,13 +109,15 @@ class TelemetryGatherer:
             self.ping_printer()
 
         for gcode in TELEMETRY_GCODES:
-            if self.state_manager.base_state == States.BUSY:  # Do not disturb, when the printer is busy
+            if self.state_manager.base_state == States.BUSY:
+                # Do not disturb, when the printer is busy
                 break
 
             try:
                 self.serial.write(gcode)
             except WriteIgnored:
-                log.debug(f"Telemetry request got ignored, serial is exclusive for something else")
+                log.debug(f"Telemetry request got ignored,"
+                          f"serial is exclusive for someone else")
 
     def ping_printer(self):
         try:
@@ -130,7 +150,9 @@ class TelemetryGatherer:
         if groups[1] != "" and groups[1] is not None:
             printing_time_hours = int(groups[2])
             printing_time_mins = int(groups[3])
-            printing_time_sec = printing_time_mins * 60 + printing_time_hours * 60 * 60
+            hours_in_sec = printing_time_hours * 60 * 60
+            mins_in_sec = printing_time_mins * 60
+            printing_time_sec = mins_in_sec + hours_in_sec
             self.current_telemetry.printing_time = printing_time_sec
 
     def progress_handler(self, match: re.Match):
@@ -140,7 +162,8 @@ class TelemetryGatherer:
             self.current_telemetry.progress = progress
 
     def time_remaining_handler(self, match: re.Match):
-        # FIXME: Using the more conservative values from silent mode, need to know in which mode we are
+        # FIXME: Using the more conservative values from silent mode,
+        #  need to know in which mode we are
         groups = match.groups()
         mins_remaining = int(groups[1])
         secs_remaining = mins_remaining * 60

@@ -1,0 +1,30 @@
+# Procházení adresářů je nemožné, vyprintí rovnou všechno
+# Dlouhé názvy při tisku, nebo M33, není implementován ve FW
+
+Begin file list
+/TRASH-~1/FILES/3DBENC~1.GCO 0
+LODICK~1.GCO 70355
+DOOR-B~1.GCO 2129480
+3DBENC~1.GCO 3550705
+End file list
+ok
+
+# Vyjmutí SD karty - nic nevypisuje - polling/říct si fw
+
+# Zasunutí SD karty
+Sending 0xFF
+echo:SD card ok
+
+# G81 - mesh bed levelling status
+
+Num X,Y: 7,7
+Z search height: 5.00
+Measured points:
+0.01400  -0.06172  -0.15422  -0.26350  -0.38956  -0.53239  -0.69200
+0.11728  0.00247  -0.11785  -0.24367  -0.37499  -0.51183  -0.65417
+0.19111  0.05178  -0.08559  -0.22100  -0.35446  -0.48596  -0.61550
+0.23550  0.08622  -0.05744  -0.19550  -0.32794  -0.45478  -0.57600
+0.25044  0.10578  -0.03342  -0.16717  -0.29546  -0.41829  -0.53567
+0.23594  0.11047  -0.01351  -0.13600  -0.25699  -0.37649  -0.49450
+0.19200  0.10028  0.00228  -0.10200  -0.21256  -0.32939  -0.45250
+ok
