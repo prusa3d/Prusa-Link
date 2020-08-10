@@ -79,6 +79,7 @@ class PrinterInfo(Dictable):
     def __init__(self):
         self.type = None
         self.version = None
+        self.subversion = None
         self.firmware = None
         self.ip = None
         self.mac = None
@@ -87,6 +88,9 @@ class PrinterInfo(Dictable):
         self.appendix = None
         self.state = None
         self.files = None
+
+    def set_printer_model_info(self, data):
+        self.type, self.version, self.subversion = data
 
 
 class FileTree(Dictable):

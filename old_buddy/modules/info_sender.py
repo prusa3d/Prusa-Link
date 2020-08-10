@@ -6,7 +6,7 @@ from getmac import get_mac_address
 from requests import RequestException
 
 from old_buddy.modules.connect_api import ConnectAPI, States, PrinterInfo, \
-    EmitEvents, Event
+    EmitEvents, Event, Sources
 from old_buddy.modules.ip_updater import IPUpdater, NO_IP
 from old_buddy.modules.serial import Serial, WriteIgnored
 from old_buddy.modules.state_manager import StateManager
@@ -16,14 +16,28 @@ from old_buddy.util import get_command_id
 log = logging.getLogger(__name__)
 log.setLevel(INFO_SENDER_LOG_LEVEL)
 
-PRINTER_TYPE_REGEX = re.compile(r"^(-?\d{3})$")
+PRINTER_TYPE_REGEX = re.compile(r"^(\d{3,5})$")
 FW_REGEX = re.compile(r"^FIRMWARE_NAME:Prusa-Firmware ?((\d+\.)*\d).*$")
 
 PRINTER_TYPES = {
-    300: (1, 3),
-    302: (1, 3),
-    200: (1, 2),
+    100: (1, 1, 0),
+    200: (1, 2, 0),
+    201: (1, 2, 0),
+    202: (1, 2, 1),
+    203: (1, 2, 1),
+    250: (1, 2, 5),
+    20250: (1, 2, 5),
+    252: (1, 2, 6),
+    20252: (1, 2, 6),
+    300: (1, 3, 0),
+    20300: (1, 3, 0),
+    302: (1, 3, 1),
+    20302: (1, 3, 1),
 }
+
+
+class InfoError(Exception):
+    ...
 
 
 class InfoSender:
@@ -45,48 +59,38 @@ class InfoSender:
         command_id = get_command_id(api_response)
 
         if self.state_manager.base_state == States.BUSY:
-            log.debug(
-                "The printer is busy at the moment, ignoring info request")
+            log.debug("The printer is busy, ignoring info request")
             self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
-                                        reason="The printer is busy")
+                                        reason="The printer is busy",
+                                        source=Sources.WUI.name)
             return
 
-        event = "INFO"
-
-        printer_info = self.get_printer_info()
-
-        event_object = Event()
-        event_object.event = event
-        event_object.command_id = command_id
-        event_object.values = printer_info
-
         try:
-            self.connect_api.send_dictable("/p/events", event_object)
-            self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
-        except RequestException:
-            pass
+            printer_info = self.get_printer_info()
+        except (TimeoutError, WriteIgnored, InfoError) as e:
+            log.exception("Error while getting info")
+            self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
+                                        reason=e.args[0],
+                                        source=Sources.WUI.value)
+        else:
+            event_object = Event()
+            event_object.event = EmitEvents.INFO.value
+            event_object.command_id = command_id
+            event_object.values = printer_info
+
+            try:
+                self.connect_api.send_dictable("/p/events", event_object)
+                self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
+            except RequestException:
+                pass
 
     def get_printer_info(self):
         printer_info: PrinterInfo = PrinterInfo()
         for inserter in self.info_inserters:
             # Give this a type because pycharm cannot deduce for some reason
             inserter: Callable[[PrinterInfo], PrinterInfo]
-            if self.state_manager.base_state == States.BUSY:
-                # Do not disturb, when the printer is busy
-                log.debug("Printer seems busy, not asking for telemetry")
-                break
 
-            try:
-                printer_info = inserter(printer_info)
-            except TimeoutError:
-                log.debug(
-                    f"Function {inserter.__name__} timed out "
-                    f"waiting for serial.")
-            except WriteIgnored:
-                log.debug(
-                    f"Function {inserter.__name__} got ignored, "
-                    f"serial rejected writing to it. "
-                    f"Something else must be requiring serial exclusivity")
+            printer_info = inserter(printer_info)
         return printer_info
 
     def insert_type_and_version(self, printer_info: PrinterInfo) -> PrinterInfo:
@@ -95,10 +99,11 @@ class InfoSender:
         if match is not None:
             code = int(match.groups()[0])
             try:
-                printer_info.type, printer_info.version = PRINTER_TYPES[code]
+                printer_info.set_printer_model_info(PRINTER_TYPES[code])
             except KeyError:
                 log.exception("The printer version has not been found"
                               "in the list of printers")
+                raise InfoError(f"Unsupported printer model '{code}'")
         return printer_info
 
     def insert_firmware_version(self, printer_info: PrinterInfo) -> PrinterInfo:
