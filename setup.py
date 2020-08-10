@@ -35,7 +35,7 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 3 :: Only",
     ],
-    python_requires=">=3",
+    python_requires=">=3.7",
     install_requires=REQUIRES,
     entry_points={
         'console_scripts': [
