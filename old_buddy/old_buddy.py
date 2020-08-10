@@ -101,7 +101,7 @@ class OldBuddy:
         self.commands.stop_command_thread()
         self.state_manager.stop()
         self.telemetry_gatherer.stop()
-        self.ip_updater.stop()nect.prusa:8080/login
+        self.ip_updater.stop()
         self.serial.stop()
         self.connect_api.stop()
 
