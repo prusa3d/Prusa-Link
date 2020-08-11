@@ -71,7 +71,6 @@ class Event(Dictable):
         self.values = None
         self.command_id = None
         self.command = None
-        self.values = None
         self.reason = None
 
 
