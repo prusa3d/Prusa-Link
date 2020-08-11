@@ -58,13 +58,6 @@ class InfoSender:
     def respond_with_info(self, api_response):
         command_id = get_command_id(api_response)
 
-        if self.state_manager.base_state == States.BUSY:
-            log.debug("The printer is busy, ignoring info request")
-            self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
-                                        reason="The printer is busy",
-                                        source=Sources.WUI.name)
-            return
-
         try:
             printer_info = self.get_printer_info()
         except (TimeoutError, WriteIgnored, InfoError) as e:
