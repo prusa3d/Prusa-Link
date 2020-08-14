@@ -7,7 +7,10 @@ from threading import Thread
 from blinker import Signal
 
 from old_buddy.modules.connect_api import Telemetry, States
-from old_buddy.modules.serial import Serial, WriteIgnored
+from old_buddy.modules.serial import Serial
+from old_buddy.modules.serial_queue.helpers import enqueue_list_from_str, \
+    wait_for_instruction
+from old_buddy.modules.serial_queue.serial_queue import SerialQueue
 from old_buddy.modules.state_manager import StateManager, PRINTING_STATES
 from old_buddy.settings import QUIT_INTERVAL, TELEMETRY_INTERVAL, \
     TELEMETRY_GATHERER_LOG_LEVEL
@@ -44,7 +47,8 @@ class TelemetryGatherer:
     # This is not a singleton!
     instance = None
 
-    def __init__(self, serial: Serial, state_manager: StateManager):
+    def __init__(self, serial: Serial, serial_queue: SerialQueue,
+                 state_manager: StateManager):
         assert self.instance is None, "If running more than one instance" \
                                       "is required, consider moving the " \
                                       "signals from class to instance " \
@@ -53,6 +57,7 @@ class TelemetryGatherer:
 
         self.state_manager = state_manager
         self.serial = serial
+        self.serial_queue = serial_queue
 
         # Looked better wrapped to 120 characters. Just saying
         self.serial.register_output_handler(TEMPERATURE_REGEX,
@@ -108,27 +113,14 @@ class TelemetryGatherer:
         self.last_telemetry = self.current_telemetry
         self.current_telemetry = Telemetry()
 
-        if self.state_manager.base_state == States.BUSY:
-            log.debug("Printer seems busy, not asking for telemetry")
-            self.ping_printer()
+        instruction_list = enqueue_list_from_str(self.serial_queue,
+                                                 TELEMETRY_GCODES)
 
-        for gcode in TELEMETRY_GCODES:
-            if self.state_manager.base_state == States.BUSY:
-                # Do not disturb, when the printer is busy
-                break
-
-            try:
-                self.serial.write(gcode)
-            except WriteIgnored:
-                log.debug("Telemetry request got ignored,"
-                          "serial is exclusive for someone else")
-
-    def ping_printer(self):
-        try:
-            self.serial.write("PRUSA PING")
-        except WriteIgnored:
-            pass
-        return
+        # Only ask for telemetry again, when the previous is _confirmed
+        for instruction in instruction_list:
+            # Wait indefinitely, if the queue got stuck
+            # we aren't the ones who should handle that
+            wait_for_instruction(instruction, lambda: self.running)
 
     def temperature_handler(self, match: re.Match):
         groups = match.groups()

@@ -4,7 +4,7 @@ from threading import Thread
 from time import time
 
 from old_buddy.modules.lcd_printer import LCDPrinter
-from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL_SEC, \
+from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL, \
     IP_UPDATER_LOG_LEVEL, SHOW_IP_INTERVAL
 from old_buddy.util import run_slowly_die_fast, get_local_ip
 
@@ -26,7 +26,7 @@ class IPUpdater:
 
     def _keep_updating_ip(self):
         run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
-                            STATUS_UPDATE_INTERVAL_SEC, self.update_local_ip)
+                            STATUS_UPDATE_INTERVAL, self.update_local_ip)
 
     def update_local_ip(self):
         try:

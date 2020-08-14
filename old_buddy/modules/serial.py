@@ -3,7 +3,7 @@ import re
 from functools import partial
 from threading import Thread, Event, Lock
 from time import sleep
-from typing import Union, Callable, List
+from typing import List
 
 import serial
 from blinker import Signal
@@ -13,26 +13,21 @@ from old_buddy.settings import SERIAL_LOG_LEVEL
 log = logging.getLogger(__name__)
 log.setLevel(SERIAL_LOG_LEVEL)
 
-OK_REGEX = re.compile(r"^ok$")
 ANY_REGEX = re.compile(r".*")
-REACTION_REGEX = re.compile("^( ?ok ?)|(echo:Unknown command: (\"[^\"]*\"))$")
+CONFIRMATION_REGEX = re.compile(r"^ok\s?(.*)$")
+RX_YEETED_REGEX = re.compile(r"^echo:Now fresh file: .*$")
+PAUSED_REGEX = re.compile(r"^// action:paused$")
+OK_REGEX = re.compile(r"^ok$")
+RENEW_TIMEOUT_REGEX = re.compile(r"(^echo:busy: processing$)|"
+                                 r"(^echo:busy: paused for user$)|"
+                                 r"(^T:(\d+\.\d+) E:\d+ B:(\d+\.\d+)$)|"
+                                 r"(^T:(\d+\.\d+) E:([?]|\d+) W:([?]|\d+)$)")
+
+REJECTION_REGEX = re.compile("echo:Unknown command: (\"[^\"]*\")$")
 
 # using M113 as sort of a ping,
 # because there is a very low chance anyone else will use it
 PING_REGEX = re.compile(r"^echo:M113 S\d+$")
-
-
-class UnknownCommandException(ValueError):
-    def __init__(self, *args, command):
-        super().__init__(*args)
-        self.command = command
-
-
-class WriteIgnored(Exception):
-    """
-    Used when there is someone more important that needs exclusive write access
-    """
-    ...
 
 
 class Serial:
@@ -84,76 +79,27 @@ class Serial:
                 log.error("Failed when reading from the printer. Ignoring")
             else:
                 if line != "":
-                    self.write_read_lock.acquire()
+                    # with self.write_read_lock:
+                    # Why would I not want to write and handle reads
+                    # at the same time? IDK, but if something weird starts
+                    # happening, i'll re-enablle this
                     log.debug(f"Printer says: '{line}'")
                     self.received.send(line=line)
-                    self.write_read_lock.release()
 
-    def write(self, message: str, channel: int = 0):
+    def write(self, message: bytes):
         """
         Writes a message
 
         :param message: the message to be sent
-        :param channel: the channel to write to,
-                        if this does not match the current channel,
-                        the message is ignored
         """
-        if self.channel != channel:
-            log.info(
-                f"write '{message}' ignored because the message came from "
-                f"chhannel {channel} but now we only pass messages from "
-                f"channel number {self.channel}.")
-            raise WriteIgnored()
-
-        if message[-1] != "\n":
-            message += "\n"
-        message_bytes = message.encode("ASCII")
-
-        with self.write_read_lock:
-            log.debug(f"Sending to printer: {message_bytes}")
-            try:
-                self.serial.write(message_bytes)
-            except serial.SerialException:
-                log.error(
-                    f"Serial error when sending '{message}' to the printer")
-
-    def write_and_wait(self, message: str,
-                       wait_for_regex: re.Pattern = None,
-                       timeout: float = None,
-                       channel: int = 0) -> Union[None, re.Match]:
-        """
-        Writes a message and waits for output matching the specified regex
-
-        :param message: the message to be sent
-        :param wait_for_regex: regex pattern to wait for
-        :param timeout: time in seconds to wait before giving up
-        :param channel: the channel to write to, if this does not match
-                        the current channel, the message is ignored
-        :return: the match object if any pattern was given. Otherwise None
-        """
-
-        if timeout is None and self.default_timeout is not None:
-            timeout = self.default_timeout
-
-        response_waiter = SingleMatchCollector(wait_for_regex, timeout=timeout)
-
-        self.write(message, channel=channel)
-
+        # with self.write_read_lock:
+        # Why would i not want to write and handle reads at the same time?
+        log.debug(f"Sending to printer: {message}")
         try:
-            return response_waiter.wait_for_output()
-        except TimeoutError:
-            log.debug(f"Timed out waiting for regex {wait_for_regex}")
-            raise
-
-    def write_wait_ok(self, message: str, timeout: float = None):
-
-        match = self.write_and_wait(message, REACTION_REGEX,
-                                    timeout=timeout)
-        groups = match.groups()
-        if groups[1]:
-            command = groups[2]
-            raise UnknownCommandException(f"Unknown command {command}",
-                                          command=message)
+            self.serial.write(message)
+        except serial.SerialException:
+            log.error(
+                f"Serial error when sending '{message}' to the printer")
 
     def register_output_handler(self, regex: re.Pattern, handler, *args,
                                 debug=False, **kwargs):
@@ -181,81 +127,10 @@ class Serial:
         self.received.connect(read_filter)
         return read_filter
 
-    def is_responsive(self):
-        """Check if printer is really ready to respond"""
-        try:
-            self.write_and_wait("M113", PING_REGEX)
-        except (TimeoutError, WriteIgnored):
-            return False
-        else:
-            return True
-
     def stop(self):
         self.running = False
         self.serial.close()
         self.read_thread.join()
-
-
-class SingleMatchCollector:
-    def __init__(self, regex: re.Pattern, timeout: float = None,
-                 debug: bool = False):
-        """
-        When expecting a response on some command, ensure the response won't
-        come earlier than you starting to wait for it.
-
-        Starts listening on instantiation. Call wait_for_output
-        to get your collected data or to wait for it
-
-        :param regex: what to look for in the printer output
-        :param timeout: how long to wait
-        :param debug: print debug messages?
-        :return: The regex match object
-        """
-
-        self.regex = regex
-        self.timeout = timeout
-        self.debug = debug
-
-        self.event = Event()
-        self.match = None
-
-        Serial.received.connect(self.handler)
-
-    def handler(self, sender, line):
-        match = self.regex.fullmatch(line)
-        if match:
-            self.match = match
-            self.event.set()
-            # signal disconnecting is moved into wait methods
-            # as it allows for more types of waits otherwise impossible
-        elif self.debug:
-            log.debug(f"Message {line} did not match {self.regex.pattern}")
-
-    def wait_for_output(self):
-        success = self.event.wait(timeout=self.timeout)
-        Serial.received.disconnect(self.handler)
-        if not success:
-            Serial.serial_timed_out.send()
-            raise TimeoutError(
-                f"Timed out waiting for match with regex "
-                f"'{self.regex.pattern}'")
-
-        return self.match
-
-    def wait_until(self, should_keep_trying: Callable[[], bool]):
-        while should_keep_trying():
-            success = self.event.wait(timeout=self.timeout)
-            if not success:
-                self.event.clear()
-            else:
-                Serial.received.disconnect(self.handler)
-                return self.match
-
-        Serial.received.disconnect(self.handler)
-
-        Serial.serial_timed_out.send()
-        raise TimeoutError(
-            f"Timed out waiting for match with regex '{self.regex.pattern}'")
 
 
 class OutputCollector:
