@@ -10,7 +10,7 @@ from old_buddy.modules.serial import Serial, REACTION_REGEX, \
 from old_buddy.modules.state_manager import StateChange, StateManager
 from old_buddy.settings import COMMAND_TIMEOUT, ACTION_INTERVAL,\
     QUIT_INTERVAL, LONG_GCODE_TIMEOUT, COMMANDS_LOG_LEVEL, GCODE_RETRIES_TIMEOUT
-from old_buddy.util import get_command_id
+from old_buddy.util import get_command_id, is_forced
 
 OPEN_RESULT_REGEX = re.compile(r"^(File opened).*|^(open failed).*")
 
@@ -68,7 +68,6 @@ class Commands:
         return should_keep_trying()
     # ---
 
-    @needs_responsive_printer
     def execute_gcode(self, api_response, override_gcode=None):
         """
         Send a gcode to a printer, on Unknown command send REJECT
@@ -81,14 +80,22 @@ class Commands:
         :param override_gcode: this is an alternate method to provide gcode,
                                if the api_response does not contain it
         """
-
         command_id = get_command_id(api_response)
 
-        if self.is_printing_or_error():
+        if not self.serial.is_responsive() and not is_forced(api_response):
+            self.connect_api.emit_event(EmitEvents.REJECTED,
+                                        get_command_id(api_response),
+                                        "Printer looks busy")
+            return
+
+        if self.is_printing_or_error() and not is_forced(api_response):
             self.connect_api.emit_event(EmitEvents.REJECTED, command_id)
             return
 
         gcode = self.get_gcode(api_response, override_gcode)
+
+        if is_forced(api_response):
+            log.debug(f"Force sending gcode: '{gcode}'")
 
         timeout_retries_on = time() + GCODE_RETRIES_TIMEOUT
 

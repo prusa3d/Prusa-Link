@@ -47,6 +47,11 @@ def get_command_id(api_response: requests.Response):
     return int(api_response.headers["Command-Id"])
 
 
+def is_forced(api_response: requests.Response):
+    return ("Force" in api_response.headers and
+            api_response.headers["Force"] == "1")
+
+
 def get_local_ip():
     """
     Gets the local ip used for connecting to MQTT_HOSTNAME
