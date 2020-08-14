@@ -7,7 +7,7 @@ from blinker import Signal
 
 from old_buddy.modules.connect_api import Sources, States
 from old_buddy.modules.serial import Serial
-from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL_SEC, \
+from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL, \
     STATE_MANAGER_LOG_LEVEL
 from old_buddy.util import run_slowly_die_fast, get_command_id
 
@@ -149,7 +149,7 @@ class StateManager:
 
     def _keep_updating_state(self):
         run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
-                            STATUS_UPDATE_INTERVAL_SEC, self.update_state)
+                            STATUS_UPDATE_INTERVAL, self.update_state)
 
     # --- Printer output handlers ---
 
