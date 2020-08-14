@@ -65,7 +65,7 @@ class Commands:
     def get_should_keep_trying(self, timeout_on):
         def should_keep_trying():
             return self.command_running and time() < timeout_on
-        return should_keep_trying()
+        return should_keep_trying
     # ---
 
     def execute_gcode(self, api_response, override_gcode=None):
