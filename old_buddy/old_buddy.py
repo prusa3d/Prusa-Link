@@ -3,7 +3,7 @@ import logging
 import threading
 from distutils.util import strtobool
 from json import JSONDecodeError
-from time import time
+from time import time, sleep
 
 from requests import RequestException
 from serial import SerialException
@@ -17,10 +17,13 @@ from old_buddy.modules.ip_updater import IPUpdater, NO_IP
 from old_buddy.modules.lcd_printer import LCDPrinter
 from old_buddy.modules.serial import Serial
 # from old_buddy.modules.sd_card import SDCard
+from old_buddy.modules.serial_queue.helpers import enqueue_one_from_str
+from old_buddy.modules.serial_queue.serial_queue import SerialQueue, \
+    MonitoredSerialQueue
 from old_buddy.modules.state_manager import StateManager, States, StateChange
 from old_buddy.modules.telemetry_gatherer import TelemetryGatherer
 from old_buddy.settings import CONNECT_CONFIG_PATH, PRINTER_PORT, \
-    PRINTER_BAUDRATE, PRINTER_RESPONSE_TIMEOUT
+    PRINTER_BAUDRATE, PRINTER_RESPONSE_TIMEOUT, RX_SIZE
 from old_buddy.settings import OLD_BUDDY_LOG_LEVEL
 from old_buddy.util import get_command_id
 
@@ -41,6 +44,8 @@ class OldBuddy:
                 "Cannot talk to the printer using the RPi port, "
                 "is it enabled? Is the Pi configured correctly?")
             raise
+        sleep(10)
+        self.serial_queue = MonitoredSerialQueue(self.serial, rx_size=RX_SIZE)
 
         Serial.serial_timed_out.connect(self.serial_timed_out)
 
@@ -57,7 +62,7 @@ class OldBuddy:
             except KeyError:
                 tls = False
         except KeyError:
-            self.serial.write("M117 Bad Old Buddy config")
+            enqueue_one_from_str(self.serial_queue, "M117 Bad Old Buddy config")
             log.exception(
                 "Config load failed, lan_settings.ini missing or invalid.")
             raise
@@ -70,12 +75,13 @@ class OldBuddy:
         StateManager.state_changed.connect(self.state_changed)
 
         self.telemetry_gatherer = TelemetryGatherer(self.serial,
+                                                    self.serial_queue,
                                                     self.state_manager)
         TelemetryGatherer.send_telemetry_signal.connect(self.send_telemetry)
 
-        self.commands = Commands(self.serial, self.connect_api,
+        self.commands = Commands(self.serial_queue, self.connect_api,
                                  self.state_manager)
-        self.lcd_printer = LCDPrinter(self.serial, self.state_manager)
+        self.lcd_printer = LCDPrinter(self.serial_queue, self.state_manager)
         # self.sd_card = SDCard(self.serial, self.state_manager)
 
         self.local_ip = ""
@@ -91,7 +97,7 @@ class OldBuddy:
         # Start the ip updater after we enqueued the correct IP report message
         self.ip_updater = IPUpdater(self.lcd_printer)
 
-        self.info_sender = InfoSender(self.serial, self.state_manager,
+        self.info_sender = InfoSender(self.serial_queue, self.state_manager,
                                       self.connect_api, self.ip_updater)
         # , self.sd_card)
 
@@ -102,6 +108,7 @@ class OldBuddy:
         self.state_manager.stop()
         self.telemetry_gatherer.stop()
         self.ip_updater.stop()
+        self.serial_queue.stop()
         self.serial.stop()
         self.connect_api.stop()
 

@@ -1,14 +1,18 @@
 import logging
 import re
+from time import time
 from enum import Enum
 from threading import Thread
 from typing import Dict, Set, Callable
 
 from old_buddy.modules.connect_api import FileType, FileTree, States
-from old_buddy.modules.serial import Serial, OutputCollector, WriteIgnored
+from old_buddy.modules.serial import Serial, OutputCollector
+from old_buddy.modules.serial_queue.helpers import enqueue_one_from_str, \
+    wait_for_instruction
+from old_buddy.modules.serial_queue.serial_queue import SerialQueue
 from old_buddy.modules.state_manager import StateManager
 from old_buddy.settings import SD_LIST_TIMEOUT, SD_CARD_LOG_LEVEL, \
-    QUIT_INTERVAL, SD_INTERVAL
+    QUIT_INTERVAL, SD_INTERVAL, PRINTER_RESPONSE_TIMEOUT
 from old_buddy.util import run_slowly_die_fast
 
 log = logging.getLogger(__name__)
@@ -147,11 +151,13 @@ class SDPresence(Enum):
 
 class SDState:
 
-    def __init__(self, serial: Serial, state_manager: StateManager,
+    def __init__(self, serial_queue: SerialQueue, serial: Serial,
+                 state_manager: StateManager,
                  state_changed_callback: Callable[[], None]):
         self.state_changed_callback = state_changed_callback
         self.state_manager = state_manager
         self.serial = serial
+        self.serial_queue = serial_queue
 
         self.sd_present: SDPresence = SDPresence.UNSURE
         self.previous_sd_present: SDPresence = SDPresence.UNSURE
@@ -169,12 +175,14 @@ class SDState:
         the card will reload. If there is nothing on the SD card or
         if we suspect there is no SD card, calling this should be fine
         """
-        try:
-            match = self.serial.write_and_wait("M21",
-                                               wait_for_regex=SD_PRESENT_REGEX)
-        except TimeoutError:
+        instruction = enqueue_one_from_str(self.serial_queue, "M21")
+        give_up_on = time() + PRINTER_RESPONSE_TIMEOUT
+        wait_for_instruction(instruction, lambda: time() < give_up_on)
+
+        if not instruction.is_confirmed():
             log.debug("Failed determining the SD presence.")
         else:
+            match = instruction.match(SD_PRESENT_REGEX)
             if match.groups()[0] is not None:
                 self.sd_present = SDPresence.YES
             else:
@@ -184,13 +192,15 @@ class SDState:
 
 class SDCard:
 
-    def __init__(self, serial: Serial, state_manager: StateManager):
+    def __init__(self, serial_queue: SerialQueue, serial: Serial,
+                 state_manager: StateManager):
         self.state_manager = state_manager
         self.serial = serial
+        self.serial_queue = serial_queue
 
         self.running = True
 
-        self.sd_state = SDState(self.serial, self.state_manager,
+        self.sd_state = SDState(serial_queue, serial, state_manager,
                                 self.sd_state_changed)
         self.file_tree: InternalFileTree = InternalFileTree.new_root_node()
         self.previous_file_tree: InternalFileTree = self.file_tree
@@ -234,10 +244,10 @@ class SDCard:
                                     end_regex=END_FILES_REGEX,
                                     capture_regex=FILE_PATH_REGEX,
                                     timeout=SD_LIST_TIMEOUT, debug=True)
-        try:
-            self.serial.write("M20")
-        except WriteIgnored:
-            raise CouldNotConstructTree("No tree was constructed")
+
+        # TODO: read output from the instruction
+        instruction = enqueue_one_from_str(self.serial_queue, "M28")
+        wait_for_instruction(instruction, lambda: self.running)
 
         try:
             output = collector.wait_for_output()
