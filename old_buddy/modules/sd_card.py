@@ -75,7 +75,8 @@ class InternalFileTree:
         clean_line = line.strip("/")
         parts = clean_line.split("/", 1)
 
-        if len(parts) == 2:  # Need to insert this deeper onto the tree, recurse
+        # Need to insert this deeper onto the tree, recurse
+        if len(parts) == 2:
             path, rest = parts
 
             if path not in self.chilren_dict:

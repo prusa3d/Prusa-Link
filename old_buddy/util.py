@@ -21,7 +21,8 @@ def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,
 
     while should_loop():
         last_checked_exit = time()
-        if time() - last_called > run_every_sec:  # if it's time to run the func
+        # if it's time to run the func
+        if time() - last_called > run_every_sec:
 
             last_called = time()
             args = []
@@ -38,8 +39,8 @@ def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,
         # or it's time to run the func again
         # wait at least 0s, don't wait negative amounts
         run_again_in = max(0, (last_called + run_every_sec) - time())
-        check_exit_in = max(0,
-                            (last_checked_exit + check_exit_every_sec) - time())
+        check_exit_in = max(
+            0, (last_checked_exit + check_exit_every_sec) - time())
         sleep(min(check_exit_in, run_again_in))
 
 

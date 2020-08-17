@@ -5,7 +5,7 @@ import subprocess
 
 import elevate
 
-from stat import *
+from stat import S_IREAD, S_IWRITE, S_IRGRP, S_IROTH
 
 from pkg_resources import resource_filename
 

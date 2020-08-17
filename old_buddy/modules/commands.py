@@ -9,7 +9,8 @@ from old_buddy.modules.serial import Serial, REACTION_REGEX, \
     UnknownCommandException, SingleMatchCollector, WriteIgnored
 from old_buddy.modules.state_manager import StateChange, StateManager
 from old_buddy.settings import COMMAND_TIMEOUT, ACTION_INTERVAL,\
-    QUIT_INTERVAL, LONG_GCODE_TIMEOUT, COMMANDS_LOG_LEVEL, GCODE_RETRIES_TIMEOUT
+    QUIT_INTERVAL, LONG_GCODE_TIMEOUT, COMMANDS_LOG_LEVEL, \
+    GCODE_RETRIES_TIMEOUT
 from old_buddy.util import get_command_id, is_forced
 
 OPEN_RESULT_REGEX = re.compile(r"^(File opened).*|^(open failed).*")
@@ -234,21 +235,23 @@ class Commands:
             self.connect_api.emit_event(EmitEvents.REJECTED, command_id)
         except WriteIgnored:
             self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
-                                        f"Other things are in progress.")
+                                        "Other things are in progress.")
         else:
             if match.groups()[0] is None:  # Opening failed
                 self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
-                                            f"Wrong file name, or bad file")
+                                            "Wrong file name, or bad file")
             else:
                 try:
                     self.serial.write_wait_ok("M24")
                 except (TimeoutError, WriteIgnored):
                     log.info("Start print failed. Printer stopped being "
                              "responsive mid-command.")
-                    self.connect_api.emit_event(EmitEvents.REJECTED, command_id)
+                    self.connect_api.emit_event(EmitEvents.REJECTED,
+                                                command_id)
                 else:
                     self.state_manager.printing()
-                    self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
+                    self.connect_api.emit_event(EmitEvents.FINISHED,
+                                                command_id)
             self.state_manager.stop_expecting_change()
 
     def stop_print(self, api_response):
@@ -262,7 +265,8 @@ class Commands:
         self.run_new_command(thread)
 
     def resume_print(self, api_response):
-        thread = Thread(target=self.try_until_state, name="Resume print thread",
+        thread = Thread(target=self.try_until_state,
+                        name="Resume print thread",
                         args=(api_response, "M24", States.PRINTING))
         self.run_new_command(thread)
 

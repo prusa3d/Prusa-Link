@@ -38,8 +38,8 @@ class OldBuddy:
                                  default_timeout=PRINTER_RESPONSE_TIMEOUT)
         except SerialException:
             log.exception(
-                "Cannot talk to the printer using the RPi port, is it enabled? "
-                "Is the Pi configured correctly?")
+                "Cannot talk to the printer using the RPi port, "
+                "is it enabled? Is the Pi configured correctly?")
             raise
 
         Serial.serial_timed_out.connect(self.serial_timed_out)
@@ -136,7 +136,8 @@ class OldBuddy:
                     if data["command"] == "RESUME_PRINT":
                         self.commands.resume_print(api_response)
                 except JSONDecodeError:
-                    log.exception(f"Failed to decode a response {api_response}")
+                    log.exception(
+                        f"Failed to decode a response {api_response}")
         elif api_response.status_code >= 300:
             code = api_response.status_code
             log.error(f"Connect responded with code {code}")
