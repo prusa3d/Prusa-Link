@@ -58,15 +58,18 @@ class TelemetryGatherer:
                                             self.temperature_handler)
         self.serial.register_output_handler(POSITION_REGEX,
                                             self.position_handler)
-        self.serial.register_output_handler(E_FAN_REGEX, self.e_fan_handler)
-        self.serial.register_output_handler(P_FAN_REGEX, self.p_fan_handler)
+        self.serial.register_output_handler(E_FAN_REGEX,
+                                            self.fan_extruder_handler)
+        self.serial.register_output_handler(P_FAN_REGEX,
+                                            self.fan_print_handler)
         self.serial.register_output_handler(PRINT_TIME_REGEX,
                                             self.print_time_handler)
         self.serial.register_output_handler(PROGRESS_REGEX,
                                             self.progress_handler)
         self.serial.register_output_handler(TIME_REMAINING_REGEX,
                                             self.time_remaining_handler)
-        self.serial.register_output_handler(HEATING_REGEX, self.heating_handler)
+        self.serial.register_output_handler(HEATING_REGEX,
+                                            self.heating_handler)
         self.serial.register_output_handler(HEATING_HOTEND_REGEX,
                                             self.heating_hotend_handler)
 
@@ -88,8 +91,8 @@ class TelemetryGatherer:
         # Make sure that even if the printer tells us print specific values,
         # nothing will be sent out while not printing
         if state not in PRINTING_STATES:
-            self.current_telemetry.printing_time = None
-            self.current_telemetry.estimated_time = None
+            self.current_telemetry.time_printing = None
+            self.current_telemetry.time_estimated = None
             self.current_telemetry.progress = None
         if state == States.PRINTING:
             self.current_telemetry.axis_x = None
@@ -116,8 +119,8 @@ class TelemetryGatherer:
             try:
                 self.serial.write(gcode)
             except WriteIgnored:
-                log.debug(f"Telemetry request got ignored,"
-                          f"serial is exclusive for someone else")
+                log.debug("Telemetry request got ignored,"
+                          "serial is exclusive for someone else")
 
     def ping_printer(self):
         try:
@@ -139,11 +142,11 @@ class TelemetryGatherer:
         self.current_telemetry.axis_y = float(groups[5])
         self.current_telemetry.axis_z = float(groups[6])
 
-    def e_fan_handler(self, match: re.Match):
-        self.current_telemetry.e_fan = float(match.groups()[0])
+    def fan_extruder_handler(self, match: re.Match):
+        self.current_telemetry.fan_extruder = float(match.groups()[0])
 
-    def p_fan_handler(self, match: re.Match):
-        self.current_telemetry.p_fan = float(match.groups()[0])
+    def fan_print_handler(self, match: re.Match):
+        self.current_telemetry.fan_print = float(match.groups()[0])
 
     def print_time_handler(self, match: re.Match):
         groups = match.groups()
@@ -153,7 +156,7 @@ class TelemetryGatherer:
             hours_in_sec = printing_time_hours * 60 * 60
             mins_in_sec = printing_time_mins * 60
             printing_time_sec = mins_in_sec + hours_in_sec
-            self.current_telemetry.printing_time = printing_time_sec
+            self.current_telemetry.time_printing = printing_time_sec
 
     def progress_handler(self, match: re.Match):
         groups = match.groups()
@@ -168,7 +171,7 @@ class TelemetryGatherer:
         mins_remaining = int(groups[1])
         secs_remaining = mins_remaining * 60
         if mins_remaining >= 0:
-            self.current_telemetry.estimated_time = secs_remaining
+            self.current_telemetry.time_estimated = secs_remaining
 
     def flow_rate_handler(self, match: re.Match):
         groups = match.groups()
