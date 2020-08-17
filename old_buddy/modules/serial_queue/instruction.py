@@ -10,14 +10,23 @@ class Instruction:
     def from_string(message: str):
         if message[-1] != "\n":
             message += "\n"
-        data = message.encode("ASCII")
-        return Instruction(data)
 
-    def __init__(self, data: bytes):
+        needs_two_okays = False
+        if message.startswith("M602"):
+            needs_two_okays = True
+        data = message.encode("ASCII")
+        return Instruction(data, needs_two_okays=needs_two_okays)
+
+    def __init__(self, data: bytes, needs_two_okays=False):
         assert isinstance(data, bytes), "Instructions have to contain bytes" \
                                         "Try Instruction.from_string()"
         assert data.endswith(b"\n"), "Instructions have to end with a newline"
         assert data.count(b"\n") == 1, "Instructions can have only one newline"
+
+        # M602 is generous, it gives us a second "OK"
+        # completely free of charge.
+        # This enables us to compensate for it
+        self.needs_two_okays = needs_two_okays
 
         # Can be changed before the instruction is sent.
         self.data = data
@@ -37,7 +46,15 @@ class Instruction:
     def get_data_size(self):
         return len(self.data)
 
-    def confirm(self):
+    def confirm(self) -> bool:
+        """
+        Didn't think a confirmation would need to fail, but it needs to
+        in some cases
+        """
+        if self.needs_two_okays:
+            self.needs_two_okays = False
+            return False
+
         # If the capture contains "ok" as the first or last thing, delete it
         if self.captured:
             if OK_REGEX.fullmatch(self.captured[-1]):
@@ -45,6 +62,8 @@ class Instruction:
             elif OK_REGEX.fullmatch(self.captured[0]):
                 del self.captured[0]
         self.confirmed_event.set()
+
+        return True
 
     def sent(self):
         self.sent_event.set()
