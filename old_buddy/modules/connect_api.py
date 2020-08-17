@@ -5,6 +5,7 @@ from time import time
 from blinker import Signal
 from requests import Session, RequestException
 
+from old_buddy import __version__
 from old_buddy.settings import CONNECT_API_LOG_LEVEL
 
 log = logging.getLogger(__name__)
@@ -74,14 +75,25 @@ class Event(Dictable):
         self.reason = None
 
 
+class NetworkInfo(Dictable):
+    def __init__(self):
+        self.lan_ipv4 = None    # not implemented yet
+        self.lan_ipv6 = None    # not implemented yet
+        self.lan_mac = None     # not implemented yet
+        self.wifi_ipv4 = None
+        self.wifi_ipv6 = None   # not implemented yet
+        self.wifi_mac = None
+        self.wifi_ssid = None   # not implemented yet
+
+
 class PrinterInfo(Dictable):
     def __init__(self):
         self.type = None
         self.version = None
         self.subversion = None
         self.firmware = None
-        self.ip = None
-        self.mac = None
+        self.wui = __version__
+        self.network_info = None
         self.sn = None
         self.uuid = None
         self.appendix = None
