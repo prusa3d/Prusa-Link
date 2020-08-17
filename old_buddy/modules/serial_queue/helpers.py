@@ -1,8 +1,9 @@
 import logging
+import re
 from typing import List, Callable
 
 from old_buddy.modules.serial_queue.instruction import Instruction, \
-    MatchableInstruction
+    MatchableInstruction, EasyInstruction, CollectingInstruction
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue
 from old_buddy.settings import QUIT_INTERVAL
 
@@ -15,15 +16,26 @@ def wait_for_instruction(instruction, should_wait: Callable[[], bool],
             break
 
 
-def enqueue_one_from_str(queue: SerialQueue, message: str) -> Instruction:
-    instruction = Instruction.from_string(message)
+def enqueue_instrucion(queue: SerialQueue, message: str) -> Instruction:
+    instruction = EasyInstruction.from_string(message)
     queue.enqueue_one(instruction)
     return instruction
 
 
-def enqueue_matchable_from_str(queue: SerialQueue,
-                               message: str) -> MatchableInstruction:
+def enqueue_matchable(queue: SerialQueue,
+                      message: str) -> MatchableInstruction:
     instruction = MatchableInstruction.from_string(message)
+    queue.enqueue_one(instruction)
+    return instruction
+
+
+def enqueue_collecting(queue: SerialQueue,
+                       message: str, begin_regex: re.Pattern,
+                       capture_regex: re.Pattern,
+                       end_regex: re.Pattern) -> CollectingInstruction:
+    data = Instruction.get_data_from_string(message)
+    instruction = CollectingInstruction(begin_regex, capture_regex,
+                                        end_regex, data=data)
     queue.enqueue_one(instruction)
     return instruction
 
@@ -32,7 +44,7 @@ def enqueue_list_from_str(queue: SerialQueue,
                           message_list: List[str]) -> List[Instruction]:
     instruction_list = []
     for message in message_list:
-        instruction = Instruction.from_string(message)
+        instruction = EasyInstruction.from_string(message)
         queue.enqueue_one(instruction)
         instruction_list.append(instruction)
     return instruction_list
