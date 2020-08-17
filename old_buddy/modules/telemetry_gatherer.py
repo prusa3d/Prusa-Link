@@ -100,17 +100,17 @@ class TelemetryGatherer:
 
     def send_telemetry(self):
         state = self.state_manager.get_state()
-        self.current_telemetry.state = state.name
+        self.last_telemetry.state = state.name
 
         # Make sure that even if the printer tells us print specific values,
         # nothing will be sent out while not printing
         if state not in PRINTING_STATES:
-            self.current_telemetry.time_printing = None
-            self.current_telemetry.time_estimated = None
-            self.current_telemetry.progress = None
+            self.last_telemetry.time_printing = None
+            self.last_telemetry.time_estimated = None
+            self.last_telemetry.progress = None
         if state == States.PRINTING:
-            self.current_telemetry.axis_x = None
-            self.current_telemetry.axis_y = None
+            self.last_telemetry.axis_x = None
+            self.last_telemetry.axis_y = None
 
         # Actually sending last telemetry,
         # The current one will be constructed while we are busy
