@@ -10,7 +10,7 @@ from old_buddy.modules.connect_api import ConnectAPI, PrinterInfo, \
 from old_buddy.modules.ip_updater import IPUpdater, NO_IP
 from old_buddy.modules.regular_expressions import FW_REGEX, PRINTER_TYPE_REGEX
 from old_buddy.modules.serial_queue.helpers import enqueue_one_from_str, \
-    wait_for_instruction
+    wait_for_instruction, enqueue_matchable_from_str
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue
 from old_buddy.modules.state_manager import StateManager
 from old_buddy.settings import INFO_SENDER_LOG_LEVEL, PRINTER_INFO_TIMEOUT
@@ -88,7 +88,7 @@ class InfoSender:
 
     def insert_type_and_version(self,
                                 printer_info: PrinterInfo) -> PrinterInfo:
-        instruction = enqueue_one_from_str(self.serial_queue, "M862.2 Q")
+        instruction = enqueue_matchable_from_str(self.serial_queue, "M862.2 Q")
         timeout_on = time() + PRINTER_INFO_TIMEOUT
         wait_for_instruction(instruction, lambda: time() < timeout_on)
 
@@ -108,7 +108,7 @@ class InfoSender:
 
     def insert_firmware_version(self,
                                 printer_info: PrinterInfo) -> PrinterInfo:
-        instruction = enqueue_one_from_str(self.serial_queue, "M115")
+        instruction = enqueue_matchable_from_str(self.serial_queue, "M115")
         timeout_on = time() + PRINTER_INFO_TIMEOUT
         wait_for_instruction(instruction, lambda: time() < timeout_on)
 
