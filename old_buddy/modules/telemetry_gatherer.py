@@ -2,7 +2,7 @@
 
 import logging
 import re
-from threading import Thread
+from threading import Thread, Lock
 
 from blinker import Signal
 
@@ -38,6 +38,7 @@ TELEMETRY_GCODES = ["M105", "M114", "PRUSA FAN", "M27", "M73"]
 
 log = logging.getLogger(__name__)
 log.setLevel(TELEMETRY_GATHERER_LOG_LEVEL)
+
 
 
 class TelemetryGatherer:
@@ -83,9 +84,9 @@ class TelemetryGatherer:
         self.last_telemetry = self.current_telemetry
         self.running = True
         self.polling_thread = Thread(target=self.keep_polling_telemetry,
-                                       name="telemetry_polling_thread")
+                                     name="telemetry_polling_thread")
         self.sending_thread = Thread(target=self.keep_sending_telemetry,
-                                       name="telemetry_sending_thread")
+                                     name="telemetry_sending_thread")
         self.polling_thread.start()
         self.sending_thread.start()
 
@@ -111,8 +112,12 @@ class TelemetryGatherer:
             self.current_telemetry.axis_x = None
             self.current_telemetry.axis_y = None
 
+        # Actually sending last telemetry,
+        # The current one will be constructed while we are busy
+        # answering the telemetry response
+        # FIXME: Should I change the timestamp?
         TelemetryGatherer.send_telemetry_signal.send(
-            self, telemetry=self.current_telemetry)
+            self, telemetry=self.last_telemetry)
 
         self.last_telemetry = self.current_telemetry
         self.current_telemetry = Telemetry()
