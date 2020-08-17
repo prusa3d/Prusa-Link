@@ -217,19 +217,19 @@ class Commands:
 
         self.state_manager.stop_expecting_change()
 
-    def stop_print(self, api_response):
-        thread = Thread(target=self.try_until_state, name="Stop print thread",
-                        args=(api_response, "M603", States.READY))
-        self.run_new_command(thread)
-
     def pause_print(self, api_response):
         thread = Thread(target=self.try_until_state, name="Pause print thread",
-                        args=(api_response, "M25", States.PAUSED))
+                        args=(api_response, "M601", States.PAUSED))
         self.run_new_command(thread)
 
     def resume_print(self, api_response):
         thread = Thread(target=self.try_until_state, name="Resume print thread",
-                        args=(api_response, "M24", States.PRINTING))
+                        args=(api_response, "M602", States.PRINTING))
+        self.run_new_command(thread)
+
+    def stop_print(self, api_response):
+        thread = Thread(target=self.try_until_state, name="Stop print thread",
+                        args=(api_response, "M603", States.READY))
         self.run_new_command(thread)
 
     def stop_command_thread(self):
