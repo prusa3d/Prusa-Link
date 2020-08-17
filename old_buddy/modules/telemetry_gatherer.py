@@ -18,9 +18,9 @@ TEMPERATURE_REGEX = re.compile(
     r"T0: ?(-?\d+\.\d+) ?/(-?\d+\.\d+) ?@: ?(-?\d+) ?B@: ?(-?\d+) ?"
     r"P: ?(-?\d+\.\d+) ?A: ?(-?\d+\.\d+)$")
 POSITION_REGEX = re.compile(
-    r"^X: ?(-?\d+\.\d+) ?Y: ?(-?\d+\.\d+) ?Z: ?(-?\d+\.\d+) ?E: ?(-?\d+\.\d+) ?"
-    r"Count ?X: ?(-?\d+\.\d+) ?Y: ?(-?\d+\.\d+) ?Z: ?(-?\d+\.\d+) ?"
-    r"E: ?(-?\d+\.\d+)$")
+    r"^X: ?(-?\d+\.\d+) ?Y: ?(-?\d+\.\d+) ?Z: ?(-?\d+\.\d+) ?"
+    r"E: ?(-?\d+\.\d+) ?Count ?X: ?(-?\d+\.\d+) ?Y: ?(-?\d+\.\d+) ?"
+    r"Z: ?(-?\d+\.\d+) ?E: ?(-?\d+\.\d+)$")
 E_FAN_REGEX = re.compile(r"^E0:(\d+) ?RPM$")
 P_FAN_REGEX = re.compile(r"^PRN0:(\d+) ?RPM$")
 PRINT_TIME_REGEX = re.compile(r"^(Not SD printing)$|^((\d+):(\d{2}))$")
@@ -30,7 +30,8 @@ TIME_REMAINING_REGEX = re.compile(r"^SILENT MODE: Percent done: (\d+); "
 HEATING_REGEX = re.compile(r"^T:(\d+\.\d+) E:\d+ B:(\d+\.\d+)$")
 HEATING_HOTEND_REGEX = re.compile(r"^T:(\d+\.\d+) E:([?]|\d+) W:([?]|\d+)$")
 
-TELEMETRY_GCODES = ["M105", "M114", "PRUSA FAN", "M27", "M73"]  # "M221", "M220"
+# XXX:  "M221", "M220
+TELEMETRY_GCODES = ["M105", "M114", "PRUSA FAN", "M27", "M73"]
 
 log = logging.getLogger(__name__)
 log.setLevel(TELEMETRY_GATHERER_LOG_LEVEL)

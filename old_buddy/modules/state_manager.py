@@ -22,8 +22,9 @@ RESUMED_REGEX = re.compile("^// action:resumed$")
 CANCEL_REGEX = re.compile("^// action:cancel$")
 START_PRINT_REGEX = re.compile(r"^echo:enqueing \"M24\"$")
 PRINT_DONE_REGEX = re.compile(r"^Done printing file$")
-ERROR_REGEX = re.compile(r"^Error:Printer stopped due to errors. Fix the error "
-                         r"and use M999 to restart.*")
+ERROR_REGEX = re.compile(
+    r"^Error:Printer stopped due to errors. Fix the error "
+    r"and use M999 to restart.*")
 
 PROGRESS_REGEX = re.compile(r"^NORMAL MODE: Percent done: (\d+);.*")
 
