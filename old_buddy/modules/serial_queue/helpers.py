@@ -1,7 +1,8 @@
 import logging
 from typing import List, Callable
 
-from old_buddy.modules.serial_queue.instruction import Instruction
+from old_buddy.modules.serial_queue.instruction import Instruction, \
+    MatchableInstruction
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue
 from old_buddy.settings import QUIT_INTERVAL
 
@@ -16,6 +17,13 @@ def wait_for_instruction(instruction, should_wait: Callable[[], bool],
 
 def enqueue_one_from_str(queue: SerialQueue, message: str) -> Instruction:
     instruction = Instruction.from_string(message)
+    queue.enqueue_one(instruction)
+    return instruction
+
+
+def enqueue_matchable_from_str(queue: SerialQueue,
+                               message: str) -> MatchableInstruction:
+    instruction = MatchableInstruction.from_string(message)
     queue.enqueue_one(instruction)
     return instruction
 
