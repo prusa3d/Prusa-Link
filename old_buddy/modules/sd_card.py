@@ -10,7 +10,7 @@ from old_buddy.modules.regular_expressions import INSERTED_REGEX, \
     SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX
 from old_buddy.modules.serial import Serial, OutputCollector
 from old_buddy.modules.serial_queue.helpers import enqueue_one_from_str, \
-    wait_for_instruction
+    wait_for_instruction, enqueue_matchable_from_str
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue
 from old_buddy.modules.state_manager import StateManager
 from old_buddy.settings import SD_LIST_TIMEOUT, SD_CARD_LOG_LEVEL, \
@@ -170,7 +170,7 @@ class SDState:
         the card will reload. If there is nothing on the SD card or
         if we suspect there is no SD card, calling this should be fine
         """
-        instruction = enqueue_one_from_str(self.serial_queue, "M21")
+        instruction = enqueue_matchable_from_str(self.serial_queue, "M21")
         give_up_on = time() + PRINTER_RESPONSE_TIMEOUT
         wait_for_instruction(instruction, lambda: time() < give_up_on)
 
