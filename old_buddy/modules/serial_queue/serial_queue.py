@@ -167,12 +167,18 @@ class SerialQueue:
         """
         if self.is_empty() or not self.front_instruction.is_sent():
             log.error("Unexpected message confirmation. Ignoring")
-        log.debug(f"{self.front_instruction} confirmed")
         self.last_event_on = time()
-        self.front_instruction.confirm()
-        self.rx_current -= self.front_instruction.size
-        del self.queue[0]
-        self.next_instruction_index -= 1
+
+        if self.front_instruction.confirm():
+            # If the instruction did ot refuse to be confirmed
+            # Yes, that needs to happen because of M602
+            log.debug(f"{self.front_instruction} confirmed")
+            self.rx_current -= self.front_instruction.size
+            del self.queue[0]
+            self.next_instruction_index -= 1
+        else:
+            log.debug(f"{self.front_instruction} refused confirmation. "
+                      f"Hopefully it has a reason for that")
 
         #  rx_current decreased, let's try if we'll fit into the rx buffer
         self._try_writing()
