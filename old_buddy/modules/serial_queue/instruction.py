@@ -1,7 +1,7 @@
 import re
 from threading import Event
 
-from old_buddy.modules.serial import OK_REGEX
+from old_buddy.modules.regular_expressions import OK_REGEX
 
 
 class Instruction:

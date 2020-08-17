@@ -6,6 +6,8 @@ from threading import Thread
 from typing import Dict, Set, Callable
 
 from old_buddy.modules.connect_api import FileType, FileTree, States
+from old_buddy.modules.regular_expressions import INSERTED_REGEX, \
+    SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX
 from old_buddy.modules.serial import Serial, OutputCollector
 from old_buddy.modules.serial_queue.helpers import enqueue_one_from_str, \
     wait_for_instruction
@@ -17,13 +19,6 @@ from old_buddy.util import run_slowly_die_fast
 
 log = logging.getLogger(__name__)
 log.setLevel(SD_CARD_LOG_LEVEL)
-
-BEGIN_FILES_REGEX = re.compile(r"^Begin file list$")
-FILE_PATH_REGEX = re.compile(r"^(/?[^/]*)+ (\d+)$")
-END_FILES_REGEX = re.compile(r"^End file list$")
-
-SD_PRESENT_REGEX = re.compile(r"^(echo:SD card ok)|(echo:SD init fail)$")
-INSERTED_REGEX = re.compile(r"^(echo:SD card ok)$")
 
 
 class CouldNotConstructTree(RuntimeError):
