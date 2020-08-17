@@ -8,26 +8,11 @@ from typing import List
 import serial
 from blinker import Signal
 
+from old_buddy.modules.regular_expressions import OK_REGEX, ANY_REGEX
 from old_buddy.settings import SERIAL_LOG_LEVEL
 
 log = logging.getLogger(__name__)
 log.setLevel(SERIAL_LOG_LEVEL)
-
-ANY_REGEX = re.compile(r".*")
-CONFIRMATION_REGEX = re.compile(r"^ok\s?(.*)$")
-RX_YEETED_REGEX = re.compile(r"^echo:Now fresh file: .*$")
-PAUSED_REGEX = re.compile(r"^// action:paused$")
-OK_REGEX = re.compile(r"^ok$")
-RENEW_TIMEOUT_REGEX = re.compile(r"(^echo:busy: processing$)|"
-                                 r"(^echo:busy: paused for user$)|"
-                                 r"(^T:(\d+\.\d+) E:\d+ B:(\d+\.\d+)$)|"
-                                 r"(^T:(\d+\.\d+) E:([?]|\d+) W:([?]|\d+)$)")
-
-REJECTION_REGEX = re.compile("echo:Unknown command: (\"[^\"]*\")$")
-
-# using M113 as sort of a ping,
-# because there is a very low chance anyone else will use it
-PING_REGEX = re.compile(r"^echo:M113 S\d+$")
 
 
 class Serial:

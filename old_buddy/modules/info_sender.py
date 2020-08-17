@@ -1,5 +1,4 @@
 import logging
-import re
 from time import time
 from typing import List, Callable
 
@@ -9,6 +8,7 @@ from requests import RequestException
 from old_buddy.modules.connect_api import ConnectAPI, PrinterInfo, \
     NetworkInfo, EmitEvents, Event, Sources
 from old_buddy.modules.ip_updater import IPUpdater, NO_IP
+from old_buddy.modules.regular_expressions import FW_REGEX, PRINTER_TYPE_REGEX
 from old_buddy.modules.serial_queue.helpers import enqueue_one_from_str, \
     wait_for_instruction
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue
@@ -18,9 +18,6 @@ from old_buddy.util import get_command_id
 
 log = logging.getLogger(__name__)
 log.setLevel(INFO_SENDER_LOG_LEVEL)
-
-PRINTER_TYPE_REGEX = re.compile(r"^(\d{3,5})$")
-FW_REGEX = re.compile(r"^FIRMWARE_NAME:Prusa-Firmware ?((\d+\.)*\d).*$")
 
 PRINTER_TYPES = {
     100: (1, 1, 0),

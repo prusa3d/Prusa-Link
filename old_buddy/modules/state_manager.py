@@ -6,6 +6,10 @@ from typing import Union, Dict
 from blinker import Signal
 
 from old_buddy.modules.connect_api import Sources, States
+from old_buddy.modules.regular_expressions import OK_REGEX, BUSY_REGEX, \
+    ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
+    START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, PROGRESS_REGEX, \
+    SD_PRINTING_REGEX
 from old_buddy.modules.serial import Serial
 from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL, \
     STATE_MANAGER_LOG_LEVEL
@@ -13,22 +17,6 @@ from old_buddy.util import run_slowly_die_fast, get_command_id
 
 log = logging.getLogger(__name__)
 log.setLevel(STATE_MANAGER_LOG_LEVEL)
-
-OK_REGEX = re.compile(r"^ok$")
-BUSY_REGEX = re.compile("^echo:busy: processing$")
-ATTENTION_REGEX = re.compile("^echo:busy: paused for user$")
-PAUSED_REGEX = re.compile("^// action:paused$")
-RESUMED_REGEX = re.compile("^// action:resumed$")
-CANCEL_REGEX = re.compile("^// action:cancel$")
-START_PRINT_REGEX = re.compile(r"^echo:enqueing \"M24\"$")
-PRINT_DONE_REGEX = re.compile(r"^Done printing file$")
-ERROR_REGEX = re.compile(
-    r"^Error:Printer stopped due to errors. Fix the error "
-    r"and use M999 to restart.*")
-
-PROGRESS_REGEX = re.compile(r"^NORMAL MODE: Percent done: (\d+);.*")
-
-SD_PRINTING_REGEX = re.compile(r"^(Not SD printing)$|^(\d+:\d+)$")
 
 PRINTING_STATES = {States.PRINTING, States.PAUSED, States.FINISHED}
 
