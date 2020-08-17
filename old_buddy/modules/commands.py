@@ -5,7 +5,8 @@ from time import time, sleep
 
 from old_buddy.modules.connect_api import ConnectAPI, EmitEvents, States, \
     Sources
-from old_buddy.modules.serial import REJECTION_REGEX
+from old_buddy.modules.regular_expressions import REJECTION_REGEX, \
+    OPEN_RESULT_REGEX
 from old_buddy.modules.serial_queue.helpers import wait_for_instruction, \
     enqueue_one_from_str
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue
@@ -14,8 +15,6 @@ from old_buddy.settings import COMMAND_TIMEOUT, \
     QUIT_INTERVAL, LONG_GCODE_TIMEOUT, COMMANDS_LOG_LEVEL, \
     PRINTER_RESPONSE_TIMEOUT, LOAD_FILE_TIMEOUT
 from old_buddy.util import get_command_id, is_forced
-
-OPEN_RESULT_REGEX = re.compile(r"^(File opened).*|^(open failed).*")
 
 log = logging.getLogger(__name__)
 log.setLevel(COMMANDS_LOG_LEVEL)

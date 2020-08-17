@@ -4,8 +4,9 @@ from time import time
 from typing import List
 
 from .instruction import Instruction
-from ..serial import Serial, CONFIRMATION_REGEX, RX_YEETED_REGEX, PAUSED_REGEX, \
-    RENEW_TIMEOUT_REGEX
+from ..regular_expressions import CONFIRMATION_REGEX, RX_YEETED_REGEX, \
+    PAUSED_REGEX, RENEW_TIMEOUT_REGEX
+from ..serial import Serial
 from ...settings import SERIAL_QUEUE_LOG_LEVEL, SERIAL_QUEUE_TIMEOUT, \
     QUIT_INTERVAL, SERIAL_QUEUE_MONITOR_INTERVAL
 from ...util import run_slowly_die_fast
