@@ -8,7 +8,7 @@ from old_buddy.modules.connect_api import ConnectAPI, EmitEvents, States, \
 from old_buddy.modules.regular_expressions import REJECTION_REGEX, \
     OPEN_RESULT_REGEX
 from old_buddy.modules.serial_queue.helpers import wait_for_instruction, \
-    enqueue_one_from_str, enqueue_matchable_from_str
+    enqueue_instrucion, enqueue_matchable
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue
 from old_buddy.modules.state_manager import StateChange, StateManager
 from old_buddy.settings import COMMAND_TIMEOUT, \
@@ -80,7 +80,7 @@ class Commands:
         if is_forced(api_response):
             log.debug(f"Force sending gcode: '{gcode}'")
 
-        instruction = enqueue_matchable_from_str(self.serial_queue, gcode)
+        instruction = enqueue_matchable(self.serial_queue, gcode)
 
         give_up_on = time() + LONG_GCODE_TIMEOUT
         decide_on = time() + PRINTER_RESPONSE_TIMEOUT
@@ -108,7 +108,7 @@ class Commands:
         command_id = get_command_id(api_response)
         self.connect_api.emit_event(EmitEvents.ACCEPTED, command_id)
 
-        instruction = enqueue_one_from_str(self.serial_queue, gcode)
+        instruction = enqueue_instrucion(self.serial_queue, gcode)
 
         if self.state_manager.get_state() != desired_state:
             to_states = {desired_state: Sources.CONNECT}
@@ -162,7 +162,7 @@ class Commands:
             States.PRINTING: Sources.CONNECT}))
 
         give_up_loading_on = time() + LOAD_FILE_TIMEOUT
-        load_instruction = enqueue_matchable_from_str(self.serial_queue,
+        load_instruction = enqueue_matchable(self.serial_queue,
                                                       f"M23 {file_name}")
         self.wait_for_instruction(load_instruction, give_up_loading_on)
 
@@ -180,7 +180,7 @@ class Commands:
 
         if start_print:
             give_up_starting_on = time() + LOAD_FILE_TIMEOUT
-            start_instruction = enqueue_one_from_str(self.serial_queue, "M24")
+            start_instruction = enqueue_instrucion(self.serial_queue, "M24")
             self.wait_for_instruction(start_instruction, give_up_starting_on)
 
             if not start_instruction.is_confirmed():

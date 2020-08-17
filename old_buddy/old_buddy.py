@@ -17,7 +17,7 @@ from old_buddy.modules.ip_updater import IPUpdater, NO_IP
 from old_buddy.modules.lcd_printer import LCDPrinter
 from old_buddy.modules.serial import Serial
 # from old_buddy.modules.sd_card import SDCard
-from old_buddy.modules.serial_queue.helpers import enqueue_one_from_str
+from old_buddy.modules.serial_queue.helpers import enqueue_instrucion
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue, \
     MonitoredSerialQueue
 from old_buddy.modules.state_manager import StateManager, States, StateChange
@@ -62,7 +62,7 @@ class OldBuddy:
             except KeyError:
                 tls = False
         except KeyError:
-            enqueue_one_from_str(self.serial_queue, "M117 Bad Old Buddy config")
+            enqueue_instrucion(self.serial_queue, "M117 Bad Old Buddy config")
             log.exception(
                 "Config load failed, lan_settings.ini missing or invalid.")
             raise

@@ -1,29 +1,21 @@
 import re
+from enum import Enum
 from threading import Event
 
 from old_buddy.modules.regular_expressions import OK_REGEX
 
 
 class Instruction:
+    """Basic instruction which can be enqueued into SerialQueue"""
 
     @staticmethod
-    def from_string(message: str):
-        return Instruction(**Instruction._get_args(message))
-
-    @staticmethod
-    def _get_args(message: str):
-        data = Instruction._get_data_from_string(message)
-        needs_two_okays = Instruction._needs_two_okays(message)
-        return dict(data=data, needs_two_okays=needs_two_okays)
-
-    @staticmethod
-    def _get_data_from_string(message: str):
+    def get_data_from_string(message: str):
         if message[-1] != "\n":
             message += "\n"
         return message.encode("ASCII")
 
     @staticmethod
-    def _needs_two_okays(message: str):
+    def needs_two_okays(message: str):
         return message.startswith("M602")
 
     def __init__(self, data: bytes, needs_two_okays=False):
@@ -85,16 +77,34 @@ class Instruction:
     size = property(get_data_size)
 
 
-class MatchableInstruction(Instruction):
+class EasyInstruction(Instruction):
+    """Same as Instruction but supports its creation from string messages"""
 
     @staticmethod
-    def from_string(message: str):
-        return MatchableInstruction(**Instruction._get_args(message))
+    def from_string(message: str) -> "EasyInstruction":
+        return EasyInstruction(**EasyInstruction._get_args(message))
+
+    @staticmethod
+    def _get_args(message: str):
+        data = Instruction.get_data_from_string(message)
+        needs_two_okays = Instruction.needs_two_okays(message)
+        return dict(data=data, needs_two_okays=needs_two_okays)
+
+
+class MatchableInstruction(EasyInstruction):
+    """
+    Same as EasyInstruction but captures its output, which can be matched
+    to a regular expression
+    """
+
+    @staticmethod
+    def from_string(message: str) -> "MatchableInstruction":
+        return MatchableInstruction(**MatchableInstruction._get_args(message))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Output captured between command submission ad confirmation
+        # Output captured between command submission and confirmation
         self.captured = []
 
     def confirm(self) -> bool:
@@ -112,10 +122,55 @@ class MatchableInstruction(Instruction):
         self.captured.append(line)
 
     def match(self, pattern: re.Pattern):
-        # To be able to match, the instruction has to be _confirmed
+        # To be able to match, the instruction has to be confirmed
         self.wait_for_confirmation()
 
         for line in self.captured:
             match = pattern.match(line)
             if match:
                 return match
+
+class CollectingInstruction(Instruction):
+    """
+    Same as Instruction, but captures output only after begin_regex matches
+    only captures match object of capture_regex
+    and ends the capture after end_regex matches
+    the start and end matches shall be omitted
+    """
+
+    class States(Enum):
+        NOT_CAPTURING_YET = 0
+        CAPTURING = 1
+        ENDED = 2
+
+    def __init__(self, begin_regex: re.Pattern,
+                 capture_regex: re.Pattern,
+                 end_regex: re.Pattern,
+                 *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Output captured between begin and end regex,
+        # which matched capture regex
+        self.end_regex = end_regex
+        self.capture_regex = capture_regex
+        self.begin_regex = begin_regex
+        self.captured_matches = []
+        self.state = self.States.NOT_CAPTURING_YET
+
+    def output_captured(self, line):
+        # The order of these blocks is important, it prevents the
+        # begin and end matches from also matching with the capture regex
+        if self.state == self.States.CAPTURING:
+            end_match = self.end_regex.match(line)
+            if end_match:
+                self.state = self.States.ENDED
+
+        if self.state == self.States.CAPTURING:
+            capture_match = self.capture_regex.match(line)
+            if capture_match:
+                self.captured_matches.append(capture_match)
+
+        if self.state == self.States.NOT_CAPTURING_YET:
+            begin_match = self.begin_regex.match(line)
+            if begin_match:
+                self.state = self.States.CAPTURING
