@@ -21,24 +21,6 @@ log = logging.getLogger(__name__)
 log.setLevel(COMMANDS_LOG_LEVEL)
 
 
-def needs_responsive_printer(func):
-    def decorator(self, api_response, *args, **kwargs):
-        # FIXME: emulating the function with a check of an empty queue
-        #        definitely don't do that in the future
-        if not self.serial_queue.is_empty():
-            self.connect_api.emit_event(EmitEvents.REJECTED,
-                                        get_command_id(api_response),
-                                        "Printer looks busy")
-            return
-
-        # I used to tell state manager to set itself as busy internally.
-        # So nothing would start getting telemetry and such while executing
-        # commands. I since removed that functionality, now what? Nothing?
-        func(self, api_response, *args, **kwargs)
-
-    return decorator
-
-
 class Commands:
 
     def __init__(self, serial_queue: SerialQueue, connect_api: ConnectAPI,
@@ -89,12 +71,6 @@ class Commands:
         """
 
         command_id = get_command_id(api_response)
-
-        if not self.serial_queue.is_empty() and not is_forced(api_response):
-            self.connect_api.emit_event(EmitEvents.REJECTED,
-                                        get_command_id(api_response),
-                                        "Printer looks busy")
-            return
 
         if self.is_printing_or_error() and not is_forced(api_response):
             self.connect_api.emit_event(EmitEvents.REJECTED, command_id)
@@ -171,7 +147,6 @@ class Commands:
         self.command_thread = thread
         self.command_thread.start()
 
-    @needs_responsive_printer
     def start_print(self, api_response):
         command_id = get_command_id(api_response)
         raw_file_name = api_response.json()["args"][0]
