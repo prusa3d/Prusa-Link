@@ -5,8 +5,8 @@ from typing import List, Callable
 from getmac import get_mac_address
 from requests import RequestException
 
-from old_buddy.modules.connect_api import ConnectAPI, States, PrinterInfo, \
-    EmitEvents, Event, Sources
+from old_buddy.modules.connect_api import ConnectAPI, PrinterInfo, \
+    NetworkInfo, EmitEvents, Event, Sources
 from old_buddy.modules.ip_updater import IPUpdater, NO_IP
 from old_buddy.modules.serial import Serial, WriteIgnored
 from old_buddy.modules.state_manager import StateManager
@@ -47,7 +47,8 @@ class InfoSender:
         self.info_inserters: List[Callable[[PrinterInfo], PrinterInfo]]
         self.info_inserters = [self.insert_type_and_version,
                                self.insert_firmware_version,
-                               self.insert_additional_info]
+                               self.insert_additional_info,
+                               self.insert_network_info]
 
         # self.sd_card = sd_card
         self.ip_updater = ip_updater
@@ -107,15 +108,22 @@ class InfoSender:
         return printer_info
 
     def insert_additional_info(self, printer_info: PrinterInfo) -> PrinterInfo:
-        self.ip_updater.update_local_ip()
-        if self.ip_updater.local_ip != NO_IP:
-            printer_info.ip = self.ip_updater.local_ip
-
         printer_info.state = self.state_manager.get_state().name
         printer_info.sn = "4206942069"  # TODO: implement real getters
         printer_info.uuid = "00000000-0000-0000-0000-000000000000"
         printer_info.appendix = False
-        printer_info.mac = get_mac_address()
         # printer_info.files = self.sd_card.get_api_file_tree()
 
+        return printer_info
+
+    def insert_network_info(self, printer_info: PrinterInfo) -> PrinterInfo:
+        network_info = NetworkInfo()
+
+        self.ip_updater.update_local_ip()
+        if self.ip_updater.local_ip != NO_IP:
+            network_info.wifi_ipv4 = self.ip_updater.local_ip
+
+        network_info.wifi_mac = get_mac_address()
+
+        printer_info.network_info = network_info
         return printer_info
