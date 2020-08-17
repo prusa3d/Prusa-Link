@@ -82,13 +82,20 @@ class TelemetryGatherer:
         self.current_telemetry = Telemetry()
         self.last_telemetry = self.current_telemetry
         self.running = True
-        self.telemetry_thread = Thread(target=self.keep_updating_telemetry,
-                                       name="telemetry_thread")
-        self.telemetry_thread.start()
+        self.polling_thread = Thread(target=self.keep_polling_telemetry,
+                                       name="telemetry_polling_thread")
+        self.sending_thread = Thread(target=self.keep_sending_telemetry,
+                                       name="telemetry_sending_thread")
+        self.polling_thread.start()
+        self.sending_thread.start()
 
-    def keep_updating_telemetry(self):
+    def keep_polling_telemetry(self):
         run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
-                            TELEMETRY_INTERVAL, self.update_telemetry)
+                            TELEMETRY_INTERVAL, self.poll_telemetry)
+
+    def keep_sending_telemetry(self):
+        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
+                            TELEMETRY_INTERVAL, self.send_telemetry)
 
     def send_telemetry(self):
         state = self.state_manager.get_state()
@@ -107,16 +114,14 @@ class TelemetryGatherer:
         TelemetryGatherer.send_telemetry_signal.send(
             self, telemetry=self.current_telemetry)
 
-    def update_telemetry(self):
-        self.send_telemetry()
-
         self.last_telemetry = self.current_telemetry
         self.current_telemetry = Telemetry()
 
+    def poll_telemetry(self):
         instruction_list = enqueue_list_from_str(self.serial_queue,
                                                  TELEMETRY_GCODES)
 
-        # Only ask for telemetry again, when the previous is _confirmed
+        # Only ask for telemetry again, when the previous is confirmed
         for instruction in instruction_list:
             # Wait indefinitely, if the queue got stuck
             # we aren't the ones who should handle that
@@ -191,4 +196,5 @@ class TelemetryGatherer:
 
     def stop(self):
         self.running = False
-        self.telemetry_thread.join()
+        self.polling_thread.join()
+        self.sending_thread.join()
