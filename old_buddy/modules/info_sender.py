@@ -87,7 +87,8 @@ class InfoSender:
             printer_info = inserter(printer_info)
         return printer_info
 
-    def insert_type_and_version(self, printer_info: PrinterInfo) -> PrinterInfo:
+    def insert_type_and_version(self,
+                                printer_info: PrinterInfo) -> PrinterInfo:
         match = self.serial.write_and_wait("M862.2 Q", PRINTER_TYPE_REGEX,
                                            timeout=PRINTER_INFO_TIMEOUT)
         if match is not None:
@@ -100,7 +101,8 @@ class InfoSender:
                 raise InfoError(f"Unsupported printer model '{code}'")
         return printer_info
 
-    def insert_firmware_version(self, printer_info: PrinterInfo) -> PrinterInfo:
+    def insert_firmware_version(self,
+                                printer_info: PrinterInfo) -> PrinterInfo:
         match = self.serial.write_and_wait("M115", FW_REGEX,
                                            timeout=PRINTER_INFO_TIMEOUT)
         if match is not None:
