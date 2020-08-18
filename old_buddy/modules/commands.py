@@ -1,19 +1,18 @@
 import logging
-import re
 from threading import Thread
-from time import time, sleep
+from time import time
 
 from old_buddy.modules.connect_api import ConnectAPI, EmitEvents, States, \
     Sources
+from old_buddy.modules.info_sender import InfoSender
 from old_buddy.modules.regular_expressions import REJECTION_REGEX, \
     OPEN_RESULT_REGEX
 from old_buddy.modules.serial_queue.helpers import wait_for_instruction, \
     enqueue_instrucion, enqueue_matchable
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue
 from old_buddy.modules.state_manager import StateChange, StateManager
-from old_buddy.settings import COMMAND_TIMEOUT, \
-    QUIT_INTERVAL, LONG_GCODE_TIMEOUT, COMMANDS_LOG_LEVEL, \
-    PRINTER_RESPONSE_TIMEOUT, LOAD_FILE_TIMEOUT
+from old_buddy.settings import COMMAND_TIMEOUT, LONG_GCODE_TIMEOUT, \
+    COMMANDS_LOG_LEVEL, PRINTER_RESPONSE_TIMEOUT, LOAD_FILE_TIMEOUT
 from old_buddy.util import get_command_id, is_forced
 
 log = logging.getLogger(__name__)
@@ -25,10 +24,11 @@ class Commands:
     telemetry updating"""
 
     def __init__(self, serial_queue: SerialQueue, connect_api: ConnectAPI,
-                 state_manager: StateManager):
+                 state_manager: StateManager, info_seder: InfoSender):
         self.state_manager = state_manager
         self.connect_api = connect_api
         self.serial_queue = serial_queue
+        self.info_sedner = info_seder
 
         self.command_running = True
 
@@ -56,9 +56,57 @@ class Commands:
             return self.command_running and time() < timeout_on
 
         wait_for_instruction(instruction, should_wait)
-    # ---
+
+    # --- Command starters ---
+
+    def pause_print(self, api_response):
+        thread = Thread(target=self.try_until_state, name="Pause print",
+                        args=(api_response, "M601", States.PAUSED))
+        self.run_new_command(api_response, thread)
+
+    def resume_print(self, api_response):
+        thread = Thread(target=self.try_until_state, name="Resume print",
+                        args=(api_response, "M602", States.PRINTING))
+        self.run_new_command(api_response, thread)
+
+    def stop_print(self, api_response):
+        thread = Thread(target=self.try_until_state, name="Stop print",
+                        args=(api_response, "M603", States.READY))
+        self.run_new_command(api_response, thread)
 
     def execute_gcode(self, api_response, override_gcode=None):
+        thread = Thread(target=self._execute_gcode, name="Execute gcode",
+                        args=(api_response, override_gcode))
+        self.run_new_command(api_response, thread)
+
+    def start_print(self, api_response):
+        thread = Thread(target=self._start_print, name="Start print",
+                        args=(api_response,))
+        self.run_new_command(api_response, thread)
+
+    def respond_with_info(self, api_response):
+        thread = Thread(target=self.info_sedner.respond_with_info,
+                        name="Respond with info",
+                        args=(api_response,))
+        self.run_new_command(api_response, thread)
+
+    def run_new_command(self, api_response, thread: Thread):
+        command_id = get_command_id(api_response)
+        if self.command_thread is not None and self.command_thread.is_alive():
+            self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
+                                        "Another command is running")
+        else:
+            self.command_thread = thread
+            self.command_thread.start()
+
+    def stop_command_thread(self):
+        self.command_running = False
+        if self.command_thread is not None:
+            self.command_thread.join()
+
+    # --- Commands ---
+
+    def _execute_gcode(self, api_response, override_gcode=None):
         """
         Send a gcode to a printer, on Unknown command send REJECT
         if the printer answers OK in a timely manner, send FINISHED right away
@@ -72,6 +120,9 @@ class Commands:
         """
 
         command_id = get_command_id(api_response)
+
+        self.state_manager.expect_change(
+            StateChange(api_response, default_source=Sources.CONNECT))
 
         if self.is_printing_or_error() and not is_forced(api_response):
             self.connect_api.emit_event(EmitEvents.REJECTED, command_id)
@@ -106,6 +157,10 @@ class Commands:
             log.error(f"Timed out waiting for a gcode {gcode} to be handled")
             # TODO: reject stuff that could end up here maybe?
 
+        # If the gcode execution did not cause a state change
+        # stop expecting it
+        self.state_manager.stop_expecting_change()
+
     def try_until_state(self, api_response, gcode: str, desired_state: States):
         command_id = get_command_id(api_response)
         self.connect_api.emit_event(EmitEvents.ACCEPTED, command_id)
@@ -132,7 +187,7 @@ class Commands:
 
         self.state_manager.stop_expecting_change()
 
-    def start_print(self, api_response):
+    def _start_print(self, api_response):
         command_id = get_command_id(api_response)
         raw_file_name = api_response.json()["args"][0]
         file_name = raw_file_name.lower()
@@ -149,7 +204,7 @@ class Commands:
 
         give_up_loading_on = time() + LOAD_FILE_TIMEOUT
         load_instruction = enqueue_matchable(self.serial_queue,
-                                                      f"M23 {file_name}")
+                                             f"M23 {file_name}")
         self.wait_for_instruction(load_instruction, give_up_loading_on)
 
         start_print = False
@@ -176,30 +231,3 @@ class Commands:
                 self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
 
         self.state_manager.stop_expecting_change()
-
-    def run_new_command(self, thread: Thread):
-        if self.command_thread is not None and self.command_thread.is_alive():
-            self.stop_command_thread()
-            self.command_running = True
-        self.command_thread = thread
-        self.command_thread.start()
-
-    def pause_print(self, api_response):
-        thread = Thread(target=self.try_until_state, name="Pause print thread",
-                        args=(api_response, "M601", States.PAUSED))
-        self.run_new_command(thread)
-
-    def resume_print(self, api_response):
-        thread = Thread(target=self.try_until_state, name="Resume print thread",
-                        args=(api_response, "M602", States.PRINTING))
-        self.run_new_command(thread)
-
-    def stop_print(self, api_response):
-        thread = Thread(target=self.try_until_state, name="Stop print thread",
-                        args=(api_response, "M603", States.READY))
-        self.run_new_command(thread)
-
-    def stop_command_thread(self):
-        self.command_running = False
-        if self.command_thread is not None:
-            self.command_thread.join()
