@@ -122,13 +122,11 @@ class MatchableInstruction(EasyInstruction):
         self.captured.append(line)
 
     def match(self, pattern: re.Pattern):
-        # To be able to match, the instruction has to be confirmed
-        self.wait_for_confirmation()
-
         for line in self.captured:
             match = pattern.match(line)
             if match:
                 return match
+
 
 class CollectingInstruction(Instruction):
     """

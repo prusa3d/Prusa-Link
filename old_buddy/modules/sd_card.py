@@ -8,12 +8,12 @@ from typing import Dict, Set, Callable
 from old_buddy.modules.connect_api import FileType, FileTree, States
 from old_buddy.modules.regular_expressions import INSERTED_REGEX, \
     SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX
-from old_buddy.modules.serial import Serial, OutputCollector
+from old_buddy.modules.serial import Serial
 from old_buddy.modules.serial_queue.helpers import enqueue_instrucion, \
     wait_for_instruction, enqueue_matchable, enqueue_collecting
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue
 from old_buddy.modules.state_manager import StateManager
-from old_buddy.settings import SD_LIST_TIMEOUT, SD_CARD_LOG_LEVEL, \
+from old_buddy.settings import SD_CARD_LOG_LEVEL, \
     QUIT_INTERVAL, SD_INTERVAL, PRINTER_RESPONSE_TIMEOUT
 from old_buddy.util import run_slowly_die_fast
 
