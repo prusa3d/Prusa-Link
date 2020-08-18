@@ -10,17 +10,15 @@ from serial import SerialException
 
 from old_buddy.modules.commands import Commands
 from old_buddy.modules.connect_api import ConnectAPI
-from old_buddy.modules.connect_api import Telemetry, PrinterInfo, EmitEvents, \
-    Sources
+from old_buddy.modules.connect_api import Telemetry, PrinterInfo, EmitEvents
 from old_buddy.modules.info_sender import InfoSender
 from old_buddy.modules.ip_updater import IPUpdater, NO_IP
 from old_buddy.modules.lcd_printer import LCDPrinter
 from old_buddy.modules.serial import Serial
 # from old_buddy.modules.sd_card import SDCard
 from old_buddy.modules.serial_queue.helpers import enqueue_instrucion
-from old_buddy.modules.serial_queue.serial_queue import SerialQueue, \
-    MonitoredSerialQueue
-from old_buddy.modules.state_manager import StateManager, States, StateChange, \
+from old_buddy.modules.serial_queue.serial_queue import MonitoredSerialQueue
+from old_buddy.modules.state_manager import StateManager, States,\
     PRINTING_STATES
 from old_buddy.modules.telemetry_gatherer import TelemetryGatherer
 from old_buddy.settings import CONNECT_CONFIG_PATH, PRINTER_PORT, \
@@ -150,28 +148,14 @@ class OldBuddy:
             code = api_response.status_code
             log.error(f"Connect responded with code {code}")
 
-            if code == 403:
-                self.lcd_printer.enqueue_message("400 Bad Request")
-                self.lcd_printer.enqueue_message("400 May be a bug")
-                self.lcd_printer.enqueue_message("400 But most likely")
-                self.lcd_printer.enqueue_message("400 Outdated client")
-            if code == 403:
-                self.lcd_printer.enqueue_message("403 Forbidden")
-                self.lcd_printer.enqueue_message("403 Expired token")
-                self.lcd_printer.enqueue_message("403 Or invalid one")
-                self.lcd_printer.enqueue_message("403 Bad lan_settings")
-            if code == 401:
-                self.lcd_printer.enqueue_message("401 Unauthorized")
-                self.lcd_printer.enqueue_message("401 Missing token")
-                self.lcd_printer.enqueue_message("401 Or invalid one")
-                self.lcd_printer.enqueue_message("401 Bad lan_settings")
-            if code == 501:
-                self.lcd_printer.enqueue_message("501 Service Unavail")
-                self.lcd_printer.enqueue_message("501 You cold try")
-                self.lcd_printer.enqueue_message("501 re-downloading")
-                self.lcd_printer.enqueue_message("501 lan_settings")
-                self.lcd_printer.enqueue_message("501 But most likely")
-                self.lcd_printer.enqueue_message("501 Connect is down")
+            if code == 400:
+                self.lcd_printer.enqueue_400()
+            elif code == 401:
+                self.lcd_printer.enqueue_401()
+            elif code == 403:
+                self.lcd_printer.enqueue_403()
+            elif code == 501:
+                self.lcd_printer.enqueue_501()
 
     # --- Signal handlers ---
 
@@ -183,17 +167,7 @@ class OldBuddy:
     def connection_error(self, sender, path, json_dict):
         log.debug(f"Connection failed while sending data to the api point "
                   f"{path}. Data: {json_dict}")
-        self.lcd_printer.enqueue_message("Failed when talking")
-        self.lcd_printer.enqueue_message("to the Connect API.")
-        if self.local_ip == NO_IP:
-            self.lcd_printer.enqueue_message("Could be")
-            self.lcd_printer.enqueue_message("bad WiFi settings")
-            self.lcd_printer.enqueue_message("because there's")
-            self.lcd_printer.enqueue_message("No WiFi connection")
-        else:
-            self.lcd_printer.enqueue_message("Maybe no Internet")
-            self.lcd_printer.enqueue_message("or it's our fault")
-            self.lcd_printer.enqueue_message("Connect seems down")
+        self.lcd_printer.enqueue_connection_failed(self.local_ip == NO_IP)
 
     # --- Telemetry sending ---
 
