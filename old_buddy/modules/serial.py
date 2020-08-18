@@ -17,27 +17,12 @@ log.setLevel(SERIAL_LOG_LEVEL)
 
 class Serial:
     received = Signal()  # kwargs: line: str
-    serial_timed_out = Signal()
-
-    # Just checks if there is not more than one instance in existence,
-    # but this is not a singleton!
-    instance = None
 
     def __init__(self, port="/dev/ttyAMA0", baudrate=115200, timeout=1,
                  write_timeout=0, connection_write_delay=1,
                  default_timeout=None):
-        assert self.instance is None, "If running more than one instance" \
-                                      "is required, consider moving the " \
-                                      "signals from class to instance " \
-                                      "variables."
-        self.instance = self
 
         self.default_timeout = default_timeout
-        # Sometimes, we need silence except for one specific source
-        # (writing files) With 0 as default, the writes without arguments
-        # succeed, any other number, and only writes with the same
-        # number don't get ignored
-        self.channel = 0
 
         self.serial = serial.Serial(baudrate=baudrate, port=port,
                                     timeout=timeout,

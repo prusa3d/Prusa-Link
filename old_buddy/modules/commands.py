@@ -21,6 +21,8 @@ log.setLevel(COMMANDS_LOG_LEVEL)
 
 
 class Commands:
+    """Commands from Connect, only one at the time, but without blocking
+    telemetry updating"""
 
     def __init__(self, serial_queue: SerialQueue, connect_api: ConnectAPI,
                  state_manager: StateManager):
@@ -120,31 +122,15 @@ class Commands:
         log.debug(f"Trying to get to the {desired_state.name} state.")
         self.wait_for_instruction(instruction, give_up_on)
 
-        if self.state_manager.get_state() != desired_state:
+        if self.state_manager.get_state() == desired_state:
+            self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
+        else:
             log.debug(f"Our request has been _confirmed, yet the state remains "
                       f"{self.state_manager.get_state()} instead of "
                       f"{desired_state}")
-
-        retries = 5
-        while (self.state_manager.get_state() != desired_state and
-                retries > 0 and self.command_running):
-            sleep(QUIT_INTERVAL)
-            retries -= 1
-
-        if retries == 0:
-            log.error(f"Could not get to state {desired_state}")
             self.connect_api.emit_event(EmitEvents.REJECTED, command_id)
-        else:
-            self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
 
         self.state_manager.stop_expecting_change()
-
-    def run_new_command(self, thread: Thread):
-        if self.command_thread is not None and self.command_thread.is_alive():
-            self.stop_command_thread()
-            self.command_running = True
-        self.command_thread = thread
-        self.command_thread.start()
 
     def start_print(self, api_response):
         command_id = get_command_id(api_response)
@@ -190,6 +176,13 @@ class Commands:
                 self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
 
         self.state_manager.stop_expecting_change()
+
+    def run_new_command(self, thread: Thread):
+        if self.command_thread is not None and self.command_thread.is_alive():
+            self.stop_command_thread()
+            self.command_running = True
+        self.command_thread = thread
+        self.command_thread.start()
 
     def pause_print(self, api_response):
         thread = Thread(target=self.try_until_state, name="Pause print thread",
