@@ -20,12 +20,14 @@ from old_buddy.modules.serial import Serial
 from old_buddy.modules.serial_queue.helpers import enqueue_instrucion
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue, \
     MonitoredSerialQueue
-from old_buddy.modules.state_manager import StateManager, States, StateChange
+from old_buddy.modules.state_manager import StateManager, States, StateChange, \
+    PRINTING_STATES
 from old_buddy.modules.telemetry_gatherer import TelemetryGatherer
 from old_buddy.settings import CONNECT_CONFIG_PATH, PRINTER_PORT, \
-    PRINTER_BAUDRATE, PRINTER_RESPONSE_TIMEOUT, RX_SIZE
+    PRINTER_BAUDRATE, PRINTER_RESPONSE_TIMEOUT, RX_SIZE, TELEMETRY_INTERVAL, \
+    QUIT_INTERVAL
 from old_buddy.settings import OLD_BUDDY_LOG_LEVEL
-from old_buddy.util import get_command_id
+from old_buddy.util import get_command_id, run_slowly_die_fast
 
 log = logging.getLogger(__name__)
 log.setLevel(OLD_BUDDY_LOG_LEVEL)
@@ -34,6 +36,7 @@ log.setLevel(OLD_BUDDY_LOG_LEVEL)
 class OldBuddy:
 
     def __init__(self):
+        self.running = True
         self.stopped_event = threading.Event()
 
         try:
@@ -46,8 +49,6 @@ class OldBuddy:
             raise
         sleep(10)
         self.serial_queue = MonitoredSerialQueue(self.serial, rx_size=RX_SIZE)
-
-        Serial.serial_timed_out.connect(self.serial_timed_out)
 
         self.config = configparser.ConfigParser()
         self.config.read(CONNECT_CONFIG_PATH)
@@ -75,9 +76,10 @@ class OldBuddy:
         StateManager.state_changed.connect(self.state_changed)
 
         self.telemetry_gatherer = TelemetryGatherer(self.serial,
-                                                    self.serial_queue,
-                                                    self.state_manager)
-        TelemetryGatherer.send_telemetry_signal.connect(self.send_telemetry)
+                                                    self.serial_queue)
+        self.connect_thread = threading.Thread(
+            target=self.keep_sending_telemetry, name="telemetry_sending_thread")
+        self.connect_thread.start()
 
         self.commands = Commands(self.serial_queue, self.connect_api,
                                  self.state_manager)
@@ -102,6 +104,8 @@ class OldBuddy:
         # , self.sd_card)
 
     def stop(self):
+        self.running = False
+        self.connect_thread.join()
         # self.sd_card.stop()
         self.lcd_printer.stop()
         self.commands.stop_command_thread()
@@ -175,15 +179,7 @@ class OldBuddy:
     # --- Signal handlers ---
 
     def state_changed(self, sender, command_id=None, source=None):
-        state = self.state_manager.current_state
-        # Some state changes can imply telemetry data.
-        # For example, if we were not printing and now we are,
-        # we have been printing for 0 min and we have 0% done
-        if (state == States.PRINTING and
-                self.state_manager.last_state in {States.READY, States.BUSY}):
-            self.additional_telemetry.progress = 0
-            self.additional_telemetry.printing_time = 0
-
+        state = sender.current_state
         self.connect_api.emit_event(EmitEvents.STATE_CHANGED, state=state.name,
                                     command_id=command_id, source=source)
 
@@ -202,14 +198,33 @@ class OldBuddy:
             self.lcd_printer.enqueue_message("or it's our fault")
             self.lcd_printer.enqueue_message("Connect seems down")
 
-    def serial_timed_out(self, sender):
-        self.state_manager.busy()
+    # --- Telemetry sending ---
 
-    def send_telemetry(self, sender, telemetry: Telemetry):
+    def keep_sending_telemetry(self):
+        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
+                            TELEMETRY_INTERVAL, self.send_telemetry)
+
+    def send_telemetry(self):
+        telemetry = self.telemetry_gatherer.get_telemetry()
+
+        state = self.state_manager.get_state()
+        telemetry.state = state.name
+
+        # Make sure that even if the printer tells us print specific values,
+        # nothing will be sent out while not printing
+        if state not in PRINTING_STATES:
+            telemetry.time_printing = None
+            telemetry.time_estimated = None
+            telemetry.progress = None
+        if state == States.PRINTING:
+            telemetry.axis_x = None
+            telemetry.axis_y = None
+
         try:
             api_response = self.connect_api.send_dictable("/p/telemetry",
                                                           telemetry)
         except RequestException:
+            log.debug("Failed sending telemetry")
             pass
         else:
             self.handle_telemetry_response(api_response)
