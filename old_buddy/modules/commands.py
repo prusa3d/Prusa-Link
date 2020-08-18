@@ -1,6 +1,5 @@
 import logging
 from threading import Thread
-from time import time
 
 from old_buddy.modules.connect_api import ConnectAPI, EmitEvents, States, \
     Sources
@@ -11,8 +10,7 @@ from old_buddy.modules.serial_queue.helpers import wait_for_instruction, \
     enqueue_instrucion, enqueue_matchable
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue
 from old_buddy.modules.state_manager import StateChange, StateManager
-from old_buddy.settings import COMMAND_TIMEOUT, LONG_GCODE_TIMEOUT, \
-    COMMANDS_LOG_LEVEL, PRINTER_RESPONSE_TIMEOUT, LOAD_FILE_TIMEOUT
+from old_buddy.settings import COMMANDS_LOG_LEVEL
 from old_buddy.util import get_command_id, is_forced
 
 log = logging.getLogger(__name__)
@@ -50,27 +48,24 @@ class Commands:
         else:
             return override_gcode
 
-    def wait_for_instruction(self, instruction, timeout_on):
-        """Wait until the instruction is done, or we run out of time or quit"""
-        def should_wait():
-            return self.command_running and time() < timeout_on
-
-        wait_for_instruction(instruction, should_wait)
+    def wait_while_running(self, instruction):
+        """Wait until the instruction is done, or we quit"""
+        wait_for_instruction(instruction, lambda: self.command_running)
 
     # --- Command starters ---
 
     def pause_print(self, api_response):
-        thread = Thread(target=self.try_until_state, name="Pause print",
+        thread = Thread(target=self._try_until_state, name="Pause print",
                         args=(api_response, "M601", States.PAUSED))
         self.run_new_command(api_response, thread)
 
     def resume_print(self, api_response):
-        thread = Thread(target=self.try_until_state, name="Resume print",
+        thread = Thread(target=self._try_until_state, name="Resume print",
                         args=(api_response, "M602", States.PRINTING))
         self.run_new_command(api_response, thread)
 
     def stop_print(self, api_response):
-        thread = Thread(target=self.try_until_state, name="Stop print",
+        thread = Thread(target=self._try_until_state, name="Stop print",
                         args=(api_response, "M603", States.READY))
         self.run_new_command(api_response, thread)
 
@@ -96,11 +91,13 @@ class Commands:
             self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
                                         "Another command is running")
         else:
+            self.connect_api.emit_event(EmitEvents.ACCEPTED, command_id)
             self.command_thread = thread
             self.command_thread.start()
 
     def stop_command_thread(self):
         self.command_running = False
+        self.info_sedner.stop()
         if self.command_thread is not None:
             self.command_thread.join()
 
@@ -120,48 +117,35 @@ class Commands:
         """
 
         command_id = get_command_id(api_response)
-
-        self.state_manager.expect_change(
-            StateChange(api_response, default_source=Sources.CONNECT))
-
-        if self.is_printing_or_error() and not is_forced(api_response):
-            self.connect_api.emit_event(EmitEvents.REJECTED, command_id)
-            return
-
         gcode = self.get_gcode(api_response, override_gcode)
 
         if is_forced(api_response):
             log.debug(f"Force sending gcode: '{gcode}'")
 
+        if self.is_printing_or_error() and not is_forced(api_response):
+            self.connect_api.emit_event(EmitEvents.REJECTED, command_id)
+            return
+
+        self.state_manager.expect_change(
+            StateChange(api_response, default_source=Sources.CONNECT))
+
         instruction = enqueue_matchable(self.serial_queue, gcode)
 
-        give_up_on = time() + LONG_GCODE_TIMEOUT
-        decide_on = time() + PRINTER_RESPONSE_TIMEOUT
-
-        self.wait_for_instruction(instruction, decide_on)
-
-        # TODO: Now that we know the instruction hasn't even been sent yet
-        #       Decide, what to do
+        self.wait_while_running(instruction)
         if not instruction.is_confirmed():
-            self.connect_api.emit_event(EmitEvents.ACCEPTED, command_id)
-
-        self.wait_for_instruction(instruction, give_up_on)
-
-        if instruction.is_confirmed():
-            if instruction.match(REJECTION_REGEX):
-                self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
-                                            f"Unknown command '{gcode}')")
-            else:
-                self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
+            self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
+                                        f"Command interrupted")
+        elif instruction.match(REJECTION_REGEX):
+            self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
+                                        f"Unknown command '{gcode}')")
         else:
-            log.error(f"Timed out waiting for a gcode {gcode} to be handled")
-            # TODO: reject stuff that could end up here maybe?
+            self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
 
         # If the gcode execution did not cause a state change
         # stop expecting it
         self.state_manager.stop_expecting_change()
 
-    def try_until_state(self, api_response, gcode: str, desired_state: States):
+    def _try_until_state(self, api_response, gcode: str, desired_state: States):
         command_id = get_command_id(api_response)
         self.connect_api.emit_event(EmitEvents.ACCEPTED, command_id)
 
@@ -172,17 +156,18 @@ class Commands:
             state_change = StateChange(api_response, to_states=to_states)
             self.state_manager.expect_change(state_change)
 
-        give_up_on = time() + COMMAND_TIMEOUT
-
         log.debug(f"Trying to get to the {desired_state.name} state.")
-        self.wait_for_instruction(instruction, give_up_on)
+        self.wait_while_running(instruction)
 
-        if self.state_manager.get_state() == desired_state:
+        if not instruction.is_confirmed():
+            self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
+                                        f"Command interrupted")
+        elif self.state_manager.get_state() == desired_state:
             self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
         else:
-            log.debug(f"Our request has been _confirmed, yet the state remains "
-                      f"{self.state_manager.get_state()} instead of "
-                      f"{desired_state}")
+            log.debug(f"Our request has been confirmed, yet the state "
+                      f"remains {self.state_manager.get_state()} "
+                      f"instead of {desired_state}")
             self.connect_api.emit_event(EmitEvents.REJECTED, command_id)
 
         self.state_manager.stop_expecting_change()
@@ -202,32 +187,27 @@ class Commands:
         self.state_manager.expect_change(StateChange(api_response, to_states={
             States.PRINTING: Sources.CONNECT}))
 
-        give_up_loading_on = time() + LOAD_FILE_TIMEOUT
         load_instruction = enqueue_matchable(self.serial_queue,
                                              f"M23 {file_name}")
-        self.wait_for_instruction(load_instruction, give_up_loading_on)
+        self.wait_while_running(load_instruction)
 
-        start_print = False
+        match = load_instruction.match(OPEN_RESULT_REGEX)
+
         if not load_instruction.is_confirmed():
             self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
-                                        "File load was not _confirmed in time")
-        else:
-            match = load_instruction.match(OPEN_RESULT_REGEX)
-            if match.groups()[0] is None:  # Opening failed
-                self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
-                                            f"Wrong file name, or bad file")
-            else:
-                start_print = True
-
-        if start_print:
-            give_up_starting_on = time() + LOAD_FILE_TIMEOUT
+                                        f"Command interrupted")
+        elif match and match.groups()[0] is not None:
             start_instruction = enqueue_instrucion(self.serial_queue, "M24")
-            self.wait_for_instruction(start_instruction, give_up_starting_on)
+            self.wait_while_running(start_instruction)
 
             if not start_instruction.is_confirmed():
-                self.connect_api.emit_event(EmitEvents.REJECTED, command_id)
+                self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
+                                            f"Command interrupted")
             else:
                 self.state_manager.printing()
                 self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
+        else:  # Opening failed
+            self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
+                                        f"Wrong file name, or bad file")
 
         self.state_manager.stop_expecting_change()
