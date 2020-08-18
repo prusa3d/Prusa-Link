@@ -4,17 +4,15 @@ import logging
 import re
 from threading import Thread
 
-from blinker import Signal
-
 from old_buddy.modules.connect_api import Telemetry, States
 from old_buddy.modules.regular_expressions import TEMPERATURE_REGEX, \
-    POSITION_REGEX, E_FAN_REGEX, P_FAN_REGEX, PRINT_TIME_REGEX, PROGRESS_REGEX, \
-    TIME_REMAINING_REGEX, HEATING_REGEX, HEATING_HOTEND_REGEX
+    POSITION_REGEX, E_FAN_REGEX, P_FAN_REGEX, PRINT_TIME_REGEX, \
+    PROGRESS_REGEX, TIME_REMAINING_REGEX, HEATING_REGEX, HEATING_HOTEND_REGEX
 from old_buddy.modules.serial import Serial
 from old_buddy.modules.serial_queue.helpers import enqueue_list_from_str, \
     wait_for_instruction
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue
-from old_buddy.modules.state_manager import StateManager, PRINTING_STATES
+from old_buddy.modules.state_manager import StateManager
 from old_buddy.settings import QUIT_INTERVAL, TELEMETRY_INTERVAL, \
     TELEMETRY_GATHERER_LOG_LEVEL
 from old_buddy.util import run_slowly_die_fast
@@ -27,21 +25,8 @@ log.setLevel(TELEMETRY_GATHERER_LOG_LEVEL)
 
 
 class TelemetryGatherer:
-    send_telemetry_signal = Signal()  # kwargs: telemetry: Telemetry
 
-    # Just checks if there is not more than one instance in existence,
-    # This is not a singleton!
-    instance = None
-
-    def __init__(self, serial: Serial, serial_queue: SerialQueue,
-                 state_manager: StateManager):
-        assert self.instance is None, "If running more than one instance" \
-                                      "is required, consider moving the " \
-                                      "signals from class to instance " \
-                                      "variables."
-        self.instance = self
-
-        self.state_manager = state_manager
+    def __init__(self, serial: Serial, serial_queue: SerialQueue):
         self.serial = serial
         self.serial_queue = serial_queue
 
@@ -65,47 +50,18 @@ class TelemetryGatherer:
         self.serial.register_output_handler(HEATING_HOTEND_REGEX,
                                             self.heating_hotend_handler)
 
+        StateManager.state_changed.connect(self.state_changed_handler)
+
         self.current_telemetry = Telemetry()
         self.last_telemetry = self.current_telemetry
         self.running = True
         self.polling_thread = Thread(target=self.keep_polling_telemetry,
                                      name="telemetry_polling_thread")
-        self.sending_thread = Thread(target=self.keep_sending_telemetry,
-                                     name="telemetry_sending_thread")
         self.polling_thread.start()
-        self.sending_thread.start()
 
     def keep_polling_telemetry(self):
         run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
                             TELEMETRY_INTERVAL, self.poll_telemetry)
-
-    def keep_sending_telemetry(self):
-        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
-                            TELEMETRY_INTERVAL, self.send_telemetry)
-
-    def send_telemetry(self):
-        state = self.state_manager.get_state()
-        self.last_telemetry.state = state.name
-
-        # Make sure that even if the printer tells us print specific values,
-        # nothing will be sent out while not printing
-        if state not in PRINTING_STATES:
-            self.last_telemetry.time_printing = None
-            self.last_telemetry.time_estimated = None
-            self.last_telemetry.progress = None
-        if state == States.PRINTING:
-            self.last_telemetry.axis_x = None
-            self.last_telemetry.axis_y = None
-
-        # Actually sending last telemetry,
-        # The current one will be constructed while we are busy
-        # answering the telemetry response
-        # FIXME: Should I change the timestamp?
-        TelemetryGatherer.send_telemetry_signal.send(
-            self, telemetry=self.last_telemetry)
-
-        self.last_telemetry = self.current_telemetry
-        self.current_telemetry = Telemetry()
 
     def poll_telemetry(self):
         instruction_list = enqueue_list_from_str(self.serial_queue,
@@ -184,7 +140,28 @@ class TelemetryGatherer:
 
         self.current_telemetry.temp_nozzle = float(groups[0])
 
+    def state_changed_handler(self, sender, command_id=None, source=None):
+        # Some state changes can imply telemetry data.
+        # For example, if we were not printing and now we are,
+        # we have been printing for 0 min and we have 0% done
+        if (sender.current_state == States.PRINTING and
+                sender.last_state in {States.READY, States.BUSY}):
+            self.current_telemetry.progress = 0
+            self.current_telemetry.printing_time = 0
+
+    def get_telemetry(self):
+        """Returns telemetry gathered so far and starts anew"""
+        # Actually returning last telemetry,
+        # The current one will be constructed while we are busy
+        # answering the telemetry response
+        # FIXME: Should I change the timestamp?
+        telemetry_to_return = self.last_telemetry
+
+        self.last_telemetry = self.current_telemetry
+        self.current_telemetry = Telemetry()
+
+        return telemetry_to_return
+
     def stop(self):
         self.running = False
         self.polling_thread.join()
-        self.sending_thread.join()
