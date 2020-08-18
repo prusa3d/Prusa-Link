@@ -61,6 +61,45 @@ class LCDPrinter:
     def enqueue_message(self, text: str, duration: float = 2):
         self.message_queue.put(LCDMessage(text, duration))
 
+    def enqueue_400(self):
+        self.enqueue_message("400 Bad Request")
+        self.enqueue_message("400 May be a bug")
+        self.enqueue_message("400 But most likely")
+        self.enqueue_message("400 Outdated client")
+
+    def enqueue_401(self):
+        self.enqueue_message("401 Unauthorized")
+        self.enqueue_message("401 Missing token")
+        self.enqueue_message("401 Or invalid one")
+        self.enqueue_message("401 Bad lan_settings")
+
+    def enqueue_403(self):
+        self.enqueue_message("403 Forbidden")
+        self.enqueue_message("403 Expired token")
+        self.enqueue_message("403 Or invalid one")
+        self.enqueue_message("403 Bad lan_settings")
+
+    def enqueue_501(self):
+        self.enqueue_message("501 Service Unavail")
+        self.enqueue_message("501 You cold try")
+        self.enqueue_message("501 re-downloading")
+        self.enqueue_message("501 lan_settings")
+        self.enqueue_message("501 But most likely")
+        self.enqueue_message("501 Connect is down")
+
+    def enqueue_connection_failed(self, no_ip):
+        self.enqueue_message("Failed when talking")
+        self.enqueue_message("to the Connect API.")
+        if no_ip:
+            self.enqueue_message("Could be")
+            self.enqueue_message("bad WiFi settings")
+            self.enqueue_message("because there's")
+            self.enqueue_message("No WiFi connection")
+        else:
+            self.enqueue_message("Maybe no Internet")
+            self.enqueue_message("or it's our fault")
+            self.enqueue_message("Connect seems down")
+
     def stop(self):
         self.running = False
         self.queue_thread.join()
