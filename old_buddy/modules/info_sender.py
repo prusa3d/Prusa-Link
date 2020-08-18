@@ -13,7 +13,7 @@ from old_buddy.modules.serial_queue.helpers import wait_for_instruction, \
     enqueue_matchable
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue
 from old_buddy.modules.state_manager import StateManager
-from old_buddy.settings import INFO_SENDER_LOG_LEVEL, PRINTER_INFO_TIMEOUT
+from old_buddy.settings import INFO_SENDER_LOG_LEVEL
 from old_buddy.util import get_command_id
 
 log = logging.getLogger(__name__)
@@ -55,12 +55,15 @@ class InfoSender:
         self.state_manager = state_manager
         self.serial_queue = serial_queue
 
+        self.getting_info = False
+
     def respond_with_info(self, api_response):
+        self.getting_info = True
         command_id = get_command_id(api_response)
 
         try:
             printer_info = self.get_printer_info()
-        except (TimeoutError, InfoError) as e:
+        except InfoError as e:
             log.exception("Error while getting info")
             self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
                                         reason=e.args[0],
@@ -76,6 +79,8 @@ class InfoSender:
                 self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
             except RequestException:
                 pass
+        finally:
+            self.getting_info = False
 
     def get_printer_info(self):
         printer_info: PrinterInfo = PrinterInfo()
@@ -89,36 +94,33 @@ class InfoSender:
     def insert_type_and_version(self,
                                 printer_info: PrinterInfo) -> PrinterInfo:
         instruction = enqueue_matchable(self.serial_queue, "M862.2 Q")
-        timeout_on = time() + PRINTER_INFO_TIMEOUT
-        wait_for_instruction(instruction, lambda: time() < timeout_on)
+        wait_for_instruction(instruction, lambda: self.getting_info)
+        match = instruction.match(PRINTER_TYPE_REGEX)
 
-        if instruction.is_confirmed():
-            match = instruction.match(PRINTER_TYPE_REGEX)
-            if match is not None:
-                code = int(match.groups()[0])
-                try:
-                    printer_info.set_printer_model_info(PRINTER_TYPES[code])
-                except KeyError:
-                    log.exception("The printer version has not been found"
-                                  "in the list of printers")
-                    raise InfoError(f"Unsupported printer model '{code}'")
-        else:
-            raise TimeoutError("Cannot get type and version at the moment")
+        if not instruction.is_confirmed():
+            raise InfoError("Command interrupted")
+        elif match is not None:
+            code = int(match.groups()[0])
+            try:
+                printer_info.set_printer_model_info(PRINTER_TYPES[code])
+            except KeyError:
+                log.exception("The printer version has not been found"
+                              "in the list of printers")
+                raise InfoError(f"Unsupported printer model '{code}'")
+
         return printer_info
 
     def insert_firmware_version(self,
                                 printer_info: PrinterInfo) -> PrinterInfo:
         instruction = enqueue_matchable(self.serial_queue, "M115")
-        timeout_on = time() + PRINTER_INFO_TIMEOUT
-        wait_for_instruction(instruction, lambda: time() < timeout_on)
+        wait_for_instruction(instruction, lambda: self.getting_info)
+        match = instruction.match(FW_REGEX)
 
-        if instruction.is_confirmed():
-            match = instruction.match(FW_REGEX)
-            if match is not None:
-                printer_info.firmware = match.groups()[0]
+        if not instruction.is_confirmed():
+            raise InfoError("Command interrupted")
+        elif match is not None:
+            printer_info.firmware = match.groups()[0]
 
-        else:
-            raise TimeoutError("Cannot get fw version at the moment")
         return printer_info
 
     def insert_additional_info(self, printer_info: PrinterInfo) -> PrinterInfo:
@@ -146,3 +148,6 @@ class InfoSender:
 
         printer_info.network_info = network_info
         return printer_info
+
+    def stop(self):
+        self.getting_info = False
