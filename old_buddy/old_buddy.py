@@ -77,12 +77,7 @@ class OldBuddy:
 
         self.telemetry_gatherer = TelemetryGatherer(self.serial,
                                                     self.serial_queue)
-        self.connect_thread = threading.Thread(
-            target=self.keep_sending_telemetry, name="telemetry_sending_thread")
-        self.connect_thread.start()
 
-        self.commands = Commands(self.serial_queue, self.connect_api,
-                                 self.state_manager)
         self.lcd_printer = LCDPrinter(self.serial_queue, self.state_manager)
         # self.sd_card = SDCard(self.serial, self.state_manager)
 
@@ -101,6 +96,13 @@ class OldBuddy:
 
         self.info_sender = InfoSender(self.serial_queue, self.state_manager,
                                       self.connect_api, self.ip_updater)
+
+        self.commands = Commands(self.serial_queue, self.connect_api,
+                                 self.state_manager, self.info_sender)
+
+        self.connect_thread = threading.Thread(
+            target=self.keep_sending_telemetry, name="telemetry_sending_thread")
+        self.connect_thread.start()
         # , self.sd_card)
 
     def stop(self):
@@ -127,17 +129,12 @@ class OldBuddy:
         if api_response.status_code == 200:
             log.debug(f"Command id -> {get_command_id(api_response)}")
             if api_response.headers["Content-Type"] == "text/x.gcode":
-                self.state_manager.expect_change(
-                    StateChange(api_response, default_source=Sources.CONNECT))
                 self.commands.execute_gcode(api_response)
-                # If the gcode execution did not cause a state change
-                # stop expecting it
-                self.state_manager.stop_expecting_change()
             else:
                 try:
                     data = api_response.json()
                     if data["command"] == "SEND_INFO":
-                        self.info_sender.respond_with_info(api_response)
+                        self.commands.respond_with_info(api_response)
                     if data["command"] == "START_PRINT":
                         self.commands.start_print(api_response)
                     if data["command"] == "STOP_PRINT":
