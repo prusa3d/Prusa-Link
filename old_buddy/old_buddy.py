@@ -9,13 +9,12 @@ from requests import RequestException
 from serial import SerialException
 
 from old_buddy.modules.commands import Commands
-from old_buddy.modules.connect_api import ConnectAPI
-from old_buddy.modules.connect_api import Telemetry, PrinterInfo, EmitEvents
+from old_buddy.modules.connect_api import ConnectAPI, EmitEvents
 from old_buddy.modules.info_sender import InfoSender
 from old_buddy.modules.ip_updater import IPUpdater, NO_IP
 from old_buddy.modules.lcd_printer import LCDPrinter
 from old_buddy.modules.serial import Serial
-# from old_buddy.modules.sd_card import SDCard
+from old_buddy.modules.sd_card import SDCard
 from old_buddy.modules.serial_queue.helpers import enqueue_instrucion
 from old_buddy.modules.serial_queue.serial_queue import MonitoredSerialQueue
 from old_buddy.modules.state_manager import StateManager, States,\
@@ -45,8 +44,9 @@ class OldBuddy:
                 "Cannot talk to the printer using the RPi port, "
                 "is it enabled? Is the Pi configured correctly?")
             raise
-        sleep(10)
-        self.serial_queue = MonitoredSerialQueue(self.serial, rx_size=RX_SIZE)
+
+        sleep(10)  # if the printer restarted, wait for it
+        self.serial_queue = MonitoredSerialQueue(self.serial)
 
         self.config = configparser.ConfigParser()
         self.config.read(CONNECT_CONFIG_PATH)
@@ -77,17 +77,11 @@ class OldBuddy:
                                                     self.serial_queue)
 
         self.lcd_printer = LCDPrinter(self.serial_queue, self.state_manager)
-        # self.sd_card = SDCard(self.serial, self.state_manager)
-
-        self.local_ip = ""
-        self.last_showed_ip = time()
-        self.additional_telemetry = Telemetry()
-        self.printer_info = PrinterInfo()
+        # self.sd_card = SDCard(self.serial_queue, self.serial,
+        #                       self.state_manager)
 
         # Greet the user
-        self.lcd_printer.enqueue_message(f"Old Buddy says: Hi")
-        self.lcd_printer.enqueue_message(f"RPi is operational")
-        self.lcd_printer.enqueue_message(f"Its IP address is:")
+        self.lcd_printer.enqueue_greet()
 
         # Start the ip updater after we enqueued the correct IP report message
         self.ip_updater = IPUpdater(self.lcd_printer)
@@ -101,7 +95,6 @@ class OldBuddy:
         self.connect_thread = threading.Thread(
             target=self.keep_sending_telemetry, name="telemetry_sending_thread")
         self.connect_thread.start()
-        # , self.sd_card)
 
     def stop(self):
         self.running = False
@@ -167,7 +160,8 @@ class OldBuddy:
     def connection_error(self, sender, path, json_dict):
         log.debug(f"Connection failed while sending data to the api point "
                   f"{path}. Data: {json_dict}")
-        self.lcd_printer.enqueue_connection_failed(self.local_ip == NO_IP)
+        self.lcd_printer.enqueue_connection_failed(
+            self.ip_updater.local_ip == NO_IP)
 
     # --- Telemetry sending ---
 
