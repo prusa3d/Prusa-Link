@@ -9,6 +9,7 @@ from old_buddy.modules.connect_api import ConnectAPI, PrinterInfo, \
     NetworkInfo, EmitEvents, Event, Sources
 from old_buddy.modules.ip_updater import IPUpdater, NO_IP
 from old_buddy.modules.regular_expressions import FW_REGEX, PRINTER_TYPE_REGEX
+from old_buddy.modules.sd_card import SDCard
 from old_buddy.modules.serial_queue.helpers import wait_for_instruction, \
     enqueue_matchable
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue
@@ -42,14 +43,14 @@ class InfoError(Exception):
 
 class InfoSender:
     def __init__(self, serial_queue: SerialQueue, state_manager: StateManager,
-                 connect_api: ConnectAPI, ip_updater: IPUpdater):
-        # , sd_card: SDCard):
+                 connect_api: ConnectAPI, ip_updater: IPUpdater,
+                 sd_card: SDCard):
         self.info_inserters: List[Callable[[PrinterInfo], PrinterInfo]]
         self.info_inserters = [self.insert_type_and_version,
                                self.insert_firmware_version,
                                self.insert_additional_info]
 
-        # self.sd_card = sd_card
+        self.sd_card = sd_card
         self.ip_updater = ip_updater
         self.connect_api = connect_api
         self.state_manager = state_manager
@@ -75,7 +76,7 @@ class InfoSender:
             event_object.values = printer_info
 
             try:
-                self.connect_api.send_dictable("/p/events", event_object)
+                self.connect_api.send_model("/p/events", event_object)
                 self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
             except RequestException:
                 pass
@@ -124,16 +125,11 @@ class InfoSender:
         return printer_info
 
     def insert_additional_info(self, printer_info: PrinterInfo) -> PrinterInfo:
-        self.ip_updater.update_local_ip()
-        if self.ip_updater.local_ip != NO_IP:
-            printer_info.ip = self.ip_updater.local_ip
-
         printer_info.state = self.state_manager.get_state().name
         printer_info.sn = "4206942069"  # TODO: implement real getters
         printer_info.uuid = "00000000-0000-0000-0000-000000000000"
         printer_info.appendix = False
-        printer_info.mac = get_mac_address()
-        # printer_info.files = self.sd_card.get_api_file_tree()
+        printer_info.files = self.sd_card.get_api_file_tree()
 
         return printer_info
 
