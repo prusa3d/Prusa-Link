@@ -8,7 +8,7 @@ from ..regular_expressions import CONFIRMATION_REGEX, RX_YEETED_REGEX, \
     PAUSED_REGEX, RENEW_TIMEOUT_REGEX
 from ..serial import Serial
 from ...settings import SERIAL_QUEUE_LOG_LEVEL, SERIAL_QUEUE_TIMEOUT, \
-    QUIT_INTERVAL, SERIAL_QUEUE_MONITOR_INTERVAL
+    QUIT_INTERVAL, SERIAL_QUEUE_MONITOR_INTERVAL, RX_SIZE
 from ...util import run_slowly_die_fast
 
 RX_SAFETY_MARGIN = 16
@@ -20,7 +20,7 @@ log.setLevel(SERIAL_QUEUE_LOG_LEVEL)
 
 class SerialQueue:
 
-    def __init__(self, serial: Serial, rx_size=128):
+    def __init__(self, serial: Serial, rx_size=RX_SIZE):
         self.serial = serial
 
         # A gueue of instructions for the printer
