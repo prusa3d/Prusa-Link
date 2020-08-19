@@ -91,6 +91,8 @@ class OldBuddy:
         self.commands = Commands(self.serial_queue, self.connect_api,
                                  self.state_manager, self.info_sender)
 
+        self.last_sent_telemetry = time()
+
         self.connect_thread = threading.Thread(
             target=self.keep_sending_telemetry, name="telemetry_sending_thread")
         self.connect_thread.start()
@@ -169,6 +171,10 @@ class OldBuddy:
                             TELEMETRY_INTERVAL, self.send_telemetry)
 
     def send_telemetry(self):
+        if (delay := time() - self.last_sent_telemetry) > 2:
+            log.error(f"Something blocked telemetry sending for {delay}")
+        self.last_sent_telemetry = time()
+
         telemetry = self.telemetry_gatherer.get_telemetry()
 
         state = self.state_manager.get_state()

@@ -90,6 +90,7 @@ class Commands:
         if self.command_thread is not None and self.command_thread.is_alive():
             self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
                                         "Another command is running")
+            log.debug(f"Rejected, thread {self.command_thread.name} is running")
         else:
             self.connect_api.emit_event(EmitEvents.ACCEPTED, command_id)
             self.command_thread = thread
