@@ -1,10 +1,44 @@
+"""
+I'll try to explain myself here
+The SD state can start only in the UNSURE state, we know nothing
+
+From there, we will ask the printer about the files present.
+If there are files, the SD card is present.
+If not, we still know nothing and need to ask the printer to r-init the card
+that provides the information about SD card presence
+
+The same situation arises when the user inserts a card.
+We get into the INITIALISING state.
+The card could have been removed immediately after insertion, it could have
+been empty, or full of files. Normally inserted card with files is easy.
+We'll see files. If there are no files, the re-init tells us the truth
+- If we determined, the card is present, let's tell Connect.
+
+Now the card removal is tricky. We cannot tell whether an empty card was removed
+so we need to re-init empty cards periodically, to ensure their presence.
+If the card was full of files and suddenly there are none. Use re-init to check
+if it was removed.
+- If we determined, the card got removed, let's tell Connect
+
+Finally, we could have not noticed the card removal and the printer is telling
+us about a SD insertion. Let's tell connect the card got removed and go to the
+INITIALISING state
+
+"""
+
+
+
+
 import logging
 from time import time
 from enum import Enum
-from threading import Thread
+from threading import Thread, Event
 from typing import Dict, Set, Callable
 
-from old_buddy.modules.connect_api import FileType, FileTree, States
+from blinker import Signal
+
+from old_buddy.modules.connect_api import FileType, FileTree, States, \
+    ConnectAPI, EmitEvents
 from old_buddy.modules.regular_expressions import INSERTED_REGEX, \
     SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX
 from old_buddy.modules.serial import Serial
@@ -42,7 +76,7 @@ class InternalFileTree:
         self.m_date = m_date
         self.m_time = m_time
         self.descendants_set: Set[InternalFileTree] = set()
-        self.chilren_dict: Dict[str, InternalFileTree] = {}
+        self.children_dict: Dict[str, InternalFileTree] = {}
         self._parent: InternalFileTree = parent
 
         self.full_path = self.get_full_path()
@@ -52,9 +86,12 @@ class InternalFileTree:
 
     def __str__(self):
         output = self.get_full_path() + "\n"
-        for child in self.chilren_dict.values():
+        for child in self.children_dict.values():
             output += child.__str__()
         return output
+
+    def __bool__(self):
+        return bool(self.descendants_set)
 
     @property
     def parent(self):
@@ -66,7 +103,7 @@ class InternalFileTree:
         self.full_path = self.get_full_path()
 
     def add_child(self, child: 'InternalFileTree'):
-        self.chilren_dict[child.path] = child
+        self.children_dict[child.path] = child
         if child.parent is None:
             child.parent = self
         log.debug(f"Child {child.path} added")
@@ -85,12 +122,12 @@ class InternalFileTree:
         if len(parts) == 2:
             path, rest = parts
 
-            if path not in self.chilren_dict:
+            if path not in self.children_dict:
                 child = InternalFileTree(file_type=FileType.DIR, path=path)
                 self.add_child(child)
 
             log.debug(f"The file is in a directory {path}. Adding it inside")
-            added_child = self.chilren_dict[path].child_from_path(rest)
+            added_child = self.children_dict[path].child_from_path(rest)
 
         else:  # Insert to this level
             path, str_size = parts[0].split(" ")
@@ -112,7 +149,7 @@ class InternalFileTree:
             path.append(current_node.path)
             current_node = current_node.parent
 
-        return "/" + "/".join(path)
+        return "/" + "/".join(reversed(path))
 
     def diff(self, other_tree: 'InternalFileTree'):
         removed_files = self.descendants_set.difference(
@@ -136,111 +173,80 @@ class InternalFileTree:
 
     def to_api_file_tree(self):
         file_tree = FileTree()
-        file_tree.type = self.type
+        file_tree.type = self.type.name
         file_tree.path = self.path
         file_tree.ro = self.ro
         file_tree.size = self.size
         file_tree.m_date = self.m_date
         file_tree.m_time = self.m_time
-        file_tree.children = list(self.chilren_dict.values())
+        unconverted_children = list(self.children_dict.values())
+        file_tree.children = [child.to_api_file_tree()
+                              for child in unconverted_children]
+        if not file_tree.children:
+            file_tree.children = None
         return file_tree
 
 
-class SDPresence(Enum):
-    YES = "YES"
+class SDState(Enum):
+    PRESENT = "PRESENT"
+    INITIALISING = "INITIALISING"
     UNSURE = "UNSURE"
-    NO = "NO"
-
-
-class SDState:
-
-    def __init__(self, serial_queue: SerialQueue, serial: Serial,
-                 state_manager: StateManager,
-                 state_changed_callback: Callable[[], None]):
-        self.state_changed_callback = state_changed_callback
-        self.state_manager = state_manager
-        self.serial = serial
-        self.serial_queue = serial_queue
-
-        self.sd_present: SDPresence = SDPresence.UNSURE
-        self.previous_sd_present: SDPresence = SDPresence.UNSURE
-
-        self.serial.register_output_handler(INSERTED_REGEX,
-                                            lambda match: self.inserted())
-
-    def inserted(self):
-        self.sd_present = SDPresence.YES
-        self.state_changed_callback()
-
-    def unsure(self):
-        """
-        Calling this can be disruptive to the user experience,
-        the card will reload. If there is nothing on the SD card or
-        if we suspect there is no SD card, calling this should be fine
-        """
-        instruction = enqueue_matchable(self.serial_queue, "M21")
-        wait_for_instruction(instruction, lambda: time() < give_up_on)
-
-        if not instruction.is_confirmed():
-            log.debug("Failed determining the SD presence.")
-        else:
-            match = instruction.match(SD_PRESENT_REGEX)
-            if match.groups()[0] is not None:
-                self.sd_present = SDPresence.YES
-            else:
-                self.sd_present = SDPresence.NO
-            self.state_changed_callback()
+    ABSENT = "ABSENT"
 
 
 class SDCard:
 
     def __init__(self, serial_queue: SerialQueue, serial: Serial,
-                 state_manager: StateManager):
+                 state_manager: StateManager, connect_api: ConnectAPI):
         self.state_manager = state_manager
         self.serial = serial
-        self.serial_queue = serial_queue
+        self.serial.register_output_handler(INSERTED_REGEX,
+                                            lambda match: self.sd_inserted())
+        self.serial_queue: SerialQueue = serial_queue
+        self.connect_api: ConnectAPI = connect_api
 
         self.running = True
+        self.is_consistent: Event = Event()
+        self.expecting_insertion = False
 
-        self.sd_state = SDState(serial_queue, serial, state_manager,
-                                self.sd_state_changed)
+        self.current_sd_state: SDState = SDState.UNSURE
+        self.last_sd_state: SDState = SDState.UNSURE
+
         self.file_tree: InternalFileTree = InternalFileTree.new_root_node()
-        self.previous_file_tree: InternalFileTree = self.file_tree
+        self.old_tree: InternalFileTree = self.file_tree
 
-        self.sd_update_thread = Thread(target=self.keep_updating_sd_stuff)
+        self.sd_update_thread = Thread(target=self.keep_updating_sd,
+                                       name="SD_thread")
         self.sd_update_thread.start()
 
-    def keep_updating_sd_stuff(self):
+    def keep_updating_sd(self):
         run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL, SD_INTERVAL,
-                            self.update_sd_stuff)
+                            self.update_sd)
 
-    def update_sd_stuff(self):
-        if self.state_manager.base_state == States.BUSY:
-            log.debug("Not bothering with updating file structure, "
-                      "printer looks busy")
-            return
+    def update_sd(self):
+        self.old_tree = self.file_tree
+        self.file_tree = self.construct_file_tree()
 
-        self.previous_file_tree = self.file_tree
-        try:
-            self.file_tree = self.construct_file_tree()
-        except CouldNotConstructTree:
-            log.error("No file tree could be constructed, printer seems busy")
-        else:
-            # If we do not know the sd state and no files were found,
-            # check the SD presence
-            # If there were files and now there is nothing,
-            # the SD was most likely ejected. So check for that
-            if not self.file_tree.descendants_set:
-                if (self.previous_file_tree.descendants_set or
-                        self.sd_state == SDPresence.UNSURE):
-                    self.sd_state.unsure()
+        unsure_states = {SDState.INITIALISING, SDState.UNSURE}
+
+        # If we do not know the sd state and no files were found,
+        # check the SD presence
+        # If there were files and now there is nothing,
+        # the SD was most likely ejected. So check for that
+        if self.current_sd_state in unsure_states:
+            if self.file_tree:
+                self.sd_state_changed(SDState.PRESENT)
+            else:
+                self.decide_presence()
+        if not self.file_tree and self.current_sd_state == SDState.PRESENT:
+            self.decide_presence()
+        self.is_consistent.set()
 
     def construct_file_tree(self):
         tree = InternalFileTree(path="SD Card", file_type=FileType.MOUNT)
 
-        # TODO: sd state
-        # if not self.sd_present:
-        #     return tree
+        if self.current_sd_state == SDState.ABSENT:
+            return tree
 
         instruction = enqueue_collecting(self.serial_queue, "M20",
                                          begin_regex=BEGIN_FILES_REGEX,
@@ -250,35 +256,78 @@ class SDCard:
 
         if instruction.is_confirmed():
             for match in instruction.captured_matches:
-                log.debug(f"{match}")
                 tree.child_from_path(match.string)
+
         log.debug(f"Constructed tree {tree}")
         return tree
 
     def get_api_file_tree(self):
-        self.file_tree.to_api_file_tree()
+        """Wait until the tree is consistent with our state then return it"""
+        while self.running:
+            if self.is_consistent.wait(QUIT_INTERVAL):
+                break
+        return self.file_tree.to_api_file_tree()
 
-    def sd_state_changed(self):
-        if (self.sd_state.previous_sd_present == SDPresence.YES and
-                self.sd_state.sd_present == SDPresence.YES):
-            # This would typically happen if someone removed
-            # and inserted an SD card faster, than we update our state.
-            # Set previous file tree as if we registered the unplug
-            self.previous_file_tree = InternalFileTree.new_root_node()
+    def sd_inserted(self):
+        """
+        If received unexpectedly, this signalises someone physically
+        inserting a card
+        """
+        if not self.expecting_insertion:
+            self.is_consistent.clear()
+            self.sd_state_changed(SDState.INITIALISING)
 
-            # TODO: media ejected
-            # TODO: Media inserted
+    def sd_state_changed(self, new_state):
+        self.last_sd_state = self.current_sd_state
+        self.current_sd_state = new_state
+        log.debug(f"SD state changed from {self.last_sd_state} to "
+                  f"{self.current_sd_state}")
 
-        elif self.sd_state.previous_sd_present != self.sd_state.sd_present:
-            # what about going from unsure? no events?
-            if self.sd_state.sd_present == SDPresence.YES:
-                # TODO: Media inserted
-                ...
+        if self.last_sd_state == SDState.INITIALISING and \
+                self.current_sd_state == SDState.PRESENT:
+            log.debug("SD Card inserted")
 
-            elif self.sd_state.sd_present == SDPresence.NO:
-                # TODO: Media ejected
-                ...
+            # When sending in info, it's in a different thread,
+            # it can wait once the state becomes flagged as consistent
+            # This is called in our own thread and would deadlock if we'd call
+            # self.get_api_file_tree()
+            # We know it's consistent because the card being confirmed present
+            # is the last step before setting that event.
+            # I had so much trouble detecting states I forgot what it will take
+            # to send this
+            files = self.file_tree.to_api_file_tree()
+            self.connect_api.emit_event(EmitEvents.MEDIUM_INSERTED, root="/",
+                                        files=files)
+            ...
+
+        elif self.last_sd_state == SDState.PRESENT and \
+                self.current_sd_state in {SDState.ABSENT, SDState.INITIALISING}:
+            log.debug("SD Card removed")
+            self.connect_api.emit_event(EmitEvents.MEDIUM_EJECTED, root="/")
+            ...
+
+    def decide_presence(self):
+        """
+        Calling this can be disruptive to the user experience,
+        the card will reload. If there is nothing on the SD card or
+        if we suspect there is no SD card, calling this should be fine
+        """
+        self.expecting_insertion = True
+        instruction = enqueue_matchable(self.serial_queue, "M21")
+        wait_for_instruction(instruction, lambda: self.running)
+        self.expecting_insertion = False
+
+        if not instruction.is_confirmed():
+            log.debug("Failed determining the SD presence.")
+        else:
+            match = instruction.match(SD_PRESENT_REGEX)
+            if match.groups()[0] is not None:
+                if self.current_sd_state != SDState.PRESENT:
+                    self.sd_state_changed(SDState.PRESENT)
+            else:
+                self.sd_state_changed(SDState.ABSENT)
 
     def stop(self):
         self.running = False
         self.sd_update_thread.join()
+

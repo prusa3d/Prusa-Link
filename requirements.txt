@@ -4,3 +4,4 @@ pyserial
 requests
 getmac
 elevate
+pydantic

@@ -76,8 +76,8 @@ class OldBuddy:
                                                     self.serial_queue)
 
         self.lcd_printer = LCDPrinter(self.serial_queue, self.state_manager)
-        # self.sd_card = SDCard(self.serial_queue, self.serial,
-        #                       self.state_manager)
+        self.sd_card = SDCard(self.serial_queue, self.serial,
+                              self.state_manager, self.connect_api)
 
         # Greet the user
         self.lcd_printer.enqueue_greet()
@@ -86,7 +86,8 @@ class OldBuddy:
         self.ip_updater = IPUpdater(self.lcd_printer)
 
         self.info_sender = InfoSender(self.serial_queue, self.state_manager,
-                                      self.connect_api, self.ip_updater)
+                                      self.connect_api, self.ip_updater,
+                                      self.sd_card)
 
         self.commands = Commands(self.serial_queue, self.connect_api,
                                  self.state_manager, self.info_sender)
@@ -100,7 +101,7 @@ class OldBuddy:
     def stop(self):
         self.running = False
         self.connect_thread.join()
-        # self.sd_card.stop()
+        self.sd_card.stop()
         self.lcd_printer.stop()
         self.commands.stop_command_thread()
         self.state_manager.stop()
@@ -191,8 +192,8 @@ class OldBuddy:
             telemetry.axis_y = None
 
         try:
-            api_response = self.connect_api.send_dictable("/p/telemetry",
-                                                          telemetry)
+            api_response = self.connect_api.send_model("/p/telemetry",
+                                                       telemetry)
         except RequestException:
             log.debug("Failed sending telemetry")
             pass

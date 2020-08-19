@@ -1,8 +1,10 @@
 import logging
 from enum import Enum
 from time import time
+from typing import Dict, Any, List, Optional
 
 from blinker import Signal
+from pydantic import BaseModel
 from requests import Session, RequestException
 
 from old_buddy import __version__
@@ -39,80 +41,84 @@ class Dictable:
         return output_dict
 
 
-class Telemetry(Dictable):
+class Telemetry(BaseModel):
 
-    def __init__(self):
-        self.temp_nozzle = None
-        self.temp_bed = None
-        self.target_nozzle = None
-        self.target_bed = None
-        self.axis_x = None
-        self.axis_y = None
-        self.axis_z = None
-        self.fan_extruder = None
-        self.fan_print = None
-        self.progress = None
-        self.filament = None
-        self.flow = None
-        self.speed = None
-        self.time_printing = None
-        self.time_estimated = None
-        self.odometer_x = None
-        self.odometer_y = None
-        self.odometer_z = None
-        self.odometer_e = None
-        self.material = None
-        self.state = None
-
-
-class Event(Dictable):
-    def __init__(self):
-        self.event = None
-        self.source = None
-        self.values = None
-        self.command_id = None
-        self.command = None
-        self.reason = None
+    temp_nozzle: Optional[float] = None
+    temp_bed: Optional[float] = None
+    target_nozzle: Optional[float] = None
+    target_bed: Optional[float] = None
+    axis_x: Optional[float] = None
+    axis_y: Optional[float] = None
+    axis_z: Optional[float] = None
+    fan_extruder: Optional[int] = None
+    fan_print: Optional[int] = None
+    progress: Optional[int] = None
+    filament: Optional[str] = None
+    flow: Optional[int] = None
+    speed: Optional[int] = None
+    time_printing: Optional[int] = None
+    time_estimated: Optional[int] = None
+    odometer_x: Optional[int] = None
+    odometer_y: Optional[int] = None
+    odometer_z: Optional[int] = None
+    odometer_e: Optional[int] = None
+    material: Optional[str] = None
+    state: str = None
 
 
-class NetworkInfo(Dictable):
-    def __init__(self):
-        self.lan_ipv4 = None    # not implemented yet
-        self.lan_ipv6 = None    # not implemented yet
-        self.lan_mac = None     # not implemented yet
-        self.wifi_ipv4 = None
-        self.wifi_ipv6 = None   # not implemented yet
-        self.wifi_mac = None
-        self.wifi_ssid = None   # not implemented yet
+class NetworkInfo(BaseModel):
+
+    lan_ipv4: Optional[str] = None    # not implemented yet
+    lan_ipv6: Optional[str] = None    # not implemented yet
+    lan_mac: Optional[str] = None     # not implemented yet
+    wifi_ipv4: Optional[str] = None
+    wifi_ipv6: Optional[str] = None   # not implemented yet
+    wifi_mac: str = None
+    wifi_ssid: Optional[str] = None   # not implemented yet
 
 
-class PrinterInfo(Dictable):
-    def __init__(self):
-        self.type = None
-        self.version = None
-        self.subversion = None
-        self.firmware = None
-        self.wui = __version__
-        self.network_info = None
-        self.sn = None
-        self.uuid = None
-        self.appendix = None
-        self.state = None
-        self.files = None
+class FileTree(BaseModel):
+
+    type: str = None
+    path: str = None
+    ro: Optional[bool] = None
+    size: int = None
+    m_date: Optional[int] = None
+    m_time: Optional[int] = None
+    children: List["FileTree"] = None
+
+
+FileTree.update_forward_refs()
+
+
+class Event(BaseModel):
+
+    event: str = None
+    source: Optional[str] = None
+    values: Optional[Dict[str, Any]] = None
+    command_id: Optional[int] = None
+    command: Optional[str] = None
+    reason: Optional[str] = None
+    root: Optional[str] = None
+    files: Optional[FileTree] = None
+
+
+class PrinterInfo(BaseModel):
+
+    type: int = None
+    version: int = None
+    subversion: int = None
+    firmware: str = None
+    wui: str = __version__
+    network_info: NetworkInfo = None
+    sn: str = None
+    uuid: str = None
+    appendix: bool = None
+    state: str = None
+    files: FileTree = None
 
     def set_printer_model_info(self, data):
         self.type, self.version, self.subversion = data
-
-
-class FileTree(Dictable):
-    def __init__(self):
-        self.type = None
-        self.path = None
-        self.ro = None
-        self.size = None
-        self.m_date = None
-        self.m_time = None
-        self.children = None
 
 
 class EmitEvents(Enum):
@@ -121,6 +127,8 @@ class EmitEvents(Enum):
     FINISHED = "FINISHED"
     INFO = "INFO"
     STATE_CHANGED = "STATE_CHANGED"
+    MEDIUM_EJECTED = "MEDIUM_EJECTED"
+    MEDIUM_INSERTED = "MEDIUM_INSERTED"
 
 
 class Sources(Enum):
@@ -186,30 +194,23 @@ class ConnectAPI:
         log.debug(f"Response contents: {response.content}")
         return response
 
-    def send_dictable(self, path: str, dictable: Dictable):
-        json_dict = dictable.to_dict()
+    def send_model(self, path: str, model: BaseModel):
+        json_dict = model.dict(exclude_none=True)
         return self.send_dict(path, json_dict)
 
     def emit_event(self, emit_event: EmitEvents, command_id: int = None,
-                   reason: str = None, state: str = None, source: str = None):
+                   reason: str = None, state: str = None, source: str = None,
+                   root: str = None, files: FileTree = None):
         """
         Logs errors, but stops their propagation, as this is called many many
         times and doing try/excepts everywhere would hinder readability
         """
-        event = Event()
-        event.event = emit_event.value
-
-        if command_id is not None:
-            event.command_id = command_id
-        if reason is not None:
-            event.reason = reason
-        if state is not None:
-            event.state = state
-        if source is not None:
-            event.source = source
+        event = Event(event=emit_event.value, command_id=command_id,
+                      reason=reason, state=state, source=source, root=root,
+                      files=files)
 
         try:
-            self.send_dictable("/p/events", event)
+            self.send_model("/p/events", event)
         except RequestException:
             # Errors get logged upstream, stop propagation,
             # try/excepting these would be a chore
