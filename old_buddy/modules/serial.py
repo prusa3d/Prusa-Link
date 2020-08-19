@@ -9,7 +9,7 @@ import serial
 from blinker import Signal
 
 from old_buddy.modules.regular_expressions import OK_REGEX, ANY_REGEX
-from old_buddy.settings import SERIAL_LOG_LEVEL
+from old_buddy.settings import SERIAL_LOG_LEVEL, SERIAL_REOPEN_INTERVAL
 
 log = logging.getLogger(__name__)
 log.setLevel(SERIAL_LOG_LEVEL)
@@ -19,14 +19,18 @@ class Serial:
     received = Signal()  # kwargs: line: str
 
     def __init__(self, port="/dev/ttyAMA0", baudrate=115200, timeout=1,
-                 write_timeout=0, connection_write_delay=1,
+                 write_timeout=0, connection_write_delay=10,
                  default_timeout=None):
+
+        self.port = port
+        self.baudrate = baudrate
+        self.timeout = timeout
+        self.write_timeout = write_timeout
 
         self.default_timeout = default_timeout
 
-        self.serial = serial.Serial(baudrate=baudrate, port=port,
-                                    timeout=timeout,
-                                    write_timeout=write_timeout)
+        self.serial = None
+        self._reopen()
 
         sleep(connection_write_delay)
 
@@ -40,13 +44,33 @@ class Serial:
         # The big black dog keeps eating my handlers...
         self.__garbage_collector_safehouse = set()
 
+    def _reopen(self):
+        if self.serial is not None and self.serial.is_open:
+            self.serial.close()
+        self.serial = serial.Serial(baudrate=self.baudrate, port=self.port,
+                                    timeout=self.timeout,
+                                    write_timeout=self.write_timeout)
+
+    def _renew_serial_connection(self):
+        while self.running:
+            try:
+                self._reopen()
+            except serial.SerialException:
+                log.debug(f"Reopenning of the serial port failed, "
+                          f"retrying in {SERIAL_REOPEN_INTERVAL}")
+                sleep(SERIAL_REOPEN_INTERVAL)
+            else:
+                break
+
     def _read_continually(self):
         """Ran in a thread, reads stuff over an over"""
         while self.running:
             try:
                 line = self.serial.readline().decode("ASCII").strip()
             except serial.SerialException:
-                log.error("Failed when reading from the printer. Ignoring")
+                log.error("Failed when reading from the printer. "
+                          "Trying to re-open")
+                self._renew_serial_connection()
             else:
                 if line != "":
                     # with self.write_read_lock:

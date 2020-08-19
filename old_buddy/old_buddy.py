@@ -45,7 +45,6 @@ class OldBuddy:
                 "is it enabled? Is the Pi configured correctly?")
             raise
 
-        sleep(10)  # if the printer restarted, wait for it
         self.serial_queue = MonitoredSerialQueue(self.serial)
 
         self.config = configparser.ConfigParser()
