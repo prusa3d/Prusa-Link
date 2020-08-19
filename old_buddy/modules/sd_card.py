@@ -1,5 +1,4 @@
 import logging
-import re
 from time import time
 from enum import Enum
 from threading import Thread
@@ -9,8 +8,8 @@ from old_buddy.modules.connect_api import FileType, FileTree, States
 from old_buddy.modules.regular_expressions import INSERTED_REGEX, \
     SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX
 from old_buddy.modules.serial import Serial
-from old_buddy.modules.serial_queue.helpers import enqueue_instrucion, \
-    wait_for_instruction, enqueue_matchable, enqueue_collecting
+from old_buddy.modules.serial_queue.helpers import wait_for_instruction, \
+    enqueue_matchable, enqueue_collecting
 from old_buddy.modules.serial_queue.serial_queue import SerialQueue
 from old_buddy.modules.state_manager import StateManager
 from old_buddy.settings import SD_CARD_LOG_LEVEL, \
@@ -44,11 +43,18 @@ class InternalFileTree:
         self.m_time = m_time
         self.descendants_set: Set[InternalFileTree] = set()
         self.chilren_dict: Dict[str, InternalFileTree] = {}
-        self.full_path = self.get_full_path()
         self._parent: InternalFileTree = parent
+
+        self.full_path = self.get_full_path()
 
     def __hash__(self):
         return hash((self.type, self.ro, self.size, self.m_date, self.m_time))
+
+    def __str__(self):
+        output = self.get_full_path() + "\n"
+        for child in self.chilren_dict.values():
+            output += child.__str__()
+        return output
 
     @property
     def parent(self):
@@ -63,6 +69,7 @@ class InternalFileTree:
         self.chilren_dict[child.path] = child
         if child.parent is None:
             child.parent = self
+        log.debug(f"Child {child.path} added")
         return child
 
     def child_from_path(self, line: str):
@@ -103,6 +110,7 @@ class InternalFileTree:
         while current_node.parent is not None:
             # We do not need the root node's name, so this is sufficient
             path.append(current_node.path)
+            current_node = current_node.parent
 
         return "/" + "/".join(path)
 
@@ -158,7 +166,7 @@ class SDState:
         self.previous_sd_present: SDPresence = SDPresence.UNSURE
 
         self.serial.register_output_handler(INSERTED_REGEX,
-                                            lambda: self.inserted())
+                                            lambda match: self.inserted())
 
     def inserted(self):
         self.sd_present = SDPresence.YES
@@ -171,7 +179,6 @@ class SDState:
         if we suspect there is no SD card, calling this should be fine
         """
         instruction = enqueue_matchable(self.serial_queue, "M21")
-        give_up_on = time() + PRINTER_RESPONSE_TIMEOUT
         wait_for_instruction(instruction, lambda: time() < give_up_on)
 
         if not instruction.is_confirmed():
@@ -235,7 +242,7 @@ class SDCard:
         # if not self.sd_present:
         #     return tree
 
-        instruction = enqueue_collecting(self.serial_queue, "M28",
+        instruction = enqueue_collecting(self.serial_queue, "M20",
                                          begin_regex=BEGIN_FILES_REGEX,
                                          capture_regex=FILE_PATH_REGEX,
                                          end_regex=END_FILES_REGEX)
@@ -243,8 +250,9 @@ class SDCard:
 
         if instruction.is_confirmed():
             for match in instruction.captured_matches:
+                log.debug(f"{match}")
                 tree.child_from_path(match.string)
-
+        log.debug(f"Constructed tree {tree}")
         return tree
 
     def get_api_file_tree(self):
