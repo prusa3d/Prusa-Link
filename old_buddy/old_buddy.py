@@ -128,14 +128,20 @@ class OldBuddy:
                     data = api_response.json()
                     if data["command"] == "SEND_INFO":
                         self.commands.respond_with_info(api_response)
-                    if data["command"] == "START_PRINT":
+                    elif data["command"] == "START_PRINT":
                         self.commands.start_print(api_response)
-                    if data["command"] == "STOP_PRINT":
+                    elif data["command"] == "STOP_PRINT":
                         self.commands.stop_print(api_response)
-                    if data["command"] == "PAUSE_PRINT":
+                    elif data["command"] == "PAUSE_PRINT":
                         self.commands.pause_print(api_response)
-                    if data["command"] == "RESUME_PRINT":
+                    elif data["command"] == "RESUME_PRINT":
                         self.commands.resume_print(api_response)
+                    else:
+                        command_id = get_command_id(api_response)
+                        self.connect_api.emit_event(EmitEvents.REJECTED,
+                                                    command_id,
+                                                    "Unknown command")
+
                 except JSONDecodeError:
                     log.exception(
                         f"Failed to decode a response {api_response}")
