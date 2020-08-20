@@ -5,14 +5,14 @@ from typing import Union, Dict
 
 from blinker import Signal
 
-from old_buddy.modules.connect_api import Sources, States
-from old_buddy.modules.regular_expressions import OK_REGEX, BUSY_REGEX, \
+from old_buddy.input_output.serial import Serial
+from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL, \
+    STATE_MANAGER_LOG_LEVEL
+from old_buddy.structures.model_classes import States, Sources
+from old_buddy.structures.regular_expressions import OK_REGEX, BUSY_REGEX, \
     ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, PROGRESS_REGEX, \
     SD_PRINTING_REGEX
-from old_buddy.modules.serial import Serial
-from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL, \
-    STATE_MANAGER_LOG_LEVEL
 from old_buddy.util import run_slowly_die_fast, get_command_id
 
 log = logging.getLogger(__name__)

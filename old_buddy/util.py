@@ -1,6 +1,6 @@
 import socket
-from typing import Callable
 from time import sleep, time
+from typing import Callable
 
 import requests
 
