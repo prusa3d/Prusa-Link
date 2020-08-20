@@ -240,6 +240,9 @@ class SDCard:
                 self.decide_presence()
         if not self.file_tree and self.current_sd_state == SDState.PRESENT:
             self.decide_presence()
+        if self.file_tree and self.current_sd_state == SDState.ABSENT:
+            log.error("ERROR: Sanity check failed. SD is not present, "
+                      "but we see files!")
         self.is_consistent.set()
 
     def construct_file_tree(self):
@@ -256,7 +259,7 @@ class SDCard:
 
         if instruction.is_confirmed():
             for match in instruction.captured_matches:
-                tree.child_from_path(match.string)
+                tree.child_from_path(match.string.lower())
 
         log.debug(f"Constructed tree {tree}")
         return tree
@@ -270,10 +273,13 @@ class SDCard:
 
     def sd_inserted(self):
         """
+        If received while expecting it, stop expecting another one
         If received unexpectedly, this signalises someone physically
         inserting a card
         """
-        if not self.expecting_insertion:
+        if self.expecting_insertion:
+            self.expecting_insertion = False
+        else:
             self.is_consistent.clear()
             self.sd_state_changed(SDState.INITIALISING)
 
