@@ -26,28 +26,23 @@ INITIALISING state
 
 """
 
-
-
-
 import logging
-from time import time
 from enum import Enum
 from threading import Thread, Event
-from typing import Dict, Set, Callable
+from typing import Dict, Set
 
-from blinker import Signal
-
-from old_buddy.modules.connect_api import FileType, FileTree, States, \
-    ConnectAPI, EmitEvents
-from old_buddy.modules.regular_expressions import INSERTED_REGEX, \
-    SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX
-from old_buddy.modules.serial import Serial
-from old_buddy.modules.serial_queue.helpers import wait_for_instruction, \
+from old_buddy.informers.state_manager import StateManager
+from old_buddy.input_output.connect_api import ConnectAPI
+from old_buddy.structures.model_classes import FileType, FileTree, \
+    EmitEvents
+from old_buddy.input_output.serial import Serial
+from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
+from old_buddy.input_output.serial_queue.helpers import wait_for_instruction, \
     enqueue_matchable, enqueue_collecting
-from old_buddy.modules.serial_queue.serial_queue import SerialQueue
-from old_buddy.modules.state_manager import StateManager
 from old_buddy.settings import SD_CARD_LOG_LEVEL, \
-    QUIT_INTERVAL, SD_INTERVAL, PRINTER_RESPONSE_TIMEOUT
+    QUIT_INTERVAL, SD_INTERVAL
+from old_buddy.structures.regular_expressions import INSERTED_REGEX, \
+    SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX
 from old_buddy.util import run_slowly_die_fast
 
 log = logging.getLogger(__name__)

@@ -1,10 +1,9 @@
-import logging
 import re
 from typing import List, Callable
 
-from old_buddy.modules.serial_queue.instruction import Instruction, \
+from old_buddy.input_output.serial_queue.instruction import Instruction, \
     MatchableInstruction, EasyInstruction, CollectingInstruction
-from old_buddy.modules.serial_queue.serial_queue import SerialQueue
+from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
 from old_buddy.settings import QUIT_INTERVAL
 
 

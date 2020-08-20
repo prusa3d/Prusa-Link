@@ -1,14 +1,12 @@
 import logging
 import re
 from functools import partial
-from threading import Thread, Event, Lock
+from threading import Thread, Lock
 from time import sleep
-from typing import List
 
 import serial
 from blinker import Signal
 
-from old_buddy.modules.regular_expressions import OK_REGEX, ANY_REGEX
 from old_buddy.settings import SERIAL_LOG_LEVEL, SERIAL_REOPEN_INTERVAL
 
 log = logging.getLogger(__name__)

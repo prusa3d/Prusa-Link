@@ -1,16 +1,16 @@
 import logging
 from threading import Thread
 
-from old_buddy.modules.connect_api import ConnectAPI, EmitEvents, States, \
-    Sources
-from old_buddy.modules.info_sender import InfoSender
-from old_buddy.modules.regular_expressions import REJECTION_REGEX, \
-    OPEN_RESULT_REGEX
-from old_buddy.modules.serial_queue.helpers import wait_for_instruction, \
+from old_buddy.command_handlers.info_sender import InfoSender
+from old_buddy.informers.state_manager import StateChange, StateManager
+from old_buddy.input_output.connect_api import ConnectAPI
+from old_buddy.input_output.serial_queue.helpers import wait_for_instruction, \
     enqueue_instrucion, enqueue_matchable
-from old_buddy.modules.serial_queue.serial_queue import SerialQueue
-from old_buddy.modules.state_manager import StateChange, StateManager
+from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
 from old_buddy.settings import COMMANDS_LOG_LEVEL
+from old_buddy.structures.model_classes import States, EmitEvents, Sources
+from old_buddy.structures.regular_expressions import OPEN_RESULT_REGEX, \
+    REJECTION_REGEX
 from old_buddy.util import get_command_id, is_forced
 
 log = logging.getLogger(__name__)

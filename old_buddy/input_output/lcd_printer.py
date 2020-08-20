@@ -3,11 +3,10 @@ from queue import Queue, Empty
 from threading import Thread
 from time import time, sleep
 
-from old_buddy.modules.serial_queue.helpers import enqueue_instrucion, \
+from old_buddy.informers.state_manager import StateManager
+from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
+from old_buddy.input_output.serial_queue.helpers import enqueue_instrucion, \
     wait_for_instruction
-from old_buddy.modules.serial_queue.instruction import Instruction
-from old_buddy.modules.serial_queue.serial_queue import SerialQueue
-from old_buddy.modules.state_manager import StateManager
 from old_buddy.settings import QUIT_INTERVAL, LCD_PRINTER_LOG_LEVEL, \
     LCD_QUEUE_SIZE
 
