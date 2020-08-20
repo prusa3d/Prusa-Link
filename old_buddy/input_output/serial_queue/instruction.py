@@ -37,8 +37,15 @@ class Instruction:
         # Event set when the write has been _confirmed by the printer
         self.confirmed_event = Event()
 
+        # The plan is to move from waiting for events to reacting to them
+        # using blinker signals
+        self.confirmed_signal = Signal()
+
         # Event set when the write has been sent to the printer
         self.sent_event = Event()
+
+        # Signal sent on the same ocasion
+        self.sent_signal = Signal()
 
     def __str__(self):
         return f"Instruction '{self.data.decode('ASCII').strip()}'"
@@ -56,10 +63,12 @@ class Instruction:
             return False
 
         self.confirmed_event.set()
+        self.confirmed_signal.send(self)
         return True
 
     def sent(self):
         self.sent_event.set()
+        self.sent_signal.send(self)
 
     def output_captured(self, line):
         pass
