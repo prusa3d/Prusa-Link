@@ -3,27 +3,29 @@ import logging
 import threading
 from distutils.util import strtobool
 from json import JSONDecodeError
-from time import time, sleep
+from time import time
 
 from requests import RequestException
 from serial import SerialException
 
-from old_buddy.modules.commands import Commands
-from old_buddy.modules.connect_api import ConnectAPI, EmitEvents
-from old_buddy.modules.info_sender import InfoSender
-from old_buddy.modules.ip_updater import IPUpdater, NO_IP
-from old_buddy.modules.lcd_printer import LCDPrinter
-from old_buddy.modules.serial import Serial
-from old_buddy.modules.sd_card import SDCard
-from old_buddy.modules.serial_queue.helpers import enqueue_instrucion
-from old_buddy.modules.serial_queue.serial_queue import MonitoredSerialQueue
-from old_buddy.modules.state_manager import StateManager, States,\
+from old_buddy.command_handlers.commands import InfoSender
+from old_buddy.command_handlers.commands import Commands
+from old_buddy.informers.telemetry_gatherer import TelemetryGatherer
+from old_buddy.informers.ip_updater import IPUpdater, NO_IP
+from old_buddy.informers.sd_card import SDCard
+from old_buddy.informers.state_manager import StateManager, States, \
     PRINTING_STATES
-from old_buddy.modules.telemetry_gatherer import TelemetryGatherer
+from old_buddy.input_output.connect_api import ConnectAPI
+from old_buddy.input_output.lcd_printer import LCDPrinter
+from old_buddy.input_output.serial import Serial
+from old_buddy.input_output.serial_queue.serial_queue \
+    import MonitoredSerialQueue
+from old_buddy.input_output.serial_queue.helpers import enqueue_instrucion
 from old_buddy.settings import CONNECT_CONFIG_PATH, PRINTER_PORT, \
-    PRINTER_BAUDRATE, PRINTER_RESPONSE_TIMEOUT, RX_SIZE, TELEMETRY_INTERVAL, \
+    PRINTER_BAUDRATE, PRINTER_RESPONSE_TIMEOUT, TELEMETRY_INTERVAL, \
     QUIT_INTERVAL
 from old_buddy.settings import OLD_BUDDY_LOG_LEVEL
+from old_buddy.structures.model_classes import EmitEvents
 from old_buddy.util import get_command_id, run_slowly_die_fast
 
 log = logging.getLogger(__name__)

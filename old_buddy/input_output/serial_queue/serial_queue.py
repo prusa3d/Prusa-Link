@@ -3,13 +3,13 @@ from threading import Lock, Thread
 from time import time
 from typing import List
 
-from .instruction import Instruction
-from ..regular_expressions import CONFIRMATION_REGEX, RX_YEETED_REGEX, \
-    PAUSED_REGEX, RENEW_TIMEOUT_REGEX
-from ..serial import Serial
-from ...settings import SERIAL_QUEUE_LOG_LEVEL, SERIAL_QUEUE_TIMEOUT, \
+from old_buddy.input_output.serial import Serial
+from old_buddy.settings import SERIAL_QUEUE_LOG_LEVEL, SERIAL_QUEUE_TIMEOUT, \
     QUIT_INTERVAL, SERIAL_QUEUE_MONITOR_INTERVAL, RX_SIZE
-from ...util import run_slowly_die_fast
+from old_buddy.structures.regular_expressions import CONFIRMATION_REGEX, \
+    RX_YEETED_REGEX, PAUSED_REGEX, RENEW_TIMEOUT_REGEX
+from old_buddy.util import run_slowly_die_fast
+from .instruction import Instruction
 
 RX_SAFETY_MARGIN = 16
 MAX_ONE_INSTRUCTION = True
@@ -97,11 +97,11 @@ class SerialQueue:
             self._write()
 
     def _write(self):
-            log.debug(f"{self.next_instruction} sent")
-            self.next_instruction.sent()
-            self.serial.write(self.next_instruction.data)
-            self.rx_current += self.next_instruction.size
-            self.next_instruction_index += 1
+        log.debug(f"{self.next_instruction} sent")
+        self.next_instruction.sent()
+        self.serial.write(self.next_instruction.data)
+        self.rx_current += self.next_instruction.size
+        self.next_instruction_index += 1
 
     def _enqueue(self, instruction: Instruction):
         log.debug(f"{instruction} enqueued")

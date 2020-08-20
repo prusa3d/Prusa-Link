@@ -1,8 +1,8 @@
-from .old_buddy import OldBuddy
-
 import logging
 
 from cysystemd.journal import JournaldLogHandler
+
+from .old_buddy import OldBuddy
 
 DEFAULT_LOG_LEVEL = "DEBUG"
 CONSOLE_FORMAT = (

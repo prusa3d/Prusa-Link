@@ -3,7 +3,7 @@ import socket
 from threading import Thread
 from time import time
 
-from old_buddy.modules.lcd_printer import LCDPrinter
+from old_buddy.input_output.lcd_printer import LCDPrinter
 from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL, \
     IP_UPDATER_LOG_LEVEL, SHOW_IP_INTERVAL
 from old_buddy.util import run_slowly_die_fast, get_local_ip

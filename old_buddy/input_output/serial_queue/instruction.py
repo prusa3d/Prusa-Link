@@ -2,7 +2,9 @@ import re
 from enum import Enum
 from threading import Event
 
-from old_buddy.modules.regular_expressions import OK_REGEX
+from blinker import Signal
+
+from old_buddy.structures.regular_expressions import OK_REGEX
 
 
 class Instruction:

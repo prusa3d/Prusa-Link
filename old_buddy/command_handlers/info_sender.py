@@ -1,20 +1,21 @@
 import logging
-from time import time
 from typing import List, Callable
 
 from getmac import get_mac_address
 from requests import RequestException
 
-from old_buddy.modules.connect_api import ConnectAPI, PrinterInfo, \
+from old_buddy.informers.ip_updater import IPUpdater, NO_IP
+from old_buddy.informers.sd_card import SDCard
+from old_buddy.informers.state_manager import StateManager
+from old_buddy.input_output.connect_api import ConnectAPI
+from old_buddy.structures.model_classes import PrinterInfo, \
     NetworkInfo, EmitEvents, Event, Sources
-from old_buddy.modules.ip_updater import IPUpdater, NO_IP
-from old_buddy.modules.regular_expressions import FW_REGEX, PRINTER_TYPE_REGEX
-from old_buddy.modules.sd_card import SDCard
-from old_buddy.modules.serial_queue.helpers import wait_for_instruction, \
+from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
+from old_buddy.input_output.serial_queue.helpers import wait_for_instruction, \
     enqueue_matchable
-from old_buddy.modules.serial_queue.serial_queue import SerialQueue
-from old_buddy.modules.state_manager import StateManager
 from old_buddy.settings import INFO_SENDER_LOG_LEVEL
+from old_buddy.structures.regular_expressions import FW_REGEX, \
+    PRINTER_TYPE_REGEX
 from old_buddy.util import get_command_id
 
 log = logging.getLogger(__name__)

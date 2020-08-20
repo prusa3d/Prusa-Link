@@ -4,17 +4,17 @@ import logging
 import re
 from threading import Thread
 
-from old_buddy.modules.connect_api import Telemetry, States
-from old_buddy.modules.regular_expressions import TEMPERATURE_REGEX, \
-    POSITION_REGEX, E_FAN_REGEX, P_FAN_REGEX, PRINT_TIME_REGEX, \
-    PROGRESS_REGEX, TIME_REMAINING_REGEX, HEATING_REGEX, HEATING_HOTEND_REGEX
-from old_buddy.modules.serial import Serial
-from old_buddy.modules.serial_queue.helpers import enqueue_list_from_str, \
+from old_buddy.informers.state_manager import StateManager
+from old_buddy.structures.model_classes import Telemetry, States
+from old_buddy.input_output.serial import Serial
+from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
+from old_buddy.input_output.serial_queue.helpers import enqueue_list_from_str, \
     wait_for_instruction
-from old_buddy.modules.serial_queue.serial_queue import SerialQueue
-from old_buddy.modules.state_manager import StateManager
 from old_buddy.settings import QUIT_INTERVAL, TELEMETRY_INTERVAL, \
     TELEMETRY_GATHERER_LOG_LEVEL
+from old_buddy.structures.regular_expressions import TEMPERATURE_REGEX, \
+    POSITION_REGEX, E_FAN_REGEX, P_FAN_REGEX, PRINT_TIME_REGEX, \
+    PROGRESS_REGEX, TIME_REMAINING_REGEX, HEATING_REGEX, HEATING_HOTEND_REGEX
 from old_buddy.util import run_slowly_die_fast
 
 # XXX:  "M221", "M220
