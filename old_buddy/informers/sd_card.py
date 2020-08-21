@@ -241,7 +241,8 @@ class SDCard:
         self.is_consistent.set()
 
     def construct_file_tree(self):
-        tree = InternalFileTree(path="SD Card", file_type=FileType.MOUNT)
+        tree = InternalFileTree(path="SD Card", file_type=FileType.MOUNT,
+                                ro=True)
 
         if self.current_sd_state == SDState.ABSENT:
             return tree
