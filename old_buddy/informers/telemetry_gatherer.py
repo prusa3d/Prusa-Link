@@ -4,6 +4,8 @@ import logging
 import re
 from threading import Thread
 
+from blinker import Signal
+
 from old_buddy.informers.state_manager import StateManager
 from old_buddy.structures.model_classes import Telemetry, States
 from old_buddy.input_output.serial import Serial
@@ -27,6 +29,8 @@ log.setLevel(TELEMETRY_GATHERER_LOG_LEVEL)
 class TelemetryGatherer:
 
     def __init__(self, serial: Serial, serial_queue: SerialQueue):
+        self.updated_signal = Signal()
+
         self.serial = serial
         self.serial_queue = serial_queue
 
@@ -50,10 +54,7 @@ class TelemetryGatherer:
         self.serial.register_output_handler(HEATING_HOTEND_REGEX,
                                             self.heating_hotend_handler)
 
-        StateManager.state_changed.connect(self.state_changed_handler)
-
         self.current_telemetry = Telemetry()
-        self.last_telemetry = self.current_telemetry
         self.running = True
         self.polling_thread = Thread(target=self.keep_polling_telemetry,
                                      name="telemetry_polling_thread")
@@ -72,6 +73,10 @@ class TelemetryGatherer:
             # Wait indefinitely, if the queue got stuck
             # we aren't the ones who should handle that
             wait_for_instruction(instruction, lambda: self.running)
+        self.current_telemetry = Telemetry()
+
+    def telemetry_updated(self):
+        self.updated_signal.send(self, telemetry=self.current_telemetry)
 
     def temperature_handler(self, match: re.Match):
         groups = match.groups()
@@ -79,18 +84,22 @@ class TelemetryGatherer:
         self.current_telemetry.target_nozzle = float(groups[1])
         self.current_telemetry.temp_bed = float(groups[2])
         self.current_telemetry.target_bed = float(groups[3])
+        self.telemetry_updated()
 
     def position_handler(self, match: re.Match):
         groups = match.groups()
         self.current_telemetry.axis_x = float(groups[4])
         self.current_telemetry.axis_y = float(groups[5])
         self.current_telemetry.axis_z = float(groups[6])
+        self.telemetry_updated()
 
     def fan_extruder_handler(self, match: re.Match):
         self.current_telemetry.fan_extruder = float(match.groups()[0])
+        self.telemetry_updated()
 
     def fan_print_handler(self, match: re.Match):
         self.current_telemetry.fan_print = float(match.groups()[0])
+        self.telemetry_updated()
 
     def print_time_handler(self, match: re.Match):
         groups = match.groups()
@@ -101,12 +110,14 @@ class TelemetryGatherer:
             mins_in_sec = printing_time_mins * 60
             printing_time_sec = mins_in_sec + hours_in_sec
             self.current_telemetry.time_printing = printing_time_sec
+            self.telemetry_updated()
 
     def progress_handler(self, match: re.Match):
         groups = match.groups()
         progress = int(groups[0])
         if 0 <= progress <= 100:
             self.current_telemetry.progress = progress
+            self.telemetry_updated()
 
     def time_remaining_handler(self, match: re.Match):
         # FIXME: Using the more conservative values from silent mode,
@@ -116,51 +127,34 @@ class TelemetryGatherer:
         secs_remaining = mins_remaining * 60
         if mins_remaining >= 0:
             self.current_telemetry.time_estimated = secs_remaining
+            self.telemetry_updated()
 
     def flow_rate_handler(self, match: re.Match):
         groups = match.groups()
         flow = int(groups[0])
         if 0 <= flow <= 100:
             self.current_telemetry.flow = flow
+            self.telemetry_updated()
 
     def speed_multiplier_handler(self, match: re.Match):
         groups = match.groups()
         speed = int(groups[0])
         if 0 <= speed <= 100:
             self.current_telemetry.speed = speed
+            self.telemetry_updated()
 
     def heating_handler(self, match: re.Match):
         groups = match.groups()
 
         self.current_telemetry.temp_nozzle = float(groups[0])
         self.current_telemetry.temp_bed = float(groups[1])
+        self.telemetry_updated()
 
     def heating_hotend_handler(self, match: re.Match):
         groups = match.groups()
 
         self.current_telemetry.temp_nozzle = float(groups[0])
-
-    def state_changed_handler(self, sender, command_id=None, source=None):
-        # Some state changes can imply telemetry data.
-        # For example, if we were not printing and now we are,
-        # we have been printing for 0 min and we have 0% done
-        if (sender.current_state == States.PRINTING and
-                sender.last_state in {States.READY, States.BUSY}):
-            self.current_telemetry.progress = 0
-            self.current_telemetry.printing_time = 0
-
-    def get_telemetry(self):
-        """Returns telemetry gathered so far and starts anew"""
-        # Actually returning last telemetry,
-        # The current one will be constructed while we are busy
-        # answering the telemetry response
-        # FIXME: Should I change the timestamp?
-        telemetry_to_return = self.last_telemetry
-
-        self.last_telemetry = self.current_telemetry
-        self.current_telemetry = Telemetry()
-
-        return telemetry_to_return
+        self.telemetry_updated()
 
     def stop(self):
         self.running = False
