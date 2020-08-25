@@ -3,7 +3,6 @@ from queue import Queue, Empty
 from threading import Thread
 from time import time, sleep
 
-from old_buddy.informers.state_manager import StateManager
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
 from old_buddy.input_output.serial_queue.helpers import enqueue_instrucion, \
     wait_for_instruction
@@ -23,8 +22,7 @@ class LCDMessage:
 
 class LCDPrinter:
 
-    def __init__(self, serial_queue: SerialQueue, state_manager: StateManager):
-        self.state_manager = state_manager
+    def __init__(self, serial_queue: SerialQueue):
         self.serial_queue = serial_queue
 
         self.message_queue: Queue = Queue(maxsize=LCD_QUEUE_SIZE)
