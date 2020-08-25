@@ -4,10 +4,9 @@ from typing import List, Callable
 from getmac import get_mac_address
 from requests import RequestException
 
-from old_buddy.informers.ip_updater import IPUpdater, NO_IP
-from old_buddy.informers.sd_card import SDCard
-from old_buddy.informers.state_manager import StateManager
+from old_buddy.informers.ip_updater import NO_IP
 from old_buddy.input_output.connect_api import ConnectAPI
+from old_buddy.model import Model
 from old_buddy.structures.model_classes import PrinterInfo, \
     NetworkInfo, EmitEvents, Event, Sources
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
@@ -43,18 +42,15 @@ class InfoError(Exception):
 
 
 class InfoSender:
-    def __init__(self, serial_queue: SerialQueue, state_manager: StateManager,
-                 connect_api: ConnectAPI, ip_updater: IPUpdater,
-                 sd_card: SDCard):
+    def __init__(self, serial_queue: SerialQueue, connect_api: ConnectAPI,
+                 model: Model):
         self.info_inserters: List[Callable[[PrinterInfo], PrinterInfo]]
         self.info_inserters = [self.insert_type_and_version,
                                self.insert_firmware_version,
                                self.insert_additional_info]
 
-        self.sd_card = sd_card
-        self.ip_updater = ip_updater
+        self.model = model
         self.connect_api = connect_api
-        self.state_manager = state_manager
         self.serial_queue = serial_queue
 
         self.getting_info = False
@@ -126,20 +122,19 @@ class InfoSender:
         return printer_info
 
     def insert_additional_info(self, printer_info: PrinterInfo) -> PrinterInfo:
-        printer_info.state = self.state_manager.get_state().name
+        printer_info.state = self.model.state.name
         printer_info.sn = "4206942069"  # TODO: implement real getters
         printer_info.uuid = "00000000-0000-0000-0000-000000000000"
         printer_info.appendix = False
-        printer_info.files = self.sd_card.get_api_file_tree()
+        printer_info.files = self.model.file_tree
 
         return printer_info
 
     def insert_network_info(self, printer_info: PrinterInfo) -> PrinterInfo:
         network_info = NetworkInfo()
 
-        self.ip_updater.update_local_ip()
-        if self.ip_updater.local_ip != NO_IP:
-            network_info.wifi_ipv4 = self.ip_updater.local_ip
+        if self.model.local_ip != NO_IP:
+            network_info.wifi_ipv4 = self.model.local_ip
 
         network_info.wifi_mac = get_mac_address()
 
