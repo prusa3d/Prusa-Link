@@ -130,16 +130,31 @@ class Commands:
         self.state_manager.expect_change(
             StateChange(api_response, default_source=Sources.CONNECT))
 
-        instruction = enqueue_matchable(self.serial_queue, gcode)
+        # hotfix, now being sent mutiple lines of gcode at once absolutely
+        # unexpectedly
+        has_failed = False
+        for line in gcode.split("\n"):
+            if not line:
+                # line is empty
+                continue
 
-        self.wait_while_running(instruction)
-        if not instruction.is_confirmed():
-            self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
-                                        f"Command interrupted")
-        elif instruction.match(REJECTION_REGEX):
-            self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
-                                        f"Unknown command '{gcode}')")
-        else:
+            instruction = enqueue_matchable(self.serial_queue, line)
+
+            self.wait_while_running(instruction)
+
+            if not instruction.is_confirmed():
+                self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
+                                            f"Command interrupted")
+                has_failed = True
+                break
+
+            elif instruction.match(REJECTION_REGEX):
+                self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
+                                            f"Unknown command '{gcode}')")
+                has_failed = True
+                break
+
+        if not has_failed:
             self.connect_api.emit_event(EmitEvents.FINISHED, command_id)
 
         # If the gcode execution did not cause a state change
