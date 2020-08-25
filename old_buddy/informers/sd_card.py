@@ -28,10 +28,11 @@ INITIALISING state
 
 import logging
 from enum import Enum
-from threading import Thread, Event
+from threading import Thread
 from typing import Dict, Set
 
-from old_buddy.informers.state_manager import StateManager
+from blinker import Signal
+
 from old_buddy.input_output.connect_api import ConnectAPI
 from old_buddy.structures.model_classes import FileType, FileTree, \
     EmitEvents
@@ -192,8 +193,9 @@ class SDState(Enum):
 class SDCard:
 
     def __init__(self, serial_queue: SerialQueue, serial: Serial,
-                 state_manager: StateManager, connect_api: ConnectAPI):
-        self.state_manager = state_manager
+                 connect_api: ConnectAPI):
+        self.updated_signal = Signal()  #kwargs: tree: FileTree
+
         self.serial = serial
         self.serial.register_output_handler(INSERTED_REGEX,
                                             lambda match: self.sd_inserted())
@@ -201,14 +203,11 @@ class SDCard:
         self.connect_api: ConnectAPI = connect_api
 
         self.running = True
-        self.is_consistent: Event = Event()
         self.expecting_insertion = False
 
-        self.current_sd_state: SDState = SDState.UNSURE
-        self.last_sd_state: SDState = SDState.UNSURE
+        self.sd_state: SDState = SDState.UNSURE
 
         self.file_tree: InternalFileTree = InternalFileTree.new_root_node()
-        self.old_tree: InternalFileTree = self.file_tree
 
         self.sd_update_thread = Thread(target=self.keep_updating_sd,
                                        name="SD_thread")
@@ -219,8 +218,7 @@ class SDCard:
                             self.update_sd)
 
     def update_sd(self):
-        self.old_tree = self.file_tree
-        self.file_tree = self.construct_file_tree()
+        new_tree = self.construct_file_tree()
 
         unsure_states = {SDState.INITIALISING, SDState.UNSURE}
 
@@ -228,23 +226,27 @@ class SDCard:
         # check the SD presence
         # If there were files and now there is nothing,
         # the SD was most likely ejected. So check for that
-        if self.current_sd_state in unsure_states:
-            if self.file_tree:
+        if self.sd_state in unsure_states:
+            if new_tree:
                 self.sd_state_changed(SDState.PRESENT)
             else:
                 self.decide_presence()
-        if not self.file_tree and self.current_sd_state == SDState.PRESENT:
+        if not new_tree and self.sd_state == SDState.PRESENT:
             self.decide_presence()
-        if self.file_tree and self.current_sd_state == SDState.ABSENT:
+        if new_tree and self.sd_state == SDState.ABSENT:
             log.error("ERROR: Sanity check failed. SD is not present, "
                       "but we see files!")
-        self.is_consistent.set()
+        self.file_tree = new_tree
+
+        api_file_tree = self.file_tree.to_api_file_tree()
+        self.updated_signal.send(self, tree=api_file_tree,
+                                 sd_state=self.sd_state)
 
     def construct_file_tree(self):
         tree = InternalFileTree(path="SD Card", file_type=FileType.MOUNT,
                                 ro=True)
 
-        if self.current_sd_state == SDState.ABSENT:
+        if self.sd_state == SDState.ABSENT:
             return tree
 
         instruction = enqueue_collecting(self.serial_queue, "M20",
@@ -253,19 +255,11 @@ class SDCard:
                                          end_regex=END_FILES_REGEX)
         wait_for_instruction(instruction, lambda: self.running)
 
-        if instruction.is_confirmed():
-            for match in instruction.captured_matches:
-                tree.child_from_path(match.string.lower())
+        for match in instruction.captured_matches:
+            tree.child_from_path(match.string.lower())
 
         log.debug(f"Constructed tree {tree}")
         return tree
-
-    def get_api_file_tree(self):
-        """Wait until the tree is consistent with our state then return it"""
-        while self.running:
-            if self.is_consistent.wait(QUIT_INTERVAL):
-                break
-        return self.file_tree.to_api_file_tree()
 
     def sd_inserted(self):
         """
@@ -276,17 +270,14 @@ class SDCard:
         if self.expecting_insertion:
             self.expecting_insertion = False
         else:
-            self.is_consistent.clear()
             self.sd_state_changed(SDState.INITIALISING)
 
     def sd_state_changed(self, new_state):
-        self.last_sd_state = self.current_sd_state
-        self.current_sd_state = new_state
-        log.debug(f"SD state changed from {self.last_sd_state} to "
-                  f"{self.current_sd_state}")
+        log.debug(f"SD state changed from {self.sd_state} to "
+                  f"{new_state}")
 
-        if self.last_sd_state == SDState.INITIALISING and \
-                self.current_sd_state == SDState.PRESENT:
+        if self.sd_state == SDState.INITIALISING and \
+                new_state == SDState.PRESENT:
             log.debug("SD Card inserted")
 
             # When sending in info, it's in a different thread,
@@ -302,11 +293,13 @@ class SDCard:
                                         files=files)
             ...
 
-        elif self.last_sd_state == SDState.PRESENT and \
-                self.current_sd_state in {SDState.ABSENT, SDState.INITIALISING}:
+        elif self.sd_state == SDState.PRESENT and \
+                new_state in {SDState.ABSENT, SDState.INITIALISING}:
             log.debug("SD Card removed")
             self.connect_api.emit_event(EmitEvents.MEDIUM_EJECTED, root="/")
             ...
+
+        self.sd_state = new_state
 
     def decide_presence(self):
         """
@@ -324,7 +317,7 @@ class SDCard:
         else:
             match = instruction.match(SD_PRESENT_REGEX)
             if match.groups()[0] is not None:
-                if self.current_sd_state != SDState.PRESENT:
+                if self.sd_state != SDState.PRESENT:
                     self.sd_state_changed(SDState.PRESENT)
             else:
                 self.sd_state_changed(SDState.ABSENT)

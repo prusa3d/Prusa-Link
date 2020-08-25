@@ -21,6 +21,7 @@ from old_buddy.input_output.serial import Serial
 from old_buddy.input_output.serial_queue.serial_queue \
     import MonitoredSerialQueue
 from old_buddy.input_output.serial_queue.helpers import enqueue_instrucion
+from old_buddy.model import Model
 from old_buddy.settings import CONNECT_CONFIG_PATH, PRINTER_PORT, \
     PRINTER_BAUDRATE, PRINTER_RESPONSE_TIMEOUT, TELEMETRY_INTERVAL, \
     QUIT_INTERVAL
@@ -37,6 +38,8 @@ class OldBuddy:
     def __init__(self):
         self.running = True
         self.stopped_event = threading.Event()
+
+        self.model = Model()
 
         try:
             self.serial = Serial(port=PRINTER_PORT, baudrate=PRINTER_BAUDRATE,
@@ -74,28 +77,45 @@ class OldBuddy:
         self.state_manager = StateManager(self.serial)
         StateManager.state_changed.connect(self.state_changed)
 
+        # Write the initial state to the model
+        self.model.state = self.state_manager.get_state()
+
         self.telemetry_gatherer = TelemetryGatherer(self.serial,
                                                     self.serial_queue)
+        self.telemetry_gatherer.updated_signal.connect(self.telemetry_gathered)
+        # let's do this manually, for the telemetry to be known to the model
+        # before connect can ask stuff
+        self.telemetry_gatherer.poll_telemetry()
 
         self.lcd_printer = LCDPrinter(self.serial_queue, self.state_manager)
-        self.sd_card = SDCard(self.serial_queue, self.serial,
-                              self.state_manager, self.connect_api)
+
+        self.sd_card = SDCard(self.serial_queue, self.serial, self.connect_api)
+        self.sd_card.updated_signal.connect(self.sd_updated)
+
+        # again, init the model data, before connect can ask for non-existing
+        # data
+        self.sd_card.update_sd()
 
         # Greet the user
         self.lcd_printer.enqueue_greet()
 
-        # Start the ip updater after we enqueued the correct IP report message
-        self.ip_updater = IPUpdater(self.lcd_printer)
+        # Start the local_ip updater after we enqueued the greetings
+        self.ip_updater = IPUpdater()
+        self.ip_updater.updated_signal.connect(self.ip_updated)
 
-        self.info_sender = InfoSender(self.serial_queue, self.state_manager,
-                                      self.connect_api, self.ip_updater,
-                                      self.sd_card)
+        # again, let's do the first one manually
+        self.ip_updater.update_local_ip()
+
+        self.info_sender = InfoSender(self.serial_queue, self.connect_api,
+                                      self.model)
 
         self.commands = Commands(self.serial_queue, self.connect_api,
                                  self.state_manager, self.info_sender)
 
         self.last_sent_telemetry = time()
 
+        # After the initial states are distributed throughout the model,
+        # let's open ourselves to some commands from connect
         self.connect_thread = threading.Thread(
             target=self.keep_sending_telemetry, name="telemetry_sending_thread")
         self.connect_thread.start()
@@ -162,8 +182,24 @@ class OldBuddy:
 
     # --- Signal handlers ---
 
+    def telemetry_gathered(self, sender, telemetry):
+        self.model.telemetry = telemetry
+
+    def ip_updated(self, sender, local_ip):
+        self.model.local_ip = local_ip
+
+        if local_ip is not NO_IP:
+            self.lcd_printer.enqueue_message(f"{local_ip}", duration=0)
+        else:
+            self.lcd_printer.enqueue_message(f"WiFi disconnected", duration=0)
+
+    def sd_updated(self, sender, tree, sd_state):
+        self.model.file_tree = tree
+        self.model.sd_state = sd_state
+
     def state_changed(self, sender, command_id=None, source=None):
         state = sender.current_state
+        self.model.state = state
         self.connect_api.emit_event(EmitEvents.STATE_CHANGED, state=state.name,
                                     command_id=command_id, source=source)
 
@@ -183,21 +219,7 @@ class OldBuddy:
         if (delay := time() - self.last_sent_telemetry) > 2:
             log.error(f"Something blocked telemetry sending for {delay}")
         self.last_sent_telemetry = time()
-
-        telemetry = self.telemetry_gatherer.get_telemetry()
-
-        state = self.state_manager.get_state()
-        telemetry.state = state.name
-
-        # Make sure that even if the printer tells us print specific values,
-        # nothing will be sent out while not printing
-        if state not in PRINTING_STATES:
-            telemetry.time_printing = None
-            telemetry.time_estimated = None
-            telemetry.progress = None
-        if state == States.PRINTING:
-            telemetry.axis_x = None
-            telemetry.axis_y = None
+        telemetry = self.model.telemetry
 
         try:
             api_response = self.connect_api.send_model("/p/telemetry",
