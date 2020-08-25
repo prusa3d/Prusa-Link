@@ -192,15 +192,15 @@ class SDState(Enum):
 
 class SDCard:
 
-    def __init__(self, serial_queue: SerialQueue, serial: Serial,
-                 connect_api: ConnectAPI):
-        self.updated_signal = Signal()  #kwargs: tree: FileTree
+    def __init__(self, serial_queue: SerialQueue, serial: Serial):
+        self.updated_signal = Signal()  # kwargs: tree: FileTree
+        self.inserted_signal = Signal()  # kwargs: root: str, files: FileTree
+        self.ejected_signal = Signal()  # kwargs: root: str
 
         self.serial = serial
         self.serial.register_output_handler(INSERTED_REGEX,
                                             lambda match: self.sd_inserted())
         self.serial_queue: SerialQueue = serial_queue
-        self.connect_api: ConnectAPI = connect_api
 
         self.running = True
         self.expecting_insertion = False
@@ -289,15 +289,12 @@ class SDCard:
             # I had so much trouble detecting states I forgot what it will take
             # to send this
             files = self.file_tree.to_api_file_tree()
-            self.connect_api.emit_event(EmitEvents.MEDIUM_INSERTED, root="/",
-                                        files=files)
-            ...
+            self.inserted_signal.send(self, root="/", files=files)
 
         elif self.sd_state == SDState.PRESENT and \
                 new_state in {SDState.ABSENT, SDState.INITIALISING}:
             log.debug("SD Card removed")
-            self.connect_api.emit_event(EmitEvents.MEDIUM_EJECTED, root="/")
-            ...
+            self.ejected_signal.send(self, root="/")
 
         self.sd_state = new_state
 

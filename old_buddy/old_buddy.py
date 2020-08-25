@@ -13,8 +13,7 @@ from old_buddy.command_handlers.commands import Commands
 from old_buddy.informers.telemetry_gatherer import TelemetryGatherer
 from old_buddy.informers.ip_updater import IPUpdater, NO_IP
 from old_buddy.informers.sd_card import SDCard
-from old_buddy.informers.state_manager import StateManager, States, \
-    PRINTING_STATES
+from old_buddy.informers.state_manager import StateManager
 from old_buddy.input_output.connect_api import ConnectAPI
 from old_buddy.input_output.lcd_printer import LCDPrinter
 from old_buddy.input_output.serial import Serial
@@ -87,10 +86,12 @@ class OldBuddy:
         # before connect can ask stuff
         self.telemetry_gatherer.poll_telemetry()
 
-        self.lcd_printer = LCDPrinter(self.serial_queue, self.state_manager)
+        self.lcd_printer = LCDPrinter(self.serial_queue)
 
-        self.sd_card = SDCard(self.serial_queue, self.serial, self.connect_api)
+        self.sd_card = SDCard(self.serial_queue, self.serial)
         self.sd_card.updated_signal.connect(self.sd_updated)
+        self.sd_card.inserted_signal.connect(self.media_inserted)
+        self.sd_card.ejected_signal.connect(self.media_ejected)
 
         # again, init the model data, before connect can ask for non-existing
         # data
@@ -117,7 +118,7 @@ class OldBuddy:
         # After the initial states are distributed throughout the model,
         # let's open ourselves to some commands from connect
         self.connect_thread = threading.Thread(
-            target=self.keep_sending_telemetry, name="telemetry_sending_thread")
+            target=self.keep_sending_telemetry, name="connect_thread")
         self.connect_thread.start()
 
     def stop(self):
@@ -208,6 +209,13 @@ class OldBuddy:
                   f"{path}. Data: {json_dict}")
         self.lcd_printer.enqueue_connection_failed(
             self.ip_updater.local_ip == NO_IP)
+
+    def media_inserted(self, sender, root, files):
+        self.connect_api.emit_event(EmitEvents.MEDIUM_INSERTED, root=root,
+                                    files=files)
+
+    def media_ejected(self, sender, root):
+        self.connect_api.emit_event(EmitEvents.MEDIUM_EJECTED, root=root)
 
     # --- Telemetry sending ---
 
