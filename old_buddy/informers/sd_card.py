@@ -44,6 +44,7 @@ from old_buddy.settings import SD_CARD_LOG_LEVEL, \
     QUIT_INTERVAL, SD_INTERVAL
 from old_buddy.structures.regular_expressions import INSERTED_REGEX, \
     SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX
+from old_buddy.threaded_updater import ThreadedUpdater
 from old_buddy.util import run_slowly_die_fast
 
 log = logging.getLogger(__name__)
@@ -190,9 +191,12 @@ class SDState(Enum):
     ABSENT = "ABSENT"
 
 
-class SDCard:
+class SDCard(ThreadedUpdater):
+    thread_name = "sd_updater"
+    update_interval = SD_INTERVAL
 
     def __init__(self, serial_queue: SerialQueue, serial: Serial):
+
         self.updated_signal = Signal()  # kwargs: tree: FileTree
         self.inserted_signal = Signal()  # kwargs: root: str, files: FileTree
         self.ejected_signal = Signal()  # kwargs: root: str
@@ -202,22 +206,13 @@ class SDCard:
                                             lambda match: self.sd_inserted())
         self.serial_queue: SerialQueue = serial_queue
 
-        self.running = True
         self.expecting_insertion = False
 
         self.sd_state: SDState = SDState.UNSURE
 
-        self.file_tree: InternalFileTree = InternalFileTree.new_root_node()
+        super().__init__()
 
-        self.sd_update_thread = Thread(target=self.keep_updating_sd,
-                                       name="SD_thread")
-        self.sd_update_thread.start()
-
-    def keep_updating_sd(self):
-        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL, SD_INTERVAL,
-                            self.update_sd)
-
-    def update_sd(self):
+    def _update(self):
         new_tree = self.construct_file_tree()
 
         unsure_states = {SDState.INITIALISING, SDState.UNSURE}
@@ -318,8 +313,4 @@ class SDCard:
                     self.sd_state_changed(SDState.PRESENT)
             else:
                 self.sd_state_changed(SDState.ABSENT)
-
-    def stop(self):
-        self.running = False
-        self.sd_update_thread.join()
 
