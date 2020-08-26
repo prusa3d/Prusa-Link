@@ -93,8 +93,8 @@ class Serial:
             log.error(
                 f"Serial error when sending '{message}' to the printer")
 
-    def register_output_handler(self, regex: re.Pattern, handler, *args,
-                                debug=False, **kwargs):
+    def add_output_handler(self, regex: re.Pattern, handler, *args,
+                           debug=False, **kwargs):
         """
         register an output handler for an arbitrary regex
         The regex will be searched each response from the printer
