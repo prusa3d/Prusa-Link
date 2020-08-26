@@ -74,7 +74,7 @@ class OldBuddy:
         ConnectAPI.connection_error.connect(self.connection_error)
 
         self.state_manager = StateManager(self.serial)
-        StateManager.state_changed.connect(self.state_changed)
+        self.state_manager.state_changed_signal.connect(self.state_changed)
 
         # Write the initial state to the model
         self.model.state = self.state_manager.get_state()
@@ -84,7 +84,7 @@ class OldBuddy:
         self.telemetry_gatherer.updated_signal.connect(self.telemetry_gathered)
         # let's do this manually, for the telemetry to be known to the model
         # before connect can ask stuff
-        self.telemetry_gatherer.poll_telemetry()
+        self.telemetry_gatherer.update()
 
         self.lcd_printer = LCDPrinter(self.serial_queue)
 
@@ -95,7 +95,7 @@ class OldBuddy:
 
         # again, init the model data, before connect can ask for non-existing
         # data
-        self.sd_card.update_sd()
+        self.sd_card.update()
 
         # Greet the user
         self.lcd_printer.enqueue_greet()
@@ -105,7 +105,7 @@ class OldBuddy:
         self.ip_updater.updated_signal.connect(self.ip_updated)
 
         # again, let's do the first one manually
-        self.ip_updater.update_local_ip()
+        self.ip_updater.update()
 
         self.info_sender = InfoSender(self.serial_queue, self.connect_api,
                                       self.model)

@@ -17,6 +17,7 @@ from old_buddy.settings import QUIT_INTERVAL, TELEMETRY_INTERVAL, \
 from old_buddy.structures.regular_expressions import TEMPERATURE_REGEX, \
     POSITION_REGEX, E_FAN_REGEX, P_FAN_REGEX, PRINT_TIME_REGEX, \
     PROGRESS_REGEX, TIME_REMAINING_REGEX, HEATING_REGEX, HEATING_HOTEND_REGEX
+from old_buddy.threaded_updater import ThreadedUpdater
 from old_buddy.util import run_slowly_die_fast
 
 # XXX:  "M221", "M220
@@ -26,7 +27,9 @@ log = logging.getLogger(__name__)
 log.setLevel(TELEMETRY_GATHERER_LOG_LEVEL)
 
 
-class TelemetryGatherer:
+class TelemetryGatherer(ThreadedUpdater):
+    thread_name = "telemetry"
+    update_interval = TELEMETRY_INTERVAL
 
     def __init__(self, serial: Serial, serial_queue: SerialQueue):
         self.updated_signal = Signal()
@@ -55,16 +58,10 @@ class TelemetryGatherer:
                                             self.heating_hotend_handler)
 
         self.current_telemetry = Telemetry()
-        self.running = True
-        self.polling_thread = Thread(target=self.keep_polling_telemetry,
-                                     name="telemetry_polling_thread")
-        self.polling_thread.start()
 
-    def keep_polling_telemetry(self):
-        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
-                            TELEMETRY_INTERVAL, self.poll_telemetry)
+        super().__init__()
 
-    def poll_telemetry(self):
+    def _update(self):
         instruction_list = enqueue_list_from_str(self.serial_queue,
                                                  TELEMETRY_GCODES)
 
@@ -73,6 +70,7 @@ class TelemetryGatherer:
             # Wait indefinitely, if the queue got stuck
             # we aren't the ones who should handle that
             wait_for_instruction(instruction, lambda: self.running)
+
         self.current_telemetry = Telemetry()
 
     def telemetry_updated(self):
@@ -155,7 +153,3 @@ class TelemetryGatherer:
 
         self.current_telemetry.temp_nozzle = float(groups[0])
         self.telemetry_updated()
-
-    def stop(self):
-        self.running = False
-        self.polling_thread.join()

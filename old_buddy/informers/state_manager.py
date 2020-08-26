@@ -13,6 +13,7 @@ from old_buddy.structures.regular_expressions import OK_REGEX, BUSY_REGEX, \
     ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, PROGRESS_REGEX, \
     SD_PRINTING_REGEX
+from old_buddy.threaded_updater import ThreadedUpdater
 from old_buddy.util import run_slowly_die_fast, get_command_id
 
 log = logging.getLogger(__name__)
@@ -70,19 +71,14 @@ def state_influencer(state_change: StateChange = None):
     return inner
 
 
-class StateManager:
-    state_changed = Signal()  # kwargs: command_id: int, source: Sources
-
-    # Just checks if there is not more than one instance in existence,
-    # This is not a singleton!
-    instance = None
+class StateManager(ThreadedUpdater):
+    thread_name = "state_updater"
+    update_interval = STATUS_UPDATE_INTERVAL
 
     def __init__(self, serial: Serial):
-        assert self.instance is None, "If running more than one instance" \
-                                      "is required, consider moving the " \
-                                      "signals from class to instance " \
-                                      "variables."
 
+        self.state_changed_signal = Signal()  # kwargs: command_id: int,
+        #                                       source: Sources
         self.serial: Serial = serial
 
         # The ACTUAL states considered when reporting
@@ -130,14 +126,7 @@ class StateManager:
         self.serial.register_output_handler(SD_PRINTING_REGEX,
                                             self.sd_printing_handler)
 
-        self.running = True
-        self.state_thread = Thread(target=self._keep_updating_state,
-                                   name="State updater")
-        self.state_thread.start()
-
-    def _keep_updating_state(self):
-        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
-                            STATUS_UPDATE_INTERVAL, self.update_state)
+        super().__init__()
 
     # --- Printer output handlers ---
 
@@ -162,10 +151,6 @@ class StateManager:
             self.not_printing()
         else:  # Printing
             self.printing()
-
-    def stop(self):
-        self.running = False
-        self.state_thread.join()
 
     def update_state(self):
         if self.printing_state == States.PRINTING:
@@ -270,7 +255,7 @@ class StateManager:
             else:
                 log.debug("Unexpected state change. This is weird")
             self.expected_state_change = None
-            self.state_changed.send(self, command_id=command_id, source=source)
+            self.state_changed_signal.send(self, command_id=command_id, source=source)
 
     # --- State changing methods ---
 
