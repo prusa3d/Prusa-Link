@@ -22,8 +22,8 @@ from old_buddy.input_output.serial_queue.serial_queue \
 from old_buddy.input_output.serial_queue.helpers import enqueue_instrucion
 from old_buddy.model import Model
 from old_buddy.settings import CONNECT_CONFIG_PATH, PRINTER_PORT, \
-    PRINTER_BAUDRATE, PRINTER_RESPONSE_TIMEOUT, TELEMETRY_INTERVAL, \
-    QUIT_INTERVAL
+    PRINTER_BAUDRATE, PRINTER_RESPONSE_TIMEOUT, \
+    QUIT_INTERVAL, TELEMETRY_SEND_INTERVAL
 from old_buddy.settings import OLD_BUDDY_LOG_LEVEL
 from old_buddy.structures.model_classes import EmitEvents
 from old_buddy.util import get_command_id, run_slowly_die_fast
@@ -221,7 +221,7 @@ class OldBuddy:
 
     def keep_sending_telemetry(self):
         run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
-                            TELEMETRY_INTERVAL, self.send_telemetry)
+                            TELEMETRY_SEND_INTERVAL, self.send_telemetry)
 
     def send_telemetry(self):
         if (delay := time() - self.last_sent_telemetry) > 2:
