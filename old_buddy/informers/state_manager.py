@@ -103,28 +103,22 @@ class StateManager(ThreadedUpdater):
         # caused the state change
         self.expected_state_change: Union[None, StateChange] = None
 
-        self.serial.register_output_handler(OK_REGEX, lambda match: self.ok())
-        self.serial.register_output_handler(BUSY_REGEX,
-                                            lambda match: self.busy())
-        self.serial.register_output_handler(ATTENTION_REGEX,
-                                            lambda match: self.attention())
-        self.serial.register_output_handler(PAUSED_REGEX,
-                                            lambda match: self.paused())
-        self.serial.register_output_handler(RESUMED_REGEX,
-                                            lambda match: self.resumed())
-        self.serial.register_output_handler(CANCEL_REGEX,
-                                            lambda match: self.not_printing())
-        self.serial.register_output_handler(START_PRINT_REGEX,
-                                            lambda match: self.printing())
-        self.serial.register_output_handler(PRINT_DONE_REGEX,
-                                            lambda match: self.finished())
-        self.serial.register_output_handler(ERROR_REGEX,
-                                            lambda match: self.error())
+        regex_handlers = {
+            OK_REGEX: lambda match: self.ok(),
+            BUSY_REGEX: lambda match: self.busy(),
+            ATTENTION_REGEX: lambda match: self.attention(),
+            PAUSED_REGEX: lambda match: self.paused(),
+            RESUMED_REGEX: lambda match: self.resumed(),
+            CANCEL_REGEX: lambda match: self.not_printing(),
+            START_PRINT_REGEX: lambda match: self.printing(),
+            PRINT_DONE_REGEX: lambda match: self.finished(),
+            ERROR_REGEX: lambda match: self.error(),
+            PROGRESS_REGEX: self.progress_handler,
+            SD_PRINTING_REGEX: self.sd_printing_handler
+        }
 
-        self.serial.register_output_handler(PROGRESS_REGEX,
-                                            self.progress_handler)
-        self.serial.register_output_handler(SD_PRINTING_REGEX,
-                                            self.sd_printing_handler)
+        for regex, handler in regex_handlers.items():
+            self.serial.add_output_handler(regex, handler)
 
         super().__init__()
 
