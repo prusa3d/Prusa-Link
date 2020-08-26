@@ -202,8 +202,8 @@ class SDCard(ThreadedUpdater):
         self.ejected_signal = Signal()  # kwargs: root: str
 
         self.serial = serial
-        self.serial.register_output_handler(INSERTED_REGEX,
-                                            lambda match: self.sd_inserted())
+        self.serial.add_output_handler(INSERTED_REGEX,
+                                       lambda match: self.sd_inserted())
         self.serial_queue: SerialQueue = serial_queue
 
         self.expecting_insertion = False
@@ -313,4 +313,3 @@ class SDCard(ThreadedUpdater):
                     self.sd_state_changed(SDState.PRESENT)
             else:
                 self.sd_state_changed(SDState.ABSENT)
-

@@ -37,25 +37,20 @@ class TelemetryGatherer(ThreadedUpdater):
         self.serial = serial
         self.serial_queue = serial_queue
 
-        # Looked better wrapped to 120 characters. Just saying
-        self.serial.register_output_handler(TEMPERATURE_REGEX,
-                                            self.temperature_handler)
-        self.serial.register_output_handler(POSITION_REGEX,
-                                            self.position_handler)
-        self.serial.register_output_handler(E_FAN_REGEX,
-                                            self.fan_extruder_handler)
-        self.serial.register_output_handler(P_FAN_REGEX,
-                                            self.fan_print_handler)
-        self.serial.register_output_handler(PRINT_TIME_REGEX,
-                                            self.print_time_handler)
-        self.serial.register_output_handler(PROGRESS_REGEX,
-                                            self.progress_handler)
-        self.serial.register_output_handler(TIME_REMAINING_REGEX,
-                                            self.time_remaining_handler)
-        self.serial.register_output_handler(HEATING_REGEX,
-                                            self.heating_handler)
-        self.serial.register_output_handler(HEATING_HOTEND_REGEX,
-                                            self.heating_hotend_handler)
+        regex_handlers = {
+            TEMPERATURE_REGEX: self.temperature_handler,
+            POSITION_REGEX: self.position_handler,
+            E_FAN_REGEX: self.fan_extruder_handler,
+            P_FAN_REGEX: self.fan_print_handler,
+            PRINT_TIME_REGEX: self.print_time_handler,
+            PROGRESS_REGEX: self.progress_handler,
+            TIME_REMAINING_REGEX: self.time_remaining_handler,
+            HEATING_REGEX: self.heating_handler,
+            HEATING_HOTEND_REGEX: self.heating_hotend_handler
+        }
+
+        for regex, handler in regex_handlers.items():
+            self.serial.add_output_handler(regex, handler)
 
         self.current_telemetry = Telemetry()
 
