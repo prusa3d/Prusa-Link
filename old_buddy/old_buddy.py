@@ -235,8 +235,9 @@ class OldBuddy:
                             TELEMETRY_SEND_INTERVAL, self.send_telemetry)
 
     def send_telemetry(self):
-        if (delay := time() - self.last_sent_telemetry) > 2:
-            log.error(f"Something blocked telemetry sending for {delay}")
+        delay = time() - self.last_sent_telemetry
+        if delay > 2:
+            log.warning(f"Something blocked telemetry sending for {delay}")
         self.last_sent_telemetry = time()
         telemetry = self.model.telemetry
 
