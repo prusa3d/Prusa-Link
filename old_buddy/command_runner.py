@@ -36,7 +36,7 @@ class CommandRunner:
     def _run(self, command: Command):
         if self.running_command is not None:
             if self.running_command.command_id == command.command_id:
-                log.warn("Tried to run already running command")
+                log.warning("Tried to run already running command")
                 command.accept()
             else:
                 command.reject("Another command is running")
