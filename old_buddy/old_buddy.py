@@ -4,12 +4,17 @@ import threading
 from distutils.util import strtobool
 from json import JSONDecodeError
 from time import time
+from typing import Type
 
 from requests import RequestException
 from serial import SerialException
 
-from old_buddy.command_handlers.commands import InfoSender
-from old_buddy.command_handlers.commands import Commands
+from old_buddy.command import Command
+from old_buddy.command_handlers.execute_gcode import ExecuteGcode
+from old_buddy.command_handlers.info_sender import RespondWithInfo
+from old_buddy.command_handlers.start_print import StartPrint
+from old_buddy.command_handlers.try_until_state import TryUntilState
+from old_buddy.command_runner import CommandRunner
 from old_buddy.informers.telemetry_gatherer import TelemetryGatherer
 from old_buddy.informers.ip_updater import IPUpdater, NO_IP
 from old_buddy.informers.sd_card import SDCard
@@ -22,10 +27,10 @@ from old_buddy.input_output.serial_queue.serial_queue \
 from old_buddy.input_output.serial_queue.helpers import enqueue_instrucion
 from old_buddy.model import Model
 from old_buddy.settings import CONNECT_CONFIG_PATH, PRINTER_PORT, \
-    PRINTER_BAUDRATE, PRINTER_RESPONSE_TIMEOUT, \
-    QUIT_INTERVAL, TELEMETRY_SEND_INTERVAL
+    PRINTER_BAUDRATE, PRINTER_RESPONSE_TIMEOUT, QUIT_INTERVAL, \
+    TELEMETRY_SEND_INTERVAL
 from old_buddy.settings import OLD_BUDDY_LOG_LEVEL
-from old_buddy.structures.model_classes import EmitEvents
+from old_buddy.structures.model_classes import EmitEvents, States
 from old_buddy.util import get_command_id, run_slowly_die_fast
 
 log = logging.getLogger(__name__)
@@ -107,11 +112,8 @@ class OldBuddy:
         # again, let's do the first one manually
         self.ip_updater.update()
 
-        self.info_sender = InfoSender(self.serial_queue, self.connect_api,
-                                      self.model)
-
-        self.commands = Commands(self.serial_queue, self.connect_api,
-                                 self.state_manager, self.info_sender)
+        self.command_runner = CommandRunner(self.serial_queue, self.connect_api,
+                                            self.state_manager, self.model)
 
         self.last_sent_telemetry = time()
 
@@ -126,7 +128,7 @@ class OldBuddy:
         self.connect_thread.join()
         self.sd_card.stop()
         self.lcd_printer.stop()
-        self.commands.stop_command_thread()
+        self.command_runner.stop()
         self.state_manager.stop()
         self.telemetry_gatherer.stop()
         self.ip_updater.stop()
@@ -145,29 +147,9 @@ class OldBuddy:
         if api_response.status_code == 200:
             log.debug(f"Command id -> {get_command_id(api_response)}")
             if api_response.headers["Content-Type"] == "text/x.gcode":
-                self.commands.execute_gcode(api_response)
+                self.command_runner.run(ExecuteGcode, api_response)
             else:
-                try:
-                    data = api_response.json()
-                    if data["command"] == "SEND_INFO":
-                        self.commands.respond_with_info(api_response)
-                    elif data["command"] == "START_PRINT":
-                        self.commands.start_print(api_response)
-                    elif data["command"] == "STOP_PRINT":
-                        self.commands.stop_print(api_response)
-                    elif data["command"] == "PAUSE_PRINT":
-                        self.commands.pause_print(api_response)
-                    elif data["command"] == "RESUME_PRINT":
-                        self.commands.resume_print(api_response)
-                    else:
-                        command_id = get_command_id(api_response)
-                        self.connect_api.emit_event(EmitEvents.REJECTED,
-                                                    command_id,
-                                                    "Unknown command")
-
-                except JSONDecodeError:
-                    log.exception(
-                        f"Failed to decode a response {api_response}")
+                self.determine_command(api_response)
         elif api_response.status_code >= 300:
             code = api_response.status_code
             log.error(f"Connect responded with code {code}")
@@ -180,6 +162,35 @@ class OldBuddy:
                 self.lcd_printer.enqueue_403()
             elif code == 501:
                 self.lcd_printer.enqueue_501()
+
+    def determine_command(self, api_response):
+        try:
+            data = api_response.json()
+        except JSONDecodeError:
+            log.exception(
+                f"Failed to decode a response {api_response}")
+        else:
+            if data["command"] == "SEND_INFO":
+                self.run_command(RespondWithInfo, api_response)
+            elif data["command"] == "START_PRINT":
+                self.run_command(StartPrint, api_response)
+            elif data["command"] == "STOP_PRINT":
+                self.run_command(TryUntilState, api_response, gcode="M603",
+                                 desired_state=States.READY)
+            elif data["command"] == "PAUSE_PRINT":
+                self.run_command(TryUntilState, api_response, gcode="M601",
+                                 desired_state=States.PAUSED)
+            elif data["command"] == "RESUME_PRINT":
+                self.run_command(TryUntilState, api_response, gcode="M602",
+                                 desired_state=States.PRINTING)
+            else:
+                command_id = get_command_id(api_response)
+                self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
+                                            "Unknown command")
+
+    def run_command(self, command_class: Type[Command], api_response,
+                    **kwargs):
+        self.command_runner.run(command_class, api_response, **kwargs)
 
     # --- Signal handlers ---
 
