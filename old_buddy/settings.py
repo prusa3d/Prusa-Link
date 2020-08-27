@@ -1,33 +1,48 @@
-CONNECT_CONFIG_PATH = "/boot/lan_settings.ini"
-PRINTER_PORT = "/dev/ttyAMA0"
-PRINTER_BAUDRATE = 115200
-RX_SIZE = 128
+import logging
+import os
+from typing import Type
 
-# Time is in seconds
+from pydantic import BaseModel
+from yaml import CLoader as Loader, CDumper as Dumper
+from yaml import load, dump
 
-PRINTER_RESPONSE_TIMEOUT = 1
+log = logging.getLogger(__name__)
 
-TELEMETRY_INTERVAL = 1
-TELEMETRY_SEND_INTERVAL = 0.2
-STATUS_UPDATE_INTERVAL = 2
-QUIT_INTERVAL = 0.2
-SD_INTERVAL = 4
-SHOW_IP_INTERVAL = 60
-SERIAL_REOPEN_INTERVAL = 1
 
-LCD_QUEUE_SIZE = 20
+class Settings:
+    """
+    Loads a yaml file specified in the constructor parameter,
 
-SERIAL_QUEUE_TIMEOUT = 10
-SERIAL_QUEUE_MONITOR_INTERVAL = 1
+    To use, make a new instance of the Settings, then access your values
+     through settings field, feel free to alias. For example:
 
-OLD_BUDDY_LOG_LEVEL = "DEBUG"
-SERIAL_LOG_LEVEL = "DEBUG"
-CONNECT_API_LOG_LEVEL = "DEBUG"
-STATE_MANAGER_LOG_LEVEL = "DEBUG"
-COMMANDS_LOG_LEVEL = "DEBUG"
-LCD_PRINTER_LOG_LEVEL = "DEBUG"
-SD_CARD_LOG_LEVEL = "DEBUG"
-IP_UPDATER_LOG_LEVEL = "DEBUG"
-TELEMETRY_GATHERER_LOG_LEVEL = "DEBUG"
-INFO_SENDER_LOG_LEVEL = "DEBUG"
-SERIAL_QUEUE_LOG_LEVEL = "DEBUG"
+    SETTINGS = get_settings()
+    FOO = SETTINGS.FOO
+    """
+
+    def __init__(self, settings_data_class: Type[BaseModel], path):
+        self.path = path
+
+        if not os.path.exists(self.path):
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            open(self.path, 'a').close()
+
+        with open(self.path, "r") as settings_file:
+            settings_yaml = settings_file.read()
+        settings_dict = load(settings_yaml, Loader=Loader)
+        log.debug(f"Loaded settings from {os.path.abspath(self.path)}")
+        if settings_dict is None:
+            log.debug(f"No previous settings found")
+            self.settings = settings_data_class()
+        else:
+            log.debug(f"Read dict {settings_dict}")
+            self.settings = settings_data_class(**settings_dict)
+            log.debug(f"Settings dict {self.settings.dict()}")
+        self.save()
+
+    def save(self):
+        settings_dict = self.settings.dict()
+        settings_yaml = dump(settings_dict, Dumper=Dumper)
+
+        with open(self.path, 'w') as settings_file:
+            settings_file.write(settings_yaml)

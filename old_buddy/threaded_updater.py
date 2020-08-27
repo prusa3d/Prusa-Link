@@ -1,7 +1,9 @@
 from threading import Thread
 
-from old_buddy.settings import QUIT_INTERVAL
+from old_buddy.default_settings import get_settings
 from old_buddy.util import run_slowly_die_fast
+
+TIME = get_settings().TIME
 
 
 class ThreadedUpdater:
@@ -15,7 +17,7 @@ class ThreadedUpdater:
         self.thread.start()
 
     def _keep_updating(self):
-        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
+        run_slowly_die_fast(lambda: self.running, TIME.QUIT_INTERVAL,
                             self.update_interval, self.update)
 
     def update(self):
