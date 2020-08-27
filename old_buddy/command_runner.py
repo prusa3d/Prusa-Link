@@ -6,10 +6,13 @@ from old_buddy.informers.state_manager import StateManager
 from old_buddy.input_output.connect_api import ConnectAPI
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
 from old_buddy.model import Model
-from old_buddy.settings import COMMANDS_LOG_LEVEL
+from old_buddy.default_settings import get_settings
+
+LOG = get_settings().LOG
+
 
 log = logging.getLogger(__name__)
-log.setLevel(COMMANDS_LOG_LEVEL)
+log.setLevel(LOG.COMMANDS_LOG_LEVEL)
 
 
 class CommandRunner:

@@ -7,25 +7,26 @@ from time import sleep
 import serial
 from blinker import Signal
 
-from old_buddy.settings import SERIAL_LOG_LEVEL, SERIAL_REOPEN_INTERVAL
+from old_buddy.default_settings import get_settings
+
+LOG = get_settings().LOG
+TIME = get_settings().TIME
+
 
 log = logging.getLogger(__name__)
-log.setLevel(SERIAL_LOG_LEVEL)
+log.setLevel(LOG.SERIAL_LOG_LEVEL)
 
 
 class Serial:
     received = Signal()  # kwargs: line: str
 
     def __init__(self, port="/dev/ttyAMA0", baudrate=115200, timeout=1,
-                 write_timeout=0, connection_write_delay=10,
-                 default_timeout=None):
+                 write_timeout=0, connection_write_delay=10):
 
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
         self.write_timeout = write_timeout
-
-        self.default_timeout = default_timeout
 
         self.serial = None
         self._reopen()
@@ -55,8 +56,8 @@ class Serial:
                 self._reopen()
             except serial.SerialException:
                 log.debug(f"Reopenning of the serial port failed, "
-                          f"retrying in {SERIAL_REOPEN_INTERVAL}")
-                sleep(SERIAL_REOPEN_INTERVAL)
+                          f"retrying in {TIME.SERIAL_REOPEN_INTERVAL}")
+                sleep(TIME.SERIAL_REOPEN_INTERVAL)
             else:
                 break
 

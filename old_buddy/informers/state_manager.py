@@ -1,23 +1,25 @@
 import logging
 import re
-from threading import Thread
 from typing import Union, Dict
 
 from blinker import Signal
 
 from old_buddy.input_output.serial import Serial
-from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL, \
-    STATE_MANAGER_LOG_LEVEL
+from old_buddy.default_settings import get_settings
 from old_buddy.structures.model_classes import States, Sources
 from old_buddy.structures.regular_expressions import OK_REGEX, BUSY_REGEX, \
     ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, PROGRESS_REGEX, \
     SD_PRINTING_REGEX
 from old_buddy.threaded_updater import ThreadedUpdater
-from old_buddy.util import run_slowly_die_fast, get_command_id
+from old_buddy.util import get_command_id
+
+LOG = get_settings().LOG
+TIME = get_settings().TIME
+
 
 log = logging.getLogger(__name__)
-log.setLevel(STATE_MANAGER_LOG_LEVEL)
+log.setLevel(LOG.STATE_MANAGER_LOG_LEVEL)
 
 PRINTING_STATES = {States.PRINTING, States.PAUSED, States.FINISHED}
 
@@ -73,7 +75,7 @@ def state_influencer(state_change: StateChange = None):
 
 class StateManager(ThreadedUpdater):
     thread_name = "state_updater"
-    update_interval = STATUS_UPDATE_INTERVAL
+    update_interval = TIME.STATUS_UPDATE_INTERVAL
 
     def __init__(self, serial: Serial):
 

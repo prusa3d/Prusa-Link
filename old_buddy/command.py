@@ -10,12 +10,15 @@ from old_buddy.input_output.serial_queue.helpers import wait_for_instruction, \
     enqueue_matchable
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
 from old_buddy.model import Model
-from old_buddy.settings import COMMANDS_LOG_LEVEL
+from old_buddy.default_settings import get_settings
 from old_buddy.structures.model_classes import EmitEvents
 from old_buddy.util import get_command_id
 
+LOG = get_settings().LOG
+
+
 log = logging.getLogger(__name__)
-log.setLevel(COMMANDS_LOG_LEVEL)
+log.setLevel(LOG.COMMANDS_LOG_LEVEL)
 
 
 class CommandFailed(Exception):

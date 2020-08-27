@@ -5,11 +5,14 @@ from blinker import Signal
 from pydantic import BaseModel
 from requests import Session, RequestException
 
-from old_buddy.settings import CONNECT_API_LOG_LEVEL
+from old_buddy.default_settings import get_settings
 from old_buddy.structures.model_classes import EmitEvents, FileTree, Event
 
+LOG = get_settings().LOG
+
+
 log = logging.getLogger(__name__)
-log.setLevel(CONNECT_API_LOG_LEVEL)
+log.setLevel(LOG.CONNECT_API_LOG_LEVEL)
 
 
 class ConnectAPI:

@@ -4,23 +4,27 @@ from time import time
 from typing import List
 
 from old_buddy.input_output.serial import Serial
-from old_buddy.settings import SERIAL_QUEUE_LOG_LEVEL, SERIAL_QUEUE_TIMEOUT, \
-    QUIT_INTERVAL, SERIAL_QUEUE_MONITOR_INTERVAL, RX_SIZE
+from old_buddy.default_settings import get_settings
 from old_buddy.structures.regular_expressions import CONFIRMATION_REGEX, \
     RX_YEETED_REGEX, PAUSED_REGEX, RENEW_TIMEOUT_REGEX
 from old_buddy.util import run_slowly_die_fast
 from .instruction import Instruction
 
-RX_SAFETY_MARGIN = 16
+RX_SAFETY_MARGIN = 16  # in Bytes
 MAX_ONE_INSTRUCTION = True
 
+LOG = get_settings().LOG
+SQ = get_settings().SQ
+TIME = get_settings().TIME
+
+
 log = logging.getLogger(__name__)
-log.setLevel(SERIAL_QUEUE_LOG_LEVEL)
+log.setLevel(LOG.SERIAL_QUEUE_LOG_LEVEL)
 
 
 class SerialQueue:
 
-    def __init__(self, serial: Serial, rx_size=RX_SIZE):
+    def __init__(self, serial: Serial, rx_size=SQ.RX_SIZE):
         self.serial = serial
 
         # A gueue of instructions for the printer
@@ -222,16 +226,17 @@ class MonitoredSerialQueue(SerialQueue):
         self.monitoring_thread.start()
 
     def keep_monitoring(self):
-        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
-                            SERIAL_QUEUE_MONITOR_INTERVAL, self.check_status)
+        run_slowly_die_fast(lambda: self.running, TIME.QUIT_INTERVAL,
+                            SQ.SERIAL_QUEUE_MONITOR_INTERVAL,
+                            self.check_status)
 
     def check_status(self):
-        if self.get_current_delay() > SERIAL_QUEUE_TIMEOUT:
+        if self.get_current_delay() > SQ.SERIAL_QUEUE_TIMEOUT:
             # The printer did not respond in time, lets assume it forgot
             # what it was supposed to do
             log.info(f"Timed out waiting for confirmation of "
                      f"{self.front_instruction} after "
-                     f"{SERIAL_QUEUE_TIMEOUT}sec.")
+                     f"{SQ.SERIAL_QUEUE_TIMEOUT}sec.")
             log.debug("Assuming the printer yote our RX buffer")
             self._rx_buffer_got_yeeted()
 

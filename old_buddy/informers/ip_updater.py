@@ -1,25 +1,26 @@
 import logging
 import socket
-from threading import Thread
 from time import time
 
 from blinker import Signal
 
-from old_buddy.input_output.lcd_printer import LCDPrinter
-from old_buddy.settings import QUIT_INTERVAL, STATUS_UPDATE_INTERVAL, \
-    IP_UPDATER_LOG_LEVEL, SHOW_IP_INTERVAL
+from old_buddy.default_settings import get_settings
 from old_buddy.threaded_updater import ThreadedUpdater
-from old_buddy.util import run_slowly_die_fast, get_local_ip
+from old_buddy.util import get_local_ip
 
 NO_IP = "NO_IP"
 
+LOG = get_settings().LOG
+TIME = get_settings().TIME
+
+
 log = logging.getLogger(__name__)
-log.setLevel(IP_UPDATER_LOG_LEVEL)
+log.setLevel(LOG.IP_UPDATER_LOG_LEVEL)
 
 
 class IPUpdater(ThreadedUpdater):
     thread_name = "ip_updater"
-    update_interval = STATUS_UPDATE_INTERVAL
+    update_interval = TIME.STATUS_UPDATE_INTERVAL
 
     def __init__(self):
         self.updated_signal = Signal()
@@ -45,7 +46,7 @@ class IPUpdater(ThreadedUpdater):
                 self.local_ip = local_ip
                 self.ip_updated()
             elif time() > self.update_ip_on:
-                self.update_ip_on = time() + SHOW_IP_INTERVAL
+                self.update_ip_on = time() + TIME.SHOW_IP_INTERVAL
                 self.ip_updated()
 
     def ip_updated(self):

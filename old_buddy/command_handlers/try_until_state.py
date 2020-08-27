@@ -2,13 +2,15 @@ import logging
 from time import sleep
 
 from old_buddy.command import Command
+from old_buddy.default_settings import get_settings
 from old_buddy.informers.state_manager import StateChange
-from old_buddy.input_output.serial_queue.helpers import enqueue_instrucion
-from old_buddy.settings import COMMANDS_LOG_LEVEL
 from old_buddy.structures.model_classes import States, Sources
 
+LOG = get_settings().LOG
+
+
 log = logging.getLogger(__name__)
-log.setLevel(COMMANDS_LOG_LEVEL)
+log.setLevel(LOG.COMMANDS_LOG_LEVEL)
 
 
 class TryUntilState(Command):
