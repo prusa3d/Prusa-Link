@@ -4,15 +4,18 @@ from getmac import get_mac_address
 from requests import RequestException
 
 from old_buddy.command import Command
+from old_buddy.default_settings import get_settings
 from old_buddy.informers.ip_updater import NO_IP
 from old_buddy.structures.model_classes import PrinterInfo, \
     NetworkInfo, EmitEvents, Event
-from old_buddy.settings import INFO_SENDER_LOG_LEVEL
 from old_buddy.structures.regular_expressions import FW_REGEX, \
     PRINTER_TYPE_REGEX
 
+LOG = get_settings().LOG
+
+
 log = logging.getLogger(__name__)
-log.setLevel(INFO_SENDER_LOG_LEVEL)
+log.setLevel(LOG.INFO_SENDER_LOG_LEVEL)
 
 PRINTER_TYPES = {
     100: (1, 1, 0),

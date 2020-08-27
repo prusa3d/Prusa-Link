@@ -2,34 +2,34 @@
 
 import logging
 import re
-from threading import Thread
 
 from blinker import Signal
 
-from old_buddy.informers.state_manager import StateManager
-from old_buddy.structures.model_classes import Telemetry, States
+from old_buddy.structures.model_classes import Telemetry
 from old_buddy.input_output.serial import Serial
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
 from old_buddy.input_output.serial_queue.helpers import enqueue_list_from_str, \
     wait_for_instruction
-from old_buddy.settings import QUIT_INTERVAL, TELEMETRY_INTERVAL, \
-    TELEMETRY_GATHERER_LOG_LEVEL
+from old_buddy.default_settings import get_settings
 from old_buddy.structures.regular_expressions import TEMPERATURE_REGEX, \
     POSITION_REGEX, E_FAN_REGEX, P_FAN_REGEX, PRINT_TIME_REGEX, \
     PROGRESS_REGEX, TIME_REMAINING_REGEX, HEATING_REGEX, HEATING_HOTEND_REGEX
 from old_buddy.threaded_updater import ThreadedUpdater
-from old_buddy.util import run_slowly_die_fast
 
 # XXX:  "M221", "M220
 TELEMETRY_GCODES = ["M105", "M114", "PRUSA FAN", "M27", "M73"]
 
+TIME = get_settings().TIME
+LOG = get_settings().LOG
+
+
 log = logging.getLogger(__name__)
-log.setLevel(TELEMETRY_GATHERER_LOG_LEVEL)
+log.setLevel(LOG.TELEMETRY_GATHERER_LOG_LEVEL)
 
 
 class TelemetryGatherer(ThreadedUpdater):
     thread_name = "telemetry"
-    update_interval = TELEMETRY_INTERVAL
+    update_interval = TIME.TELEMETRY_INTERVAL
 
     def __init__(self, serial: Serial, serial_queue: SerialQueue):
         self.updated_signal = Signal()

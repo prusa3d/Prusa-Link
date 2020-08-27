@@ -26,15 +26,18 @@ from old_buddy.input_output.serial_queue.serial_queue \
     import MonitoredSerialQueue
 from old_buddy.input_output.serial_queue.helpers import enqueue_instrucion
 from old_buddy.model import Model
-from old_buddy.settings import CONNECT_CONFIG_PATH, PRINTER_PORT, \
-    PRINTER_BAUDRATE, PRINTER_RESPONSE_TIMEOUT, QUIT_INTERVAL, \
-    TELEMETRY_SEND_INTERVAL
-from old_buddy.settings import OLD_BUDDY_LOG_LEVEL
+from old_buddy.default_settings import get_settings
 from old_buddy.structures.model_classes import EmitEvents, States
 from old_buddy.util import get_command_id, run_slowly_die_fast
 
+LOG = get_settings().LOG
+TIME = get_settings().TIME
+SERIAL = get_settings().SERIAL
+CONN = get_settings().CONN
+
+
 log = logging.getLogger(__name__)
-log.setLevel(OLD_BUDDY_LOG_LEVEL)
+log.setLevel(LOG.OLD_BUDDY_LOG_LEVEL)
 
 
 class OldBuddy:
@@ -46,8 +49,8 @@ class OldBuddy:
         self.model = Model()
 
         try:
-            self.serial = Serial(port=PRINTER_PORT, baudrate=PRINTER_BAUDRATE,
-                                 default_timeout=PRINTER_RESPONSE_TIMEOUT)
+            self.serial = Serial(port=SERIAL.PRINTER_PORT,
+                                 baudrate=SERIAL.PRINTER_BAUDRATE)
         except SerialException:
             log.exception(
                 "Cannot talk to the printer using the RPi port, "
@@ -57,7 +60,7 @@ class OldBuddy:
         self.serial_queue = MonitoredSerialQueue(self.serial)
 
         self.config = configparser.ConfigParser()
-        self.config.read(CONNECT_CONFIG_PATH)
+        self.config.read(CONN.CONNECT_CONFIG_PATH)
 
         try:
             connect_config = self.config["connect"]
@@ -231,8 +234,8 @@ class OldBuddy:
     # --- Telemetry sending ---
 
     def keep_sending_telemetry(self):
-        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
-                            TELEMETRY_SEND_INTERVAL, self.send_telemetry)
+        run_slowly_die_fast(lambda: self.running, TIME.QUIT_INTERVAL,
+                            TIME.TELEMETRY_SEND_INTERVAL, self.send_telemetry)
 
     def send_telemetry(self):
         delay = time() - self.last_sent_telemetry

@@ -28,27 +28,25 @@ INITIALISING state
 
 import logging
 from enum import Enum
-from threading import Thread
 from typing import Dict, Set
 
 from blinker import Signal
 
-from old_buddy.input_output.connect_api import ConnectAPI
-from old_buddy.structures.model_classes import FileType, FileTree, \
-    EmitEvents
+from old_buddy.structures.model_classes import FileType, FileTree
 from old_buddy.input_output.serial import Serial
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
 from old_buddy.input_output.serial_queue.helpers import wait_for_instruction, \
     enqueue_matchable, enqueue_collecting
-from old_buddy.settings import SD_CARD_LOG_LEVEL, \
-    QUIT_INTERVAL, SD_INTERVAL
+from old_buddy.default_settings import get_settings
 from old_buddy.structures.regular_expressions import INSERTED_REGEX, \
     SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX
 from old_buddy.threaded_updater import ThreadedUpdater
-from old_buddy.util import run_slowly_die_fast
+
+LOG = get_settings().LOG
+TIME = get_settings().TIME
 
 log = logging.getLogger(__name__)
-log.setLevel(SD_CARD_LOG_LEVEL)
+log.setLevel(LOG.SD_CARD_LOG_LEVEL)
 
 
 class CouldNotConstructTree(RuntimeError):
@@ -193,7 +191,7 @@ class SDState(Enum):
 
 class SDCard(ThreadedUpdater):
     thread_name = "sd_updater"
-    update_interval = SD_INTERVAL
+    update_interval = TIME.SD_INTERVAL
 
     def __init__(self, serial_queue: SerialQueue, serial: Serial):
 

@@ -4,11 +4,13 @@ from typing import List, Callable
 from old_buddy.input_output.serial_queue.instruction import Instruction, \
     MatchableInstruction, EasyInstruction, CollectingInstruction
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
-from old_buddy.settings import QUIT_INTERVAL
+from old_buddy.default_settings import get_settings
+
+TIME = get_settings().TIME
 
 
 def wait_for_instruction(instruction, should_wait: Callable[[], bool],
-                         check_every=QUIT_INTERVAL):
+                         check_every=TIME.QUIT_INTERVAL):
     """Wait until the instruction is done, or we shouldn't wait anymore"""
     while should_wait():
         if instruction.wait_for_confirmation(timeout=check_every):

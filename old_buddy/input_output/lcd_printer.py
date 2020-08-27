@@ -6,11 +6,15 @@ from time import time, sleep
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
 from old_buddy.input_output.serial_queue.helpers import enqueue_instrucion, \
     wait_for_instruction
-from old_buddy.settings import QUIT_INTERVAL, LCD_PRINTER_LOG_LEVEL, \
-    LCD_QUEUE_SIZE
+from old_buddy.default_settings import get_settings
+
+LOG = get_settings().LOG
+LCDQ = get_settings().LCDQ
+TIME = get_settings().TIME
+
 
 log = logging.getLogger(__name__)
-log.setLevel(LCD_PRINTER_LOG_LEVEL)
+log.setLevel(LOG.LCD_PRINTER_LOG_LEVEL)
 
 
 class LCDMessage:
@@ -25,7 +29,7 @@ class LCDPrinter:
     def __init__(self, serial_queue: SerialQueue):
         self.serial_queue = serial_queue
 
-        self.message_queue: Queue = Queue(maxsize=LCD_QUEUE_SIZE)
+        self.message_queue: Queue = Queue(maxsize=LCDQ.LCD_QUEUE_SIZE)
         self.wait_until: float = time()
 
         self.running = True
@@ -38,7 +42,7 @@ class LCDPrinter:
             try:
                 # because having this inline is so unreadable
                 message: LCDMessage
-                message = self.message_queue.get(timeout=QUIT_INTERVAL)
+                message = self.message_queue.get(timeout=TIME.QUIT_INTERVAL)
             except Empty:
                 pass
             else:
@@ -48,7 +52,8 @@ class LCDPrinter:
                 while self.running and time() < wait_until:
                     # Sleep QUIT_INTERVAL or whatever else is left of the wait
                     # Depending on what's smaller, don't sleep negative amounts
-                    sleep(max(0, min(QUIT_INTERVAL, self.wait_until - time())))
+                    to_sleep = min(TIME.QUIT_INTERVAL, self.wait_until - time())
+                    sleep(max(0, int(to_sleep)))
 
     def print_text(self, text: str):
         instruction = enqueue_instrucion(self.serial_queue, f"M117 {text}")
