@@ -25,7 +25,8 @@ RENEW_TIMEOUT_REGEX = re.compile(r"(^echo:busy: processing$)|"
                                  r"(^T:(\d+\.\d+) E:\d+ B:(\d+\.\d+)$)|"
                                  r"(^T:(\d+\.\d+) E:([?]|\d+) W:([?]|\d+)$)")
 
-REJECTION_REGEX = re.compile("echo:Unknown command: (\"[^\"]*\")$")
+REJECTION_REGEX = re.compile(r"^(echo:Unknown command: (\"[^\"]*\"))|"
+                             r"(Unknown \S code: .*)$")
 
 
 BUSY_REGEX = re.compile("^echo:busy: processing$")
