@@ -4,4 +4,4 @@ __pycache__
 *.pyc
 build
 dist
-*.egg_info
+*.egg-info
