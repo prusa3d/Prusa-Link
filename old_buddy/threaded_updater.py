@@ -14,6 +14,8 @@ class ThreadedUpdater:
         self.running = True
         self.thread = Thread(target=self._keep_updating,
                              name=self.thread_name)
+
+    def start(self):
         self.thread.start()
 
     def _keep_updating(self):
