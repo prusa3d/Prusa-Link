@@ -3,7 +3,7 @@ import os
 from typing import Type
 
 from pydantic import BaseModel
-from yaml import CLoader as Loader, CDumper as Dumper
+from yaml import Loader, Dumper
 from yaml import load, dump
 
 log = logging.getLogger(__name__)
