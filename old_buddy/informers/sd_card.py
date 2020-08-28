@@ -25,9 +25,11 @@ us about a SD insertion. Let's tell connect the card got removed and go to the
 INITIALISING state
 
 """
+import cProfile
 
 import logging
 from enum import Enum
+from time import time
 from typing import Dict, Set
 
 from blinker import Signal
@@ -101,7 +103,6 @@ class InternalFileTree:
         self.children_dict[child.path] = child
         if child.parent is None:
             child.parent = self
-        log.debug(f"Child {child.path} added")
         return child
 
     def child_from_path(self, line: str):
@@ -109,7 +110,6 @@ class InternalFileTree:
         Expected to be first called only on the root element,
         otherwise diffs break
         """
-        log.debug(f"Parsing line {line}")
         clean_line = line.strip("/")
         parts = clean_line.split("/", 1)
 
@@ -121,7 +121,6 @@ class InternalFileTree:
                 child = InternalFileTree(file_type=FileType.DIR, path=path)
                 self.add_child(child)
 
-            log.debug(f"The file is in a directory {path}. Adding it inside")
             added_child = self.children_dict[path].child_from_path(rest)
 
         else:  # Insert to this level
@@ -129,7 +128,6 @@ class InternalFileTree:
             size = int(str_size)
             child = InternalFileTree(file_type=FileType.FILE, path=path,
                                      size=size)
-            log.debug(f"Added a file {path} {size / 1000}kb to self")
             added_child = self.add_child(child)
 
         # if success (?) not expecting invalid strings, so I'm not checking
@@ -211,25 +209,25 @@ class SDCard(ThreadedUpdater):
         super().__init__()
 
     def _update(self):
-        new_tree = self.construct_file_tree()
+        import cProfile
+
+        self.file_tree = self.construct_file_tree()
 
         unsure_states = {SDState.INITIALISING, SDState.UNSURE}
-
         # If we do not know the sd state and no files were found,
         # check the SD presence
         # If there were files and now there is nothing,
         # the SD was most likely ejected. So check for that
         if self.sd_state in unsure_states:
-            if new_tree:
+            if self.file_tree:
                 self.sd_state_changed(SDState.PRESENT)
             else:
                 self.decide_presence()
-        if not new_tree and self.sd_state == SDState.PRESENT:
+        if not self.file_tree and self.sd_state == SDState.PRESENT:
             self.decide_presence()
-        if new_tree and self.sd_state == SDState.ABSENT:
+        if self.file_tree and self.sd_state == SDState.ABSENT:
             log.error("ERROR: Sanity check failed. SD is not present, "
                       "but we see files!")
-        self.file_tree = new_tree
 
         api_file_tree = self.file_tree.to_api_file_tree()
         self.updated_signal.send(self, tree=api_file_tree,
@@ -273,14 +271,6 @@ class SDCard(ThreadedUpdater):
                 new_state == SDState.PRESENT:
             log.debug("SD Card inserted")
 
-            # When sending in info, it's in a different thread,
-            # it can wait once the state becomes flagged as consistent
-            # This is called in our own thread and would deadlock if we'd call
-            # self.get_api_file_tree()
-            # We know it's consistent because the card being confirmed present
-            # is the last step before setting that event.
-            # I had so much trouble detecting states I forgot what it will take
-            # to send this
             files = self.file_tree.to_api_file_tree()
             self.inserted_signal.send(self, root="/", files=files)
 
