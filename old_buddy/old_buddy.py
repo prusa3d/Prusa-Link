@@ -115,6 +115,13 @@ class OldBuddy:
         # again, let's do the first one manually
         self.ip_updater.update()
 
+        # Start individual informer threads after updating manually, so nothing
+        # will race with itself
+        self.telemetry_gatherer.start()
+        self.sd_card.start()
+        self.ip_updater.start()
+        self.state_manager.start()
+
         self.command_runner = CommandRunner(self.serial_queue, self.connect_api,
                                             self.state_manager, self.model)
 
