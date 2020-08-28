@@ -3,6 +3,7 @@ import logging
 from old_buddy.command import Command
 from old_buddy.informers.state_manager import StateChange
 from old_buddy.default_settings import get_settings
+from old_buddy.input_output.serial_queue.helpers import enqueue_list_from_str
 from old_buddy.structures.model_classes import Sources, States
 from old_buddy.structures.regular_expressions import REJECTION_REGEX
 
@@ -40,9 +41,16 @@ class ExecuteGcode(Command):
         line_list = [line for line in gcode.split("\n") if line.strip()]
 
         # try running every line
-        for line in line_list:
-            instruction = self.do_matchable(line)
+        # Do this manually as it's the only place where a list
+        # has to be enqueued
+        instruction_list = enqueue_list_from_str(self.serial_queue, line_list,
+                                                 front=True)
 
+        for instruction in instruction_list:
+            self.wait_while_running(instruction)
+
+            if not instruction.is_confirmed():
+                self.failed(f"Command interrupted")
             if instruction.match(REJECTION_REGEX):
                 self.failed(f"Unknown command '{gcode}')")
 
