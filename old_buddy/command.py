@@ -82,7 +82,8 @@ class Command:
         wait_for_instruction(instruction, lambda: self.running)
 
     def do_matchable(self, gcode):
-        instruction = enqueue_matchable(self.serial_queue, gcode)
+        """Enqueues everything to front as commands have a higher priority"""
+        instruction = enqueue_matchable(self.serial_queue, gcode, front=True)
         self.wait_while_running(instruction)
 
         if not instruction.is_confirmed():

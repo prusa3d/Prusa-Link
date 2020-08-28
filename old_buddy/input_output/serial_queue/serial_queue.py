@@ -10,9 +10,6 @@ from old_buddy.structures.regular_expressions import CONFIRMATION_REGEX, \
 from old_buddy.util import run_slowly_die_fast
 from .instruction import Instruction
 
-RX_SAFETY_MARGIN = 16  # in Bytes
-MAX_ONE_INSTRUCTION = True
-
 LOG = get_settings().LOG
 SQ = get_settings().SQ
 TIME = get_settings().TIME
@@ -24,6 +21,9 @@ log.setLevel(LOG.SERIAL_QUEUE_LOG_LEVEL)
 
 class SerialQueue:
 
+    # This thing could buffer messages, shame the printer is so stoooopid
+    # No need to have that functionality around tho
+
     def __init__(self, serial: Serial, rx_size=SQ.RX_SIZE):
         self.serial = serial
 
@@ -31,13 +31,7 @@ class SerialQueue:
         self.queue: List[Instruction] = []
 
         # Maximum bytes we'll write
-        self.rx_max = rx_size - RX_SAFETY_MARGIN
-
-        # Bytes currently believed to be in the buffer
-        self.rx_current = 0
-
-        # Queue index of an item, that has yet to be written
-        self.next_instruction_index = 0
+        self.rx_max = rx_size
 
         # Make it possible to enqueue multiple consecutive instructions
         self.write_lock = Lock()
@@ -52,12 +46,6 @@ class SerialQueue:
         else:  # Not omitting this for readability
             return None
 
-    def get_next_instruction(self):
-        if self.next_instruction_exists():
-            return self.queue[self.next_instruction_index]
-        else:  # Not omitting this for readability
-            return None
-
     def get_current_delay(self):
         if self.is_empty():
             return 0
@@ -65,31 +53,11 @@ class SerialQueue:
             return time() - self.last_event_on
 
     # --- If statements in methods ---
-
-    def is_rx_full(self):
-        return self.next_instruction_exists()
-
-    def next_instruction_exists(self):
-        return self.next_instruction_index <= len(self.queue) - 1
-
-    def next_instruction_is_last(self):
-        return self.next_instruction_index == len(self.queue) - 1
-
     def can_write(self):
-        instruction_exists = self.next_instruction_exists()
-        fits = False
-        if instruction_exists and self.fits_on_rx(self.next_instruction):
-            fits = True
-
-        # denies a write if buffering is disabled and the write
-        # would cause more than one instruction to be present in the RX buffer
-        denied = False
-        if MAX_ONE_INSTRUCTION and self.next_instruction_index != 0:
-            denied = True
-        return instruction_exists and fits and not denied
+        return not self.is_empty() and self.fits_on_rx(self.front_instruction)
 
     def fits_on_rx(self, instruction):
-        return self.rx_current + instruction.size < self.rx_max
+        return instruction.size < self.rx_max
 
     def is_empty(self):
         return not bool(self.queue)
@@ -97,40 +65,62 @@ class SerialQueue:
     # --- Actual methods ---
 
     def _try_writing(self):
-        while self.can_write():
+        if self.can_write():
             self._write()
 
     def _write(self):
-        log.debug(f"{self.next_instruction} sent")
-        self.next_instruction.sent()
-        self.serial.write(self.next_instruction.data)
-        self.rx_current += self.next_instruction.size
-        self.next_instruction_index += 1
+        log.debug(f"{self.front_instruction} sent")
+        self.front_instruction.sent()
+        self.serial.write(self.front_instruction.data)
 
-    def _enqueue(self, instruction: Instruction):
-        log.debug(f"{instruction} enqueued")
-        self.queue.append(instruction)
+    def _enqueue(self, instruction: Instruction, front=False):
+
 
         # if the item just added has the index to get written
-        if self.next_instruction_is_last():
+        if len(self.queue) == 1:
             self._try_writing()
 
-    def enqueue_one(self, instruction: Instruction):
+    def enqueue_one(self, instruction: Instruction, front=False):
         """
         Enqueue one instruction
         Don't interrupt, if anyone else is enqueueing instructions
+        :param instruction: the thing to be enqueued
+        :param front: whether to enqueue to front of the queue
         """
-        with self.write_lock:
-            self._enqueue(instruction)
 
-    def enqueue_list(self, instructions: List[Instruction]):
+        with self.write_lock:
+            was_empty = self.is_empty()
+            log.debug(f"{instruction} enqueued. "
+                      f"{'to the front' if front else ''}")
+
+            if front and not self.is_empty():
+                self.queue.insert(1, instruction)
+            else:
+                self.queue.append(instruction)
+
+        if was_empty:
+            self._try_writing()
+
+    def enqueue_list(self, instructions: List[Instruction], front=False):
         """
         Enqueue list of instructions
         Don't interrupt, if anyone else is enqueueing instructions
+        :param instructions: the list to enqueue
+        :param front: whether to enqueue to front of the queue
         """
+
         with self.write_lock:
-            for instruction in instructions:
-                self._enqueue(instruction)
+            was_empty = self.is_empty()
+            log.debug(f"Instructions {instructions} enqueued"
+                      f"{'to the front' if front else ''}")
+
+            if front and not self.is_empty():
+                self.queue = self.queue[0:1] + instructions + self.queue[1:]
+            else:
+                self.queue.extend(instructions)
+
+        if was_empty:
+            self._try_writing()
 
     def _serial_read(self, sender, line):
         """
@@ -175,12 +165,10 @@ class SerialQueue:
         self.last_event_on = time()
 
         if self.front_instruction.confirm():
-            # If the instruction did ot refuse to be confirmed
+            # If the instruction did not refuse to be confirmed
             # Yes, that needs to happen because of M602
             log.debug(f"{self.front_instruction} confirmed")
-            self.rx_current -= self.front_instruction.size
             del self.queue[0]
-            self.next_instruction_index -= 1
         else:
             log.debug(f"{self.front_instruction} refused confirmation. "
                       f"Hopefully it has a reason for that")
@@ -204,13 +192,10 @@ class SerialQueue:
         """
         log.debug(f"Think that RX Buffer got yeeted, re-sending what should "
                   f"have been inside")
-        self.rx_current = 0
-        self.next_instruction_index = 0
 
         self._try_writing()
 
     front_instruction = property(get_front_instruction)
-    next_instruction = property(get_next_instruction)
 
 
 class MonitoredSerialQueue(SerialQueue):
