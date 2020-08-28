@@ -30,7 +30,7 @@ import cProfile
 import logging
 from enum import Enum
 from time import time
-from typing import Dict, Set
+from typing import Dict, Set, List
 
 from blinker import Signal
 
@@ -79,7 +79,8 @@ class InternalFileTree:
         self.full_path = self.get_full_path()
 
     def __hash__(self):
-        return hash((self.type, self.ro, self.size, self.m_date, self.m_time))
+        return hash((self.type, self.ro, self.size, self.m_date, self.m_time,
+                     self.full_path))
 
     def __str__(self):
         output = self.get_full_path() + "\n"
@@ -88,7 +89,7 @@ class InternalFileTree:
         return output
 
     def __bool__(self):
-        return bool(self.descendants_set)
+        return bool(self.children_dict)
 
     @property
     def parent(self):
@@ -105,34 +106,33 @@ class InternalFileTree:
             child.parent = self
         return child
 
-    def child_from_path(self, line: str):
-        """
-        Expected to be first called only on the root element,
-        otherwise diffs break
-        """
-        clean_line = line.strip("/")
-        parts = clean_line.split("/", 1)
+    def add_file_from_line(self, line: str):
 
-        # Need to insert this deeper onto the tree, recurse
-        if len(parts) == 2:
-            path, rest = parts
+        path, str_size = line.rsplit(" ", 1)
+        clean_path = path.strip("/")
+        parts = clean_path.split("/")
+        size = int(str_size)
 
-            if path not in self.children_dict:
-                child = InternalFileTree(file_type=FileType.DIR, path=path)
-                self.add_child(child)
+        node = self
 
-            added_child = self.children_dict[path].child_from_path(rest)
+        for part in parts[:-1]:
+            if part not in node.children_dict:
+                child = InternalFileTree(file_type=FileType.DIR, path=part,
+                                         parent=node)
+                node.add_child(child)
 
-        else:  # Insert to this level
-            path, str_size = parts[0].split(" ")
-            size = int(str_size)
-            child = InternalFileTree(file_type=FileType.FILE, path=path,
-                                     size=size)
-            added_child = self.add_child(child)
+            node = node.children_dict[part]
 
-        # if success (?) not expecting invalid strings, so I'm not checking
-        self.descendants_set.add(added_child)
-        return added_child
+        # last one is the file itself
+        leaf = InternalFileTree(file_type=FileType.FILE, path=parts[-1],
+                                 size=size, parent=node)
+        node.add_child(leaf)
+
+        # Finally, lets add the leaf to descendant sets
+        while node is not None:
+            if node.type == FileType.MOUNT:
+                node.descendants_set.add(leaf)
+            node = node.parent
 
     def get_full_path(self):
         path = []
@@ -246,8 +246,10 @@ class SDCard(ThreadedUpdater):
                                          end_regex=END_FILES_REGEX)
         wait_for_instruction(instruction, lambda: self.running)
 
+        pre = time()
         for match in instruction.captured_matches:
-            tree.child_from_path(match.string.lower())
+            tree.add_file_from_line(match.string.lower())
+        log.debug(f"Tree construction took {time() - pre}s")
 
         log.debug(f"Constructed tree {tree}")
         return tree
