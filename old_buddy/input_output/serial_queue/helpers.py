@@ -24,9 +24,9 @@ def enqueue_instrucion(queue: SerialQueue, message: str) -> Instruction:
 
 
 def enqueue_matchable(queue: SerialQueue,
-                      message: str) -> MatchableInstruction:
+                      message: str, front=False) -> MatchableInstruction:
     instruction = MatchableInstruction.from_string(message)
-    queue.enqueue_one(instruction)
+    queue.enqueue_one(instruction, front=front)
     return instruction
 
 
@@ -42,10 +42,11 @@ def enqueue_collecting(queue: SerialQueue,
 
 
 def enqueue_list_from_str(queue: SerialQueue,
-                          message_list: List[str]) -> List[Instruction]:
+                          message_list: List[str],
+                          front=False) -> List[MatchableInstruction]:
     instruction_list = []
     for message in message_list:
-        instruction = EasyInstruction.from_string(message)
-        queue.enqueue_one(instruction)
+        instruction = MatchableInstruction.from_string(message)
         instruction_list.append(instruction)
+    queue.enqueue_list(instruction_list, front=front)
     return instruction_list
