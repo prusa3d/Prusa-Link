@@ -1,6 +1,5 @@
 import logging
 from enum import Enum
-from threading import Thread
 
 from blinker import Signal
 
@@ -41,6 +40,8 @@ class Command:
         self.state_manager = state_manager
         self.model = model
 
+        self._kwargs = kwargs
+
         self.api_response = api_response
         self.command_id = get_command_id(self.api_response)
 
@@ -50,16 +51,11 @@ class Command:
         self.state = CommandState.HAS_NOT_FAILED
         self.reason_failed = ""
 
-        self.thread = Thread(target=self.run_command, name=self.command_name,
-                             kwargs=kwargs)
 
     @property
     def is_forced(self):
         return ("Force" in self.api_response.headers and
                 self.api_response.headers["Force"] == "1")
-
-    def start(self):
-        self.thread.start()
 
     def failed(self, message):
         self.set_failed_info(message)
@@ -94,7 +90,7 @@ class Command:
 
         return instruction
 
-    def run_command(self, **kwargs):
+    def run_command(self):
         """
         Internal, wraps your actual command
         Makes it so if no failed is called and no exceptions are raised
@@ -102,7 +98,7 @@ class Command:
 
         """
         try:
-            self._run_command(**kwargs)
+            self._run_command(**self._kwargs)
         except CommandFailed:
             log.debug(f"Command failed: {self.reason_failed}.")
         except Exception as e:
@@ -123,6 +119,5 @@ class Command:
 
     def stop(self):
         self.running = False
-        self.thread.join()
 
 
