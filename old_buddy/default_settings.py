@@ -23,10 +23,10 @@ class ConnectSettings(BaseModel):
 class IntervalSettings(BaseModel):
     # Times are in seconds
     TELEMETRY_INTERVAL = 1
-    TELEMETRY_SEND_INTERVAL = 0.2
+    TELEMETRY_SEND_INTERVAL = 0.5
     STATUS_UPDATE_INTERVAL = 2
-    QUIT_INTERVAL = 0.2
-    SD_INTERVAL = 4
+    QUIT_INTERVAL = 0.5
+    SD_INTERVAL = 5
     SHOW_IP_INTERVAL = 60
     SERIAL_REOPEN_INTERVAL = 1
 
