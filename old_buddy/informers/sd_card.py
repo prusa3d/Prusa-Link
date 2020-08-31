@@ -25,7 +25,6 @@ us about a SD insertion. Let's tell connect the card got removed and go to the
 INITIALISING state
 
 """
-import cProfile
 
 import logging
 from enum import Enum
@@ -209,8 +208,6 @@ class SDCard(ThreadedUpdater):
         super().__init__()
 
     def _update(self):
-        import cProfile
-
         self.file_tree = self.construct_file_tree()
 
         unsure_states = {SDState.INITIALISING, SDState.UNSURE}
