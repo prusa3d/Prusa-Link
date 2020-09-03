@@ -19,6 +19,10 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG.SERIAL_QUEUE_LOG_LEVEL)
 
 
+class BadChecksumUseError(Exception):
+    ...
+
+
 class SerialQueue:
 
     # This thing could buffer messages, shame the printer is so stoooopid
@@ -35,6 +39,9 @@ class SerialQueue:
 
         # Make it possible to enqueue multiple consecutive instructions
         self.write_lock = Lock()
+
+        # For numbered messages with checksums
+        self.message_number = 1
 
         Serial.received.connect(self._serial_read)
 
@@ -54,10 +61,7 @@ class SerialQueue:
 
     # --- If statements in methods ---
     def can_write(self):
-        return not self.is_empty() and self.fits_on_rx(self.front_instruction)
-
-    def fits_on_rx(self, instruction):
-        return instruction.size < self.rx_max
+        return not self.is_empty()
 
     def is_empty(self):
         return not bool(self.queue)
@@ -68,17 +72,31 @@ class SerialQueue:
         if self.can_write():
             self._write()
 
+    def get_front_bytes(self):
+        data = self.front_instruction.message.encode("ASCII")
+        if self.front_instruction.to_checksum:
+            number_part = f"N{self.message_number} ".encode("ASCII")
+            self.message_number += 1
+            to_checksum = number_part + data + b" "
+            checksum = self.get_checksum(to_checksum)
+            checksum_data = f"*{checksum}".encode("ASCII")
+            data = to_checksum + checksum_data
+        data += b"\n"
+        return data
+
+    def get_checksum(self, data: bytes):
+        checksum = 0
+        for byte in data:
+            checksum ^= byte
+        return checksum
+
     def _write(self):
-        log.debug(f"{self.front_instruction} sent")
+        data = self.get_front_bytes()
+        if len(data) > self.rx_max:
+            raise RuntimeError("")
+        log.debug(f"{data.decode('ASCII')} sent")
         self.front_instruction.sent()
-        self.serial.write(self.front_instruction.data)
-
-    def _enqueue(self, instruction: Instruction, front=False):
-
-
-        # if the item just added has the index to get written
-        if len(self.queue) == 1:
-            self._try_writing()
+        self.serial.write(data)
 
     def enqueue_one(self, instruction: Instruction, front=False):
         """
