@@ -2,7 +2,7 @@ import re
 from typing import List, Callable
 
 from old_buddy.input_output.serial_queue.instruction import Instruction, \
-    MatchableInstruction, EasyInstruction, CollectingInstruction
+    MatchableInstruction, CollectingInstruction
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
 from old_buddy.default_settings import get_settings
 
@@ -17,15 +17,17 @@ def wait_for_instruction(instruction, should_wait: Callable[[], bool],
             break
 
 
-def enqueue_instrucion(queue: SerialQueue, message: str) -> Instruction:
-    instruction = EasyInstruction.from_string(message)
+def enqueue_instrucion(queue: SerialQueue, message: str,
+                       to_checksum=False) -> Instruction:
+    instruction = Instruction(message, to_checksum=to_checksum)
     queue.enqueue_one(instruction)
     return instruction
 
 
 def enqueue_matchable(queue: SerialQueue,
-                      message: str, front=False) -> MatchableInstruction:
-    instruction = MatchableInstruction.from_string(message)
+                      message: str, front=False,
+                      to_checksum=False) -> MatchableInstruction:
+    instruction = MatchableInstruction(message, to_checksum=to_checksum)
     queue.enqueue_one(instruction, front=front)
     return instruction
 
@@ -33,20 +35,22 @@ def enqueue_matchable(queue: SerialQueue,
 def enqueue_collecting(queue: SerialQueue,
                        message: str, begin_regex: re.Pattern,
                        capture_regex: re.Pattern,
-                       end_regex: re.Pattern) -> CollectingInstruction:
-    data = Instruction.get_data_from_string(message)
+                       end_regex: re.Pattern,
+                       to_checksum=False) -> CollectingInstruction:
     instruction = CollectingInstruction(begin_regex, capture_regex,
-                                        end_regex, data=data)
+                                        end_regex, message=message,
+                                        to_checksum=to_checksum)
     queue.enqueue_one(instruction)
     return instruction
 
 
 def enqueue_list_from_str(queue: SerialQueue,
                           message_list: List[str],
-                          front=False) -> List[MatchableInstruction]:
+                          front=False,
+                          to_checksum=False) -> List[MatchableInstruction]:
     instruction_list = []
     for message in message_list:
-        instruction = MatchableInstruction.from_string(message)
+        instruction = MatchableInstruction(message, to_checksum=to_checksum)
         instruction_list.append(instruction)
     queue.enqueue_list(instruction_list, front=front)
     return instruction_list
