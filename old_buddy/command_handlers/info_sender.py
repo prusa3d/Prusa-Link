@@ -86,7 +86,7 @@ class RespondWithInfo(Command):
         self.printer_info.sn = "4206942069"  # TODO: implement real getters
         self.printer_info.uuid = "00000000-0000-0000-0000-000000000000"
         self.printer_info.appendix = False
-        self.printer_info.files = self.model.file_tree
+        self.printer_info.files = self.model.api_file_tree
 
     def insert_network_info(self):
         network_info = NetworkInfo()

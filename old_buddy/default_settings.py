@@ -27,6 +27,7 @@ class IntervalSettings(BaseModel):
     STATUS_UPDATE_INTERVAL = 2
     QUIT_INTERVAL = 0.5
     SD_INTERVAL = 5
+    STORAGE_INTERVAL = 15
     SHOW_IP_INTERVAL = 60
     SERIAL_REOPEN_INTERVAL = 1
 
@@ -53,6 +54,30 @@ class LogLevelSettings(BaseModel):
     TELEMETRY_GATHERER_LOG_LEVEL = "DEBUG"
     INFO_SENDER_LOG_LEVEL = "DEBUG"
     SERIAL_QUEUE_LOG_LEVEL = "DEBUG"
+    MOUNTPOINT_LOG_LEVEL = "DEBUG"
+    LINUX_FILESYSTEM_LOG_LEVEL = "DEBUG"
+    STORAGE_LOG_LEVEL = "DEBUG"
+
+
+class MountPointSettings(BaseModel):
+    # Can be used for USB sticks and network attached storage
+    MOUNTPOINTS = [
+    ]
+    # Just directories
+    DIRECTORIES = [
+        "/home/pi/Old Buddy gcodes"
+    ]
+    BLACKLISTED_TYPES = [
+    ]
+    BLACKLISTED_PATHS = [
+        "/dev",
+        "/sys",
+        "/proc",
+        "/tmp",
+    ]
+    BLACKLISTED_NAMES = [
+        "SD Card"
+    ]
 
 
 class SettingsData(BaseModel):
@@ -63,6 +88,7 @@ class SettingsData(BaseModel):
     LCDQ: LCDQueueSettings = LCDQueueSettings()
     SQ: SerialQueueSettings = SerialQueueSettings()
     LOG: LogLevelSettings = LogLevelSettings()
+    MOUNT: MountPointSettings = MountPointSettings()
 
 
 def get_settings() -> SettingsData:

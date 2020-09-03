@@ -5,7 +5,7 @@ from time import time
 from blinker import Signal
 
 from old_buddy.default_settings import get_settings
-from old_buddy.threaded_updater import ThreadedUpdater
+from old_buddy.updatable import ThreadedUpdatable
 from old_buddy.util import get_local_ip
 
 NO_IP = "NO_IP"
@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG.IP_UPDATER_LOG_LEVEL)
 
 
-class IPUpdater(ThreadedUpdater):
+class IPUpdater(ThreadedUpdatable):
     thread_name = "ip_updater"
     update_interval = TIME.STATUS_UPDATE_INTERVAL
 
