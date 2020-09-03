@@ -131,13 +131,13 @@ class SDCard(ThreadedUpdatable):
                 new_state == SDState.PRESENT:
             log.debug("SD Card inserted")
 
-            self.inserted_signal.send(self, root="/",
+            self.inserted_signal.send(self, root=self.file_tree.full_path,
                                       files=self.file_tree.to_api_file_tree())
 
         elif self.sd_state == SDState.PRESENT and \
                 new_state in {SDState.ABSENT, SDState.INITIALISING}:
             log.debug("SD Card removed")
-            self.ejected_signal.send(self, root="/")
+            self.ejected_signal.send(self, root=self.file_tree.full_path)
 
         self.sd_state = new_state
         self.state_changed_signal.send(self, sd_state=self.sd_state)
