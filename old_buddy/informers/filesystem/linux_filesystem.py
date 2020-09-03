@@ -17,6 +17,7 @@ MOUNT = get_settings().MOUNT
 log = logging.getLogger(__name__)
 log.setLevel(LOG.LINUX_FILESYSTEM_LOG_LEVEL)
 
+MOUNT_PATH = "/"
 
 class LinuxFilesystem(ThreadedUpdatable):
 
@@ -76,7 +77,7 @@ class LinuxFilesystem(ThreadedUpdatable):
         except KeyError:
             pass
         name = os.path.basename(mount_point.path)
-        self.ejected_signal.send(self, root=f"/{name}")
+        self.ejected_signal.send(self, root=f"{MOUNT_PATH}{name}")
 
     def _update(self):
         tree_list = []
@@ -90,7 +91,8 @@ class LinuxFilesystem(ThreadedUpdatable):
 
             if mount_point.path in self.freshly_mounted:
                 self.freshly_mounted.remove(mount_point.path)
-                self.inserted_signal.send(self, root=f"/",
+                log.debug(f"root='{tree.path_from_mount}'")
+                self.inserted_signal.send(self, root=tree.full_path,
                                           files=tree.to_api_file_tree())
 
             tree_list.append(tree)
@@ -102,7 +104,7 @@ class LinuxFilesystem(ThreadedUpdatable):
         tree = InternalFileTree(file_type=FileType.MOUNT,
                                 full_fs_path=mount.path,
                                 path=name, ro=mount.ro,
-                                mounted_at="/")
+                                mounted_at=MOUNT_PATH)
 
         walker = os.walk(mount.path)
         for directory in walker:
