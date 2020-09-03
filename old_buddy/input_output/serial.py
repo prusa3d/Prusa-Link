@@ -29,11 +29,12 @@ class Serial:
         self.write_timeout = write_timeout
 
         self.serial = None
-        self._reopen()
+
+        self.running = True
+        self._renew_serial_connection()
 
         sleep(connection_write_delay)
 
-        self.running = True
         self.read_thread = Thread(target=self._read_continually,
                                   name="serial_read_thread")
         self.read_thread.start()
@@ -55,7 +56,7 @@ class Serial:
             try:
                 self._reopen()
             except serial.SerialException:
-                log.debug(f"Reopenning of the serial port failed, "
+                log.debug(f"Openning of the serial port failed, "
                           f"retrying in {TIME.SERIAL_REOPEN_INTERVAL}")
                 sleep(TIME.SERIAL_REOPEN_INTERVAL)
             else:
