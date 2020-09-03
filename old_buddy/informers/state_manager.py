@@ -11,7 +11,7 @@ from old_buddy.structures.regular_expressions import OK_REGEX, BUSY_REGEX, \
     ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, PROGRESS_REGEX, \
     SD_PRINTING_REGEX
-from old_buddy.threaded_updater import ThreadedUpdater
+from old_buddy.updatable import ThreadedUpdatable
 from old_buddy.util import get_command_id
 
 LOG = get_settings().LOG
@@ -73,7 +73,7 @@ def state_influencer(state_change: StateChange = None):
     return inner
 
 
-class StateManager(ThreadedUpdater):
+class StateManager(ThreadedUpdatable):
     thread_name = "state_updater"
     update_interval = TIME.STATUS_UPDATE_INTERVAL
 

@@ -1,6 +1,7 @@
 from threading import Lock
 from typing import Optional
 
+from old_buddy.informers.filesystem.models import InternalFileTree, SDState
 from old_buddy.informers.state_manager import PRINTING_STATES
 from old_buddy.structures.model_classes import FileTree, States, Telemetry, \
     PrinterInfo
@@ -22,8 +23,8 @@ class Model:
         self._telemetry: Telemetry = Telemetry()
         self._state: Optional[States] = None
         self._local_ip: Optional[str] = None
-        self._file_tree: Optional[FileTree] = None
-        self._sd_state: Optional[FileTree] = None
+        self._file_tree: Optional[InternalFileTree] = None
+        self._sd_state: Optional[SDState] = None
         self._printer_info: Optional[PrinterInfo] = None
 
     @property
@@ -84,6 +85,11 @@ class Model:
     def file_tree(self):
         with self.lock:
             return self._file_tree
+
+    @property
+    def api_file_tree(self):
+        with self.lock:
+            return self._file_tree.to_api_file_tree()
 
     @file_tree.setter
     def file_tree(self, new_tree):
