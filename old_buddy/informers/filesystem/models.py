@@ -187,7 +187,10 @@ class InternalFileTree:
 
     def to_api_file_tree(self):
         file_tree = FileTree()
-        file_tree.type = self.type.name
+        if self.type == FileType.MOUNT:
+            file_tree.type = FileType.DIR.name
+        else:
+            file_tree.type = self.type.name
         file_tree.path = self.path
         file_tree.ro = self.ro
         file_tree.size = self.size
