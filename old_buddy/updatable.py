@@ -6,11 +6,23 @@ from old_buddy.util import run_slowly_die_fast
 TIME = get_settings().TIME
 
 
-class ThreadedUpdater:
+class Updatable:
+
+    def update(self):
+        """Used only for calling, not for actual updating"""
+        self._update()
+
+    def _update(self):
+        """Put code for updating here"""
+        ...
+
+
+class ThreadedUpdatable(Updatable):
     thread_name = "updater_thread"
     update_interval = 1
 
     def __init__(self, ):
+        super().__init__()
         self.running = True
         self.thread = Thread(target=self._keep_updating,
                              name=self.thread_name)
@@ -22,13 +34,6 @@ class ThreadedUpdater:
         run_slowly_die_fast(lambda: self.running, TIME.QUIT_INTERVAL,
                             self.update_interval, self.update)
 
-    def update(self):
-        """Used only for calling, not for actual updating"""
-        self._update()
-
-    def _update(self):
-        """Put code for updating here"""
-        ...
 
     def stop(self):
         self.running = False

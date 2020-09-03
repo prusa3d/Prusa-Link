@@ -15,9 +15,10 @@ from old_buddy.command_handlers.info_sender import RespondWithInfo
 from old_buddy.command_handlers.start_print import StartPrint
 from old_buddy.command_handlers.try_until_state import TryUntilState
 from old_buddy.command_runner import CommandRunner
+from old_buddy.informers.filesystem.storage_controller import StorageController
 from old_buddy.informers.telemetry_gatherer import TelemetryGatherer
 from old_buddy.informers.ip_updater import IPUpdater, NO_IP
-from old_buddy.informers.sd_card import SDCard
+from old_buddy.informers.filesystem.sd_card import SDCard
 from old_buddy.informers.state_manager import StateManager
 from old_buddy.input_output.connect_api import ConnectAPI
 from old_buddy.input_output.lcd_printer import LCDPrinter
@@ -96,14 +97,14 @@ class OldBuddy:
 
         self.lcd_printer = LCDPrinter(self.serial_queue)
 
-        self.sd_card = SDCard(self.serial_queue, self.serial)
-        self.sd_card.updated_signal.connect(self.sd_updated)
-        self.sd_card.inserted_signal.connect(self.media_inserted)
-        self.sd_card.ejected_signal.connect(self.media_ejected)
+        self.storage = StorageController(self.serial_queue, self.serial)
+        self.storage.updated_signal.connect(self.storage_updated)
+        self.storage.inserted_signal.connect(self.media_inserted)
+        self.storage.ejected_signal.connect(self.media_ejected)
 
-        # again, init the model data, before connect can ask for non-existing
-        # data
-        self.sd_card.update()
+        self.storage.sd_state_changed_signal.connect(self.sd_state_changed)
+        # after connecting all the signals, do the first update manually
+        self.storage.update()
 
         # Greet the user
         self.lcd_printer.enqueue_greet()
@@ -118,7 +119,7 @@ class OldBuddy:
         # Start individual informer threads after updating manually, so nothing
         # will race with itself
         self.telemetry_gatherer.start()
-        self.sd_card.start()
+        self.storage.start()
         self.ip_updater.start()
         self.state_manager.start()
 
@@ -136,7 +137,7 @@ class OldBuddy:
     def stop(self):
         self.running = False
         self.connect_thread.join()
-        self.sd_card.stop()
+        self.storage.stop()
         self.lcd_printer.stop()
         self.command_runner.stop()
         self.state_manager.stop()
@@ -215,8 +216,10 @@ class OldBuddy:
         else:
             self.lcd_printer.enqueue_message(f"WiFi disconnected", duration=0)
 
-    def sd_updated(self, sender, tree, sd_state):
+    def storage_updated(self, sender, tree):
         self.model.file_tree = tree
+
+    def sd_state_changed(self, sender, sd_state):
         self.model.sd_state = sd_state
 
     def state_changed(self, sender, command_id=None, source=None):

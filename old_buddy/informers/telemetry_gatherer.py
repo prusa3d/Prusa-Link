@@ -14,7 +14,7 @@ from old_buddy.default_settings import get_settings
 from old_buddy.structures.regular_expressions import TEMPERATURE_REGEX, \
     POSITION_REGEX, E_FAN_REGEX, P_FAN_REGEX, PRINT_TIME_REGEX, \
     PROGRESS_REGEX, TIME_REMAINING_REGEX, HEATING_REGEX, HEATING_HOTEND_REGEX
-from old_buddy.threaded_updater import ThreadedUpdater
+from old_buddy.updatable import ThreadedUpdatable
 
 # XXX:  "M221", "M220
 TELEMETRY_GCODES = ["M105", "M114", "PRUSA FAN", "M27", "M73"]
@@ -27,7 +27,7 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG.TELEMETRY_GATHERER_LOG_LEVEL)
 
 
-class TelemetryGatherer(ThreadedUpdater):
+class TelemetryGatherer(ThreadedUpdatable):
     thread_name = "telemetry"
     update_interval = TIME.TELEMETRY_INTERVAL
 
