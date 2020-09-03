@@ -10,29 +10,21 @@ from old_buddy.structures.regular_expressions import OK_REGEX
 class Instruction:
     """Basic instruction which can be enqueued into SerialQueue"""
 
-    @staticmethod
-    def get_data_from_string(message: str):
-        if message[-1] != "\n":
-            message += "\n"
-        return message.encode("ASCII")
+    def __init__(self, message: str, to_checksum: bool=False):
+        if message.count("\n") != 0:
+            raise RuntimeError("Instructions cannot contain newlines.")
 
-    @staticmethod
-    def needs_two_okays(message: str):
-        return message.startswith("M602")
+        # Some messages need to be sent with numbered lines and with checksums
+        # This shall be exclusive for printing from files
+        self.to_checksum = to_checksum
 
-    def __init__(self, data: bytes, needs_two_okays=False):
-        assert isinstance(data, bytes), "Instructions have to contain bytes" \
-                                        "Try Instruction.from_string()"
-        assert data.endswith(b"\n"), "Instructions have to end with a newline"
-        assert data.count(b"\n") == 1, "Instructions can have only one newline"
+        # Can be changed before the instruction is sent.
+        self.message = message
 
         # M602 is generous, it gives us a second "OK"
         # completely free of charge.
         # This enables us to compensate for it
-        self.needs_two_okays = needs_two_okays
-
-        # Can be changed before the instruction is sent.
-        self.data = data
+        self.needs_two_okays = self.message.startswith("M602")
 
         # Event set when the write has been _confirmed by the printer
         self.confirmed_event = Event()
@@ -48,10 +40,7 @@ class Instruction:
         self.sent_signal = Signal()
 
     def __str__(self):
-        return f"Instruction '{self.data.decode('ASCII').strip()}'"
-
-    def get_data_size(self):
-        return len(self.data)
+        return f"Instruction '{self.message.strip()}'"
 
     def confirm(self) -> bool:
         """
@@ -85,32 +74,12 @@ class Instruction:
     def is_confirmed(self):
         return self.confirmed_event.is_set()
 
-    size = property(get_data_size)
 
-
-class EasyInstruction(Instruction):
-    """Same as Instruction but supports its creation from string messages"""
-
-    @staticmethod
-    def from_string(message: str) -> "EasyInstruction":
-        return EasyInstruction(**EasyInstruction._get_args(message))
-
-    @staticmethod
-    def _get_args(message: str):
-        data = Instruction.get_data_from_string(message)
-        needs_two_okays = Instruction.needs_two_okays(message)
-        return dict(data=data, needs_two_okays=needs_two_okays)
-
-
-class MatchableInstruction(EasyInstruction):
+class MatchableInstruction(Instruction):
     """
     Same as EasyInstruction but captures its output, which can be matched
     to a regular expression
     """
-
-    @staticmethod
-    def from_string(message: str) -> "MatchableInstruction":
-        return MatchableInstruction(**MatchableInstruction._get_args(message))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
