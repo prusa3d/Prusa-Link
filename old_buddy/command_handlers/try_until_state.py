@@ -16,7 +16,7 @@ log.setLevel(LOG.COMMANDS_LOG_LEVEL)
 class TryUntilState(Command):
     command_name = "pause/stop/resume print"
 
-    def _run_command(self, gcode: str, desired_state: States):
+    def _try_until_state(self, gcode: str, desired_state: States):
 
         if self.state_manager.get_state() != desired_state:
             to_states = {desired_state: Sources.CONNECT}

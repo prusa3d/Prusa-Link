@@ -7,6 +7,7 @@ from blinker import Signal
 from old_buddy.default_settings import get_settings
 from old_buddy.informers.filesystem.models import InternalFileTree, MountPoint
 from old_buddy.informers.filesystem.mounts import DirMounts, FSMounts
+from old_buddy.informers.state_manager import StateManager, PRINTING_STATES
 from old_buddy.structures.model_classes import FileType
 from old_buddy.updatable import ThreadedUpdatable
 
@@ -24,7 +25,8 @@ class LinuxFilesystem(ThreadedUpdatable):
     thread_name = "linux_filesystem"
     update_interval = TIME.STORAGE_INTERVAL
 
-    def __init__(self):
+    def __init__(self, state_manager: StateManager):
+        self.state_manager = state_manager
         self.updated_signal = Signal()  # kwargs: tree_list: List[FileTree]
         self.inserted_signal = Signal()  # kwargs: root: str, files: FileTree
         self.ejected_signal = Signal()  # kwargs: root: str
@@ -46,6 +48,10 @@ class LinuxFilesystem(ThreadedUpdatable):
         super().__init__()
 
     def update(self):
+        # Do not update while printing
+        if self.state_manager.get_state() in PRINTING_STATES:
+            return
+
         self.fs_mounts.update()
         self.dir_mounts.update()
         super().update()

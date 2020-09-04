@@ -32,6 +32,7 @@ from time import time
 from blinker import Signal
 
 from old_buddy.informers.filesystem.models import SDState, InternalFileTree
+from old_buddy.informers.state_manager import StateManager, PRINTING_STATES
 from old_buddy.structures.model_classes import FileType
 from old_buddy.input_output.serial import Serial
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
@@ -53,7 +54,8 @@ class SDCard(ThreadedUpdatable):
     thread_name = "sd_updater"
     update_interval = TIME.SD_INTERVAL
 
-    def __init__(self, serial_queue: SerialQueue, serial: Serial):
+    def __init__(self, serial_queue: SerialQueue, serial: Serial,
+                 state_manager: StateManager):
 
         self.tree_updated_signal = Signal()  # kwargs: tree: FileTree
         self.state_changed_signal = Signal()  # kwargs: sd_state: SDState
@@ -64,6 +66,7 @@ class SDCard(ThreadedUpdatable):
         self.serial.add_output_handler(INSERTED_REGEX,
                                        lambda match: self.sd_inserted())
         self.serial_queue: SerialQueue = serial_queue
+        self.state_manager = state_manager
 
         self.expecting_insertion = False
 
@@ -72,6 +75,10 @@ class SDCard(ThreadedUpdatable):
         super().__init__()
 
     def _update(self):
+        # Do not update while printing
+        if self.state_manager.get_state() in PRINTING_STATES:
+            return
+
         self.file_tree = self.construct_file_tree()
 
         unsure_states = {SDState.INITIALISING, SDState.UNSURE}
