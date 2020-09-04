@@ -1,6 +1,5 @@
 import logging
 import os
-from pathlib import Path
 from typing import Dict, Set
 
 from blinker import Signal
@@ -10,6 +9,8 @@ from old_buddy.informers.filesystem.models import MountPoint
 from old_buddy.updatable import Updatable
 
 import select
+
+from old_buddy.util import get_clean_path
 
 LOG = get_settings().LOG
 TIME = get_settings().TIME
@@ -114,7 +115,7 @@ class Mounts(Updatable):
 
     @staticmethod
     def _get_clean_paths(dirty_paths):
-        return [str(Path(path)) for path in dirty_paths]
+        return [get_clean_path(path) for path in dirty_paths]
 
     def get_differences(self, new_mount_set: Set[str]):
         removed = self.mounted_set.difference(new_mount_set)
@@ -155,7 +156,7 @@ class FSMounts(Mounts):
             line_list = self.mtab.readlines()
             for line in line_list:
                 _name, string_path, fs_type, flags, *_ = line.split(" ")
-                clean_path = str(Path(string_path))
+                clean_path = get_clean_path(string_path)
 
                 if self.mount_belongs(clean_path, fs_type):
                     ro = "rw" not in flags.split(",")

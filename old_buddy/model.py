@@ -87,7 +87,7 @@ class Model:
             return self._file_tree
 
     @property
-    def api_file_tree(self):
+    def api_file_tree(self) -> FileTree:
         with self.lock:
             return self._file_tree.to_api_file_tree()
 

@@ -80,6 +80,10 @@ class MountPointSettings(BaseModel):
     ]
 
 
+class FilePrinterSettings(BaseModel):
+    TMP_FILE = "/var/tmp/Old Buddy/currently_printing.gcode"
+
+
 class SettingsData(BaseModel):
     """ Object supposed to hold all settings """
     CONN: ConnectSettings = ConnectSettings()
@@ -89,6 +93,7 @@ class SettingsData(BaseModel):
     SQ: SerialQueueSettings = SerialQueueSettings()
     LOG: LogLevelSettings = LogLevelSettings()
     MOUNT: MountPointSettings = MountPointSettings()
+    PRINT: FilePrinterSettings = FilePrinterSettings()
 
 
 def get_settings() -> SettingsData:
