@@ -4,6 +4,7 @@ from typing import Union, Dict
 
 from blinker import Signal
 
+from old_buddy.file_printer import FilePrinter
 from old_buddy.input_output.serial import Serial
 from old_buddy.default_settings import get_settings
 from old_buddy.structures.model_classes import States, Sources
@@ -77,7 +78,10 @@ class StateManager(ThreadedUpdatable):
     thread_name = "state_updater"
     update_interval = TIME.STATUS_UPDATE_INTERVAL
 
-    def __init__(self, serial: Serial):
+    def __init__(self, serial: Serial,
+                 file_printer: FilePrinter):
+
+        self.file_printer = file_printer
 
         self.state_changed_signal = Signal()  # kwargs: command_id: int,
         #                                       source: Sources
@@ -139,16 +143,24 @@ class StateManager(ThreadedUpdatable):
 
     def sd_printing_handler(self, match: re.Match):
         groups = match.groups()
+        printing = groups[0] is None or self.file_printer.printing
+        is_paused = self.printing_state == States.PAUSED
         # FIXME: Do not go out of the printing state when paused,
         #  cannot be detected/maintained otherwise
-        #                            | | | | | | | | | | | | | | | | | | |
-        #                            V V V V V V V V V V V V V V V V V V V
-        if groups[0] is not None and self.printing_state != States.PAUSED:
+        #                       | | | | |
+        #                       V V V V V
+        if not printing and not is_paused:
             self.not_printing()
         else:  # Printing
             self.printing()
 
     def update_state(self):
+        if (self.file_printer.printing and
+                self.printing_state != States.PRINTING):
+            self.expect_change(
+                StateChange(to_states={States.PRINTING: Sources.CONNECT}))
+            self.printing()
+
         if self.printing_state == States.PRINTING:
             if self.progress == 100:
                 self.expect_change(

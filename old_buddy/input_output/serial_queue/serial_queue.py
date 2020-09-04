@@ -43,6 +43,10 @@ class SerialQueue:
         # For numbered messages with checksums
         self.message_number = 1
 
+        # When enqueuing instructions to front keep track of where to
+        # enqueue next, so they aren't getting mixed
+        self.insert_priority_at = 0
+
         Serial.received.connect(self._serial_read)
 
     # --- Getters ---
@@ -61,7 +65,7 @@ class SerialQueue:
 
     # --- If statements in methods ---
     def can_write(self):
-        return not self.is_empty()
+        return not self.is_empty() and not self.front_instruction.is_sent()
 
     def is_empty(self):
         return not bool(self.queue)
@@ -98,6 +102,16 @@ class SerialQueue:
         self.front_instruction.sent()
         self.serial.write(data)
 
+    def _enqueue(self, instruction: Instruction, front=False):
+        if front:
+            self.queue.insert(self.insert_priority_at,
+                              instruction)
+            self.insert_priority_at += 1
+        else:
+            if self.is_empty():
+                self.insert_priority_at = 1
+            self.queue.append(instruction)
+
     def enqueue_one(self, instruction: Instruction, front=False):
         """
         Enqueue one instruction
@@ -111,34 +125,27 @@ class SerialQueue:
             log.debug(f"{instruction} enqueued. "
                       f"{'to the front' if front else ''}")
 
-            if front and not self.is_empty():
-                self.queue.insert(1, instruction)
-            else:
-                self.queue.append(instruction)
+            self._enqueue(instruction, front)
 
-        if was_empty:
-            self._try_writing()
+        self._try_writing()
 
-    def enqueue_list(self, instructions: List[Instruction], front=False):
+    def enqueue_list(self, instruction_list: List[Instruction], front=False):
         """
         Enqueue list of instructions
         Don't interrupt, if anyone else is enqueueing instructions
-        :param instructions: the list to enqueue
+        :param instruction_list: the list to enqueue
         :param front: whether to enqueue to front of the queue
         """
 
         with self.write_lock:
             was_empty = self.is_empty()
-            log.debug(f"Instructions {instructions} enqueued"
+            log.debug(f"Instructions {instruction_list} enqueued"
                       f"{'to the front' if front else ''}")
 
-            if front and not self.is_empty():
-                self.queue = self.queue[0:1] + instructions + self.queue[1:]
-            else:
-                self.queue.extend(instructions)
+            for instruction in instruction_list:
+                self._enqueue(instruction, front)
 
-        if was_empty:
-            self._try_writing()
+        self._try_writing()
 
     def _serial_read(self, sender, line):
         """
@@ -183,10 +190,16 @@ class SerialQueue:
         self.last_event_on = time()
 
         if self.front_instruction.confirm():
-            # If the instruction did not refuse to be confirmed
-            # Yes, that needs to happen because of M602
-            log.debug(f"{self.front_instruction} confirmed")
-            del self.queue[0]
+            with self.write_lock:
+                # If the instruction did not refuse to be confirmed
+                # Yes, that needs to happen because of M602
+                log.debug(f"{self.front_instruction} confirmed")
+                del self.queue[0]
+
+                if self.insert_priority_at > 1:
+                    self.insert_priority_at -= 1
+                if self.is_empty():
+                    self.insert_priority_at = 0
         else:
             log.debug(f"{self.front_instruction} refused confirmation. "
                       f"Hopefully it has a reason for that")
@@ -208,10 +221,11 @@ class SerialQueue:
         Something caused the RX buffer to get thrown out, let's re-send
         everything supposed to be in it.
         """
-        log.debug(f"Think that RX Buffer got yeeted, re-sending what should "
-                  f"have been inside")
+        log.debug(f"Think that RX Buffer got yeeted, re-sending instruction")
 
-        self._try_writing()
+        # Let's bypass the check and write if we can.
+        if not self.is_empty():
+            self._write()
 
     front_instruction = property(get_front_instruction)
 

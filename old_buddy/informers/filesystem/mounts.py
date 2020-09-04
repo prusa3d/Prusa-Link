@@ -10,7 +10,7 @@ from old_buddy.updatable import Updatable
 
 import select
 
-from old_buddy.util import get_clean_path
+from old_buddy.util import get_clean_path, ensure_directory
 
 LOG = get_settings().LOG
 TIME = get_settings().TIME
@@ -184,6 +184,11 @@ class DirMounts(Mounts):
     Configured directories are reported as mountpoints too,
     having the fs_type of "directory".
     """
+
+    def __init__(self):
+        super().__init__()
+        for directory in self.configured_mounts:
+            ensure_directory(directory)
 
     paths_to_mount = MOUNT.DIRECTORIES
 

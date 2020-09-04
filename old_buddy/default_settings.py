@@ -57,6 +57,7 @@ class LogLevelSettings(BaseModel):
     MOUNTPOINT_LOG_LEVEL = "DEBUG"
     LINUX_FILESYSTEM_LOG_LEVEL = "DEBUG"
     STORAGE_LOG_LEVEL = "DEBUG"
+    FILE_PRINTER_LOG_LEVEL = "DEBUG"
 
 
 class MountPointSettings(BaseModel):

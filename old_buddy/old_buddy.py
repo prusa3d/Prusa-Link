@@ -12,8 +12,10 @@ from serial import SerialException
 from old_buddy.command import Command
 from old_buddy.command_handlers.execute_gcode import ExecuteGcode
 from old_buddy.command_handlers.info_sender import RespondWithInfo
+from old_buddy.command_handlers.pause_print import PausePrint
+from old_buddy.command_handlers.resume_print import ResumePrint
 from old_buddy.command_handlers.start_print import StartPrint
-from old_buddy.command_handlers.try_until_state import TryUntilState
+from old_buddy.command_handlers.stop_print import StopPrint
 from old_buddy.command_runner import CommandRunner
 from old_buddy.file_printer import FilePrinter
 from old_buddy.informers.filesystem.storage_controller import StorageController
@@ -28,7 +30,7 @@ from old_buddy.input_output.serial_queue.serial_queue \
 from old_buddy.input_output.serial_queue.helpers import enqueue_instrucion
 from old_buddy.model import Model
 from old_buddy.default_settings import get_settings
-from old_buddy.structures.model_classes import EmitEvents, States
+from old_buddy.structures.model_classes import EmitEvents
 from old_buddy.util import get_command_id, run_slowly_die_fast
 
 LOG = get_settings().LOG
@@ -82,7 +84,9 @@ class OldBuddy:
                                       tls=tls)
         ConnectAPI.connection_error.connect(self.connection_error)
 
-        self.state_manager = StateManager(self.serial)
+        self.file_printer = FilePrinter(self.serial_queue)
+
+        self.state_manager = StateManager(self.serial, self.file_printer)
         self.state_manager.state_changed_signal.connect(self.state_changed)
 
         # Write the initial state to the model
@@ -97,7 +101,8 @@ class OldBuddy:
 
         self.lcd_printer = LCDPrinter(self.serial_queue)
 
-        self.storage = StorageController(self.serial_queue, self.serial)
+        self.storage = StorageController(self.serial_queue, self.serial,
+                                         self.state_manager)
         self.storage.updated_signal.connect(self.storage_updated)
         self.storage.inserted_signal.connect(self.media_inserted)
         self.storage.ejected_signal.connect(self.media_ejected)
@@ -115,8 +120,6 @@ class OldBuddy:
 
         # again, let's do the first one manually
         self.ip_updater.update()
-
-        self.file_printer = FilePrinter(self.serial_queue, self.state_manager)
 
         # Start individual informer threads after updating manually, so nothing
         # will race with itself
@@ -189,16 +192,11 @@ class OldBuddy:
             elif data["command"] == "START_PRINT":
                 self.run_command(StartPrint, api_response)
             elif data["command"] == "STOP_PRINT":
-                # Do both, stopping something stopped is not a problem
-                self.file_printer.stop_print()
-                self.run_command(TryUntilState, api_response, gcode="M603",
-                                 desired_state=States.READY)
+                self.run_command(StopPrint, api_response)
             elif data["command"] == "PAUSE_PRINT":
-                self.run_command(TryUntilState, api_response, gcode="M601",
-                                 desired_state=States.PAUSED)
+                self.run_command(PausePrint, api_response)
             elif data["command"] == "RESUME_PRINT":
-                self.run_command(TryUntilState, api_response, gcode="M602",
-                                 desired_state=States.PRINTING)
+                self.run_command(ResumePrint, api_response)
             else:
                 command_id = get_command_id(api_response)
                 self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
