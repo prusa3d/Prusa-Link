@@ -9,10 +9,6 @@ from old_buddy.informers.filesystem.models import InternalFileTree, SDState
 from old_buddy.informers.filesystem.sd_card import SDCard
 from old_buddy.input_output.serial import Serial
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
-from old_buddy.updatable import ThreadedUpdatable
-
-import select
-import os
 
 
 LOG = get_settings().LOG

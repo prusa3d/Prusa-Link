@@ -1,4 +1,6 @@
+import os
 import socket
+from pathlib import Path
 from time import sleep, time
 from typing import Callable
 
@@ -60,3 +62,18 @@ def get_local_ip():
     local_ip = s.getsockname()[0]
     s.close()
     return local_ip
+
+
+def get_clean_path(path):
+    return str(Path(path))
+
+
+def ensure_directory(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+
+def get_checksum(message: str):
+    checksum = 0
+    for char in message.encode("ascii"):
+        checksum ^= char

@@ -1,6 +1,8 @@
 import logging
+from pathlib import Path
 
 from old_buddy.command import Command
+from old_buddy.informers.filesystem.models import InternalFileTree
 from old_buddy.informers.state_manager import StateChange
 from old_buddy.default_settings import get_settings
 from old_buddy.structures.model_classes import States, Sources
@@ -32,21 +34,34 @@ class StartPrint(Command):
             StateChange(self.api_response,
                         to_states={States.PRINTING: Sources.CONNECT}))
 
-        self._load_file()
-        self._start_print()
+        file_path_string = self.api_response.json()["args"][0]
+        path = Path(file_path_string)
+        parts = path.parts
+
+        if parts[1] == "SD Card":
+            # Cut the first "/" and "SD Card" off
+            self._load_file(str(Path(*parts[2:])))
+            self._start_print()
+        else:
+            self._start_file_print(str(path))
 
         self.state_manager.printing()
         self.state_manager.stop_expecting_change()
 
-    def _load_file(self):
-        raw_file_name = self.api_response.json()["args"][0]
-        file_name = raw_file_name.lower()
+    def _start_file_print(self, path):
+        file_to_print: InternalFileTree = self.model.file_tree.get_file(path)
+        os_path = file_to_print.full_fs_path
+
+        self.file_printer.print(os_path)
+
+    def _load_file(self, raw_path):
+        file_name = raw_path.lower()
 
         instruction = self.do_matchable(f"M23 {file_name}")
         match = instruction.match(OPEN_RESULT_REGEX)
 
         if not match or match.groups()[0] is None:  # Opening failed
-            self.failed(f"Wrong file name, or bad file")
+            self.failed(f"Wrong file name, or bad file. File name: {file_name}")
 
     def _start_print(self):
         self.do_matchable("M24")

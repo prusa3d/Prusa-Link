@@ -3,6 +3,7 @@ from threading import Thread, Event
 from typing import Type, Optional
 
 from old_buddy.command import Command
+from old_buddy.file_printer import FilePrinter
 from old_buddy.informers.state_manager import StateManager
 from old_buddy.input_output.connect_api import ConnectAPI
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
@@ -20,10 +21,12 @@ log.setLevel(LOG.COMMANDS_LOG_LEVEL)
 class CommandRunner:
 
     def __init__(self, serial_queue: SerialQueue, connect_api: ConnectAPI,
-                  state_manager: StateManager, model: Model):
+                 state_manager: StateManager, file_printer: FilePrinter, 
+                 model: Model):
         self.serial_queue = serial_queue
         self.state_manager = state_manager
         self.connect_api = connect_api
+        self.file_printer = file_printer
         self.model = model
 
         self.running = True
@@ -49,7 +52,7 @@ class CommandRunner:
         """
         command = command_class(api_response, self.serial_queue,
                                 self.connect_api, self.state_manager,
-                                self.model, **kwargs)
+                                self.file_printer, self.model, **kwargs)
         self._run(command)
 
     def _run(self, command: Command):
