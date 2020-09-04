@@ -1,6 +1,7 @@
 import logging
 import os
 from enum import Enum
+from pathlib import Path
 from typing import Set, Dict
 
 from pydantic import BaseModel
@@ -76,8 +77,6 @@ class InternalFileTree:
     @parent.setter
     def parent(self, parent: 'InternalFileTree'):
         self._parent = parent
-        if self.ancestor_mount is None:
-            self.path_from_mount = self.get_path_from_mount()
 
     def add_child(self, child: 'InternalFileTree'):
         self.children_dict[child.path] = child
@@ -105,10 +104,10 @@ class InternalFileTree:
         self.add_file(path=clean_path, size=size, ro=True)
 
     def add_file(self, path, size, ro=True, m_time=None, full_fs_path=None):
-        parts = path.split("/")
+        parts = Path(path).parts
 
         node = self
-        for part in parts[:-1]:
+        for part in parts[1:-1]:
             if part not in node.children_dict:
                 child = InternalFileTree(file_type=FileType.DIR, path=part,
                                          parent=node, ro=ro, m_time=m_time,
@@ -128,6 +127,27 @@ class InternalFileTree:
             if node.type == FileType.MOUNT:
                 node.descendants_set.add(leaf)
             node = node.parent
+
+    def get_file(self, path_string: str):
+        path = Path(path_string)
+        clean_path_string = str(path)
+        log.debug(f"Searching for file {path_string} in {self.full_path}")
+        if not clean_path_string.startswith(self.full_path):
+            raise FileNotFoundError("The file you requested is not in this "
+                                    "subtree")
+
+        node_path = Path(self.full_path)
+        parts_to_descendant = path.parts[len(node_path.parts):]
+
+        node = self
+        for part in parts_to_descendant:
+            try:
+                log.debug(f"Getting {part} from node {node.full_path}")
+                node = node.children_dict[part]
+            except KeyError:
+                raise FileNotFoundError("The file you requested is not "
+                                        "available anymore")
+        return node
 
     def get_path_from_mount(self):
         """

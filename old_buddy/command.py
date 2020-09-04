@@ -3,6 +3,7 @@ from enum import Enum
 
 from blinker import Signal
 
+from old_buddy.file_printer import FilePrinter
 from old_buddy.informers.state_manager import StateManager
 from old_buddy.input_output.connect_api import ConnectAPI
 from old_buddy.input_output.serial_queue.helpers import wait_for_instruction, \
@@ -34,10 +35,11 @@ class Command:
 
     def __init__(self, api_response, serial_queue: SerialQueue,
                  connect_api: ConnectAPI, state_manager: StateManager,
-                 model: Model, **kwargs):
+                 file_printer: FilePrinter, model: Model, **kwargs):
         self.serial_queue = serial_queue
         self.connect_api = connect_api
         self.state_manager = state_manager
+        self.file_printer = file_printer
         self.model = model
 
         self._kwargs = kwargs
@@ -105,7 +107,7 @@ class Command:
         except Exception as e:
             log.exception("Command failed unexpectedly, "
                           "captured to stay alive.")
-            self.set_failed_info(e.args[1])
+            self.set_failed_info(e.args[0])
 
         self.finished_signal.send(self)
 

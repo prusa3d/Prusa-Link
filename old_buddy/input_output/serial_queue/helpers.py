@@ -17,10 +17,10 @@ def wait_for_instruction(instruction, should_wait: Callable[[], bool],
             break
 
 
-def enqueue_instrucion(queue: SerialQueue, message: str,
+def enqueue_instrucion(queue: SerialQueue, message: str, front=False,
                        to_checksum=False) -> Instruction:
     instruction = Instruction(message, to_checksum=to_checksum)
-    queue.enqueue_one(instruction)
+    queue.enqueue_one(instruction, front=front)
     return instruction
 
 

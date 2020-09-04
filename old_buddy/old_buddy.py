@@ -15,10 +15,10 @@ from old_buddy.command_handlers.info_sender import RespondWithInfo
 from old_buddy.command_handlers.start_print import StartPrint
 from old_buddy.command_handlers.try_until_state import TryUntilState
 from old_buddy.command_runner import CommandRunner
+from old_buddy.file_printer import FilePrinter
 from old_buddy.informers.filesystem.storage_controller import StorageController
 from old_buddy.informers.telemetry_gatherer import TelemetryGatherer
 from old_buddy.informers.ip_updater import IPUpdater, NO_IP
-from old_buddy.informers.filesystem.sd_card import SDCard
 from old_buddy.informers.state_manager import StateManager
 from old_buddy.input_output.connect_api import ConnectAPI
 from old_buddy.input_output.lcd_printer import LCDPrinter
@@ -116,6 +116,8 @@ class OldBuddy:
         # again, let's do the first one manually
         self.ip_updater.update()
 
+        self.file_printer = FilePrinter(self.serial_queue, self.state_manager)
+
         # Start individual informer threads after updating manually, so nothing
         # will race with itself
         self.telemetry_gatherer.start()
@@ -124,7 +126,8 @@ class OldBuddy:
         self.state_manager.start()
 
         self.command_runner = CommandRunner(self.serial_queue, self.connect_api,
-                                            self.state_manager, self.model)
+                                            self.state_manager,
+                                            self.file_printer, self.model)
 
         self.last_sent_telemetry = time()
 
@@ -186,6 +189,8 @@ class OldBuddy:
             elif data["command"] == "START_PRINT":
                 self.run_command(StartPrint, api_response)
             elif data["command"] == "STOP_PRINT":
+                # Do both, stopping something stopped is not a problem
+                self.file_printer.stop_print()
                 self.run_command(TryUntilState, api_response, gcode="M603",
                                  desired_state=States.READY)
             elif data["command"] == "PAUSE_PRINT":
