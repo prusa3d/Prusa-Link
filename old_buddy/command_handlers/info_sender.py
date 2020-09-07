@@ -9,7 +9,7 @@ from old_buddy.informers.ip_updater import NO_IP
 from old_buddy.structures.model_classes import PrinterInfo, \
     NetworkInfo, EmitEvents, Event
 from old_buddy.structures.regular_expressions import FW_REGEX, \
-    PRINTER_TYPE_REGEX
+    PRINTER_TYPE_REGEX, NOZZLE_REGEX
 
 LOG = get_settings().LOG
 
@@ -43,6 +43,7 @@ class RespondWithInfo(Command):
     def _run_command(self):
         self.insert_type_and_version()
         self.insert_firmware_version()
+        self.insert_nozzle_diameter()
         self.insert_network_info()
         self.insert_additional_info()
 
@@ -80,6 +81,15 @@ class RespondWithInfo(Command):
             self.failed("Printer responded with something unexpected")
 
         self.printer_info.firmware = match.groups()[0]
+
+    def insert_nozzle_diameter(self):
+        instruction = self.do_matchable("M862.1 Q")
+
+        match = instruction.match(NOZZLE_REGEX)
+        if match is None:
+            self.failed("Printer responded with something unexpected")
+
+        self.printer_info.nozzle_diameter = float(match.groups()[0])
 
     def insert_additional_info(self):
         self.printer_info.state = self.model.state.name
