@@ -60,8 +60,8 @@ class FilePrinter:
                 log.debug("Resuming USB print")
 
             gcode = line.split(";", 1)[0].strip()
-            log.debug(f"USB printing gcode: {gcode}")
             if gcode:
+                log.debug(f"USB printing gcode: {gcode}")
                 instruction = enqueue_instrucion(self.serial_queue, gcode,
                                                  front=True, to_checksum=True)
                 wait_for_instruction(instruction, lambda: self.printing)

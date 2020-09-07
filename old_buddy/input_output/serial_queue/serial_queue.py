@@ -6,7 +6,7 @@ from typing import List
 from old_buddy.input_output.serial import Serial
 from old_buddy.default_settings import get_settings
 from old_buddy.structures.regular_expressions import CONFIRMATION_REGEX, \
-    RX_YEETED_REGEX, PAUSED_REGEX, RENEW_TIMEOUT_REGEX
+    RX_YEETED_REGEX, PAUSED_REGEX, RENEW_TIMEOUT_REGEX, RESEND_REGEX
 from old_buddy.util import run_slowly_die_fast
 from .instruction import Instruction
 
@@ -76,11 +76,10 @@ class SerialQueue:
         if self.can_write():
             self._write()
 
-    def get_front_bytes(self):
+    def get_front_data(self):
         data = self.front_instruction.message.encode("ASCII")
         if self.front_instruction.to_checksum:
             number_part = f"N{self.message_number} ".encode("ASCII")
-            self.message_number += 1
             to_checksum = number_part + data + b" "
             checksum = self.get_checksum(to_checksum)
             checksum_data = f"*{checksum}".encode("ASCII")
@@ -95,11 +94,22 @@ class SerialQueue:
         return checksum
 
     def _write(self):
-        data = self.get_front_bytes()
-        if len(data) > self.rx_max:
-            raise RuntimeError("")
-        log.debug(f"{data.decode('ASCII')} sent")
-        self.front_instruction.sent()
+        # message_number has been raced for, so let's not do that
+        with self.write_lock:
+            data = self.get_front_data()
+
+            # Putting this here, so it's more visible
+            if self.front_instruction.to_checksum:
+                self.message_number += 1
+
+            size = len(data)
+            if size > self.rx_max:
+                raise RuntimeError(f"The data {data.decode('ASCII')} we're trying "
+                                   f"to write is {size}B. But we can only send "
+                                   f"{self.rx_max}B max.")
+
+            log.debug(f"{data.decode('ASCII')} sent")
+            self.front_instruction.sent()
         self.serial.write(data)
 
     def _enqueue(self, instruction: Instruction, front=False):
@@ -160,6 +170,7 @@ class SerialQueue:
         confirmation_match = CONFIRMATION_REGEX.fullmatch(line)
         yeeted_match = RX_YEETED_REGEX.fullmatch(line)
         paused_match = PAUSED_REGEX.fullmatch(line)
+        resend_match = RESEND_REGEX.fullmatch(line)
 
         if confirmation_match:
             # There is a special case, M105 prints "ok" on the same line as
@@ -177,6 +188,16 @@ class SerialQueue:
             self._confirmed()
         elif yeeted_match:
             self._rx_buffer_got_yeeted()
+        elif resend_match:
+            number = resend_match.groups()[0]
+            log.warning(f"Resend of {number} requested. Current is "
+                        f"{self.message_number - 1}")
+            if (self.front_instruction.to_checksum and
+                    self.message_number - 1 == number):
+                self._recover_front()
+            else:
+                log.error("Most likely the serial communication "
+                          "will fall apart after this!")
         else:  # no match, it's not a confirmation
             self._output_captured(line)
 
@@ -200,6 +221,9 @@ class SerialQueue:
                     self.insert_priority_at -= 1
                 if self.is_empty():
                     self.insert_priority_at = 0
+        elif not self.front_instruction.is_sent():
+            # Something thinks the instruction failed sending, re-send
+            self._try_writing()
         else:
             log.debug(f"{self.front_instruction} refused confirmation. "
                       f"Hopefully it has a reason for that")
@@ -226,6 +250,18 @@ class SerialQueue:
         # Let's bypass the check and write if we can.
         if not self.is_empty():
             self._write()
+
+    def _recover_front(self):
+        # The message that failed gets confirmed
+        # Let's stop that from happening as we need to re-send it
+        self.front_instruction.needs_two_okays = True
+
+        # The message errored out on send, so let's try it again
+        self.front_instruction.sent_event.clear()
+
+        # We'll be sending a message with the same number again
+        self.message_number -= 1
+
 
     front_instruction = property(get_front_instruction)
 
