@@ -59,3 +59,5 @@ TIME_REMAINING_REGEX = re.compile(r"^SILENT MODE: Percent done: (\d+); "
                                   r"print time remaining in mins: (-?\d+) ?$")
 HEATING_REGEX = re.compile(r"^T:(\d+\.\d+) E:\d+ B:(\d+\.\d+)$")
 HEATING_HOTEND_REGEX = re.compile(r"^T:(\d+\.\d+) E:([?]|\d+) W:([?]|\d+)$")
+
+RESEND_REGEX = re.compile(r"^Resend: ?(\d+)$")
