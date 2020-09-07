@@ -81,6 +81,7 @@ class PrinterInfo(BaseModel):
     appendix: bool = None
     state: str = None
     files: FileTree = None
+    nozzle_diameter: float = None
 
     def set_printer_model_info(self, data):
         self.type, self.version, self.subversion = data
