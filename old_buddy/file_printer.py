@@ -4,6 +4,8 @@ import shutil
 from threading import Thread
 from time import sleep
 
+from blinker import Signal
+
 from old_buddy.default_settings import get_settings
 from old_buddy.input_output.serial_queue.helpers import enqueue_instrucion, \
     wait_for_instruction
@@ -21,6 +23,9 @@ log.setLevel(LOG.FILE_PRINTER_LOG_LEVEL)
 class FilePrinter:
 
     def __init__(self, serial_queue: SerialQueue):
+        self.new_print_started_signal = Signal()
+        self.print_ended_signal = Signal()
+
         self.tmp_file_path = get_clean_path(PRINT.TMP_FILE)
         ensure_directory(os.path.dirname(self.tmp_file_path))
 
@@ -44,13 +49,15 @@ class FilePrinter:
 
         self.thread = Thread(target=self._print, name="file_print")
         self.printing = True
+        self.new_print_started_signal.send(self)
         self.thread.start()
 
     def _print(self):
         tmp_file = open(self.tmp_file_path)
 
         # Reset the line counter, printing a new file
-        instruction = enqueue_instrucion(self.serial_queue, "M110")
+        instruction = enqueue_instrucion(self.serial_queue, "M110 N1",
+                                         front=True)
         wait_for_instruction(instruction, lambda: self.printing)
 
         for line in tmp_file.readlines():
@@ -75,6 +82,7 @@ class FilePrinter:
 
         os.remove(self.tmp_file_path)
         self.printing = False
+        self.print_ended_signal.send(self)
 
     def wait_for_unpause(self):
         while self.printing and self.paused:
