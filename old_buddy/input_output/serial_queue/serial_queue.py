@@ -6,7 +6,7 @@ from typing import List
 from old_buddy.input_output.serial import Serial
 from old_buddy.default_settings import get_settings
 from old_buddy.structures.regular_expressions import CONFIRMATION_REGEX, \
-    RX_YEETED_REGEX, PAUSED_REGEX, RENEW_TIMEOUT_REGEX, RESEND_REGEX
+    FILE_OPEN_REGEX, PAUSED_REGEX, RENEW_TIMEOUT_REGEX, RESEND_REGEX
 from old_buddy.util import run_slowly_die_fast
 from .instruction import Instruction
 
@@ -168,7 +168,7 @@ class SerialQueue:
             return
 
         confirmation_match = CONFIRMATION_REGEX.fullmatch(line)
-        yeeted_match = RX_YEETED_REGEX.fullmatch(line)
+        yeeted_match = FILE_OPEN_REGEX.fullmatch(line)
         paused_match = PAUSED_REGEX.fullmatch(line)
         resend_match = RESEND_REGEX.fullmatch(line)
 
