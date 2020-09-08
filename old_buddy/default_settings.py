@@ -58,6 +58,7 @@ class LogLevelSettings(BaseModel):
     LINUX_FILESYSTEM_LOG_LEVEL = "DEBUG"
     STORAGE_LOG_LEVEL = "DEBUG"
     FILE_PRINTER_LOG_LEVEL = "DEBUG"
+    JOB_ID_LOG_LEVEL = "DEBUG"
 
 
 class MountPointSettings(BaseModel):
@@ -85,6 +86,10 @@ class FilePrinterSettings(BaseModel):
     TMP_FILE = "/var/tmp/Old Buddy/currently_printing.gcode"
 
 
+class JobIDSettings(BaseModel):
+    JOB_FILE = "/var/tmp/Old Buddy/job_id_data"
+
+
 class SettingsData(BaseModel):
     """ Object supposed to hold all settings """
     CONN: ConnectSettings = ConnectSettings()
@@ -95,6 +100,7 @@ class SettingsData(BaseModel):
     LOG: LogLevelSettings = LogLevelSettings()
     MOUNT: MountPointSettings = MountPointSettings()
     PRINT: FilePrinterSettings = FilePrinterSettings()
+    JOB: JobIDSettings = JobIDSettings()
 
 
 def get_settings() -> SettingsData:

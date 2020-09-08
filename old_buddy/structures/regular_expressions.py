@@ -18,7 +18,7 @@ INSERTED_REGEX = re.compile(r"^(echo:SD card ok)$")
 
 ANY_REGEX = re.compile(r".*")
 CONFIRMATION_REGEX = re.compile(r"^ok\s?(.*)$")
-RX_YEETED_REGEX = re.compile(r"^echo:Now fresh file: .*$")
+FILE_OPEN_REGEX = re.compile(r"^echo:Now fresh file: .*$")
 PAUSED_REGEX = re.compile(r"^// action:paused$")
 OK_REGEX = re.compile(r"^ok$")
 RENEW_TIMEOUT_REGEX = re.compile(r"(^echo:busy: processing$)|"
@@ -62,3 +62,5 @@ HEATING_REGEX = re.compile(r"^T:(\d+\.\d+) E:\d+ B:(\d+\.\d+)$")
 HEATING_HOTEND_REGEX = re.compile(r"^T:(\d+\.\d+) E:([?]|\d+) W:([?]|\d+)$")
 
 RESEND_REGEX = re.compile(r"^Resend: ?(\d+)$")
+PRINTER_BOOT_REGEX = re.compile(r"^start$")
+POWER_PANIC_REGEX = re.compile(r"^INT4$")

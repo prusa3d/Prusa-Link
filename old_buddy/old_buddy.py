@@ -19,6 +19,7 @@ from old_buddy.command_handlers.stop_print import StopPrint
 from old_buddy.command_runner import CommandRunner
 from old_buddy.file_printer import FilePrinter
 from old_buddy.informers.filesystem.storage_controller import StorageController
+from old_buddy.informers.job_id import JobID
 from old_buddy.informers.telemetry_gatherer import TelemetryGatherer
 from old_buddy.informers.ip_updater import IPUpdater, NO_IP
 from old_buddy.informers.state_manager import StateManager
@@ -88,6 +89,9 @@ class OldBuddy:
 
         self.state_manager = StateManager(self.serial, self.file_printer)
         self.state_manager.state_changed_signal.connect(self.state_changed)
+
+        # TODO: Hook onto the events
+        self.job_id = JobID(self.serial, self.file_printer, self.state_manager)
 
         # Write the initial state to the model
         self.model.state = self.state_manager.get_state()

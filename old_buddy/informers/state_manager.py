@@ -262,7 +262,8 @@ class StateManager(Updatable):
             else:
                 log.debug("Unexpected state change. This is weird")
             self.expected_state_change = None
-            self.state_changed_signal.send(self, command_id=command_id, source=source)
+            self.state_changed_signal.send(self, command_id=command_id,
+                                           source=source)
 
     # --- State changing methods ---
 
