@@ -12,7 +12,7 @@ from old_buddy.structures.regular_expressions import OK_REGEX, BUSY_REGEX, \
     ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, PROGRESS_REGEX, \
     SD_PRINTING_REGEX
-from old_buddy.updatable import ThreadedUpdatable
+from old_buddy.updatable import Updatable
 from old_buddy.util import get_command_id
 
 LOG = get_settings().LOG
@@ -74,7 +74,7 @@ def state_influencer(state_change: StateChange = None):
     return inner
 
 
-class StateManager(ThreadedUpdatable):
+class StateManager(Updatable):
     thread_name = "state_updater"
     update_interval = TIME.STATUS_UPDATE_INTERVAL
 
@@ -126,6 +126,8 @@ class StateManager(ThreadedUpdatable):
         for regex, handler in regex_handlers.items():
             self.serial.add_output_handler(regex, handler)
 
+        self.file_printer.new_print_started_signal.connect(lambda sender: self.file_printer_started_printing())
+
         super().__init__()
 
     # --- Printer output handlers ---
@@ -138,8 +140,11 @@ class StateManager(ThreadedUpdatable):
     def progress_handler(self, match: re.Match):
         groups = match.groups()
         progress = int(groups[0])
-        if 0 <= progress <= 100:
-            self.progress = progress
+
+        if self.printing_state == States.PRINTING and progress == 100:
+            self.expect_change(
+                StateChange(to_states={States.FINISHED: Sources.MARLIN}))
+            self.finished()
 
     def sd_printing_handler(self, match: re.Match):
         groups = match.groups()
@@ -154,18 +159,12 @@ class StateManager(ThreadedUpdatable):
         else:  # Printing
             self.printing()
 
-    def update_state(self):
+    def file_printer_started_printing(self):
         if (self.file_printer.printing and
                 self.printing_state != States.PRINTING):
             self.expect_change(
                 StateChange(to_states={States.PRINTING: Sources.CONNECT}))
             self.printing()
-
-        if self.printing_state == States.PRINTING:
-            if self.progress == 100:
-                self.expect_change(
-                    StateChange(to_states={States.FINISHED: Sources.MARLIN}))
-                self.finished()
 
     def get_state(self):
         if self.override_state is not None:

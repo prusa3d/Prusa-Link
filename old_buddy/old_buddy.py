@@ -126,7 +126,6 @@ class OldBuddy:
         self.telemetry_gatherer.start()
         self.storage.start()
         self.ip_updater.start()
-        self.state_manager.start()
 
         self.command_runner = CommandRunner(self.serial_queue, self.connect_api,
                                             self.state_manager,
@@ -146,7 +145,6 @@ class OldBuddy:
         self.storage.stop()
         self.lcd_printer.stop()
         self.command_runner.stop()
-        self.state_manager.stop()
         self.telemetry_gatherer.stop()
         self.ip_updater.stop()
         self.serial_queue.stop()
