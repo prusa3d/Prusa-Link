@@ -68,6 +68,7 @@ class Event(BaseModel):
     root: Optional[str] = None
     files: Optional[FileTree] = None
     job_id: Optional[int] = None
+    state: Optional[str] = None
 
 
 class PrinterInfo(BaseModel):

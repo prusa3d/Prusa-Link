@@ -39,6 +39,7 @@ def install():
     print("Povoluji spouštění při startu a spouštím old buddyho.")
     subprocess.run(["systemctl", "daemon-reload"])
     subprocess.run(["systemctl", "enable", "old_buddy.service"])
+    subprocess.run(["systemctl", "enable", "pigpiod.service"])
     subprocess.run(["systemctl", "restart", "old_buddy.service"])
 
     print("Hotovo")

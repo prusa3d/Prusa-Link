@@ -23,6 +23,7 @@ class Serial:
     def __init__(self, port="/dev/ttyAMA0", baudrate=115200, timeout=1,
                  write_timeout=0, connection_write_delay=10):
 
+        self.connection_write_delay = connection_write_delay
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
@@ -32,8 +33,6 @@ class Serial:
 
         self.running = True
         self._renew_serial_connection()
-
-        sleep(connection_write_delay)
 
         self.read_thread = Thread(target=self._read_continually,
                                   name="serial_read_thread")
@@ -50,15 +49,14 @@ class Serial:
         self.serial = serial.Serial(baudrate=self.baudrate, port=self.port,
                                     timeout=self.timeout,
                                     write_timeout=self.write_timeout)
+        sleep(TIME.PRINTER_BOOT_WAIT)
 
     def _renew_serial_connection(self):
         while self.running:
             try:
                 self._reopen()
             except serial.SerialException:
-                log.debug(f"Openning of the serial port failed, "
-                          f"retrying in {TIME.SERIAL_REOPEN_INTERVAL}")
-                sleep(TIME.SERIAL_REOPEN_INTERVAL)
+                log.debug("Openning of the serial port failed. Retrying...")
             else:
                 break
 
@@ -71,6 +69,8 @@ class Serial:
                 log.error("Failed when reading from the printer. "
                           "Trying to re-open")
                 self._renew_serial_connection()
+            except UnicodeDecodeError:
+                log.error("Failed decoding a message")
             else:
                 if line != "":
                     # with self.write_read_lock:
@@ -89,17 +89,20 @@ class Serial:
         # with self.write_read_lock:
         # Why would i not want to write and handle reads at the same time?
         log.debug(f"Sending to printer: {message}")
-        try:
-            self.serial.write(message)
-        except serial.SerialException:
-            log.error(
-                f"Serial error when sending '{message}' to the printer")
+        with self.write_read_lock:
+            try:
+                self.serial.write(message)
+            except serial.SerialException:
+                log.error(
+                    f"Serial error when sending '{message}' to the printer")
 
     def add_output_handler(self, regex: re.Pattern, handler, *args,
                            debug=False, **kwargs):
         """
         register an output handler for an arbitrary regex
         The regex will be searched each response from the printer
+        To unregister, just get rid off any references to the returned object
+        garbage collection should take care of the rest
 
         :param regex: what to look for in the printer output
         :param handler: what to call, when a match is discovered
@@ -120,6 +123,12 @@ class Serial:
         self.__garbage_collector_safehouse.add(read_filter)
         self.received.connect(read_filter)
         return read_filter
+
+    def blip_dtr(self):
+        with self.write_read_lock:
+            self.serial.dtr = False
+            self.serial.dtr = True
+            sleep(TIME.PRINTER_BOOT_WAIT)
 
     def stop(self):
         self.running = False
