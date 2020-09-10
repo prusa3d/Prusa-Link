@@ -2,7 +2,7 @@ from threading import Lock
 from typing import Optional
 
 from old_buddy.informers.filesystem.models import InternalFileTree, SDState
-from old_buddy.informers.state_manager import PRINTING_STATES
+from old_buddy.structures.constants import PRINTING_STATES
 from old_buddy.structures.model_classes import FileTree, States, Telemetry, \
     PrinterInfo
 
@@ -23,6 +23,7 @@ class Model:
         self._telemetry: Telemetry = Telemetry()
         self._state: Optional[States] = None
         self._local_ip: Optional[str] = None
+        self._job_id: Optional[int] = None
         self._file_tree: Optional[InternalFileTree] = None
         self._sd_state: Optional[SDState] = None
         self._printer_info: Optional[PrinterInfo] = None
@@ -31,6 +32,7 @@ class Model:
     def telemetry(self):
         with self.lock:
             self._telemetry.state = self._state.name
+            self._telemetry.job_id = self._job_id
 
             # Make sure that even if the printer tells us print specific values,
             # nothing will be sent out while not printing
@@ -105,6 +107,16 @@ class Model:
     def sd_state(self, new_sd_state):
         with self.lock:
             self._sd_state = new_sd_state
+
+    @property
+    def job_id(self):
+        with self.lock:
+            return self._job_id
+
+    @job_id.setter
+    def job_id(self, new_job_id):
+        with self.lock:
+            self._job_id = new_job_id
 
         
 

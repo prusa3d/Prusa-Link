@@ -32,7 +32,8 @@ from time import time
 from blinker import Signal
 
 from old_buddy.informers.filesystem.models import SDState, InternalFileTree
-from old_buddy.informers.state_manager import StateManager, PRINTING_STATES
+from old_buddy.informers.state_manager import StateManager
+from old_buddy.structures.constants import PRINTING_STATES
 from old_buddy.structures.model_classes import FileType
 from old_buddy.input_output.serial import Serial
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
