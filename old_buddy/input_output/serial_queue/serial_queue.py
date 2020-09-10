@@ -265,9 +265,16 @@ class SerialQueue:
         # We'll be sending a message with the same number again
         self.message_number -= 1
 
-
     front_instruction = property(get_front_instruction)
 
+    def reset_message_number(self):
+        instruction = Instruction("M110 N1")
+        self.enqueue_one(instruction, front=True)
+        while not self.closed:
+            if instruction.wait_for_confirmation(timeout=TIME.QUIT_INTERVAL):
+                break
+        self.message_number = 1
+        
 
 class MonitoredSerialQueue(SerialQueue):
 

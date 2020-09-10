@@ -6,6 +6,7 @@ from old_buddy.command import Command
 from old_buddy.file_printer import FilePrinter
 from old_buddy.informers.state_manager import StateManager
 from old_buddy.input_output.connect_api import ConnectAPI
+from old_buddy.input_output.serial import Serial
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
 from old_buddy.model import Model
 from old_buddy.default_settings import get_settings
@@ -20,9 +21,10 @@ log.setLevel(LOG.COMMANDS_LOG_LEVEL)
 
 class CommandRunner:
 
-    def __init__(self, serial_queue: SerialQueue, connect_api: ConnectAPI,
-                 state_manager: StateManager, file_printer: FilePrinter, 
-                 model: Model):
+    def __init__(self, serial: Serial, serial_queue: SerialQueue, 
+                 connect_api: ConnectAPI, state_manager: StateManager, 
+                 file_printer: FilePrinter, model: Model):
+        self.serial = serial
         self.serial_queue = serial_queue
         self.state_manager = state_manager
         self.connect_api = connect_api
@@ -50,7 +52,7 @@ class CommandRunner:
         Used to pass additional context (as a factory?) so the command
         itself can be quite light in arguments
         """
-        command = command_class(api_response, self.serial_queue,
+        command = command_class(api_response, self.serial, self.serial_queue,
                                 self.connect_api, self.state_manager,
                                 self.file_printer, self.model, **kwargs)
         self._run(command)

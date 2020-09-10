@@ -13,6 +13,7 @@ from old_buddy.command import Command
 from old_buddy.command_handlers.execute_gcode import ExecuteGcode
 from old_buddy.command_handlers.info_sender import RespondWithInfo
 from old_buddy.command_handlers.pause_print import PausePrint
+from old_buddy.command_handlers.reset_printer import ResetPrinter
 from old_buddy.command_handlers.resume_print import ResumePrint
 from old_buddy.command_handlers.start_print import StartPrint
 from old_buddy.command_handlers.stop_print import StopPrint
@@ -133,7 +134,8 @@ class OldBuddy:
         self.storage.start()
         self.ip_updater.start()
 
-        self.command_runner = CommandRunner(self.serial_queue, self.connect_api,
+        self.command_runner = CommandRunner(self.serial, self.serial_queue,
+                                            self.connect_api,
                                             self.state_manager,
                                             self.file_printer, self.model)
 
@@ -204,6 +206,8 @@ class OldBuddy:
                 self.run_command(PausePrint, api_response)
             elif data["command"] == "RESUME_PRINT":
                 self.run_command(ResumePrint, api_response)
+            elif data["command"] == "RESET_PRINTER":
+                self.run_command(ResetPrinter, api_response)
             else:
                 command_id = get_command_id(api_response)
                 self.connect_api.emit_event(EmitEvents.REJECTED, command_id,

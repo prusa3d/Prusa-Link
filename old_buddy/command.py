@@ -6,6 +6,7 @@ from blinker import Signal
 from old_buddy.file_printer import FilePrinter
 from old_buddy.informers.state_manager import StateManager
 from old_buddy.input_output.connect_api import ConnectAPI
+from old_buddy.input_output.serial import Serial
 from old_buddy.input_output.serial_queue.helpers import wait_for_instruction, \
     enqueue_matchable
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
@@ -33,9 +34,11 @@ class CommandState(Enum):
 class Command:
     command_name = "command"
 
-    def __init__(self, api_response, serial_queue: SerialQueue,
+    def __init__(self, api_response, serial: Serial,
+                 serial_queue: SerialQueue,
                  connect_api: ConnectAPI, state_manager: StateManager,
                  file_printer: FilePrinter, model: Model, **kwargs):
+        self.serial = serial
         self.serial_queue = serial_queue
         self.connect_api = connect_api
         self.state_manager = state_manager
