@@ -85,7 +85,6 @@ class OldBuddy:
                                       tls=tls)
         ConnectAPI.connection_error.connect(self.connection_error)
 
-        self.file_printer = FilePrinter(self.serial_queue)
         self.telemetry_gatherer = TelemetryGatherer(self.serial,
                                                     self.serial_queue)
         self.telemetry_gatherer.updated_signal.connect(self.telemetry_gathered)
@@ -93,6 +92,8 @@ class OldBuddy:
         # before connect can ask stuff
         self.telemetry_gatherer.update()
 
+        self.file_printer = FilePrinter(self.serial_queue, self.serial,
+                                        self.telemetry_gatherer)
 
         self.state_manager = StateManager(self.serial, self.file_printer)
         self.state_manager.state_changed_signal.connect(self.state_changed)
@@ -143,6 +144,9 @@ class OldBuddy:
         self.connect_thread = threading.Thread(
             target=self.keep_sending_telemetry, name="connect_thread")
         self.connect_thread.start()
+
+        # Start this last, as it might start printing right away
+        self.file_printer.start()
 
     def stop(self):
         self.running = False
