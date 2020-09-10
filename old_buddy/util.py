@@ -5,6 +5,7 @@ from time import sleep, time
 from typing import Callable
 
 import requests
+import typing
 
 
 def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,
@@ -77,3 +78,7 @@ def get_checksum(message: str):
     checksum = 0
     for char in message.encode("ascii"):
         checksum ^= char
+
+def persist_file(file: typing.TextIO):
+    file.flush()
+    os.fsync(file.fileno())

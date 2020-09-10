@@ -19,7 +19,7 @@ from old_buddy.command_handlers.stop_print import StopPrint
 from old_buddy.command_runner import CommandRunner
 from old_buddy.file_printer import FilePrinter
 from old_buddy.informers.filesystem.storage_controller import StorageController
-from old_buddy.informers.job_id import JobID
+from old_buddy.informers.job import Job
 from old_buddy.informers.telemetry_gatherer import TelemetryGatherer
 from old_buddy.informers.ip_updater import IPUpdater, NO_IP
 from old_buddy.informers.state_manager import StateManager
@@ -86,22 +86,23 @@ class OldBuddy:
         ConnectAPI.connection_error.connect(self.connection_error)
 
         self.file_printer = FilePrinter(self.serial_queue)
-
-        self.state_manager = StateManager(self.serial, self.file_printer)
-        self.state_manager.state_changed_signal.connect(self.state_changed)
-
-        # TODO: Hook onto the events
-        self.job_id = JobID(self.serial, self.file_printer, self.state_manager)
-
-        # Write the initial state to the model
-        self.model.state = self.state_manager.get_state()
-
         self.telemetry_gatherer = TelemetryGatherer(self.serial,
                                                     self.serial_queue)
         self.telemetry_gatherer.updated_signal.connect(self.telemetry_gathered)
         # let's do this manually, for the telemetry to be known to the model
         # before connect can ask stuff
         self.telemetry_gatherer.update()
+
+
+        self.state_manager = StateManager(self.serial, self.file_printer)
+        self.state_manager.state_changed_signal.connect(self.state_changed)
+        self.state_manager.job_id_updated_signal.connect(self.job_id_updated)
+
+        # Write the initial state to the model
+        self.model.state = self.state_manager.get_state()
+
+        # TODO: Hook onto the events
+        self.job_id = Job()
 
         self.lcd_printer = LCDPrinter(self.serial_queue)
 
@@ -227,11 +228,16 @@ class OldBuddy:
     def sd_state_changed(self, sender, sd_state):
         self.model.sd_state = sd_state
 
-    def state_changed(self, sender, command_id=None, source=None):
+    def state_changed(self, sender: StateManager, command_id=None, source=None):
         state = sender.current_state
+        job_id = sender.get_job_id()
         self.model.state = state
-        self.connect_api.emit_event(EmitEvents.STATE_CHANGED, state=state.name,
-                                    command_id=command_id, source=source)
+        self.connect_api.emit_event(EmitEvents.STATE_CHANGED,
+                                    state=state.name, command_id=command_id,
+                                    source=source, job_id=job_id)
+
+    def job_id_updated(self, sender, job_id):
+        self.model.job_id = job_id
 
     def connection_error(self, sender, path, json_dict):
         log.debug(f"Connection failed while sending data to the api point "
