@@ -32,7 +32,7 @@ class TelemetryGatherer(ThreadedUpdatable):
     update_interval = TIME.TELEMETRY_INTERVAL
 
     def __init__(self, serial: Serial, serial_queue: SerialQueue):
-        self.updated_signal = Signal()
+        self.updated_signal = Signal()  # kwargs: telemetry: Telemetry
 
         self.serial = serial
         self.serial_queue = serial_queue

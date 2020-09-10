@@ -84,6 +84,7 @@ class MountPointSettings(BaseModel):
 
 class FilePrinterSettings(BaseModel):
     TMP_FILE = "/var/tmp/Old Buddy/currently_printing.gcode"
+    PP_FILE = "/var/tmp/Old Buddy/power_panic"
 
 
 class JobIDSettings(BaseModel):

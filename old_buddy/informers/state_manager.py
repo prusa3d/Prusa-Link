@@ -5,6 +5,7 @@ from typing import Union, Dict
 from blinker import Signal
 
 from old_buddy.file_printer import FilePrinter
+from old_buddy.informers.job import Job, JobState
 from old_buddy.input_output.serial import Serial
 from old_buddy.default_settings import get_settings
 from old_buddy.structures.model_classes import States, Sources
@@ -17,12 +18,11 @@ from old_buddy.util import get_command_id
 
 LOG = get_settings().LOG
 TIME = get_settings().TIME
+JOB = get_settings().JOB
 
 
 log = logging.getLogger(__name__)
 log.setLevel(LOG.STATE_MANAGER_LOG_LEVEL)
-
-PRINTING_STATES = {States.PRINTING, States.PAUSED, States.FINISHED}
 
 
 class StateChange:
@@ -83,8 +83,14 @@ class StateManager(Updatable):
 
         self.file_printer = file_printer
 
+        self.job = Job()
+
         self.state_changed_signal = Signal()  # kwargs: command_id: int,
         #                                       source: Sources
+        # Pass job_id updates through
+        self.job_id_updated_signal = Signal()  # kwargs: job_id: int
+        self.job.job_id_updated_signal.connect(self.job_id_updated)
+
         self.serial: Serial = serial
 
         # The ACTUAL states considered when reporting
@@ -126,9 +132,13 @@ class StateManager(Updatable):
         for regex, handler in regex_handlers.items():
             self.serial.add_output_handler(regex, handler)
 
-        self.file_printer.new_print_started_signal.connect(lambda sender: self.file_printer_started_printing())
+        self.file_printer.new_print_started_signal.connect(
+            lambda sender: self.file_printer_started_printing())
 
         super().__init__()
+
+    def job_id_updated(self, sender, job_id):
+        self.job_id_updated_signal.send(sender, job_id=job_id)
 
     # --- Printer output handlers ---
 
@@ -158,6 +168,8 @@ class StateManager(Updatable):
             self.not_printing()
         else:  # Printing
             self.printing()
+
+    # ---
 
     def file_printer_started_printing(self):
         if (self.file_printer.printing and
@@ -262,8 +274,13 @@ class StateManager(Updatable):
             else:
                 log.debug("Unexpected state change. This is weird")
             self.expected_state_change = None
+            self.job.state_changed(self.last_state, self.current_state)
             self.state_changed_signal.send(self, command_id=command_id,
                                            source=source)
+            self.job.tick()
+
+    def get_job_id(self):
+        return self.job.get_job_id()
 
     # --- State changing methods ---
 

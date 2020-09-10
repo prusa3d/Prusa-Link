@@ -61,14 +61,14 @@ class ConnectAPI:
 
     def emit_event(self, emit_event: EmitEvents, command_id: int = None,
                    reason: str = None, state: str = None, source: str = None,
-                   root: str = None, files: FileTree = None):
+                   root: str = None, files: FileTree = None, job_id=None):
         """
         Logs errors, but stops their propagation, as this is called many many
         times and doing try/excepts everywhere would hinder readability
         """
         event = Event(event=emit_event.value, command_id=command_id,
                       reason=reason, state=state, source=source, root=root,
-                      files=files)
+                      files=files, job_id=job_id)
 
         try:
             self.send_model("/p/events", event)

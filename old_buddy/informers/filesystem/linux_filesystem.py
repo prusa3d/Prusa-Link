@@ -7,7 +7,8 @@ from blinker import Signal
 from old_buddy.default_settings import get_settings
 from old_buddy.informers.filesystem.models import InternalFileTree, MountPoint
 from old_buddy.informers.filesystem.mounts import DirMounts, FSMounts
-from old_buddy.informers.state_manager import StateManager, PRINTING_STATES
+from old_buddy.informers.state_manager import StateManager
+from old_buddy.structures.constants import PRINTING_STATES
 from old_buddy.structures.model_classes import FileType
 from old_buddy.updatable import ThreadedUpdatable
 

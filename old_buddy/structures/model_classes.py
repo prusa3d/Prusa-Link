@@ -29,6 +29,7 @@ class Telemetry(BaseModel):
     odometer_e: Optional[int] = None
     material: Optional[str] = None
     state: str = None
+    job_id: Optional[int] = None
 
 
 class NetworkInfo(BaseModel):
@@ -66,6 +67,7 @@ class Event(BaseModel):
     reason: Optional[str] = None
     root: Optional[str] = None
     files: Optional[FileTree] = None
+    job_id: Optional[int] = None
 
 
 class PrinterInfo(BaseModel):
