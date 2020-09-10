@@ -29,7 +29,7 @@ class IntervalSettings(BaseModel):
     SD_INTERVAL = 5
     STORAGE_INTERVAL = 15
     SHOW_IP_INTERVAL = 60
-    SERIAL_REOPEN_INTERVAL = 1
+    PRINTER_BOOT_WAIT = 8
 
 
 class LCDQueueSettings(BaseModel):
@@ -91,6 +91,11 @@ class JobIDSettings(BaseModel):
     JOB_FILE = "/var/tmp/Old Buddy/job_id_data"
 
 
+class PiSetteings(BaseModel):
+
+    RESET_PIN = 22
+
+
 class SettingsData(BaseModel):
     """ Object supposed to hold all settings """
     CONN: ConnectSettings = ConnectSettings()
@@ -102,6 +107,7 @@ class SettingsData(BaseModel):
     MOUNT: MountPointSettings = MountPointSettings()
     PRINT: FilePrinterSettings = FilePrinterSettings()
     JOB: JobIDSettings = JobIDSettings()
+    PI: PiSetteings = PiSetteings()
 
 
 def get_settings() -> SettingsData:
