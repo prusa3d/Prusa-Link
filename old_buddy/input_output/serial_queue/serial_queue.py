@@ -47,6 +47,8 @@ class SerialQueue:
         # enqueue next, so they aren't getting mixed
         self.insert_priority_at = 0
 
+        self.closed = False
+
         Serial.received.connect(self._serial_read)
 
     # --- Getters ---
@@ -65,7 +67,8 @@ class SerialQueue:
 
     # --- If statements in methods ---
     def can_write(self):
-        return not self.is_empty() and not self.front_instruction.is_sent()
+        return not self.is_empty() and not self.front_instruction.is_sent() \
+               and not self.closed
 
     def is_empty(self):
         return not bool(self.queue)
