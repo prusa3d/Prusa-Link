@@ -8,3 +8,4 @@ pydantic
 setuptools
 PyYAML
 appdirs
+pigpio

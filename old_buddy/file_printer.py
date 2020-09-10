@@ -13,7 +13,8 @@ from old_buddy.input_output.serial_queue.helpers import enqueue_instrucion, \
     wait_for_instruction
 from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
 from old_buddy.structures.model_classes import Telemetry
-from old_buddy.structures.regular_expressions import POWER_PANIC_REGEX
+from old_buddy.structures.regular_expressions import POWER_PANIC_REGEX, \
+    PRINTER_BOOT_REGEX
 from old_buddy.util import get_clean_path, ensure_directory
 
 LOG = get_settings().LOG
@@ -39,6 +40,8 @@ class FilePrinter:
         self.serial = serial
         self.telemetry_gatherer = telemetry_gatherer
 
+        self.serial.add_output_handler(PRINTER_BOOT_REGEX,
+                                       lambda match: self.printer_reset())
         self.serial.add_output_handler(POWER_PANIC_REGEX,
                                        lambda match: self.power_panic())
         
@@ -114,9 +117,8 @@ class FilePrinter:
         tmp_file = open(self.tmp_file_path)
 
         # Reset the line counter, printing a new file
-        instruction = enqueue_instrucion(self.serial_queue, "M110 N1",
-                                         front=True)
-        wait_for_instruction(instruction, lambda: self.printing)
+        self.serial_queue.reset_message_number()
+
         line_list = tmp_file.readlines()
 
         for line_index, line in enumerate(line_list[from_line:]):
@@ -157,6 +159,9 @@ class FilePrinter:
                 pp_file.flush()
                 os.fsync(pp_file.fileno())
             os.sync()
+
+    def printer_reset(self):
+        self.stop_print()
 
     def telemetry_updated(self, sender, telemetry: Telemetry):
         if telemetry.target_bed is not None:
