@@ -25,7 +25,7 @@ class TryUntilState(Command):
 
         log.debug(f"Trying to get to the {desired_state.name} state.")
 
-        self.do_matchable(gcode)
+        self.do_instruction(gcode)
 
         if self.state_manager.get_state() != desired_state:
             # There is a race condition, we don't know if we are awoken

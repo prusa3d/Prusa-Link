@@ -58,9 +58,9 @@ class RespondWithInfo(Command):
             log.exception("Sending info failed!")
 
     def insert_type_and_version(self):
-        instruction = self.do_matchable("M862.2 Q")
+        instruction = self.do_matchable("M862.2 Q", PRINTER_TYPE_REGEX)
 
-        match = instruction.match(PRINTER_TYPE_REGEX)
+        match = instruction.match()
         if match is None:
             self.failed("Printer responded with something unexpected")
 
@@ -74,18 +74,18 @@ class RespondWithInfo(Command):
             self.failed(f"Unsupported printer model '{code}'")
 
     def insert_firmware_version(self):
-        instruction = self.do_matchable("M115")
+        instruction = self.do_matchable("M115", FW_REGEX)
 
-        match = instruction.match(FW_REGEX)
+        match = instruction.match()
         if match is None:
             self.failed("Printer responded with something unexpected")
 
         self.printer_info.firmware = match.groups()[0]
 
     def insert_nozzle_diameter(self):
-        instruction = self.do_matchable("M862.1 Q")
+        instruction = self.do_matchable("M862.1 Q", NOZZLE_REGEX)
 
-        match = instruction.match(NOZZLE_REGEX)
+        match = instruction.match()
         if match is None:
             self.failed("Printer responded with something unexpected")
 

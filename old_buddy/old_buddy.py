@@ -26,10 +26,11 @@ from old_buddy.informers.ip_updater import IPUpdater, NO_IP
 from old_buddy.informers.state_manager import StateManager
 from old_buddy.input_output.connect_api import ConnectAPI
 from old_buddy.input_output.lcd_printer import LCDPrinter
-from old_buddy.input_output.serial import Serial
-from old_buddy.input_output.serial_queue.serial_queue \
+from old_buddy.input_output.serial.serial import Serial
+from old_buddy.input_output.serial.serial_queue \
     import MonitoredSerialQueue
-from old_buddy.input_output.serial_queue.helpers import enqueue_instrucion
+from old_buddy.input_output.serial.helpers import enqueue_instruction
+from old_buddy.input_output.serial.serial_reader import SerialReader
 from old_buddy.model import Model
 from old_buddy.default_settings import get_settings
 from old_buddy.structures.model_classes import EmitEvents
@@ -52,9 +53,11 @@ class OldBuddy:
         self.stopped_event = threading.Event()
 
         self.model = Model()
+        self.serial_reader = SerialReader()
 
         try:
-            self.serial = Serial(port=SERIAL.PRINTER_PORT,
+            self.serial = Serial(self.serial_reader,
+                                 port=SERIAL.PRINTER_PORT,
                                  baudrate=SERIAL.PRINTER_BAUDRATE)
         except SerialException:
             log.exception(
@@ -62,7 +65,8 @@ class OldBuddy:
                 "is it enabled? Is the Pi configured correctly?")
             raise
 
-        self.serial_queue = MonitoredSerialQueue(self.serial)
+        self.serial_queue = MonitoredSerialQueue(self.serial,
+                                                 self.serial_reader)
 
         self.config = configparser.ConfigParser()
         self.config.read(CONN.CONNECT_CONFIG_PATH)
@@ -77,7 +81,7 @@ class OldBuddy:
             except KeyError:
                 tls = False
         except KeyError:
-            enqueue_instrucion(self.serial_queue, "M117 Bad Old Buddy config")
+            enqueue_instruction(self.serial_queue, "M117 Bad Old Buddy config")
             log.exception(
                 "Config load failed, lan_settings.ini missing or invalid.")
             raise
@@ -86,17 +90,17 @@ class OldBuddy:
                                       tls=tls)
         ConnectAPI.connection_error.connect(self.connection_error)
 
-        self.telemetry_gatherer = TelemetryGatherer(self.serial,
+        self.telemetry_gatherer = TelemetryGatherer(self.serial_reader,
                                                     self.serial_queue)
         self.telemetry_gatherer.updated_signal.connect(self.telemetry_gathered)
         # let's do this manually, for the telemetry to be known to the model
         # before connect can ask stuff
         self.telemetry_gatherer.update()
 
-        self.file_printer = FilePrinter(self.serial_queue, self.serial,
+        self.file_printer = FilePrinter(self.serial_queue, self.serial_reader,
                                         self.telemetry_gatherer)
 
-        self.state_manager = StateManager(self.serial, self.file_printer)
+        self.state_manager = StateManager(self.serial_reader, self.file_printer)
         self.state_manager.state_changed_signal.connect(self.state_changed)
         self.state_manager.job_id_updated_signal.connect(self.job_id_updated)
 
@@ -108,7 +112,7 @@ class OldBuddy:
 
         self.lcd_printer = LCDPrinter(self.serial_queue)
 
-        self.storage = StorageController(self.serial_queue, self.serial,
+        self.storage = StorageController(self.serial_queue, self.serial_reader,
                                          self.state_manager)
         self.storage.updated_signal.connect(self.storage_updated)
         self.storage.inserted_signal.connect(self.media_inserted)
@@ -134,7 +138,8 @@ class OldBuddy:
         self.storage.start()
         self.ip_updater.start()
 
-        self.command_runner = CommandRunner(self.serial, self.serial_queue,
+        self.command_runner = CommandRunner(self.serial, self.serial_reader,
+                                            self.serial_queue,
                                             self.connect_api,
                                             self.state_manager,
                                             self.file_printer, self.model)

@@ -1,10 +1,11 @@
+import logging
 import re
 from enum import Enum
 from threading import Event
 
 from blinker import Signal
 
-from old_buddy.structures.regular_expressions import OK_REGEX
+from old_buddy.structures.regular_expressions import CONFIRMATION_REGEX
 
 
 class Instruction:
@@ -39,6 +40,9 @@ class Instruction:
         # Signal sent on the same ocasion
         self.sent_signal = Signal()
 
+        # Api for registering instruction regexps
+        self.capturing_regexps = []
+
     def __str__(self):
         return f"Instruction '{self.message.strip()}'"
 
@@ -59,7 +63,7 @@ class Instruction:
         self.sent_event.set()
         self.sent_signal.send(self)
 
-    def output_captured(self, line):
+    def output_captured(self, sender, match):
         pass
 
     def wait_for_send(self, timeout=None):
@@ -81,31 +85,28 @@ class MatchableInstruction(Instruction):
     to a regular expression
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, capture_matching: re.Pattern = re.compile(r".*"),
+                 **kwargs):
         super().__init__(*args, **kwargs)
 
         # Output captured between command submission and confirmation
+        self.capture_matching = capture_matching
         self.captured = []
+
+        self.capturing_regexps = [capture_matching]
 
     def confirm(self) -> bool:
         result = super().confirm()
 
-        if result and self.captured:
-            # If the capture contains "ok" as the first or last thing, delete it
-            if OK_REGEX.fullmatch(self.captured[-1]):
-                del self.captured[-1]
-            elif OK_REGEX.fullmatch(self.captured[0]):
-                del self.captured[0]
         return result
 
-    def output_captured(self, line):
-        self.captured.append(line)
+    def output_captured(self, sender, match):
+        logging.getLogger(__name__).warning(f"Captured {match}")
+        self.captured.append(match)
 
-    def match(self, pattern: re.Pattern):
-        for line in self.captured:
-            match = pattern.match(line)
-            if match:
-                return match
+    def match(self):
+        if self.captured:
+            return self.captured[0]
 
 
 class CollectingInstruction(Instruction):
@@ -132,23 +133,26 @@ class CollectingInstruction(Instruction):
         self.end_regex = end_regex
         self.capture_regex = capture_regex
         self.begin_regex = begin_regex
-        self.captured_matches = []
+        self.captured = []
         self.state = self.States.NOT_CAPTURING_YET
 
-    def output_captured(self, line):
+        self.capturing_regexps = [self.begin_regex, self.capture_regex,
+                                  self.end_regex]
+
+    def output_captured(self, sender, match: re.Match):
         # The order of these blocks is important, it prevents the
         # begin and end matches from also matching with the capture regex
         if self.state == self.States.CAPTURING:
-            end_match = self.end_regex.match(line)
+            end_match = self.end_regex.match(match.string)
             if end_match:
                 self.state = self.States.ENDED
 
         if self.state == self.States.CAPTURING:
-            capture_match = self.capture_regex.match(line)
+            capture_match = self.capture_regex.match(match.string)
             if capture_match:
-                self.captured_matches.append(capture_match)
+                self.captured.append(capture_match)
 
         if self.state == self.States.NOT_CAPTURING_YET:
-            begin_match = self.begin_regex.match(line)
+            begin_match = self.begin_regex.match(match.string)
             if begin_match:
                 self.state = self.States.CAPTURING

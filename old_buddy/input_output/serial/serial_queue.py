@@ -1,14 +1,18 @@
 import logging
+import re
 from threading import Lock, Thread
 from time import time
 from typing import List
 
-from old_buddy.input_output.serial import Serial
+from old_buddy.input_output.serial.serial import Serial
 from old_buddy.default_settings import get_settings
 from old_buddy.structures.regular_expressions import CONFIRMATION_REGEX, \
-    FILE_OPEN_REGEX, PAUSED_REGEX, RENEW_TIMEOUT_REGEX, RESEND_REGEX
+    FILE_OPEN_REGEX, PAUSED_REGEX, RESEND_REGEX, \
+    TEMPERATURE_REGEX, BUSY_REGEX, ATTENTION_REGEX, HEATING_HOTEND_REGEX, \
+    HEATING_REGEX
 from old_buddy.util import run_slowly_die_fast
 from .instruction import Instruction
+from .serial_reader import SerialReader
 
 LOG = get_settings().LOG
 SQ = get_settings().SQ
@@ -28,8 +32,10 @@ class SerialQueue:
     # This thing could buffer messages, shame the printer is so stoooopid
     # No need to have that functionality around tho
 
-    def __init__(self, serial: Serial, rx_size=SQ.RX_SIZE):
+    def __init__(self, serial: Serial, serial_reader: SerialReader,
+                 rx_size=SQ.RX_SIZE):
         self.serial = serial
+        self.serial_reader = serial_reader
 
         # A gueue of instructions for the printer
         self.queue: List[Instruction] = []
@@ -49,7 +55,15 @@ class SerialQueue:
 
         self.closed = False
 
-        Serial.received.connect(self._serial_read)
+        self.serial_reader.add_handler(CONFIRMATION_REGEX,
+                                       self._confirmation_handler,
+                                       priority=float("inf"))
+        self.serial_reader.add_handler(FILE_OPEN_REGEX,
+                                       self._rx_buffer_got_yeeted)
+        self.serial_reader.add_handler(PAUSED_REGEX,
+                                       self._paused_handler)
+        self.serial_reader.add_handler(RESEND_REGEX,
+                                       self._resend_handler)
 
     # --- Getters ---
 
@@ -80,9 +94,9 @@ class SerialQueue:
             if self.can_write():
                 self._write()
 
-    def get_front_data(self):
-        data = self.front_instruction.message.encode("ASCII")
-        if self.front_instruction.to_checksum:
+    def get_data(self, instruction):
+        data = instruction.message.encode("ASCII")
+        if instruction.to_checksum:
             number_part = f"N{self.message_number} ".encode("ASCII")
             to_checksum = number_part + data + b" "
             checksum = self.get_checksum(to_checksum)
@@ -99,10 +113,11 @@ class SerialQueue:
 
     def _write(self):
         # message_number has been raced for, so let's not do that
-        data = self.get_front_data()
+        instruction = self.front_instruction
+        data = self.get_data(instruction)
 
         # Putting this here, so it's more visible
-        if self.front_instruction.to_checksum:
+        if instruction.to_checksum:
             self.message_number += 1
 
         size = len(data)
@@ -113,6 +128,13 @@ class SerialQueue:
 
         log.debug(f"{data.decode('ASCII')} sent")
         self.front_instruction.sent()
+
+        for regexp in instruction.capturing_regexps:
+            self.serial_reader.add_handler(
+                regexp,
+                instruction.output_captured,
+                priority=time()
+            )
 
         self.serial.write(data)
 
@@ -161,70 +183,70 @@ class SerialQueue:
 
         self._try_writing()
 
-    def _serial_read(self, sender, line):
-        """
-        Something has been read, decide if it's a message confirmation, output,
-        or both
-        """
-        # No instruction is waiting
-        # Printer is not responding to anything we said...
-        if self.front_instruction is None:
-            return
+    # --- Static capture handlers ---
 
-        confirmation_match = CONFIRMATION_REGEX.fullmatch(line)
-        yeeted_match = FILE_OPEN_REGEX.fullmatch(line)
-        paused_match = PAUSED_REGEX.fullmatch(line)
-        resend_match = RESEND_REGEX.fullmatch(line)
+    def _confirmation_handler(self, sender, match: re.Match):
+        # There is a special case, M105 prints "ok" on the same line as
+        # output So if there is anything after ok, add it to the captured
+        # output before confirming
+        additional_output = match.groups()[0]
+        if additional_output:
+            match = TEMPERATURE_REGEX.match(additional_output)
+            self.front_instruction.output_captured(None, match=match)
 
-        if confirmation_match:
-            # There is a special case, M105 prints "ok" on the same line as
-            # output So if there is anything after ok, add it to the captured
-            # output before confirming
-            additional_output = confirmation_match.groups()[0]
-            if additional_output:
-                self._output_captured(additional_output)
+        self._confirmed()
 
-            self._confirmed()
-        elif paused_match:
-            # Another special case is when pausing. The "ok" is omitted
-            # Let's add it to the captured stuff and confirm it ourselves
-            self._output_captured(line)
-            self._confirmed()
-        elif yeeted_match:
-            self._rx_buffer_got_yeeted()
-        elif resend_match:
-            number = resend_match.groups()[0]
-            log.warning(f"Resend of {number} requested. Current is "
-                        f"{self.message_number - 1}")
-            if (self.front_instruction.to_checksum and
-                    self.message_number - 1 == number):
-                self._recover_front()
-            else:
-                log.error("Most likely the serial communication "
-                          "will fall apart after this!")
-        else:  # no match, it's not a confirmation
-            self._output_captured(line)
+    def _paused_handler(self, sender, match: re.Match):
+        # Another special case is when pausing. The "ok" is omitted
+        # Let's add it to the captured stuff and confirm it ourselves
+        # Yes, i force the match no matter what, it's a stupid special case
+        self.front_instruction.output_captured(None, match=match)
+        self._confirmed()
+
+    def _yeeted_handler(self, sender, match: re.Match):
+        self._rx_buffer_got_yeeted()
+
+    def _resend_handler(self, sender, match: re.Match):
+        number = match.groups()[0]
+        log.warning(f"Resend of {number} requested. Current is "
+                    f"{self.message_number - 1}")
+        if (self.front_instruction.to_checksum and
+                self.message_number - 1 == number):
+            self._recover_front()
+        else:
+            log.error("Most likely the serial communication "
+                      "will fall apart after this!")
+
+    # ---
 
     def _confirmed(self):
         """
         Printer _confirmed an instruction.
         Assume it confirms exactly one instruction once
         """
+        self.last_event_on = time()
         if self.is_empty() or not self.front_instruction.is_sent():
             log.error("Unexpected message confirmation. Ignoring")
-        self.last_event_on = time()
-
-        if self.front_instruction.confirm():
+        elif self.front_instruction.confirm():
             with self.write_lock:
+                instruction = self.front_instruction
+
                 # If the instruction did not refuse to be confirmed
                 # Yes, that needs to happen because of M602
-                log.debug(f"{self.front_instruction} confirmed")
+                log.debug(f"{instruction} confirmed")
+
+                for regexp in instruction.capturing_regexps:
+                    self.serial_reader.remove_handler(
+                        regexp, instruction.output_captured
+                    )
+
                 del self.queue[0]
 
                 if self.insert_priority_at > 1:
                     self.insert_priority_at -= 1
                 if self.is_empty():
                     self.insert_priority_at = 0
+
         elif not self.front_instruction.is_sent():
             # Something thinks the instruction failed sending, re-send
             self._try_writing()
@@ -234,15 +256,6 @@ class SerialQueue:
 
         #  rx_current decreased, let's try if we'll fit into the rx buffer
         self._try_writing()
-
-    def _output_captured(self, line):
-        """
-        Printer said something. It did that between confirming the previous
-        and our instruction. Assume it's for us
-        (It's not, but we can filter stuff we don't need with regexps later)
-        """
-        log.debug(f"Output {line} captured for {self.front_instruction}")
-        self.front_instruction.output_captured(line)
 
     def _rx_buffer_got_yeeted(self):
         """
@@ -279,8 +292,15 @@ class SerialQueue:
 
 class MonitoredSerialQueue(SerialQueue):
 
-    def __init__(self, serial: Serial, rx_size=128):
-        super().__init__(serial, rx_size)
+    def __init__(self, serial: Serial, serial_reader: SerialReader,
+                 rx_size=128):
+        super().__init__(serial, serial_reader, rx_size)
+
+        self.serial_reader.add_handler(BUSY_REGEX, self._renew_timeout)
+        self.serial_reader.add_handler(ATTENTION_REGEX, self._renew_timeout)
+        self.serial_reader.add_handler(HEATING_REGEX, self._renew_timeout)
+        self.serial_reader.add_handler(HEATING_HOTEND_REGEX, self._renew_timeout)
+
         # Remember when the last write or confirmation happened
         # If we want to time out, the communication has to be dead for some time
         # Useful only with unbuffered messages
@@ -316,8 +336,5 @@ class MonitoredSerialQueue(SerialQueue):
         self.last_event_on = time()
         super()._confirmed()
 
-    def _serial_read(self, sender, line):
-        super()._serial_read(sender, line)
-        renew_timeout_match = RENEW_TIMEOUT_REGEX.fullmatch(line)
-        if renew_timeout_match:
-            self.last_event_on = time()
+    def _renew_timeout(self, sender, match: re.Match):
+        self.last_event_on = time()

@@ -1,9 +1,9 @@
 import re
 from typing import List, Callable
 
-from old_buddy.input_output.serial_queue.instruction import Instruction, \
+from old_buddy.input_output.serial.instruction import Instruction, \
     MatchableInstruction, CollectingInstruction
-from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
+from old_buddy.input_output.serial.serial_queue import SerialQueue
 from old_buddy.default_settings import get_settings
 
 TIME = get_settings().TIME
@@ -17,17 +17,18 @@ def wait_for_instruction(instruction, should_wait: Callable[[], bool],
             break
 
 
-def enqueue_instrucion(queue: SerialQueue, message: str, front=False,
-                       to_checksum=False) -> Instruction:
+def enqueue_instruction(queue: SerialQueue, message: str, front=False,
+                        to_checksum=False) -> Instruction:
     instruction = Instruction(message, to_checksum=to_checksum)
     queue.enqueue_one(instruction, front=front)
     return instruction
 
 
 def enqueue_matchable(queue: SerialQueue,
-                      message: str, front=False,
+                      message: str, regexp: re.Pattern, front=False,
                       to_checksum=False) -> MatchableInstruction:
-    instruction = MatchableInstruction(message, to_checksum=to_checksum)
+    instruction = MatchableInstruction(message, capture_matching=regexp,
+                                       to_checksum=to_checksum)
     queue.enqueue_one(instruction, front=front)
     return instruction
 
@@ -46,11 +47,13 @@ def enqueue_collecting(queue: SerialQueue,
 
 def enqueue_list_from_str(queue: SerialQueue,
                           message_list: List[str],
+                          regexp: re.Pattern,
                           front=False,
                           to_checksum=False) -> List[MatchableInstruction]:
     instruction_list = []
     for message in message_list:
-        instruction = MatchableInstruction(message, to_checksum=to_checksum)
+        instruction = MatchableInstruction(message, capture_matching=regexp,
+                                           to_checksum=to_checksum)
         instruction_list.append(instruction)
     queue.enqueue_list(instruction_list, front=front)
     return instruction_list

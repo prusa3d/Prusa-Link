@@ -5,11 +5,11 @@ import re
 
 from blinker import Signal
 
+from old_buddy.input_output.serial.serial_reader import SerialReader
 from old_buddy.structures.model_classes import Telemetry
-from old_buddy.input_output.serial import Serial
-from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
-from old_buddy.input_output.serial_queue.helpers import enqueue_list_from_str, \
-    wait_for_instruction
+from old_buddy.input_output.serial.serial_queue import SerialQueue
+from old_buddy.input_output.serial.helpers import wait_for_instruction, \
+    enqueue_instruction
 from old_buddy.default_settings import get_settings
 from old_buddy.structures.regular_expressions import TEMPERATURE_REGEX, \
     POSITION_REGEX, E_FAN_REGEX, P_FAN_REGEX, PRINT_TIME_REGEX, \
@@ -31,10 +31,10 @@ class TelemetryGatherer(ThreadedUpdatable):
     thread_name = "telemetry"
     update_interval = TIME.TELEMETRY_INTERVAL
 
-    def __init__(self, serial: Serial, serial_queue: SerialQueue):
+    def __init__(self, serial_reader: SerialReader, serial_queue: SerialQueue):
         self.updated_signal = Signal()  # kwargs: telemetry: Telemetry
 
-        self.serial = serial
+        self.serial_reader = serial_reader
         self.serial_queue = serial_queue
 
         regex_handlers = {
@@ -50,20 +50,19 @@ class TelemetryGatherer(ThreadedUpdatable):
         }
 
         for regex, handler in regex_handlers.items():
-            self.serial.add_output_handler(regex, handler)
+            self.serial_reader.add_handler(regex, handler)
 
         self.current_telemetry = Telemetry()
 
         super().__init__()
 
     def _update(self):
-        instruction_list = enqueue_list_from_str(self.serial_queue,
-                                                 TELEMETRY_GCODES)
 
         # Only ask for telemetry again, when the previous is confirmed
-        for instruction in instruction_list:
+        for gcode in TELEMETRY_GCODES:
             # Wait indefinitely, if the queue got stuck
             # we aren't the ones who should handle that
+            instruction = enqueue_instruction(self.serial_queue, gcode)
             wait_for_instruction(instruction, lambda: self.running)
 
         self.current_telemetry = Telemetry()
@@ -71,7 +70,7 @@ class TelemetryGatherer(ThreadedUpdatable):
     def telemetry_updated(self):
         self.updated_signal.send(self, telemetry=self.current_telemetry)
 
-    def temperature_handler(self, match: re.Match):
+    def temperature_handler(self, sender, match: re.Match):
         groups = match.groups()
         self.current_telemetry.temp_nozzle = float(groups[0])
         self.current_telemetry.target_nozzle = float(groups[1])
@@ -79,22 +78,22 @@ class TelemetryGatherer(ThreadedUpdatable):
         self.current_telemetry.target_bed = float(groups[3])
         self.telemetry_updated()
 
-    def position_handler(self, match: re.Match):
+    def position_handler(self, sender, match: re.Match):
         groups = match.groups()
         self.current_telemetry.axis_x = float(groups[4])
         self.current_telemetry.axis_y = float(groups[5])
         self.current_telemetry.axis_z = float(groups[6])
         self.telemetry_updated()
 
-    def fan_extruder_handler(self, match: re.Match):
+    def fan_extruder_handler(self, sender, match: re.Match):
         self.current_telemetry.fan_extruder = float(match.groups()[0])
         self.telemetry_updated()
 
-    def fan_print_handler(self, match: re.Match):
+    def fan_print_handler(self, sender, match: re.Match):
         self.current_telemetry.fan_print = float(match.groups()[0])
         self.telemetry_updated()
 
-    def print_time_handler(self, match: re.Match):
+    def print_time_handler(self, sender, match: re.Match):
         groups = match.groups()
         if groups[1] != "" and groups[1] is not None:
             printing_time_hours = int(groups[2])
@@ -105,14 +104,14 @@ class TelemetryGatherer(ThreadedUpdatable):
             self.current_telemetry.time_printing = printing_time_sec
             self.telemetry_updated()
 
-    def progress_handler(self, match: re.Match):
+    def progress_handler(self, sender, match: re.Match):
         groups = match.groups()
         progress = int(groups[0])
         if 0 <= progress <= 100:
             self.current_telemetry.progress = progress
             self.telemetry_updated()
 
-    def time_remaining_handler(self, match: re.Match):
+    def time_remaining_handler(self, sender, match: re.Match):
         # FIXME: Using the more conservative values from silent mode,
         #  need to know in which mode we are
         groups = match.groups()
@@ -122,28 +121,28 @@ class TelemetryGatherer(ThreadedUpdatable):
             self.current_telemetry.time_estimated = secs_remaining
             self.telemetry_updated()
 
-    def flow_rate_handler(self, match: re.Match):
+    def flow_rate_handler(self, sender, match: re.Match):
         groups = match.groups()
         flow = int(groups[0])
         if 0 <= flow <= 100:
             self.current_telemetry.flow = flow
             self.telemetry_updated()
 
-    def speed_multiplier_handler(self, match: re.Match):
+    def speed_multiplier_handler(self, sender, match: re.Match):
         groups = match.groups()
         speed = int(groups[0])
         if 0 <= speed <= 100:
             self.current_telemetry.speed = speed
             self.telemetry_updated()
 
-    def heating_handler(self, match: re.Match):
+    def heating_handler(self, sender, match: re.Match):
         groups = match.groups()
 
         self.current_telemetry.temp_nozzle = float(groups[0])
         self.current_telemetry.temp_bed = float(groups[1])
         self.telemetry_updated()
 
-    def heating_hotend_handler(self, match: re.Match):
+    def heating_hotend_handler(self, sender, match: re.Match):
         groups = match.groups()
 
         self.current_telemetry.temp_nozzle = float(groups[0])
