@@ -58,12 +58,12 @@ class StartPrint(Command):
     def _load_file(self, raw_path):
         file_name = raw_path.lower()
 
-        instruction = self.do_matchable(f"M23 {file_name}")
-        match = instruction.match(OPEN_RESULT_REGEX)
+        instruction = self.do_matchable(f"M23 {file_name}", OPEN_RESULT_REGEX)
+        match = instruction.match()
 
         if not match or match.groups()[0] is None:  # Opening failed
             self.failed(f"Wrong file name, or bad file. File name: {file_name}")
 
     def _start_print(self):
-        self.do_matchable("M24")
+        self.do_instruction("M24")
 

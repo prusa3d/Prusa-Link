@@ -37,10 +37,10 @@ class ResetPrinter(Command):
         times_out_at = time() + self.timeout
         event = Event()
 
-        def waiter(match):
+        def waiter(sender, match):
             event.set()
 
-        self.serial.add_output_handler(PRINTER_BOOT_REGEX, waiter)
+        self.serial_reader.add_handler(PRINTER_BOOT_REGEX, waiter)
 
         try:
             import pigpio
@@ -57,6 +57,8 @@ class ResetPrinter(Command):
         while self.running and time() < times_out_at:
             if event.wait(TIME.QUIT_INTERVAL):
                 break
+
+        self.serial_reader.remove_handler(PRINTER_BOOT_REGEX, waiter)
 
         if time() > times_out_at:
             self.failed("Your printer has ignored the reset signal, your RPi "

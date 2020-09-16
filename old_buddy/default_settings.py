@@ -45,6 +45,7 @@ class SerialQueueSettings(BaseModel):
 class LogLevelSettings(BaseModel):
     OLD_BUDDY_LOG_LEVEL = "DEBUG"
     SERIAL_LOG_LEVEL = "DEBUG"
+    SERIAL_READER_LOG_LEVEL = "DEBUG"
     CONNECT_API_LOG_LEVEL = "DEBUG"
     STATE_MANAGER_LOG_LEVEL = "DEBUG"
     COMMANDS_LOG_LEVEL = "DEBUG"

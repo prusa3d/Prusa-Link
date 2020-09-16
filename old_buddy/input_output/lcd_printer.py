@@ -3,8 +3,8 @@ from queue import Queue, Empty
 from threading import Thread
 from time import time, sleep
 
-from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
-from old_buddy.input_output.serial_queue.helpers import enqueue_instrucion, \
+from old_buddy.input_output.serial.serial_queue import SerialQueue
+from old_buddy.input_output.serial.helpers import enqueue_instruction, \
     wait_for_instruction
 from old_buddy.default_settings import get_settings
 
@@ -56,7 +56,7 @@ class LCDPrinter:
                     sleep(max(0, int(to_sleep)))
 
     def print_text(self, text: str):
-        instruction = enqueue_instrucion(self.serial_queue, f"M117 {text}")
+        instruction = enqueue_instruction(self.serial_queue, f"M117 {text}")
         wait_for_instruction(instruction, lambda: self.running)
         log.debug(f"Printed: '{text}' on the LCD.")
 

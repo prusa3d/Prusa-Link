@@ -8,9 +8,8 @@ from old_buddy.informers.filesystem.linux_filesystem import LinuxFilesystem
 from old_buddy.informers.filesystem.models import InternalFileTree, SDState
 from old_buddy.informers.filesystem.sd_card import SDCard
 from old_buddy.informers.state_manager import StateManager
-from old_buddy.input_output.serial import Serial
-from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
-
+from old_buddy.input_output.serial.serial_queue import SerialQueue
+from old_buddy.input_output.serial.serial_reader import SerialReader
 
 LOG = get_settings().LOG
 TIME = get_settings().TIME
@@ -22,7 +21,7 @@ log.setLevel(LOG.STORAGE_LOG_LEVEL)
 
 class StorageController:
 
-    def __init__(self, serial_queue: SerialQueue, serial: Serial,
+    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
                  state_manager: StateManager):
         self.updated_signal = Signal()  # kwargs: tree: FileTree
         self.inserted_signal = Signal()  # kwargs: root: str, files: FileTree
@@ -31,11 +30,11 @@ class StorageController:
         # Pass this through
         self.sd_state_changed_signal = Signal()  # kwargs: sd_state: SDState
 
-        self.serial = serial
+        self.serial_reader = serial_reader
         self.serial_queue: SerialQueue = serial_queue
         self.state_manager = state_manager
 
-        self.sd_card = SDCard(self.serial_queue, self.serial,
+        self.sd_card = SDCard(self.serial_queue, self.serial_reader,
                               self.state_manager)
         self.sd_card.tree_updated_signal.connect(self.sd_tree_updated)
         self.sd_card.state_changed_signal.connect(self.sd_state_changed)

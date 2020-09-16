@@ -27,21 +27,22 @@ INITIALISING state
 """
 
 import logging
+import re
 from time import time
 
 from blinker import Signal
 
 from old_buddy.informers.filesystem.models import SDState, InternalFileTree
 from old_buddy.informers.state_manager import StateManager
+from old_buddy.input_output.serial.serial_reader import SerialReader
 from old_buddy.structures.constants import PRINTING_STATES
 from old_buddy.structures.model_classes import FileType
-from old_buddy.input_output.serial import Serial
-from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
-from old_buddy.input_output.serial_queue.helpers import wait_for_instruction, \
+from old_buddy.input_output.serial.serial_queue import SerialQueue
+from old_buddy.input_output.serial.helpers import wait_for_instruction, \
     enqueue_matchable, enqueue_collecting
 from old_buddy.default_settings import get_settings
-from old_buddy.structures.regular_expressions import INSERTED_REGEX, \
-    SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX
+from old_buddy.structures.regular_expressions import SD_PRESENT_REGEX, \
+    BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX
 from old_buddy.updatable import ThreadedUpdatable
 
 LOG = get_settings().LOG
@@ -55,7 +56,7 @@ class SDCard(ThreadedUpdatable):
     thread_name = "sd_updater"
     update_interval = TIME.SD_INTERVAL
 
-    def __init__(self, serial_queue: SerialQueue, serial: Serial,
+    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
                  state_manager: StateManager):
 
         self.tree_updated_signal = Signal()  # kwargs: tree: FileTree
@@ -63,9 +64,9 @@ class SDCard(ThreadedUpdatable):
         self.inserted_signal = Signal()  # kwargs: root: str, files: FileTree
         self.ejected_signal = Signal()  # kwargs: root: str
 
-        self.serial = serial
-        self.serial.add_output_handler(INSERTED_REGEX,
-                                       lambda match: self.sd_inserted())
+        self.serial_reader = serial_reader
+        self.serial_reader.add_handler(
+            SD_PRESENT_REGEX, self.sd_inserted)
         self.serial_queue: SerialQueue = serial_queue
         self.state_manager = state_manager
 
@@ -114,22 +115,25 @@ class SDCard(ThreadedUpdatable):
         wait_for_instruction(instruction, lambda: self.running)
 
         pre = time()
-        for match in instruction.captured_matches:
+        for match in instruction.captured:
             tree.add_file_from_line(match.string.lower())
         log.debug(f"Tree construction took {time() - pre}s")
 
         return tree
 
-    def sd_inserted(self):
+    def sd_inserted(self, sender, match: re.Match):
         """
         If received while expecting it, stop expecting another one
         If received unexpectedly, this signalises someone physically
         inserting a card
         """
-        if self.expecting_insertion:
-            self.expecting_insertion = False
-        else:
-            self.sd_state_changed(SDState.INITIALISING)
+        # Using a multi-purpose regex,
+        # only interested if the first group matches
+        if match.groups()[0]:
+            if self.expecting_insertion:
+                self.expecting_insertion = False
+            else:
+                self.sd_state_changed(SDState.INITIALISING)
 
     def sd_state_changed(self, new_state):
         log.debug(f"SD state changed from {self.sd_state} to "
@@ -157,14 +161,15 @@ class SDCard(ThreadedUpdatable):
         if we suspect there is no SD card, calling this should be fine
         """
         self.expecting_insertion = True
-        instruction = enqueue_matchable(self.serial_queue, "M21")
+        instruction = enqueue_matchable(self.serial_queue, "M21",
+                                        SD_PRESENT_REGEX)
         wait_for_instruction(instruction, lambda: self.running)
         self.expecting_insertion = False
 
         if not instruction.is_confirmed():
             log.debug("Failed determining the SD presence.")
         else:
-            match = instruction.match(SD_PRESENT_REGEX)
+            match = instruction.match()
             if match is not None and match.groups()[0] is not None:
                 if self.sd_state != SDState.PRESENT:
                     self.sd_state_changed(SDState.PRESENT)
