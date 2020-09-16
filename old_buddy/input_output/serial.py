@@ -1,5 +1,6 @@
 import logging
 import re
+import termios
 from functools import partial
 from threading import Thread, Lock
 from time import sleep
@@ -46,10 +47,25 @@ class Serial:
     def _reopen(self):
         if self.serial is not None and self.serial.is_open:
             self.serial.close()
-        self.serial = serial.Serial(baudrate=self.baudrate, port=self.port,
+
+        # Prevent a hungup on serial close, this will make it,
+        # so the printer resets only on reboot or replug,
+        # not on old_buddy restarts
+        f = open(self.port)
+        attrs = termios.tcgetattr(f)
+        log.debug(f"Serial attributes: {attrs}")
+        attrs[2] = attrs[2] & ~termios.HUPCL
+        termios.tcsetattr(f, termios.TCSAFLUSH, attrs)
+        f.close()
+
+        self.serial = serial.Serial(port=self.port, baudrate=self.baudrate,
                                     timeout=self.timeout,
                                     write_timeout=self.write_timeout)
-        sleep(TIME.PRINTER_BOOT_WAIT)
+
+        # No idea what these mean, but they seem to be 0, when the printer
+        # isn't going to restart
+        if attrs[0] != 0 or attrs[1] != 0:
+            sleep(TIME.PRINTER_BOOT_WAIT)
 
     def _renew_serial_connection(self):
         while self.running:
@@ -76,7 +92,7 @@ class Serial:
                     # with self.write_read_lock:
                     # Why would I not want to write and handle reads
                     # at the same time? IDK, but if something weird starts
-                    # happening, i'll re-enablle this
+                    # happening, i'll re-enable this
                     log.debug(f"Printer says: '{line}'")
                     self.received.send(line=line)
 
