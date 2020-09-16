@@ -37,6 +37,7 @@ class StartPrint(Command):
         file_path_string = self.api_response.json()["args"][0]
         path = Path(file_path_string)
         parts = path.parts
+        log.info(parts)
 
         if parts[1] == "SD Card":
             # Cut the first "/" and "SD Card" off
