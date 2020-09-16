@@ -1,5 +1,6 @@
 import logging
 import re
+from threading import Lock
 from typing import Union, Dict
 
 from blinker import Signal
@@ -8,6 +9,7 @@ from old_buddy.file_printer import FilePrinter
 from old_buddy.informers.job import Job, JobState
 from old_buddy.input_output.serial import Serial
 from old_buddy.default_settings import get_settings
+from old_buddy.structures.constants import BASE_STATES
 from old_buddy.structures.model_classes import States, Sources
 from old_buddy.structures.regular_expressions import OK_REGEX, BUSY_REGEX, \
     ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
@@ -54,20 +56,21 @@ def state_influencer(state_change: StateChange = None):
 
     def inner(func):
         def wrapper(self, *args, **kwargs):
+            with self.state_lock:
+                has_set_expected_change = False
+                if self.expected_state_change is None and \
+                        state_change is not None:
+                    has_set_expected_change = True
+                    self.expect_change(state_change)
 
-            has_set_expected_change = False
-            if self.expected_state_change is None and state_change is not None:
-                has_set_expected_change = True
-                self.expect_change(state_change)
+                else:
+                    log.debug(f"Default expected state change is overriden")
 
-            else:
-                log.debug(f"Default expected state change is overriden")
+                func(self, *args, **kwargs)
+                self.state_may_have_changed()
 
-            func(self, *args, **kwargs)
-            self.state_may_have_changed()
-
-            if has_set_expected_change:
-                self.stop_expecting_change()
+                if has_set_expected_change:
+                    self.stop_expecting_change()
 
         return wrapper
 
@@ -107,6 +110,9 @@ class StateManager(Updatable):
         # as it depends on us
         self.progress = None
 
+        # Prevent multiple threads changing the state at once
+        self.state_lock = Lock()
+
         # Another anti-ideal thing is, that with this observational
         # approach to state detection we cannot correlate actions with
         # reactions nicely. My first approach is to have an action,
@@ -133,7 +139,9 @@ class StateManager(Updatable):
             self.serial.add_output_handler(regex, handler)
 
         self.file_printer.new_print_started_signal.connect(
-            lambda sender: self.file_printer_started_printing())
+            lambda sender: self.file_printer_started_printing(), weak=False)
+        self.file_printer.print_ended_signal.connect(
+            lambda sender: self.file_printer_stopped_printing(), weak=False)
 
         super().__init__()
 
@@ -149,12 +157,7 @@ class StateManager(Updatable):
 
     def progress_handler(self, match: re.Match):
         groups = match.groups()
-        progress = int(groups[0])
-
-        if self.printing_state == States.PRINTING and progress == 100:
-            self.expect_change(
-                StateChange(to_states={States.FINISHED: Sources.MARLIN}))
-            self.finished()
+        self.progress = int(groups[0])
 
     def sd_printing_handler(self, match: re.Match):
         groups = match.groups()
@@ -177,6 +180,12 @@ class StateManager(Updatable):
             self.expect_change(
                 StateChange(to_states={States.PRINTING: Sources.CONNECT}))
             self.printing()
+
+    def file_printer_stopped_printing(self):
+        if self.progress == 100:
+            self.expect_change(
+                StateChange(to_states={States.FINISHED: Sources.MARLIN}))
+            self.finished()
 
     def get_state(self):
         if self.override_state is not None:
@@ -274,6 +283,7 @@ class StateManager(Updatable):
             else:
                 log.debug("Unexpected state change. This is weird")
             self.expected_state_change = None
+
             self.job.state_changed(self.last_state, self.current_state)
             self.state_changed_signal.send(self, command_id=command_id,
                                            source=source)

@@ -6,7 +6,8 @@ from blinker import Signal
 
 from old_buddy.default_settings import get_settings
 from old_buddy.structures.constants import PRINTING_STATES, JOB_ENDING_STATES, \
-    BASE_STATES
+    BASE_STATES, JOB_ONGOING_STATES
+from old_buddy.structures.model_classes import States
 from old_buddy.util import get_clean_path, ensure_directory
 
 LOG = get_settings().LOG
@@ -61,7 +62,7 @@ class Job:
         if from_state in BASE_STATES and to_state in PRINTING_STATES \
                 and self.job_state == JobState.IDLE:
             self.job_started()
-        if from_state in PRINTING_STATES and to_state in JOB_ENDING_STATES \
+        if from_state in JOB_ONGOING_STATES and to_state in JOB_ENDING_STATES \
                 and self.job_state == JobState.IN_PROGRESS:
             self.change_state(JobState.ENDING)
 
