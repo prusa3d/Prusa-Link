@@ -1,4 +1,5 @@
 import logging
+import re
 from enum import Enum
 
 from blinker import Signal
@@ -6,10 +7,11 @@ from blinker import Signal
 from old_buddy.file_printer import FilePrinter
 from old_buddy.informers.state_manager import StateManager
 from old_buddy.input_output.connect_api import ConnectAPI
-from old_buddy.input_output.serial import Serial
-from old_buddy.input_output.serial_queue.helpers import wait_for_instruction, \
-    enqueue_matchable
-from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
+from old_buddy.input_output.serial.serial import Serial
+from old_buddy.input_output.serial.helpers import wait_for_instruction, \
+    enqueue_matchable, enqueue_instruction
+from old_buddy.input_output.serial.serial_queue import SerialQueue
+from old_buddy.input_output.serial.serial_reader import SerialReader
 from old_buddy.model import Model
 from old_buddy.default_settings import get_settings
 from old_buddy.structures.model_classes import EmitEvents
@@ -35,10 +37,12 @@ class Command:
     command_name = "command"
 
     def __init__(self, api_response, serial: Serial,
+                 serial_reader: SerialReader,
                  serial_queue: SerialQueue,
                  connect_api: ConnectAPI, state_manager: StateManager,
                  file_printer: FilePrinter, model: Model, **kwargs):
         self.serial = serial
+        self.serial_reader = serial_reader
         self.serial_queue = serial_queue
         self.connect_api = connect_api
         self.state_manager = state_manager
@@ -86,15 +90,23 @@ class Command:
         """Wait until the instruction is done, or we quit"""
         wait_for_instruction(instruction, lambda: self.running)
 
-    def do_matchable(self, gcode):
+    def do_instruction(self, gcode):
+        instruction = enqueue_instruction(self.serial_queue, gcode, front=True)
+        self.wait_for_instruction(instruction)
+        return instruction
+
+    def do_matchable(self, gcode, regexp: re.Pattern):
         """Enqueues everything to front as commands have a higher priority"""
-        instruction = enqueue_matchable(self.serial_queue, gcode, front=True)
+        instruction = enqueue_matchable(self.serial_queue, gcode, regexp,
+                                        front=True)
+        self.wait_for_instruction(instruction)
+        return instruction
+
+    def wait_for_instruction(self, instruction):
         self.wait_while_running(instruction)
 
         if not instruction.is_confirmed():
             self.failed(f"Command interrupted")
-
-        return instruction
 
     def run_command(self):
         """

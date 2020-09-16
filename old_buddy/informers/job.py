@@ -7,7 +7,6 @@ from blinker import Signal
 from old_buddy.default_settings import get_settings
 from old_buddy.structures.constants import PRINTING_STATES, JOB_ENDING_STATES, \
     BASE_STATES, JOB_ONGOING_STATES
-from old_buddy.structures.model_classes import States
 from old_buddy.util import get_clean_path, ensure_directory
 
 LOG = get_settings().LOG

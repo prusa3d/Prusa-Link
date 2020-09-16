@@ -13,18 +13,12 @@ FILE_PATH_REGEX = re.compile(r"^(.*\.GCO) (\d+)$")
 END_FILES_REGEX = re.compile(r"^End file list$")
 
 SD_PRESENT_REGEX = re.compile(r"^(echo:SD card ok)|(echo:SD init fail)$")
-INSERTED_REGEX = re.compile(r"^(echo:SD card ok)$")
 
 
 ANY_REGEX = re.compile(r".*")
-CONFIRMATION_REGEX = re.compile(r"^ok\s?(.*)$")
+CONFIRMATION_REGEX = re.compile(r"^ok\s?(.*)$")  # priority = 100
 FILE_OPEN_REGEX = re.compile(r"^echo:Now fresh file: .*$")
 PAUSED_REGEX = re.compile(r"^// action:paused$")
-OK_REGEX = re.compile(r"^ok$")
-RENEW_TIMEOUT_REGEX = re.compile(r"(^echo:busy: processing$)|"
-                                 r"(^echo:busy: paused for user$)|"
-                                 r"(^T:(\d+\.\d+) E:\d+ B:(\d+\.\d+)$)|"
-                                 r"(^T:(\d+\.\d+) E:([?]|\d+) W:([?]|\d+)$)")
 
 REJECTION_REGEX = re.compile(r"^(echo:Unknown command: (\"[^\"]*\"))|"
                              r"(Unknown \S code: .*)$")

@@ -8,10 +8,10 @@ from blinker import Signal
 
 from old_buddy.default_settings import get_settings
 from old_buddy.informers.telemetry_gatherer import TelemetryGatherer
-from old_buddy.input_output.serial import Serial
-from old_buddy.input_output.serial_queue.helpers import enqueue_instrucion, \
+from old_buddy.input_output.serial.helpers import enqueue_instruction, \
     wait_for_instruction
-from old_buddy.input_output.serial_queue.serial_queue import SerialQueue
+from old_buddy.input_output.serial.serial_queue import SerialQueue
+from old_buddy.input_output.serial.serial_reader import SerialReader
 from old_buddy.structures.model_classes import Telemetry
 from old_buddy.structures.regular_expressions import POWER_PANIC_REGEX, \
     PRINTER_BOOT_REGEX
@@ -27,7 +27,7 @@ log.setLevel(LOG.FILE_PRINTER_LOG_LEVEL)
 
 class FilePrinter:
 
-    def __init__(self, serial_queue: SerialQueue, serial: Serial,
+    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
                  telemetry_gatherer: TelemetryGatherer):
         self.new_print_started_signal = Signal()
         self.print_ended_signal = Signal()
@@ -37,13 +37,13 @@ class FilePrinter:
         ensure_directory(os.path.dirname(self.tmp_file_path))
 
         self.serial_queue = serial_queue
-        self.serial = serial
+        self.serial_reader = serial_reader
         self.telemetry_gatherer = telemetry_gatherer
 
-        self.serial.add_output_handler(PRINTER_BOOT_REGEX,
-                                       lambda match: self.printer_reset())
-        self.serial.add_output_handler(POWER_PANIC_REGEX,
-                                       lambda match: self.power_panic())
+        self.serial_reader.add_handler(
+            PRINTER_BOOT_REGEX, lambda sender, match: self.printer_reset())
+        self.serial_reader.add_handler(
+            POWER_PANIC_REGEX, lambda sender, match: self.power_panic())
         
         self.telemetry_gatherer.updated_signal.connect(self.telemetry_updated)
 
@@ -91,7 +91,7 @@ class FilePrinter:
                 prep_gcodes.append(f"M109 R{nozzle_temp}")
 
             for gcode in prep_gcodes:
-                instruction = enqueue_instrucion(self.serial_queue, gcode,
+                instruction = enqueue_instruction(self.serial, gcode,
                                                  front=True)
                 wait_for_instruction(instruction, lambda: self.printing)
 
@@ -131,8 +131,8 @@ class FilePrinter:
             gcode = line.split(";", 1)[0].strip()
             if gcode:
                 log.debug(f"USB printing gcode: {gcode}")
-                instruction = enqueue_instrucion(self.serial_queue, gcode,
-                                                 front=True, to_checksum=True)
+                instruction = enqueue_instruction(self.serial_queue, gcode,
+                                                  front=True, to_checksum=True)
                 wait_for_instruction(instruction, lambda: self.printing)
 
                 log.debug(f"{gcode} confirmed")

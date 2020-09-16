@@ -6,15 +6,14 @@ from typing import Union, Dict
 from blinker import Signal
 
 from old_buddy.file_printer import FilePrinter
-from old_buddy.informers.job import Job, JobState
-from old_buddy.input_output.serial import Serial
+from old_buddy.informers.job import Job
 from old_buddy.default_settings import get_settings
-from old_buddy.structures.constants import BASE_STATES
+from old_buddy.input_output.serial.serial_reader import SerialReader
 from old_buddy.structures.model_classes import States, Sources
-from old_buddy.structures.regular_expressions import OK_REGEX, BUSY_REGEX, \
+from old_buddy.structures.regular_expressions import BUSY_REGEX, \
     ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, PROGRESS_REGEX, \
-    SD_PRINTING_REGEX
+    SD_PRINTING_REGEX, CONFIRMATION_REGEX
 from old_buddy.updatable import Updatable
 from old_buddy.util import get_command_id
 
@@ -81,7 +80,7 @@ class StateManager(Updatable):
     thread_name = "state_updater"
     update_interval = TIME.STATUS_UPDATE_INTERVAL
 
-    def __init__(self, serial: Serial,
+    def __init__(self, serial_reader: SerialReader,
                  file_printer: FilePrinter):
 
         self.file_printer = file_printer
@@ -94,7 +93,7 @@ class StateManager(Updatable):
         self.job_id_updated_signal = Signal()  # kwargs: job_id: int
         self.job.job_id_updated_signal.connect(self.job_id_updated)
 
-        self.serial: Serial = serial
+        self.serial_reader: SerialReader = serial_reader
 
         # The ACTUAL states considered when reporting
         self.base_state: States = States.READY
@@ -122,21 +121,21 @@ class StateManager(Updatable):
         self.expected_state_change: Union[None, StateChange] = None
 
         regex_handlers = {
-            OK_REGEX: lambda match: self.ok(),
-            BUSY_REGEX: lambda match: self.busy(),
-            ATTENTION_REGEX: lambda match: self.attention(),
-            PAUSED_REGEX: lambda match: self.paused(),
-            RESUMED_REGEX: lambda match: self.resumed(),
-            CANCEL_REGEX: lambda match: self.not_printing(),
-            START_PRINT_REGEX: lambda match: self.printing(),
-            PRINT_DONE_REGEX: lambda match: self.finished(),
-            ERROR_REGEX: lambda match: self.error(),
+            CONFIRMATION_REGEX: lambda sender, match: self.ok(),
+            BUSY_REGEX: lambda sender, match: self.busy(),
+            ATTENTION_REGEX: lambda sender, match: self.attention(),
+            PAUSED_REGEX: lambda sender, match: self.paused(),
+            RESUMED_REGEX: lambda sender, match: self.resumed(),
+            CANCEL_REGEX: lambda sender, match: self.not_printing(),
+            START_PRINT_REGEX: lambda sender, match: self.printing(),
+            PRINT_DONE_REGEX: lambda sender, match: self.finished(),
+            ERROR_REGEX: lambda sender, match: self.error(),
             PROGRESS_REGEX: self.progress_handler,
             SD_PRINTING_REGEX: self.sd_printing_handler
         }
 
         for regex, handler in regex_handlers.items():
-            self.serial.add_output_handler(regex, handler)
+            self.serial_reader.add_handler(regex, handler)
 
         self.file_printer.new_print_started_signal.connect(
             lambda sender: self.file_printer_started_printing(), weak=False)
@@ -155,11 +154,11 @@ class StateManager(Updatable):
     # This module does not ask for these things,
     # we are expecting telemetry to be asking for them
 
-    def progress_handler(self, match: re.Match):
+    def progress_handler(self, sender, match: re.Match):
         groups = match.groups()
         self.progress = int(groups[0])
 
-    def sd_printing_handler(self, match: re.Match):
+    def sd_printing_handler(self, sender, match: re.Match):
         groups = match.groups()
         printing = groups[0] is None or self.file_printer.printing
         is_paused = self.printing_state == States.PAUSED
