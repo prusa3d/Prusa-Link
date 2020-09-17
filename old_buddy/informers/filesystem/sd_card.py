@@ -101,7 +101,7 @@ class SDCard(ThreadedUpdatable):
         self.tree_updated_signal.send(self, tree=self.file_tree)
 
     def construct_file_tree(self):
-        tree = InternalFileTree(path="SD Card", file_type=FileType.MOUNT,
+        tree = InternalFileTree(name="SD Card", file_type=FileType.MOUNT,
                                 ro=True, mounted_at="/")
 
         if self.sd_state == SDState.ABSENT:

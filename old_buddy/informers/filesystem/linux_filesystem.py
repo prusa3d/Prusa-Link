@@ -21,6 +21,7 @@ log.setLevel(LOG.LINUX_FILESYSTEM_LOG_LEVEL)
 
 MOUNT_PATH = "/"
 
+
 class LinuxFilesystem(ThreadedUpdatable):
 
     thread_name = "linux_filesystem"
@@ -110,7 +111,7 @@ class LinuxFilesystem(ThreadedUpdatable):
         name = os.path.basename(mount.path)
         tree = InternalFileTree(file_type=FileType.MOUNT,
                                 full_fs_path=mount.path,
-                                path=name, ro=mount.ro,
+                                name=name, ro=mount.ro,
                                 mounted_at=MOUNT_PATH)
 
         walker = os.walk(mount.path)
@@ -132,8 +133,6 @@ class LinuxFilesystem(ThreadedUpdatable):
         size = stats.st_size
         m_time = self.get_m_time(stats.st_mtime)
         ro = not os.access(file.path, os.W_OK)
-        # log.debug(f"Adding file {tree_path}, os path: {path} to "
-        #           f"tree name {tree.path}")
         tree.add_file(path=tree_path, size=size, ro=ro, m_time=m_time,
                       full_fs_path=path)
 

@@ -46,7 +46,7 @@ class NetworkInfo(BaseModel):
 class FileTree(BaseModel):
 
     type: str = None
-    path: str = None
+    name: str = None
     ro: Optional[bool] = None
     size: int = None
     m_date: Optional[int] = None
