@@ -25,9 +25,9 @@ class InternalFileTree:
 
     @staticmethod
     def new_root_node():
-        return InternalFileTree(file_type=FileType.DIR, path="/")
+        return InternalFileTree(file_type=FileType.DIR, name="/")
 
-    def __init__(self, file_type: FileType = None, path: str = None,
+    def __init__(self, file_type: FileType = None, name: str = None,
                  ro: bool = None, size: int = None,
                  m_date: int = None, m_time: int = None,
                  parent: 'InternalFileTree' = None,
@@ -37,7 +37,7 @@ class InternalFileTree:
                  ancestor_mount=None):
 
         self.type = file_type
-        self.path = path
+        self.name = name
         self.ro = ro
         self.size = size
         self.m_date = m_date
@@ -79,7 +79,7 @@ class InternalFileTree:
         self._parent = parent
 
     def add_child(self, child: 'InternalFileTree'):
-        self.children_dict[child.path] = child
+        self.children_dict[child.name] = child
         if child.type == FileType.MOUNT and self.ancestor_mount is not None:
             raise RuntimeError("Nested mounts are not supported!")
 
@@ -109,7 +109,7 @@ class InternalFileTree:
         node = self
         for part in parts[1:-1]:
             if part not in node.children_dict:
-                child = InternalFileTree(file_type=FileType.DIR, path=part,
+                child = InternalFileTree(file_type=FileType.DIR, name=part,
                                          parent=node, ro=ro, m_time=m_time,
                                          full_fs_path=full_fs_path)
                 node.add_child(child)
@@ -117,7 +117,7 @@ class InternalFileTree:
             node = node.children_dict[part]
 
         # last one is the file itself
-        leaf = InternalFileTree(file_type=FileType.FILE, path=parts[-1],
+        leaf = InternalFileTree(file_type=FileType.FILE, name=parts[-1],
                                 size=size, parent=node, ro=ro, m_time=m_time,
                                 full_fs_path=full_fs_path)
         node.add_child(leaf)
@@ -161,11 +161,11 @@ class InternalFileTree:
         # Get the path from the root or mount
         while (current_node is not None and
                current_node.type != FileType.MOUNT):
-            path.append(current_node.path)
+            path.append(current_node.name)
             current_node = current_node.parent
 
         if current_node is not None and current_node.type == FileType.MOUNT:
-            path.append(current_node.path)
+            path.append(current_node.name)
         if path:
             return os.path.join(*reversed(path))
         else:
@@ -211,7 +211,7 @@ class InternalFileTree:
             file_tree.type = FileType.DIR.name
         else:
             file_tree.type = self.type.name
-        file_tree.path = self.path
+        file_tree.name = self.name
         file_tree.ro = self.ro
         file_tree.size = self.size
         file_tree.m_date = self.m_date
