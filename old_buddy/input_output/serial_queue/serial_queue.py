@@ -76,8 +76,9 @@ class SerialQueue:
     # --- Actual methods ---
 
     def _try_writing(self):
-        if self.can_write():
-            self._write()
+        with self.write_lock:
+            if self.can_write():
+                self._write()
 
     def get_front_data(self):
         data = self.front_instruction.message.encode("ASCII")
@@ -98,21 +99,21 @@ class SerialQueue:
 
     def _write(self):
         # message_number has been raced for, so let's not do that
-        with self.write_lock:
-            data = self.get_front_data()
+        data = self.get_front_data()
 
-            # Putting this here, so it's more visible
-            if self.front_instruction.to_checksum:
-                self.message_number += 1
+        # Putting this here, so it's more visible
+        if self.front_instruction.to_checksum:
+            self.message_number += 1
 
-            size = len(data)
-            if size > self.rx_max:
-                raise RuntimeError(f"The data {data.decode('ASCII')} we're trying "
-                                   f"to write is {size}B. But we can only send "
-                                   f"{self.rx_max}B max.")
+        size = len(data)
+        if size > self.rx_max:
+            raise RuntimeError(f"The data {data.decode('ASCII')} we're trying "
+                               f"to write is {size}B. But we can only send "
+                               f"{self.rx_max}B max.")
 
-            log.debug(f"{data.decode('ASCII')} sent")
-            self.front_instruction.sent()
+        log.debug(f"{data.decode('ASCII')} sent")
+        self.front_instruction.sent()
+
         self.serial.write(data)
 
     def _enqueue(self, instruction: Instruction, front=False):
