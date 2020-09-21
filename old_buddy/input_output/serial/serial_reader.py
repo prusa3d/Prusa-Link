@@ -15,6 +15,7 @@ LOG = get_settings().LOG
 log = logging.getLogger(__name__)
 log.setLevel(LOG.SERIAL_READER_LOG_LEVEL)
 
+
 class RegexPairing:
 
     def __init__(self, regexp, priority=0, stops_matching=True):
@@ -38,14 +39,14 @@ class SerialReader:
 
     def __init__(self):
         self.lock = Lock()
-        self.pattern_list = SortedKeyList(key=lambda item: item.priority)
+        self.pattern_list = SortedKeyList(key=lambda item: -item.priority)
         self.pairing_dict: Dict[List[Callable[[(Match,)], None]]] = {}
 
     def decide(self, line):
         signal_list = []
         
         with self.lock:
-            for pairing in reversed(self.pattern_list):
+            for pairing in self.pattern_list:
                 log.debug(f"Trying {pairing.regexp.pattern} on {line}")
                 match = pairing.regexp.match(line)
                 if match:
