@@ -11,7 +11,7 @@ from prusa_link.structures.regular_expressions import REJECTION_REGEX
 LOG = get_settings().LOG
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.COMMANDS_LOG_LEVEL)
+log.setLevel(LOG.COMMANDS)
 
 
 class ExecuteGcode(Command):

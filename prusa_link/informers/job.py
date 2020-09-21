@@ -11,10 +11,10 @@ from prusa_link.util import get_clean_path, ensure_directory
 
 LOG = get_settings().LOG
 TIME = get_settings().TIME
-JOB = get_settings().JOB
+PATH = get_settings().PATH
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.JOB_ID_LOG_LEVEL)
+log.setLevel(LOG.JOB_ID)
 
 
 class JobState(Enum):
@@ -30,7 +30,7 @@ class Job:
         # Sent every time the job id should disappear, appear or update
         self.job_id_updated_signal = Signal()  # kwargs: job_id: int
 
-        self.job_path = get_clean_path(JOB.JOB_FILE)
+        self.job_path = get_clean_path(PATH.JOB_FILE)
         ensure_directory(os.path.dirname(self.job_path))
 
         if os.path.exists(self.job_path):

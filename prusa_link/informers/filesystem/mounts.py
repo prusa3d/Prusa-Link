@@ -17,7 +17,7 @@ TIME = get_settings().TIME
 MOUNT = get_settings().MOUNT
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.MOUNTPOINT_LOG_LEVEL)
+log.setLevel(LOG.MOUNTPOINT)
 
 
 class Mounts(Updatable):

@@ -24,7 +24,7 @@ LOG = get_settings().LOG
 
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.TELEMETRY_GATHERER_LOG_LEVEL)
+log.setLevel(LOG.TELEMETRY_GATHERER)
 
 
 class TelemetryGatherer(ThreadedUpdatable):

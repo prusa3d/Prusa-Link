@@ -19,11 +19,10 @@ from prusa_link.util import get_command_id
 
 LOG = get_settings().LOG
 TIME = get_settings().TIME
-JOB = get_settings().JOB
 
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.STATE_MANAGER_LOG_LEVEL)
+log.setLevel(LOG.STATE_MANAGER)
 
 
 class StateChange:
@@ -77,8 +76,6 @@ def state_influencer(state_change: StateChange = None):
 
 
 class StateManager(Updatable):
-    thread_name = "state_updater"
-    update_interval = TIME.STATUS_UPDATE_INTERVAL
 
     def __init__(self, serial_reader: SerialReader,
                  file_printer: FilePrinter):
