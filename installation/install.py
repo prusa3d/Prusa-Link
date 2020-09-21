@@ -34,13 +34,13 @@ def install():
         elevate.elevate(graphical=False)
 
     print("Kopíruji unit file pro systemd")
-    file_copy("/etc/systemd/system/", "old_buddy.service", RW_R_R)
+    file_copy("/etc/systemd/system/", "prusa_link.service", RW_R_R)
 
     print("Povoluji spouštění při startu a spouštím old buddyho.")
     subprocess.run(["systemctl", "daemon-reload"])
-    subprocess.run(["systemctl", "enable", "old_buddy.service"])
+    subprocess.run(["systemctl", "enable", "prusa_link.service"])
     subprocess.run(["systemctl", "enable", "pigpiod.service"])
-    subprocess.run(["systemctl", "restart", "old_buddy.service"])
+    subprocess.run(["systemctl", "restart", "prusa_link.service"])
 
     print("Hotovo")
 
