@@ -13,7 +13,7 @@ LOG = get_settings().LOG
 
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.SERIAL_READER_LOG_LEVEL)
+log.setLevel(LOG.SERIAL_READER)
 
 
 class RegexPairing:

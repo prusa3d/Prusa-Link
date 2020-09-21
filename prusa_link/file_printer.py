@@ -19,10 +19,10 @@ from prusa_link.util import get_clean_path, ensure_directory
 
 LOG = get_settings().LOG
 TIME = get_settings().TIME
-PRINT = get_settings().PRINT
+PATH = get_settings().PATH
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.FILE_PRINTER_LOG_LEVEL)
+log.setLevel(LOG.FILE_PRINTER)
 
 
 class FilePrinter:
@@ -32,8 +32,8 @@ class FilePrinter:
         self.new_print_started_signal = Signal()
         self.print_ended_signal = Signal()
 
-        self.tmp_file_path = get_clean_path(PRINT.TMP_FILE)
-        self.pp_file_path = get_clean_path(PRINT.PP_FILE)
+        self.tmp_file_path = get_clean_path(PATH.TMP_FILE)
+        self.pp_file_path = get_clean_path(PATH.PP_FILE)
         ensure_directory(os.path.dirname(self.tmp_file_path))
 
         self.serial_queue = serial_queue

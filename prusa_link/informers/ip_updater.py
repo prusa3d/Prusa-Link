@@ -15,12 +15,12 @@ TIME = get_settings().TIME
 
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.IP_UPDATER_LOG_LEVEL)
+log.setLevel(LOG.IP_UPDATER)
 
 
 class IPUpdater(ThreadedUpdatable):
     thread_name = "ip_updater"
-    update_interval = TIME.STATUS_UPDATE_INTERVAL
+    update_interval = TIME.IP_UPDATE_INTERVAL
 
     def __init__(self):
         self.updated_signal = Signal()

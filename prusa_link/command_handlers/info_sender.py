@@ -15,7 +15,7 @@ LOG = get_settings().LOG
 
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.INFO_SENDER_LOG_LEVEL)
+log.setLevel(LOG.INFO_SENDER)
 
 PRINTER_TYPES = {
     100: (1, 1, 0),
