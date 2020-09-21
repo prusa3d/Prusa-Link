@@ -1,0 +1,13 @@
+[Unit]
+Description=Old Buddy - making old MK3s learn new tricks
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/prusa_link
+User=pi
+StandardOutput=journal
+StandardError=journal
+
+
+[Install]
+WantedBy=multi-user.target

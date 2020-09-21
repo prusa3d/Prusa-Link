@@ -21,7 +21,7 @@ $ sudo apt install git python3-pip libsystemd-dev python3-wheel
 $ sudo pip3 install git+ssh://git@github.com/prusa3d/Prusa-Connect-MK3.git
 
 # configure as a service
-$ sudo old_buddy_install
+$ sudo prusa_link_install
 ```
 
 After that old buddy shall start with the pi

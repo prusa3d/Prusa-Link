@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-from old_buddy import __version__, __doc__
+from prusa_link import __version__, __doc__
 
 
 REQUIRES = []
@@ -16,7 +16,7 @@ def doc():
 
 
 setup(
-    name="Old Buddy",
+    name="Prusa Link",
     version=__version__,
     description=__doc__,
     author="Tomáš Jozífek",
@@ -26,11 +26,11 @@ setup(
     url="https://github.com/prusa3d/Prusa-Connect-MK3",
     packages=find_packages(),
     package_data={'installation.data_files':
-                     ['old_buddy.service']},
+                     ['prusa_link.service']},
     long_description=doc(),
     long_description_content_type="text/markdown",
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 3 - Alpha",
         "Natural Language :: English",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 3 :: Only",
@@ -39,8 +39,8 @@ setup(
     install_requires=REQUIRES,
     entry_points={
         'console_scripts': [
-            'old_buddy = old_buddy.__main__:main',
-            'old_buddy_install = installation.__main__:main',
+            'prusa_link = prusa_link.__main__:main',
+            'prusa_link_install = installation.__main__:main',
         ]
     }
 )
