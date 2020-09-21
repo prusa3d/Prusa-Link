@@ -12,7 +12,7 @@ TIME = get_settings().TIME
 PI = get_settings().PI
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.COMMANDS_LOG_LEVEL)
+log.setLevel(LOG.COMMANDS)
 
 
 class ResetPrinter(Command):

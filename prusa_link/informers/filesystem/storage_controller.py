@@ -16,7 +16,7 @@ TIME = get_settings().TIME
 MOUNT = get_settings().MOUNT
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.STORAGE_LOG_LEVEL)
+log.setLevel(LOG.STORAGE)
 
 
 class StorageController:

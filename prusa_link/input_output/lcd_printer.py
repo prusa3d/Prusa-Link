@@ -14,7 +14,7 @@ TIME = get_settings().TIME
 
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.LCD_PRINTER_LOG_LEVEL)
+log.setLevel(LOG.LCD_PRINTER)
 
 
 class LCDMessage:

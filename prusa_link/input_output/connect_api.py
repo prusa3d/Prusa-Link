@@ -12,7 +12,7 @@ LOG = get_settings().LOG
 
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.CONNECT_API_LOG_LEVEL)
+log.setLevel(LOG.CONNECT_API)
 
 
 class ConnectAPI:

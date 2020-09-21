@@ -49,7 +49,7 @@ LOG = get_settings().LOG
 TIME = get_settings().TIME
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.SD_CARD_LOG_LEVEL)
+log.setLevel(LOG.SD_CARD)
 
 
 class SDCard(ThreadedUpdatable):

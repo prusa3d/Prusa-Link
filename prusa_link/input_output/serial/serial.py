@@ -13,7 +13,7 @@ TIME = get_settings().TIME
 
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.SERIAL_LOG_LEVEL)
+log.setLevel(LOG.SERIAL)
 
 
 class Serial:
