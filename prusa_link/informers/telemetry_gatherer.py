@@ -46,14 +46,16 @@ class TelemetryGatherer(ThreadedUpdatable):
             ("M105", TEMPERATURE_REGEX, self.temperature_result, lambda: True),
             ("PRUSA FAN", FAN_RPM_REGEX, self.fan_result, lambda: True),
 
+            # Sadly, we need Z height while printing
+            ("M114", POSITION_REGEX, self.position_result, lambda: True),
+            
             # State_manager depends on this one for detecting printing when
             # we start after the print has been started.
             ("M27", PRINT_TIME_REGEX, self.print_time_result, lambda: True),
 
             # ("M221", TBD, self.flow_rate_result, lambda: True),
             # ("M220", TBD, self.speed_multiplier_result, lambda: True),
-            ("M114", POSITION_REGEX, self.position_result,
-             lambda: self.model.state not in PRINTING_STATES),
+
             ("M73", PRINT_INFO_REGEX, self.print_info_result,
              lambda: self.model.state in PRINTING_STATES),
         ]
