@@ -32,7 +32,7 @@ class ThreadedUpdatable(Updatable):
 
     def _keep_updating(self):
         run_slowly_die_fast(lambda: self.running, TIME.QUIT_INTERVAL,
-                            self.update_interval, self.update)
+                            lambda: self.update_interval, self.update)
 
 
     def stop(self):

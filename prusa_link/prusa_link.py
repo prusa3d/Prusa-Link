@@ -33,6 +33,7 @@ from prusa_link.input_output.serial.helpers import enqueue_instruction
 from prusa_link.input_output.serial.serial_reader import SerialReader
 from prusa_link.model import Model
 from prusa_link.default_settings import get_settings
+from prusa_link.structures.constants import PRINTING_STATES
 from prusa_link.structures.model_classes import EmitEvents
 from prusa_link.util import get_command_id, run_slowly_die_fast
 
@@ -269,7 +270,8 @@ class PrusaLink:
 
     def keep_sending_telemetry(self):
         run_slowly_die_fast(lambda: self.running, TIME.QUIT_INTERVAL,
-                            TIME.TELEMETRY_SEND_INTERVAL, self.send_telemetry)
+                            lambda: self.get_telemetry_interval(),
+                            self.send_telemetry)
 
     def send_telemetry(self):
         delay = time() - self.last_sent_telemetry
@@ -286,3 +288,9 @@ class PrusaLink:
             pass
         else:
             self.handle_telemetry_response(api_response)
+
+    def get_telemetry_interval(self):
+        if self.model.state in PRINTING_STATES:
+            return TIME.TELEMETRY_PRINTING_INTERVAL
+        else:
+            return TIME.TELEMETRY_IDLE_INTERVAL

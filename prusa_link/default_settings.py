@@ -23,7 +23,8 @@ class ConnectSettings(BaseModel):
 class IntervalSettings(BaseModel):
     # Times are in seconds
     TELEMETRY_INTERVAL = 1
-    TELEMETRY_SEND_INTERVAL = 0.5
+    TELEMETRY_IDLE_INTERVAL = 0.25
+    TELEMETRY_PRINTING_INTERVAL = 1
     IP_UPDATE_INTERVAL = 2
     QUIT_INTERVAL = 0.1
     SD_INTERVAL = 5
