@@ -7,12 +7,10 @@ from time import sleep
 from blinker import Signal
 
 from prusa_link.default_settings import get_settings
-from prusa_link.informers.telemetry_gatherer import TelemetryGatherer
 from prusa_link.input_output.serial.helpers import enqueue_instruction, \
     wait_for_instruction
 from prusa_link.input_output.serial.serial_queue import SerialQueue
 from prusa_link.input_output.serial.serial_reader import SerialReader
-from prusa_link.structures.model_classes import Telemetry
 from prusa_link.structures.regular_expressions import POWER_PANIC_REGEX, \
     PRINTER_BOOT_REGEX
 from prusa_link.util import get_clean_path, ensure_directory
@@ -27,8 +25,7 @@ log.setLevel(LOG.FILE_PRINTER)
 
 class FilePrinter:
 
-    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
-                 telemetry_gatherer: TelemetryGatherer):
+    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader):
         self.new_print_started_signal = Signal()
         self.print_ended_signal = Signal()
 
@@ -38,14 +35,11 @@ class FilePrinter:
 
         self.serial_queue = serial_queue
         self.serial_reader = serial_reader
-        self.telemetry_gatherer = telemetry_gatherer
 
         self.serial_reader.add_handler(
             PRINTER_BOOT_REGEX, lambda sender, match: self.printer_reset())
         self.serial_reader.add_handler(
             POWER_PANIC_REGEX, lambda sender, match: self.power_panic())
-        
-        self.telemetry_gatherer.updated_signal.connect(self.telemetry_updated)
 
         self.printing = False
         self.paused = False
@@ -72,9 +66,8 @@ class FilePrinter:
             log.warning("There was a loss of power, let's try to recover")
 
             with open(self.pp_file_path, "r") as pp_file:
-                parts = pp_file.read().split(" ")
-                int_parts = map(lambda item: int(item), parts)
-                line_number, bed_temp, nozzle_temp = int_parts
+                content = pp_file.read()
+                line_number = int(content)
                 line_index = line_number - 1
             """
             self.printing = True
@@ -154,20 +147,13 @@ class FilePrinter:
             log.warning("POWER PANIC!")
             self.serial_queue.queue.clear()
             with open(self.pp_file_path, "w") as pp_file:
-                pp_file.write(f"{self.line_number} {self.target_bed_temp} "
-                              f"{self.target_nozzle_temp}")
+                pp_file.write(f"{self.line_number}")
                 pp_file.flush()
                 os.fsync(pp_file.fileno())
             os.sync()
 
     def printer_reset(self):
         self.stop_print()
-
-    def telemetry_updated(self, sender, telemetry: Telemetry):
-        if telemetry.target_bed is not None:
-            self.target_bed_temp = int(telemetry.target_bed)
-        if telemetry.target_nozzle is not None:
-            self.target_nozzle_temp = int(telemetry.target_nozzle)
 
     def wait_for_unpause(self):
         while self.printing and self.paused:
