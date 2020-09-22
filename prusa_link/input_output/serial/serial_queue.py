@@ -47,7 +47,7 @@ class SerialQueue:
         self.write_lock = Lock()
 
         # For numbered messages with checksums
-        self.message_number = 1
+        self.message_number = 0
 
         # When enqueuing instructions to front keep track of where to
         # enqueue next, so they aren't getting mixed
@@ -114,11 +114,22 @@ class SerialQueue:
     def _write(self):
         # message_number has been raced for, so let's not do that
         instruction = self.front_instruction
-        data = self.get_data(instruction)
 
-        # Putting this here, so it's more visible
-        if instruction.to_checksum:
-            self.message_number += 1
+        if not instruction.sent():
+            # Is this the first time we are sending this?
+            if instruction.to_checksum:
+                self.message_number += 1
+
+            for regexp in instruction.capturing_regexps:
+                self.serial_reader.add_handler(
+                    regexp,
+                    instruction.output_captured,
+                    priority=time()
+                )
+
+            self.front_instruction.sent()
+
+        data = self.get_data(instruction)
 
         size = len(data)
         if size > self.rx_max:
@@ -127,14 +138,6 @@ class SerialQueue:
                                f"{self.rx_max}B max.")
 
         log.debug(f"{data.decode('ASCII')} sent")
-        self.front_instruction.sent()
-
-        for regexp in instruction.capturing_regexps:
-            self.serial_reader.add_handler(
-                regexp,
-                instruction.output_captured,
-                priority=time()
-            )
 
         self.serial.write(data)
 
@@ -187,10 +190,11 @@ class SerialQueue:
 
     def _confirmation_handler(self, sender, match: re.Match):
         # There is a special case, M105 prints "ok" on the same line as
-        # output So if there is anything after ok, add it to the captured
-        # output before confirming
+        # output So if there is anything after ok, try if it isn't the temps
+        # and capture them if we are expecting them
         additional_output = match.groups()[0]
-        if additional_output:
+        if additional_output and \
+                TEMPERATURE_REGEX in self.front_instruction.capturing_regexps:
             temperature_match = TEMPERATURE_REGEX.match(additional_output)
             if temperature_match:
                 self.front_instruction.output_captured(None,
@@ -265,10 +269,10 @@ class SerialQueue:
         everything supposed to be in it.
         """
         log.debug(f"Think that RX Buffer got yeeted, re-sending instruction")
-
-        # Let's bypass the check and write if we can.
-        if not self.is_empty():
-            self._write()
+        with self.write_lock:
+            # Let's bypass the check and write if we can.
+            if not self.is_empty():
+                self._write()
 
     def _recover_front(self):
         # The message that failed gets confirmed
@@ -313,7 +317,7 @@ class MonitoredSerialQueue(SerialQueue):
 
     def keep_monitoring(self):
         run_slowly_die_fast(lambda: self.running, TIME.QUIT_INTERVAL,
-                            SQ.SERIAL_QUEUE_MONITOR_INTERVAL,
+                            lambda: SQ.SERIAL_QUEUE_MONITOR_INTERVAL,
                             self.check_status)
 
     def check_status(self):
