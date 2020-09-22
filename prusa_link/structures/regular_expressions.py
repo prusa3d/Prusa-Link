@@ -34,8 +34,6 @@ ERROR_REGEX = re.compile(
     r"^Error:Printer stopped due to errors. Fix the error "
     r"and use M999 to restart.*")
 
-SD_PRINTING_REGEX = re.compile(r"^(Not SD printing)$|^(\d+:\d+)$")
-
 
 TEMPERATURE_REGEX = re.compile(
     r"^T: ?(-?\d+\.\d+) ?/(-?\d+\.\d+) ?B: ?(-?\d+\.\d+) ?/(-?\d+\.\d+) ?"
@@ -46,7 +44,7 @@ POSITION_REGEX = re.compile(
     r"E: ?(-?\d+\.\d+) ?Count ?X: ?(-?\d+\.\d+) ?Y: ?(-?\d+\.\d+) ?"
     r"Z: ?(-?\d+\.\d+) ?E: ?(-?\d+\.\d+)$")
 FAN_RPM_REGEX = re.compile(r"^(?:E0:(\d+) ?RPM)|(?:PRN0:(\d+) ?RPM)$")
-PRINT_TIME_REGEX = re.compile(r"^(Not SD printing)$|^((\d+):(\d{2}))$")
+PRINT_TIME_REGEX = re.compile(r"^(Not SD printing)|((\d+):(\d{2}))$")
 PRINT_INFO_REGEX = re.compile(r"^SILENT MODE: Percent done: (\d+); "
                               r"print time remaining in mins: (-?\d+) ?$")
 HEATING_REGEX = re.compile(r"^T:(\d+\.\d+) E:\d+ B:(\d+\.\d+)$")
