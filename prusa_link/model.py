@@ -28,8 +28,7 @@ class Model:
         self._sd_state: Optional[SDState] = None
         self._printer_info: Optional[PrinterInfo] = None
 
-    @property
-    def telemetry(self):
+    def get_and_reset_telemetry(self):
         with self.lock:
             self._telemetry.state = self._state.name
             self._telemetry.job_id = self._job_id
@@ -48,8 +47,7 @@ class Model:
             self._telemetry = Telemetry()
             return to_return
 
-    @telemetry.setter
-    def telemetry(self, new_telemetry: Telemetry):
+    def set_telemetry(self, new_telemetry: Telemetry):
         with self.lock:
             # let's merge them, instead of overwriting
             merge = self._telemetry.dict()

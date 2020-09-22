@@ -13,7 +13,7 @@ from prusa_link.structures.model_classes import States, Sources
 from prusa_link.structures.regular_expressions import BUSY_REGEX, \
     ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, PRINT_INFO_REGEX, \
-    SD_PRINTING_REGEX, CONFIRMATION_REGEX
+    CONFIRMATION_REGEX, PRINT_TIME_REGEX
 from prusa_link.updatable import Updatable
 from prusa_link.util import get_command_id
 
@@ -128,7 +128,7 @@ class StateManager(Updatable):
             PRINT_DONE_REGEX: lambda sender, match: self.finished(),
             ERROR_REGEX: lambda sender, match: self.error(),
             PRINT_INFO_REGEX: self.print_info_handler,
-            SD_PRINTING_REGEX: self.sd_printing_handler
+            PRINT_TIME_REGEX: self.sd_printing_handler
         }
 
         for regex, handler in regex_handlers.items():
