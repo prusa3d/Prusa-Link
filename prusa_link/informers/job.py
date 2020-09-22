@@ -78,6 +78,8 @@ class Job:
     def write(self):
         with open(self.job_path, "w") as job_file:
             job_file.write(f"{self.job_id} {self.job_state.value}")
+            job_file.flush()
+            os.fsync(job_file.fileno())
 
     def get_job_id(self):
         """Only return job_id if a job is in progress, otherwise return None"""
