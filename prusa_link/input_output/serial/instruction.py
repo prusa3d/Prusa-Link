@@ -101,12 +101,14 @@ class MatchableInstruction(Instruction):
         return result
 
     def output_captured(self, sender, match):
-        logging.getLogger(__name__).warning(f"Captured {match}")
         self.captured.append(match)
 
-    def match(self):
+    def match(self, index=0):
         if self.captured:
-            return self.captured[0]
+            return self.captured[index]
+
+    def get_matches(self):
+        return self.captured
 
 
 class CollectingInstruction(Instruction):

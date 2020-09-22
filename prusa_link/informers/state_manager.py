@@ -12,7 +12,7 @@ from prusa_link.input_output.serial.serial_reader import SerialReader
 from prusa_link.structures.model_classes import States, Sources
 from prusa_link.structures.regular_expressions import BUSY_REGEX, \
     ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
-    START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, PROGRESS_REGEX, \
+    START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, PRINT_INFO_REGEX, \
     SD_PRINTING_REGEX, CONFIRMATION_REGEX
 from prusa_link.updatable import Updatable
 from prusa_link.util import get_command_id
@@ -127,7 +127,7 @@ class StateManager(Updatable):
             START_PRINT_REGEX: lambda sender, match: self.printing(),
             PRINT_DONE_REGEX: lambda sender, match: self.finished(),
             ERROR_REGEX: lambda sender, match: self.error(),
-            PROGRESS_REGEX: self.progress_handler,
+            PRINT_INFO_REGEX: self.print_info_handler,
             SD_PRINTING_REGEX: self.sd_printing_handler
         }
 
@@ -151,7 +151,7 @@ class StateManager(Updatable):
     # This module does not ask for these things,
     # we are expecting telemetry to be asking for them
 
-    def progress_handler(self, sender, match: re.Match):
+    def print_info_handler(self, sender, match: re.Match):
         groups = match.groups()
         self.progress = int(groups[0])
 

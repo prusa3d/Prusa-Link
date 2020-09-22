@@ -91,14 +91,14 @@ class PrusaLink:
         ConnectAPI.connection_error.connect(self.connection_error)
 
         self.telemetry_gatherer = TelemetryGatherer(self.serial_reader,
-                                                    self.serial_queue)
+                                                    self.serial_queue,
+                                                    self.model)
         self.telemetry_gatherer.updated_signal.connect(self.telemetry_gathered)
         # let's do this manually, for the telemetry to be known to the model
         # before connect can ask stuff
         self.telemetry_gatherer.update()
 
-        self.file_printer = FilePrinter(self.serial_queue, self.serial_reader,
-                                        self.telemetry_gatherer)
+        self.file_printer = FilePrinter(self.serial_queue, self.serial_reader)
 
         self.state_manager = StateManager(self.serial_reader, self.file_printer)
         self.state_manager.state_changed_signal.connect(self.state_changed)
