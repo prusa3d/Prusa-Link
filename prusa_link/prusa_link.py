@@ -225,7 +225,7 @@ class PrusaLink:
     # --- Signal handlers ---
 
     def telemetry_gathered(self, sender, telemetry):
-        self.model.telemetry = telemetry
+        self.model.set_telemetry(telemetry)
 
     def ip_updated(self, sender, local_ip):
         self.model.local_ip = local_ip
@@ -276,7 +276,7 @@ class PrusaLink:
         if delay > 2:
             log.warning(f"Something blocked telemetry sending for {delay}")
         self.last_sent_telemetry = time()
-        telemetry = self.model.telemetry
+        telemetry = self.model.get_and_reset_telemetry()
 
         try:
             api_response = self.connect_api.send_model("/p/telemetry",
