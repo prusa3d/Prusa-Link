@@ -9,7 +9,8 @@ import typing
 
 
 def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,
-                        run_every_sec, to_run, *arg_getters, **kwarg_getters):
+                        run_every_sec: Callable[[], float],
+                        to_run, *arg_getters, **kwarg_getters):
     """
     Lets say you run something every minute,
     but you want to quit your program faster
@@ -25,7 +26,7 @@ def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,
     while should_loop():
         last_checked_exit = time()
         # if it's time to run the func
-        if time() - last_called > run_every_sec:
+        if time() - last_called > run_every_sec():
 
             last_called = time()
             args = []
@@ -41,9 +42,9 @@ def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,
         # Wait until it's time to check, if we are still running,
         # or it's time to run the func again
         # wait at least 0s, don't wait negative amounts
-        run_again_in = max(0, (last_called + run_every_sec) - time())
+        run_again_in = max(0.0, (last_called + run_every_sec()) - time())
         check_exit_in = max(
-            0, (last_checked_exit + check_exit_every_sec) - time())
+            0.0, (last_checked_exit + check_exit_every_sec) - time())
         sleep(min(check_exit_in, run_again_in))
 
 
