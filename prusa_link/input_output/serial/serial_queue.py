@@ -59,7 +59,7 @@ class SerialQueue:
                                        self._confirmation_handler,
                                        priority=float("inf"))
         self.serial_reader.add_handler(FILE_OPEN_REGEX,
-                                       self._rx_buffer_got_yeeted)
+                                       self._yeeted_handler)
         self.serial_reader.add_handler(PAUSED_REGEX,
                                        self._paused_handler)
         self.serial_reader.add_handler(RESEND_REGEX,
@@ -191,8 +191,10 @@ class SerialQueue:
         # output before confirming
         additional_output = match.groups()[0]
         if additional_output:
-            match = TEMPERATURE_REGEX.match(additional_output)
-            self.front_instruction.output_captured(None, match=match)
+            temperature_match = TEMPERATURE_REGEX.match(additional_output)
+            if temperature_match:
+                self.front_instruction.output_captured(None,
+                                                       match=temperature_match)
 
         self._confirmed()
 
