@@ -134,7 +134,7 @@ class TelemetryGatherer(ThreadedUpdatable):
         if match:
             groups = match.groups()
             flow = int(groups[0])
-            if 0 <= flow <= 100:
+            if 0 <= flow <= 999:
                 self.current_telemetry.flow = flow
                 self.telemetry_updated()
 
@@ -143,7 +143,7 @@ class TelemetryGatherer(ThreadedUpdatable):
         if match:
             groups = match.groups()
             speed = int(groups[0])
-            if 0 <= speed <= 100:
+            if 0 <= speed <= 999:
                 self.current_telemetry.speed = speed
                 self.telemetry_updated()
 
