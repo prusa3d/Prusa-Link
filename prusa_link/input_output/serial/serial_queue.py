@@ -213,12 +213,15 @@ class SerialQueue:
         self._rx_buffer_got_yeeted()
 
     def _resend_handler(self, sender, match: re.Match):
-        number = match.groups()[0]
+        number = int(match.groups()[0])
         log.warning(f"Resend of {number} requested. Current is "
-                    f"{self.message_number - 1}")
+                    f"{self.message_number}")
         if (self.front_instruction.to_checksum and
-                self.message_number - 1 == number):
+                self.message_number == number):
             self._recover_front()
+        elif self.message_number < number:
+            log.warning("We haven't sent anything with that number yet. "
+                        "The communication shouldn't fail after this.")
         else:
             log.error("Most likely the serial communication "
                       "will fall apart after this!")
