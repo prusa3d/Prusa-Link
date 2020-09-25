@@ -103,9 +103,8 @@ class LCDPrinter:
             self.enqueue_message("Connect seems down")
 
     def enqueue_greet(self):
-        self.enqueue_message(f"Old Buddy says: Hi")
-        self.enqueue_message(f"RPi is operational")
-        self.enqueue_message(f"Its IP address is:")
+        self.enqueue_message(f"Prusa Link started")
+        self.enqueue_message(f"RPi IP address is:")
 
     def stop(self):
         self.running = False

@@ -1,5 +1,5 @@
 [Unit]
-Description=Old Buddy - making old MK3s learn new tricks
+Description=Prusa Link - making MK3(s) do new tricks
 
 [Service]
 Type=simple

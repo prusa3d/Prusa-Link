@@ -36,7 +36,7 @@ def install():
     print("Kopíruji unit file pro systemd")
     file_copy("/etc/systemd/system/", "prusa_link.service", RW_R_R)
 
-    print("Povoluji spouštění při startu a spouštím old buddyho.")
+    print("Povoluji spouštění při startu a spouštím Prusa Link.")
     subprocess.run(["systemctl", "daemon-reload"])
     subprocess.run(["systemctl", "enable", "prusa_link.service"])
     subprocess.run(["systemctl", "enable", "pigpiod.service"])
