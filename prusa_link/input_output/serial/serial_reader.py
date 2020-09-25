@@ -3,9 +3,9 @@ import re
 from re import Match
 from threading import Lock
 from typing import Dict, List, Callable
-from sortedcontainers import SortedList, SortedKeyList
 
 from blinker import Signal
+from sortedcontainers import SortedKeyList
 
 from prusa_link.default_settings import get_settings
 

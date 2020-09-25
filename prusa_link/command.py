@@ -91,14 +91,14 @@ class Command:
         wait_for_instruction(instruction, lambda: self.running)
 
     def do_instruction(self, gcode):
-        instruction = enqueue_instruction(self.serial_queue, gcode, front=True)
+        instruction = enqueue_instruction(self.serial_queue, gcode, to_front=True)
         self.wait_for_instruction(instruction)
         return instruction
 
     def do_matchable(self, gcode, regexp: re.Pattern):
         """Enqueues everything to front as commands have a higher priority"""
         instruction = enqueue_matchable(self.serial_queue, gcode, regexp,
-                                        front=True)
+                                        to_front=True)
         self.wait_for_instruction(instruction)
         return instruction
 
