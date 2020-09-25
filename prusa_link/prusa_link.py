@@ -82,7 +82,7 @@ class PrusaLink:
             except KeyError:
                 tls = False
         except KeyError:
-            enqueue_instruction(self.serial_queue, "M117 Bad Old Buddy config")
+            enqueue_instruction(self.serial_queue, "M117 Bad Prusa Link conf")
             log.exception(
                 "Config load failed, lan_settings.ini missing or invalid.")
             raise
