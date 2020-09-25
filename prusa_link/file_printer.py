@@ -107,39 +107,40 @@ class FilePrinter:
         self.thread.start()
 
     def _print(self, from_line=0):
-        tmp_file = open(self.tmp_file_path)
+        with open(self.tmp_file_path, "r") as tmp_file:
 
-        # Reset the line counter, printing a new file
-        self.serial_queue.reset_message_number()
+            # Reset the line counter, printing a new file
+            self.serial_queue.reset_message_number()
 
-        line_list = tmp_file.readlines()
+            for line_index, line in enumerate(tmp_file):
+                if line_index < from_line:
+                    continue
 
-        for line_index, line in enumerate(line_list[from_line:]):
-            if self.paused:
-                log.debug("Pausing USB print")
-                self.wait_for_unpause()
-                log.debug("Resuming USB print")
+                if self.paused:
+                    log.debug("Pausing USB print")
+                    self.wait_for_unpause()
+                    log.debug("Resuming USB print")
 
-            self.line_number = line_index + 1
-            gcode = line.split(";", 1)[0].strip()
-            if gcode:
-                log.debug(f"USB printing gcode: {gcode}")
-                instruction = enqueue_instruction(self.serial_queue, gcode,
-                                                  front=True, to_checksum=True)
-                wait_for_instruction(instruction, lambda: self.printing)
+                self.line_number = line_index + 1
+                gcode = line.split(";", 1)[0].strip()
+                if gcode:
+                    log.debug(f"USB printing gcode: {gcode}")
+                    instruction = enqueue_instruction(self.serial_queue, gcode,
+                                                      to_front=True, to_checksum=True)
+                    wait_for_instruction(instruction, lambda: self.printing)
 
-                log.debug(f"{gcode} confirmed")
+                    log.debug(f"{gcode} confirmed")
 
-            if not self.printing:
-                break
+                if not self.printing:
+                    break
 
-        log.debug(f"Print ended")
+            log.debug(f"Print ended")
 
-        os.remove(self.tmp_file_path)
-        if self.pp_exists:
-            os.remove(self.pp_file_path)
-        self.printing = False
-        self.print_ended_signal.send(self)
+            os.remove(self.tmp_file_path)
+            if self.pp_exists:
+                os.remove(self.pp_file_path)
+            self.printing = False
+            self.print_ended_signal.send(self)
 
     def power_panic(self):
         if self.printing:

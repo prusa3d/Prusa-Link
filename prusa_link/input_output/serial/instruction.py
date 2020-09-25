@@ -1,11 +1,6 @@
-import logging
 import re
 from enum import Enum
 from threading import Event
-
-from blinker import Signal
-
-from prusa_link.structures.regular_expressions import CONFIRMATION_REGEX
 
 
 class Instruction:
@@ -30,15 +25,8 @@ class Instruction:
         # Event set when the write has been _confirmed by the printer
         self.confirmed_event = Event()
 
-        # The plan is to move from waiting for events to reacting to them
-        # using blinker signals
-        self.confirmed_signal = Signal()
-
         # Event set when the write has been sent to the printer
         self.sent_event = Event()
-
-        # Signal sent on the same ocasion
-        self.sent_signal = Signal()
 
         # Api for registering instruction regexps
         self.capturing_regexps = []
@@ -56,12 +44,10 @@ class Instruction:
             return False
 
         self.confirmed_event.set()
-        self.confirmed_signal.send(self)
         return True
 
     def sent(self):
         self.sent_event.set()
-        self.sent_signal.send(self)
 
     def output_captured(self, sender, match):
         pass

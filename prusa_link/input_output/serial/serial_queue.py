@@ -1,11 +1,12 @@
 import logging
 import re
+from queue import Queue
 from threading import Lock, Thread
 from time import time
 from typing import List
 
-from prusa_link.input_output.serial.serial import Serial
 from prusa_link.default_settings import get_settings
+from prusa_link.input_output.serial.serial import Serial
 from prusa_link.structures.regular_expressions import CONFIRMATION_REGEX, \
     FILE_OPEN_REGEX, PAUSED_REGEX, RESEND_REGEX, \
     TEMPERATURE_REGEX, BUSY_REGEX, ATTENTION_REGEX, HEATING_HOTEND_REGEX, \
@@ -37,8 +38,14 @@ class SerialQueue:
         self.serial = serial
         self.serial_reader = serial_reader
 
-        # A gueue of instructions for the printer
-        self.queue: List[Instruction] = []
+        # A queue of instructions for the printer
+        self.queue: Queue[Instruction] = Queue()
+
+        # This one shall contain time critical instructions
+        self.priority_queue: Queue[Instruction] = Queue()
+
+        # Instruction that is currently being handled
+        self.current_instruction = None
 
         # Maximum bytes we'll write
         self.rx_max = rx_size
@@ -48,10 +55,6 @@ class SerialQueue:
 
         # For numbered messages with checksums
         self.message_number = 0
-
-        # When enqueuing instructions to front keep track of where to
-        # enqueue next, so they aren't getting mixed
-        self.insert_priority_at = 0
 
         self.closed = False
 
@@ -67,11 +70,22 @@ class SerialQueue:
 
     # --- Getters ---
 
-    def get_front_instruction(self):
-        if self.queue:
-            return self.queue[0]
-        else:  # Not omitting this for readability
-            return None
+    def get_instruction(self):
+        """
+        If for some reason the current instruction is not None
+        (didn't get confirmed for example), return it, otherwise
+        get a fresh instruction and set is as the current one.
+        """
+
+        # TODO: dirty, break it up or rename
+
+        if self.current_instruction is None:
+            if not self.priority_queue.empty():
+                self.current_instruction = self.priority_queue.get()
+            elif not self.queue.empty():
+                self.current_instruction = self.queue.get()
+
+        return self.current_instruction
 
     def get_current_delay(self):
         if self.is_empty():
@@ -81,11 +95,11 @@ class SerialQueue:
 
     # --- If statements in methods ---
     def can_write(self):
-        return not self.is_empty() and not self.front_instruction.is_sent() \
-               and not self.closed
+        return self.current_instruction is None and not self.is_empty() and \
+               not self.closed
 
     def is_empty(self):
-        return not bool(self.queue)
+        return self.queue.empty() and self.priority_queue.empty()
 
     # --- Actual methods ---
 
@@ -113,9 +127,9 @@ class SerialQueue:
 
     def _write(self):
         # message_number has been raced for, so let's not do that
-        instruction = self.front_instruction
+        instruction = self.get_instruction()
 
-        if not instruction.sent():
+        if not instruction.is_sent():
             # Is this the first time we are sending this?
             if instruction.to_checksum:
                 self.message_number += 1
@@ -127,7 +141,7 @@ class SerialQueue:
                     priority=time()
                 )
 
-            self.front_instruction.sent()
+            self.current_instruction.sent()
 
         data = self.get_data(instruction)
 
@@ -141,30 +155,25 @@ class SerialQueue:
 
         self.serial.write(data)
 
-    def _enqueue(self, instruction: Instruction, front=False):
-        if front:
-            self.queue.insert(self.insert_priority_at,
-                              instruction)
-            self.insert_priority_at += 1
+    def _enqueue(self, instruction: Instruction, to_front=False):
+        if to_front:
+            self.priority_queue.put(instruction)
         else:
-            if self.is_empty():
-                self.insert_priority_at = 1
-            self.queue.append(instruction)
+            self.queue.put(instruction)
 
-    def enqueue_one(self, instruction: Instruction, front=False):
+    def enqueue_one(self, instruction: Instruction, to_front=False):
         """
         Enqueue one instruction
         Don't interrupt, if anyone else is enqueueing instructions
         :param instruction: the thing to be enqueued
-        :param front: whether to enqueue to front of the queue
+        :param to_front: whether to enqueue to front of the queue
         """
 
         with self.write_lock:
-            was_empty = self.is_empty()
             log.debug(f"{instruction} enqueued. "
-                      f"{'to the front' if front else ''}")
+                      f"{'to the front' if to_front else ''}")
 
-            self._enqueue(instruction, front)
+            self._enqueue(instruction, to_front)
 
         self._try_writing()
 
@@ -177,7 +186,6 @@ class SerialQueue:
         """
 
         with self.write_lock:
-            was_empty = self.is_empty()
             log.debug(f"Instructions {instruction_list} enqueued"
                       f"{'to the front' if front else ''}")
 
@@ -194,10 +202,10 @@ class SerialQueue:
         # and capture them if we are expecting them
         additional_output = match.groups()[0]
         if additional_output and \
-                TEMPERATURE_REGEX in self.front_instruction.capturing_regexps:
+                TEMPERATURE_REGEX in self.current_instruction.capturing_regexps:
             temperature_match = TEMPERATURE_REGEX.match(additional_output)
             if temperature_match:
-                self.front_instruction.output_captured(None,
+                self.current_instruction.output_captured(None,
                                                        match=temperature_match)
 
         self._confirmed()
@@ -206,7 +214,7 @@ class SerialQueue:
         # Another special case is when pausing. The "ok" is omitted
         # Let's add it to the captured stuff and confirm it ourselves
         # Yes, i force the match no matter what, it's a stupid special case
-        self.front_instruction.output_captured(None, match=match)
+        self.current_instruction.output_captured(None, match=match)
         self._confirmed()
 
     def _yeeted_handler(self, sender, match: re.Match):
@@ -216,7 +224,7 @@ class SerialQueue:
         number = int(match.groups()[0])
         log.warning(f"Resend of {number} requested. Current is "
                     f"{self.message_number}")
-        if (self.front_instruction.to_checksum and
+        if (self.current_instruction.to_checksum and
                 self.message_number == number):
             self._recover_front()
         elif self.message_number < number:
@@ -234,11 +242,12 @@ class SerialQueue:
         Assume it confirms exactly one instruction once
         """
         self.last_event_on = time()
-        if self.is_empty() or not self.front_instruction.is_sent():
+        if self.current_instruction is None or \
+                not self.current_instruction.is_sent():
             log.error("Unexpected message confirmation. Ignoring")
-        elif self.front_instruction.confirm():
+        elif self.current_instruction.confirm():
             with self.write_lock:
-                instruction = self.front_instruction
+                instruction = self.current_instruction
 
                 # If the instruction did not refuse to be confirmed
                 # Yes, that needs to happen because of M602
@@ -249,18 +258,13 @@ class SerialQueue:
                         regexp, instruction.output_captured
                     )
 
-                del self.queue[0]
+                self.current_instruction = None
 
-                if self.insert_priority_at > 1:
-                    self.insert_priority_at -= 1
-                if self.is_empty():
-                    self.insert_priority_at = 0
-
-        elif not self.front_instruction.is_sent():
+        elif not self.current_instruction.is_sent():
             # Something thinks the instruction failed sending, re-send
             self._try_writing()
         else:
-            log.debug(f"{self.front_instruction} refused confirmation. "
+            log.debug(f"{self.current_instruction} refused confirmation. "
                       f"Hopefully it has a reason for that")
 
         #  rx_current decreased, let's try if we'll fit into the rx buffer
@@ -280,19 +284,17 @@ class SerialQueue:
     def _recover_front(self):
         # The message that failed gets confirmed
         # Let's stop that from happening as we need to re-send it
-        self.front_instruction.needs_two_okays = True
+        self.current_instruction.needs_two_okays = True
 
         # The message errored out on send, so let's try it again
-        self.front_instruction.sent_event.clear()
+        self.current_instruction.sent_event.clear()
 
         # We'll be sending a message with the same number again
         self.message_number -= 1
 
-    front_instruction = property(get_front_instruction)
-
     def reset_message_number(self):
         instruction = Instruction("M110 N1")
-        self.enqueue_one(instruction, front=True)
+        self.enqueue_one(instruction, to_front=True)
         while not self.closed:
             if instruction.wait_for_confirmation(timeout=TIME.QUIT_INTERVAL):
                 break
@@ -328,7 +330,7 @@ class MonitoredSerialQueue(SerialQueue):
             # The printer did not respond in time, lets assume it forgot
             # what it was supposed to do
             log.info(f"Timed out waiting for confirmation of "
-                     f"{self.front_instruction} after "
+                     f"{self.current_instruction} after "
                      f"{SQ.SERIAL_QUEUE_TIMEOUT}sec.")
             log.debug("Assuming the printer yote our RX buffer")
             self._rx_buffer_got_yeeted()
