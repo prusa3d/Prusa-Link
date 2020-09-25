@@ -1,10 +1,10 @@
 import re
 from typing import List, Callable
 
+from prusa_link.default_settings import get_settings
 from prusa_link.input_output.serial.instruction import Instruction, \
     MatchableInstruction, CollectingInstruction
 from prusa_link.input_output.serial.serial_queue import SerialQueue
-from prusa_link.default_settings import get_settings
 
 TIME = get_settings().TIME
 
@@ -17,19 +17,19 @@ def wait_for_instruction(instruction, should_wait: Callable[[], bool],
             break
 
 
-def enqueue_instruction(queue: SerialQueue, message: str, front=False,
+def enqueue_instruction(queue: SerialQueue, message: str, to_front=False,
                         to_checksum=False) -> Instruction:
     instruction = Instruction(message, to_checksum=to_checksum)
-    queue.enqueue_one(instruction, front=front)
+    queue.enqueue_one(instruction, to_front=to_front)
     return instruction
 
 
 def enqueue_matchable(queue: SerialQueue,
-                      message: str, regexp: re.Pattern, front=False,
+                      message: str, regexp: re.Pattern, to_front=False,
                       to_checksum=False) -> MatchableInstruction:
     instruction = MatchableInstruction(message, capture_matching=regexp,
                                        to_checksum=to_checksum)
-    queue.enqueue_one(instruction, front=front)
+    queue.enqueue_one(instruction, to_front=to_front)
     return instruction
 
 
