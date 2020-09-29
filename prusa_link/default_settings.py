@@ -60,6 +60,7 @@ class LogLevelSettings(BaseModel):
     LINUX_FILESYSTEM = "INFO"
     STORAGE = "INFO"
     FILE_PRINTER = "INFO"
+    PRINT_STATS = "INFO"
     JOB_ID = "INFO"
 
 
@@ -96,6 +97,12 @@ class PiSetteings(BaseModel):
     RESET_PIN = 22
 
 
+class FilePrinterSettings(BaseModel):
+
+    stats_every = 100
+    tail_commands = 10  # how many commands after the last progress report
+
+
 class SettingsData(BaseModel):
     """ Object supposed to hold all settings """
     CONN: ConnectSettings = ConnectSettings()
@@ -107,6 +114,7 @@ class SettingsData(BaseModel):
     MOUNT: MountPointSettings = MountPointSettings()
     PATH: PathSettings = PathSettings()
     PI: PiSetteings = PiSetteings()
+    FP = FilePrinterSettings = FilePrinterSettings()
 
 
 def get_settings() -> SettingsData:
