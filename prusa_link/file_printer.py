@@ -7,17 +7,19 @@ from time import sleep
 from blinker import Signal
 
 from prusa_link.default_settings import get_settings
+from prusa_link.print_stats import PrintStats
 from prusa_link.input_output.serial.helpers import enqueue_instruction, \
     wait_for_instruction
 from prusa_link.input_output.serial.serial_queue import SerialQueue
 from prusa_link.input_output.serial.serial_reader import SerialReader
 from prusa_link.structures.regular_expressions import POWER_PANIC_REGEX, \
-    PRINTER_BOOT_REGEX
-from prusa_link.util import get_clean_path, ensure_directory
+    PRINTER_BOOT_REGEX, ERROR_REGEX
+from prusa_link.util import get_clean_path, ensure_directory, get_gcode
 
 LOG = get_settings().LOG
-TIME = get_settings().TIME
+FP = get_settings().FP
 PATH = get_settings().PATH
+TIME = get_settings().TIME
 
 log = logging.getLogger(__name__)
 log.setLevel(LOG.FILE_PRINTER)
@@ -35,18 +37,18 @@ class FilePrinter:
 
         self.serial_queue = serial_queue
         self.serial_reader = serial_reader
+        self.print_stats = PrintStats()
 
         self.serial_reader.add_handler(
             PRINTER_BOOT_REGEX, lambda sender, match: self.printer_reset())
         self.serial_reader.add_handler(
             POWER_PANIC_REGEX, lambda sender, match: self.power_panic())
+        self.serial_reader.add_handler(
+            ERROR_REGEX, lambda sender, match: self.printer_error())
 
         self.printing = False
         self.paused = False
         self.line_number = 0
-        
-        self.target_nozzle_temp = 0
-        self.target_bed_temp = 0
 
         self.thread = None
 
@@ -103,15 +105,19 @@ class FilePrinter:
 
         self.thread = Thread(target=self._print, name="file_print")
         self.printing = True
+        self.print_stats.start_time_segment()
         self.new_print_started_signal.send(self)
         self.thread.start()
 
     def _print(self, from_line=0):
+        self.print_stats.track_new_print(self.tmp_file_path)
+
         with open(self.tmp_file_path, "r") as tmp_file:
 
             # Reset the line counter, printing a new file
             self.serial_queue.reset_message_number()
 
+            self.gcode_number = 0
             for line_index, line in enumerate(tmp_file):
                 if line_index < from_line:
                     continue
@@ -122,14 +128,9 @@ class FilePrinter:
                     log.debug("Resuming USB print")
 
                 self.line_number = line_index + 1
-                gcode = line.split(";", 1)[0].strip()
+                gcode = get_gcode(line)
                 if gcode:
-                    log.debug(f"USB printing gcode: {gcode}")
-                    instruction = enqueue_instruction(self.serial_queue, gcode,
-                                                      to_front=True, to_checksum=True)
-                    wait_for_instruction(instruction, lambda: self.printing)
-
-                    log.debug(f"{gcode} confirmed")
+                    self.print_gcode(gcode)
 
                 if not self.printing:
                     break
@@ -142,18 +143,57 @@ class FilePrinter:
             self.printing = False
             self.print_ended_signal.send(self)
 
+    def print_gcode(self, gcode):
+        self.gcode_number += 1
+
+        if self.to_print_stats(self.gcode_number):
+            self.send_print_stats()
+
+        log.debug(f"USB printing gcode: {gcode}")
+        instruction = enqueue_instruction(self.serial_queue, gcode,
+                                          to_front=True,
+                                          to_checksum=True)
+        wait_for_instruction(instruction, lambda: self.printing)
+
+        log.debug(f"{gcode} confirmed")
+
+
     def power_panic(self):
+        # TODO: write print time
         if self.printing:
-            self.paused = True
+            self.pause()
+            self.serial_queue.closed = True
             log.warning("POWER PANIC!")
-            self.serial_queue.queue.clear()
             with open(self.pp_file_path, "w") as pp_file:
                 pp_file.write(f"{self.line_number}")
                 pp_file.flush()
                 os.fsync(pp_file.fileno())
-            os.sync()
+
+    def send_print_stats(self):
+        percent_done, time_remaining = self.print_stats.get_stats(
+            self.gcode_number)
+
+        # TODO: Idk what to do here, idk what would have happened if we used
+        #  the other mode, so let's report both modes the same
+        stat_command = f"M73 P{percent_done} R{time_remaining} " \
+                       f"Q{percent_done} S{time_remaining} "
+        instruction = enqueue_instruction(self.serial_queue,
+                                          stat_command,
+                                          to_front=True)
+        wait_for_instruction(instruction, lambda: self.printing)
+
+    def to_print_stats(self, gcode_number):
+        divisible = gcode_number % FP.stats_every == 0
+        do_stats = not self.print_stats.has_inbuilt_stats
+        print_ending = gcode_number == \
+                       self.print_stats.total_gcode_count - FP.tail_commands
+        return (do_stats and divisible) or print_ending
 
     def printer_reset(self):
+        self.stop_print()
+
+    def printer_error(self):
+        # TODO: Maybe pause in some cases instead
         self.stop_print()
 
     def wait_for_unpause(self):
@@ -162,9 +202,11 @@ class FilePrinter:
 
     def pause(self):
         self.paused = True
+        self.print_stats.end_time_segment()
 
     def resume(self):
         self.paused = False
+        self.print_stats.start_time_segment()
 
     def stop_print(self):
         if self.printing:
