@@ -3,9 +3,12 @@ import logging
 from getmac import get_mac_address
 from requests import RequestException
 
-from prusa_link.command import Command
+from prusa_link.command import Command, ResponseCommand
 from prusa_link.default_settings import get_settings
 from prusa_link.informers.ip_updater import NO_IP
+from prusa_link.input_output.connect_api import ConnectAPI
+from prusa_link.input_output.serial.serial_queue import SerialQueue
+from prusa_link.model import Model
 from prusa_link.structures.model_classes import PrinterInfo, \
     NetworkInfo, EmitEvents, Event
 from prusa_link.structures.regular_expressions import FW_REGEX, \
@@ -15,7 +18,7 @@ LOG = get_settings().LOG
 
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.INFO_SENDER)
+log.setLevel(LOG.COMMANDS)
 
 PRINTER_TYPES = {
     100: (1, 1, 0),
@@ -34,10 +37,13 @@ PRINTER_TYPES = {
 }
 
 
-class RespondWithInfo(Command):
+class SendInfo(Command):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, serial_queue: SerialQueue, connect_api: ConnectAPI,
+                 model: Model, **kwargs):
+        super().__init__(serial_queue)
+        self.model = model
+        self.connect_api = connect_api
         self.printer_info = PrinterInfo()
 
     def _run_command(self):
@@ -47,15 +53,18 @@ class RespondWithInfo(Command):
         self.insert_network_info()
         self.insert_additional_info()
 
-        event_object = Event()
-        event_object.event = EmitEvents.INFO.value
-        event_object.command_id = self.command_id
-        event_object.values = self.printer_info
+        event_object = self.create_event()
 
         try:
             self.connect_api.send_model("/p/events", event_object)
         except RequestException:
             log.exception("Sending info failed!")
+
+    def create_event(self):
+        event_object = Event()
+        event_object.event = EmitEvents.INFO.value
+        event_object.values = self.printer_info
+        return event_object
 
     def insert_type_and_version(self):
         instruction = self.do_matchable("M862.2 Q", PRINTER_TYPE_REGEX)
@@ -107,3 +116,18 @@ class RespondWithInfo(Command):
         network_info.wifi_mac = get_mac_address()
 
         self.printer_info.network_info = network_info
+
+
+class SendInfoResponse(ResponseCommand, SendInfo):
+    # This is a diamond, hopefully no overridden methods will conflict here
+    # The instantiation should be
+    # SendInfoResponse -> ResponseCommand -> SendInfo -> Command
+    # Yes, ResponseCommand has to pass more keyword arguments and SendInfo
+    # picks the relevant ones, but it works, hurray!
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def create_event(self):
+        event_object = super().create_event()
+        event_object.command_id = self.command_id
+        return event_object

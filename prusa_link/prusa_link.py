@@ -3,15 +3,15 @@ import logging
 import threading
 from distutils.util import strtobool
 from json import JSONDecodeError
-from time import time
+from time import time, sleep
 from typing import Type
 
 from requests import RequestException
 from serial import SerialException
 
-from prusa_link.command import Command
+from prusa_link.command import ResponseCommand
 from prusa_link.command_handlers.execute_gcode import ExecuteGcode
-from prusa_link.command_handlers.info_sender import RespondWithInfo
+from prusa_link.command_handlers.send_info import SendInfo, SendInfoResponse
 from prusa_link.command_handlers.pause_print import PausePrint
 from prusa_link.command_handlers.reset_printer import ResetPrinter
 from prusa_link.command_handlers.resume_print import ResumePrint
@@ -19,6 +19,7 @@ from prusa_link.command_handlers.start_print import StartPrint
 from prusa_link.command_handlers.stop_print import StopPrint
 from prusa_link.command_runner import CommandRunner
 from prusa_link.file_printer import FilePrinter
+from prusa_link.info_sender import InfoSender
 from prusa_link.informers.filesystem.storage_controller import StorageController
 from prusa_link.informers.job import Job
 from prusa_link.informers.telemetry_gatherer import TelemetryGatherer
@@ -148,6 +149,12 @@ class PrusaLink:
 
         self.last_sent_telemetry = time()
 
+        self.info_sender = InfoSender(self.serial_queue, self.serial_reader,
+                                      self.connect_api, self.model,
+                                      self.lcd_printer)
+
+        self.info_sender.insist_on_sending_info()
+
         # After the initial states are distributed throughout the model,
         # let's open ourselves to some commands from connect
         self.connect_thread = threading.Thread(
@@ -168,6 +175,7 @@ class PrusaLink:
         self.serial_queue.stop()
         self.serial.stop()
         self.connect_api.stop()
+        self.info_sender.stop()
 
         log.debug("Remaining threads, that could prevent us from quitting:")
         for thread in threading.enumerate():
@@ -204,7 +212,7 @@ class PrusaLink:
                 f"Failed to decode a response {api_response}")
         else:
             if data["command"] == "SEND_INFO":
-                self.run_command(RespondWithInfo, api_response)
+                self.run_command(SendInfoResponse, api_response)
             elif data["command"] == "START_PRINT":
                 self.run_command(StartPrint, api_response)
             elif data["command"] == "STOP_PRINT":
@@ -220,9 +228,8 @@ class PrusaLink:
                 self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
                                             "Unknown command")
 
-    def run_command(self, command_class: Type[Command], api_response,
-                    **kwargs):
-        self.command_runner.run(command_class, api_response, **kwargs)
+    def run_command(self, command_class: Type[ResponseCommand], api_response):
+        self.command_runner.run(command_class, api_response)
 
     # --- Signal handlers ---
 
