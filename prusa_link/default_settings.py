@@ -21,7 +21,7 @@ class ConnectSettings(BaseModel):
 
 
 class IntervalSettings(BaseModel):
-    # Times are in seconds
+    # Intervals are in seconds
     TELEMETRY_INTERVAL = 1
     TELEMETRY_IDLE_INTERVAL = 0.25
     TELEMETRY_PRINTING_INTERVAL = 1
@@ -72,7 +72,7 @@ class MountPointSettings(BaseModel):
     ]
     # Just directories
     DIRECTORIES = [
-        "/home/pi/PrusaLink gcodes"
+        os.path.expanduser("~/Prusa Link gcodes")
     ]
     BLACKLISTED_TYPES = [
     ]
