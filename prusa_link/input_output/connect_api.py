@@ -29,6 +29,10 @@ class ConnectAPI:
                                       "signals from class to instance " \
                                       "variables."
 
+        if address.startswith("http"):
+            log.warning("Redundant protocol configured in lan_settings address")
+            address = address.split("://", 1)[1]
+
         self.address = address
         self.port = port
 
@@ -37,7 +41,7 @@ class ConnectAPI:
         protocol = "https" if tls else "http"
 
         self.base_url = f"{protocol}://{address}:{port}"
-        log.info(f"Prusa Connect is expected on address: {address}:{port}.")
+        log.info(f"Prusa Connect is expected on address: {self.base_url}.")
         self.session = Session()
         self.session.headers['Printer-Token'] = token
 
