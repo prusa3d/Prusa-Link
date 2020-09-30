@@ -88,7 +88,7 @@ class SerialQueue:
         return self.current_instruction
 
     def get_current_delay(self):
-        if self.is_empty():
+        if self.is_empty() and self.current_instruction is None:
             return 0
         else:
             return time() - self.last_event_on
