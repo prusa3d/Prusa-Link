@@ -49,7 +49,8 @@ def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,
 
 
 def get_command_id(api_response: requests.Response):
-    return int(api_response.headers["Command-Id"])
+    if api_response is not None:
+        return int(api_response.headers["Command-Id"])
 
 
 def get_local_ip():
