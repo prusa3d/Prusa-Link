@@ -46,6 +46,7 @@ CONN = get_settings().CONN
 log = logging.getLogger(__name__)
 log.setLevel(LOG.PRUSA_LINK)
 
+logging.root.setLevel(LOG.DEFAULT)
 
 class PrusaLink:
 
