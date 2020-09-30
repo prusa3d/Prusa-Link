@@ -45,6 +45,7 @@ class SerialQueueSettings(BaseModel):
 
 
 class LogLevelSettings(BaseModel):
+    DEFAULT = "INFO"
     PRUSA_LINK = "INFO"
     SERIAL = "INFO"
     SERIAL_READER = "INFO"
