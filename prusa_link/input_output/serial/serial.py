@@ -62,14 +62,17 @@ class Serial:
             # No idea what these mean, but they seem to be 0, when the printer
             # isn't going to restart
             if attrs[0] != 0 or attrs[1] != 0:
+                log.debug("Waiting for the printer to boot")
                 sleep(TIME.PRINTER_BOOT_WAIT)
 
     def _renew_serial_connection(self):
         while self.running:
             try:
                 self._reopen()
-            except serial.SerialException:
+            except (serial.SerialException, FileNotFoundError,
+                    PermissionError):
                 log.debug("Openning of the serial port failed. Retrying...")
+                sleep(TIME.SERIAL_REOPEN_TIMEOUT)
             else:
                 break
 

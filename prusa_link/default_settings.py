@@ -31,6 +31,7 @@ class IntervalSettings(BaseModel):
     STORAGE_INTERVAL = 15
     SHOW_IP_INTERVAL = 60
     PRINTER_BOOT_WAIT = 8
+    SERIAL_REOPEN_TIMEOUT = 10
 
 
 class LCDQueueSettings(BaseModel):
