@@ -2,7 +2,7 @@ import logging
 from threading import Event
 from time import sleep, time
 
-from prusa_link.command import Command
+from prusa_link.command import ResponseCommand
 
 from prusa_link.default_settings import get_settings
 from prusa_link.structures.regular_expressions import PRINTER_BOOT_REGEX
@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG.COMMANDS)
 
 
-class ResetPrinter(Command):
+class ResetPrinter(ResponseCommand):
     """
     Tries if we have pigpio available, if not, uses DTR to reset the printer
     thanks @leptun.

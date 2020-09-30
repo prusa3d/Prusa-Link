@@ -2,7 +2,7 @@ import logging
 from threading import Thread, Event
 from typing import Type, Optional
 
-from prusa_link.command import Command
+from prusa_link.command import Command, ResponseCommand
 from prusa_link.file_printer import FilePrinter
 from prusa_link.informers.state_manager import StateManager
 from prusa_link.input_output.connect_api import ConnectAPI
@@ -48,9 +48,13 @@ class CommandRunner:
         while self.running:
             if self.new_command_event.wait(timeout=TIME.QUIT_INTERVAL):
                 self.new_command_event.clear()
-                self.running_command.run_command()
+                try:
+                    self.running_command.run_command()
+                except:
+                    log.exception("Command failed unexpectedly, "
+                                  "captured to stay alive.")
 
-    def run(self, command_class: Type[Command], api_response, **kwargs):
+    def run(self, command_class: Type[ResponseCommand], api_response, **kwargs):
         """
         Used to pass additional context (as a factory?) so the command
         itself can be quite light in arguments
@@ -61,7 +65,7 @@ class CommandRunner:
                                 self.file_printer, self.model, **kwargs)
         self._run(command)
 
-    def _run(self, command: Command):
+    def _run(self, command: ResponseCommand):
         if self.running_command is not None:
             if self.running_command.command_id == command.command_id:
                 log.warning("Tried to run already running command")

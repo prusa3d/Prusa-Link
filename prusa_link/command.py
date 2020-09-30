@@ -36,11 +36,12 @@ class CommandState(Enum):
 class Command:
     command_name = "command"
 
-    def __init__(self, api_response, serial: Serial,
+    def __init__(self, serial: Serial,
                  serial_reader: SerialReader,
                  serial_queue: SerialQueue,
                  connect_api: ConnectAPI, state_manager: StateManager,
-                 file_printer: FilePrinter, model: Model, **kwargs):
+                 file_printer: FilePrinter, model: Model,
+                 **kwargs):
         self.serial = serial
         self.serial_reader = serial_reader
         self.serial_queue = serial_queue
@@ -51,20 +52,11 @@ class Command:
 
         self._kwargs = kwargs
 
-        self.api_response = api_response
-        self.command_id = get_command_id(self.api_response)
-
         self.running = True
         self.finished_signal = Signal()
 
         self.state = CommandState.HAS_NOT_FAILED
         self.reason_failed = ""
-
-
-    @property
-    def is_forced(self):
-        return ("Force" in self.api_response.headers and
-                self.api_response.headers["Force"] == "1")
 
     def failed(self, message):
         self.set_failed_info(message)
@@ -74,30 +66,19 @@ class Command:
         self.state = CommandState.FAILED
         self.reason_failed = message
 
-    def reject(self, message=None):
-        if message is None:
-            message = "Command has been rejected without a message."
-        self.connect_api.emit_event(EmitEvents.REJECTED, self.command_id,
-                                    message)
-
-    def accept(self):
-        self.connect_api.emit_event(EmitEvents.ACCEPTED, self.command_id)
-
-    def finish(self):
-        self.connect_api.emit_event(EmitEvents.FINISHED, self.command_id)
-
     def wait_while_running(self, instruction):
         """Wait until the instruction is done, or we quit"""
         wait_for_instruction(instruction, lambda: self.running)
 
-    def do_instruction(self, gcode):
-        instruction = enqueue_instruction(self.serial_queue, gcode, to_front=True)
+    def do_instruction(self, message):
+        instruction = enqueue_instruction(self.serial_queue, message,
+                                          to_front=True)
         self.wait_for_instruction(instruction)
         return instruction
 
-    def do_matchable(self, gcode, regexp: re.Pattern):
+    def do_matchable(self, message, regexp: re.Pattern):
         """Enqueues everything to front as commands have a higher priority"""
-        instruction = enqueue_matchable(self.serial_queue, gcode, regexp,
+        instruction = enqueue_matchable(self.serial_queue, message, regexp,
                                         to_front=True)
         self.wait_for_instruction(instruction)
         return instruction
@@ -119,17 +100,12 @@ class Command:
             self._run_command(**self._kwargs)
         except CommandFailed:
             log.debug(f"Command failed: {self.reason_failed}.")
+            raise
         except Exception as e:
-            log.exception("Command failed unexpectedly, "
-                          "captured to stay alive.")
             self.set_failed_info(e.args[0])
+            raise
 
         self.finished_signal.send(self)
-
-        if self.state == CommandState.HAS_NOT_FAILED:
-            self.finish()
-        else:
-            self.reject(self.reason_failed)
 
     def _run_command(self, **kwargs):
         """Whatever it is, we need to accomplish"""
@@ -139,3 +115,41 @@ class Command:
         self.running = False
 
 
+class ResponseCommand(Command):
+
+    def __init__(self, api_response, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if api_response is None:
+            raise AttributeError("Cannot instantiate ResponseCommand without "
+                                 "the api_response")
+
+        self.api_response = api_response
+        self.command_id = get_command_id(self.api_response)
+
+    @property
+    def is_forced(self):
+        if self.api_response is None:
+            return False
+        else:
+            return ("Force" in self.api_response.headers and
+                    self.api_response.headers["Force"] == "1")
+
+    def reject(self, message=None):
+        if message is None:
+            message = "Command has been rejected without a message."
+        self.connect_api.emit_event(EmitEvents.REJECTED, self.command_id,
+                                    message)
+
+    def accept(self):
+        self.connect_api.emit_event(EmitEvents.ACCEPTED, self.command_id)
+
+    def finish(self):
+        self.connect_api.emit_event(EmitEvents.FINISHED, self.command_id)
+
+    def run_command(self):
+        super().run_command()
+
+        if self.state == CommandState.HAS_NOT_FAILED:
+            self.finish()
+        else:
+            self.reject(self.reason_failed)
