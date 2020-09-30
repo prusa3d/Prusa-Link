@@ -31,6 +31,7 @@ class IntervalSettings(BaseModel):
     STORAGE_INTERVAL = 15
     SHOW_IP_INTERVAL = 60
     PRINTER_BOOT_WAIT = 8
+    SEND_INFO_RETRY = 5
     SERIAL_REOPEN_TIMEOUT = 10
 
 
@@ -40,7 +41,7 @@ class LCDQueueSettings(BaseModel):
 
 class SerialQueueSettings(BaseModel):
     RX_SIZE = 128
-    SERIAL_QUEUE_TIMEOUT = 25
+    SERIAL_QUEUE_TIMEOUT = 10
     SERIAL_QUEUE_MONITOR_INTERVAL = 1
 
 
@@ -64,6 +65,7 @@ class LogLevelSettings(BaseModel):
     FILE_PRINTER = "INFO"
     PRINT_STATS = "INFO"
     JOB_ID = "INFO"
+    INFO_SENDER = "INFO"
 
 
 class MountPointSettings(BaseModel):

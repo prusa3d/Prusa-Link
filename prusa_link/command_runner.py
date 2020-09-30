@@ -2,7 +2,7 @@ import logging
 from threading import Thread, Event
 from typing import Type, Optional
 
-from prusa_link.command import Command
+from prusa_link.command import Command, ResponseCommand
 from prusa_link.file_printer import FilePrinter
 from prusa_link.informers.state_manager import StateManager
 from prusa_link.input_output.connect_api import ConnectAPI
@@ -48,20 +48,28 @@ class CommandRunner:
         while self.running:
             if self.new_command_event.wait(timeout=TIME.QUIT_INTERVAL):
                 self.new_command_event.clear()
-                self.running_command.run_command()
+                try:
+                    self.running_command.run_command()
+                except:
+                    log.exception("Command failed unexpectedly, "
+                                  "captured to stay alive.")
 
-    def run(self, command_class: Type[Command], api_response, **kwargs):
+    def run(self, command_class: Type[ResponseCommand], api_response):
         """
         Used to pass additional context (as a factory?) so the command
         itself can be quite light in arguments
         """
-        command = command_class(api_response, self.serial, self.serial_reader,
-                                self.serial_queue,
-                                self.connect_api, self.state_manager,
-                                self.file_printer, self.model, **kwargs)
+        command = command_class(api_response=api_response,
+                                serial=self.serial,
+                                serial_reader=self.serial_reader,
+                                serial_queue=self.serial_queue,
+                                connect_api=self.connect_api,
+                                state_manager=self.state_manager,
+                                file_printer=self.file_printer,
+                                model=self.model)
         self._run(command)
 
-    def _run(self, command: Command):
+    def _run(self, command: ResponseCommand):
         if self.running_command is not None:
             if self.running_command.command_id == command.command_id:
                 log.warning("Tried to run already running command")

@@ -1,7 +1,7 @@
 import logging
 from time import sleep
 
-from prusa_link.command import Command
+from prusa_link.command import ResponseCommand
 from prusa_link.default_settings import get_settings
 from prusa_link.informers.state_manager import StateChange
 from prusa_link.structures.model_classes import States, Sources
@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG.COMMANDS)
 
 
-class TryUntilState(Command):
+class TryUntilState(ResponseCommand):
     command_name = "pause/stop/resume print"
 
     def _try_until_state(self, gcode: str, desired_state: States):

@@ -1,6 +1,6 @@
 import logging
 
-from prusa_link.command import Command
+from prusa_link.command import ResponseCommand
 from prusa_link.informers.state_manager import StateChange
 from prusa_link.default_settings import get_settings
 from prusa_link.input_output.serial.helpers import enqueue_list_from_str
@@ -14,10 +14,11 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG.COMMANDS)
 
 
-class ExecuteGcode(Command):
+class ExecuteGcode(ResponseCommand):
     command_name = "execute_gcode"
 
     def _run_command(self):
+
         gcode = self.api_response.text
 
         if self.is_forced:

@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from prusa_link.command import Command
+from prusa_link.command import ResponseCommand
 from prusa_link.informers.filesystem.models import InternalFileTree
 from prusa_link.informers.state_manager import StateChange
 from prusa_link.default_settings import get_settings
@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG.COMMANDS)
 
 
-class StartPrint(Command):
+class StartPrint(ResponseCommand):
     command_name = "start print"
 
     def _run_command(self):
