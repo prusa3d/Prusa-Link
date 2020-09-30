@@ -45,13 +45,15 @@ class Serial:
             if self.serial is not None and self.serial.is_open:
                 self.serial.close()
 
-            # Prevent a hungup on serial close, this will make it,
+            # Prevent a hangup on serial close, this will make it,
             # so the printer resets only on reboot or replug,
             # not on prusa_link restarts
             f = open(self.port)
             attrs = termios.tcgetattr(f)
             log.debug(f"Serial attributes: {attrs}")
+            # disable hangup
             attrs[2] = attrs[2] & ~termios.HUPCL
+            # TCSAFLUSH set after everything is done
             termios.tcsetattr(f, termios.TCSAFLUSH, attrs)
             f.close()
 
@@ -61,9 +63,11 @@ class Serial:
 
             # No idea what these mean, but they seem to be 0, when the printer
             # isn't going to restart
-            if attrs[0] != 0 or attrs[1] != 0:
-                log.debug("Waiting for the printer to boot")
-                sleep(TIME.PRINTER_BOOT_WAIT)
+            # FIXME: thought i could determine whether the printer is going to
+            #  restart or not. But that proved unreliable
+            # if attrs[0] != 0 or attrs[1] != 0:
+            log.debug("Waiting for the printer to boot")
+            sleep(TIME.PRINTER_BOOT_WAIT)
 
     def _renew_serial_connection(self):
         while self.running:
@@ -105,12 +109,17 @@ class Serial:
         # with self.write_read_lock:
         # Why would i not want to write and handle reads at the same time?
         log.debug(f"Sending to printer: {message}")
+
+        errored_out = False
         with self.write_lock:
             try:
                 self.serial.write(message)
             except serial.SerialException:
                 log.error(
                     f"Serial error when sending '{message}' to the printer")
+                errored_out = True
+        if errored_out:
+            self._renew_serial_connection()
 
     def blip_dtr(self):
         with self.write_lock:
