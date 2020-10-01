@@ -71,6 +71,8 @@ class PrusaLink:
         self.serial_queue = MonitoredSerialQueue(self.serial,
                                                  self.serial_reader)
 
+        self.lcd_printer = LCDPrinter(self.serial_queue)
+
         self.config = configparser.ConfigParser()
         self.config.read(CONN.CONNECT_CONFIG_PATH)
 
@@ -90,7 +92,7 @@ class PrusaLink:
             raise
 
         self.connect_api = ConnectAPI(address=address, port=port, token=token,
-                                      tls=tls)
+                                      tls=tls, lcd_printer=self.lcd_printer)
         ConnectAPI.connection_error.connect(self.connection_error)
 
         self.telemetry_gatherer = TelemetryGatherer(self.serial_reader,
@@ -112,8 +114,6 @@ class PrusaLink:
 
         # TODO: Hook onto the events
         self.job_id = Job()
-
-        self.lcd_printer = LCDPrinter(self.serial_queue)
 
         self.storage = StorageController(self.serial_queue, self.serial_reader,
                                          self.state_manager)
@@ -191,18 +191,6 @@ class PrusaLink:
                 self.command_runner.run(ExecuteGcode, api_response)
             else:
                 self.determine_command(api_response)
-        elif api_response.status_code >= 300:
-            code = api_response.status_code
-            log.error(f"Connect responded with code {code}")
-
-            if code == 400:
-                self.lcd_printer.enqueue_400()
-            elif code == 401:
-                self.lcd_printer.enqueue_401()
-            elif code == 403:
-                self.lcd_printer.enqueue_403()
-            elif code == 501:
-                self.lcd_printer.enqueue_501()
 
     def determine_command(self, api_response):
         try:
@@ -240,9 +228,9 @@ class PrusaLink:
         self.model.local_ip = local_ip
 
         if local_ip is not NO_IP:
-            self.lcd_printer.enqueue_message(f"{local_ip}", duration=0)
+            self.lcd_printer.enqueue_message(f"{local_ip}", duration=5)
         else:
-            self.lcd_printer.enqueue_message(f"WiFi disconnected", duration=0)
+            self.lcd_printer.enqueue_message(f"WiFi disconnected", duration=3)
 
     def storage_updated(self, sender, tree):
         self.model.file_tree = tree
