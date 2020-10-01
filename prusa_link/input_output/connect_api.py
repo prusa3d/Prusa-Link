@@ -46,8 +46,8 @@ class ConnectAPI:
         self.session.headers['Printer-Token'] = token
 
     def send_dict(self, path: str, json_dict: dict):
-        log.info(f"Sending to connect {path}")
-        log.debug(f"request data: {json_dict}")
+        log.debug(f"Sending to connect {path} "
+                  f"request data: {json_dict}")
         timestamp_header = {"Timestamp": str(int(time()))}
         try:
             response = self.session.post(self.base_url + path, json=json_dict,
@@ -55,8 +55,8 @@ class ConnectAPI:
         except RequestException:
             self.connection_error.send(self, path=path, json_dict=json_dict)
             raise
-        log.info(f"Got a response: {response.status_code}")
-        log.debug(f"Response contents: {response.content}")
+        log.debug(f"Got a response: {response.status_code} "
+                  f"response data: {response.content}")
         return response
 
     def send_model(self, path: str, model: BaseModel):
