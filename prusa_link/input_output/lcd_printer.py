@@ -81,13 +81,14 @@ class LCDPrinter:
         self.enqueue_message("403 Or invalid one")
         self.enqueue_message("403 Bad lan_settings")
 
-    def enqueue_501(self):
-        self.enqueue_message("501 Service Unavail")
-        self.enqueue_message("501 You cold try")
-        self.enqueue_message("501 re-downloading")
-        self.enqueue_message("501 lan_settings")
-        self.enqueue_message("501 But most likely")
-        self.enqueue_message("501 Connect is down")
+    def enqueue_503(self):
+        self.enqueue_message("Service Unavailable")
+        self.enqueue_message("503 You cold try")
+        self.enqueue_message("503 re-downloading")
+        self.enqueue_message("503 lan_settings.ini")
+        self.enqueue_message("503 But most likely")
+        self.enqueue_message("503 stuff broke, or")
+        self.enqueue_message("503 Connect is down")
 
     def enqueue_connection_failed(self, no_ip):
         self.enqueue_message("Failed when talking")
