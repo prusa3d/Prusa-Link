@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from requests import Session, RequestException
 
 from prusa_link.default_settings import get_settings
+from prusa_link.input_output.lcd_printer import LCDPrinter
 from prusa_link.structures.model_classes import EmitEvents, FileTree, Event
 
 LOG = get_settings().LOG
@@ -23,7 +24,8 @@ class ConnectAPI:
     # but this is not a singleton!
     instance = None
 
-    def __init__(self, address, port, token, tls=False):
+    def __init__(self, address, port, token, tls,
+                 lcd_printer: LCDPrinter):
         assert self.instance is None, "If running more than one instance" \
                                       "is required, consider moving the " \
                                       "signals from class to instance " \
@@ -40,10 +42,24 @@ class ConnectAPI:
 
         protocol = "https" if tls else "http"
 
+        self.lcd_printer = lcd_printer
+
         self.base_url = f"{protocol}://{address}:{port}"
         log.info(f"Prusa Connect is expected on address: {self.base_url}.")
         self.session = Session()
         self.session.headers['Printer-Token'] = token
+
+    def handle_error_code(self, code):
+        if code == 400:
+            self.lcd_printer.enqueue_400()
+        elif code == 401:
+            self.lcd_printer.enqueue_401()
+        elif code == 403:
+            self.lcd_printer.enqueue_403()
+        elif code == 501:
+            self.lcd_printer.enqueue_501()
+        elif code == 503:
+            self.lcd_printer.enqueue_503()
 
     def send_dict(self, path: str, json_dict: dict):
         log.debug(f"Sending to connect {path} "
@@ -55,8 +71,15 @@ class ConnectAPI:
         except RequestException:
             self.connection_error.send(self, path=path, json_dict=json_dict)
             raise
+        else:
+            if response.status_code >= 300:
+                code = response.status_code
+                log.error(f"Connect responded with http error code {code}")
+                self.handle_error_code(code)
+
         log.debug(f"Got a response: {response.status_code} "
                   f"response data: {response.content}")
+
         return response
 
     def send_model(self, path: str, model: BaseModel):
