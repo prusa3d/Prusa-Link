@@ -57,7 +57,6 @@ class LogLevelSettings(BaseModel):
     SD_CARD = "INFO"
     IP_UPDATER = "INFO"
     TELEMETRY_GATHERER = "INFO"
-    INFO_SENDER = "INFO"
     SERIAL_QUEUE = "INFO"
     MOUNTPOINT = "INFO"
     LINUX_FILESYSTEM = "INFO"
