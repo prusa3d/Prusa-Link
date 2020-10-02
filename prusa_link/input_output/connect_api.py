@@ -56,8 +56,6 @@ class ConnectAPI:
             self.lcd_printer.enqueue_401()
         elif code == 403:
             self.lcd_printer.enqueue_403()
-        elif code == 501:
-            self.lcd_printer.enqueue_501()
         elif code == 503:
             self.lcd_printer.enqueue_503()
 
