@@ -8,5 +8,5 @@ pydantic
 setuptools
 PyYAML
 appdirs
-pigpio
+wiringpi
 sortedcontainers
