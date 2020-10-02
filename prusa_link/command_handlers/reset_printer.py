@@ -43,16 +43,16 @@ class ResetPrinter(ResponseCommand):
         self.serial_reader.add_handler(PRINTER_BOOT_REGEX, waiter)
 
         try:
-            import pigpio
-            pi = pigpio.pi()
-            pi.set_mode(PI.RESET_PIN, pigpio.OUTPUT)
+            import wiringpi
+            wiringpi.wiringPiSetupGpio()
         except:
             self.serial.blip_dtr()
         else:
-            pi.write(PI.RESET_PIN, pigpio.LOW)
-            pi.write(PI.RESET_PIN, pigpio.HIGH)
+            wiringpi.pinMode(22, wiringpi.OUTPUT)
+            wiringpi.digitalWrite(22, wiringpi.HIGH)
+            wiringpi.digitalWrite(22, wiringpi.LOW)
             sleep(0.1)
-            pi.write(PI.RESET_PIN, pigpio.LOW)
+            wiringpi.digitalWrite(22, wiringpi.LOW)
 
         while self.running and time() < times_out_at:
             if event.wait(TIME.QUIT_INTERVAL):
