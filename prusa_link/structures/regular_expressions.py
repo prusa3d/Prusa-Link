@@ -16,7 +16,7 @@ SD_PRESENT_REGEX = re.compile(r"^(echo:SD card ok)|(echo:SD init fail)$")
 
 
 ANY_REGEX = re.compile(r".*")
-CONFIRMATION_REGEX = re.compile(r"^ok\s?(.*)$")  # priority = 100
+CONFIRMATION_REGEX = re.compile(r"^ok\s?(.*)$")  # highest priority
 FILE_OPEN_REGEX = re.compile(r"^echo:Now fresh file: .*$")
 PAUSED_REGEX = re.compile(r"^// action:paused$")
 
@@ -36,13 +36,13 @@ ERROR_REGEX = re.compile(
 
 
 TEMPERATURE_REGEX = re.compile(
-    r"^T: ?(-?\d+\.\d+) ?/(-?\d+\.\d+) ?B: ?(-?\d+\.\d+) ?/(-?\d+\.\d+) ?"
-    r"T0: ?(-?\d+\.\d+) ?/(-?\d+\.\d+) ?@: ?(-?\d+) ?B@: ?(-?\d+) ?"
-    r"P: ?(-?\d+\.\d+) ?A: ?(-?\d+\.\d+)$")
+    r"^T:(-?\d+\.\d+) /(-?\d+\.\d+) B:(-?\d+\.\d+) /(-?\d+\.\d+) "
+    r"T0:(-?\d+\.\d+) /(-?\d+\.\d+) @:(-?\d+) B@:(-?\d+) "
+    r"P:(-?\d+\.\d+) A:(-?\d+\.\d+)$")
 POSITION_REGEX = re.compile(
-    r"^X: ?(-?\d+\.\d+) ?Y: ?(-?\d+\.\d+) ?Z: ?(-?\d+\.\d+) ?"
-    r"E: ?(-?\d+\.\d+) ?Count ?X: ?(-?\d+\.\d+) ?Y: ?(-?\d+\.\d+) ?"
-    r"Z: ?(-?\d+\.\d+) ?E: ?(-?\d+\.\d+)$")
+    r"^X:(-?\d+\.\d+) Y:(-?\d+\.\d+) Z:(-?\d+\.\d+) "
+    r"E:(-?\d+\.\d+) Count X: (-?\d+\.\d+) Y:(-?\d+\.\d+) "
+    r"Z:(-?\d+\.\d+) E:(-?\d+\.\d+)$")
 FAN_RPM_REGEX = re.compile(r"^(?:E0:(\d+) ?RPM)|(?:PRN0:(\d+) ?RPM)$")
 PRINT_TIME_REGEX = re.compile(r"^(Not SD printing)|((\d+):(\d{2}))$")
 PRINT_INFO_REGEX = re.compile(r"^SILENT MODE: Percent done: (\d+); "
