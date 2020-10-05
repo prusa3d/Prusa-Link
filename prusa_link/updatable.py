@@ -21,7 +21,7 @@ class ThreadedUpdatable(Updatable):
     thread_name = "updater_thread"
     update_interval = 1
 
-    def __init__(self, ):
+    def __init__(self):
         super().__init__()
         self.running = True
         self.thread = Thread(target=self._keep_updating,
@@ -33,7 +33,6 @@ class ThreadedUpdatable(Updatable):
     def _keep_updating(self):
         run_slowly_die_fast(lambda: self.running, TIME.QUIT_INTERVAL,
                             lambda: self.update_interval, self.update)
-
 
     def stop(self):
         self.running = False
