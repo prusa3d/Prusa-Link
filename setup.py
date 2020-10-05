@@ -16,17 +16,17 @@ def doc():
 
 
 setup(
-    name="Prusa Link",
+    name="prusa-link",
     version=__version__,
     description=__doc__,
     author="Tomáš Jozífek",
     author_email="tomas.jozifek@prusa3d.cz",
     maintainer="Tomáš Jozífek",
     maintainer_email="tomas.jozifek@prusa3d.cz",
-    url="https://github.com/prusa3d/Prusa-Connect-MK3",
+    url="https://github.com/prusa3d/Prusa-Link",
     packages=find_packages(),
     package_data={'installation.data_files':
-                     ['prusa_link.service']},
+                     ['prusa-link.service']},
     long_description=doc(),
     long_description_content_type="text/markdown",
     classifiers=[

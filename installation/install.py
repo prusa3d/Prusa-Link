@@ -34,13 +34,13 @@ def install():
         elevate.elevate(graphical=False)
 
     print("Kopíruji unit file pro systemd")
-    file_copy("/etc/systemd/system/", "prusa_link.service", RW_R_R)
+    file_copy("/etc/systemd/system/", "prusa-link.service", RW_R_R)
 
     print("Povoluji spouštění při startu a spouštím Prusa Link.")
     subprocess.run(["systemctl", "daemon-reload"])
-    subprocess.run(["systemctl", "enable", "prusa_link.service"])
+    subprocess.run(["systemctl", "enable", "prusa-link.service"])
     subprocess.run(["systemctl", "enable", "pigpiod.service"])
-    subprocess.run(["systemctl", "restart", "prusa_link.service"])
+    subprocess.run(["systemctl", "restart", "prusa-link.service"])
 
     print("Hotovo")
 
