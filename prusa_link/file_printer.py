@@ -183,10 +183,10 @@ class FilePrinter:
         wait_for_instruction(instruction, lambda: self.printing)
 
     def to_print_stats(self, gcode_number):
-        divisible = gcode_number % FP.stats_every == 0
+        divisible = gcode_number % FP.STATS_EVERY == 0
         do_stats = not self.print_stats.has_inbuilt_stats
         print_ending = gcode_number == \
-                       self.print_stats.total_gcode_count - FP.tail_commands
+                       self.print_stats.total_gcode_count - FP.TAIL_COMMANDS
         return (do_stats and divisible) or print_ending
 
     def printer_reset(self):

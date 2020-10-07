@@ -56,7 +56,7 @@ class PrintStats:
 
         log.debug(f"Print stats: {percent_done}% done,  {min_remaining}")
 
-        if gcode_number == self.total_gcode_count - FP.tail_commands:
+        if gcode_number == self.total_gcode_count - FP.TAIL_COMMANDS:
             return 100, min_remaining
         else:
             return percent_done, min_remaining
