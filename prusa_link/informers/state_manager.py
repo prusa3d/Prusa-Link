@@ -5,9 +5,9 @@ from typing import Union, Dict
 
 from blinker import Signal
 
+from prusa_link.default_settings import get_settings
 from prusa_link.file_printer import FilePrinter
 from prusa_link.informers.job import Job
-from prusa_link.default_settings import get_settings
 from prusa_link.input_output.serial.serial_reader import SerialReader
 from prusa_link.structures.model_classes import States, Sources
 from prusa_link.structures.regular_expressions import BUSY_REGEX, \

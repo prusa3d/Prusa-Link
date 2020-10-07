@@ -32,15 +32,15 @@ from time import time
 
 from blinker import Signal
 
+from prusa_link.default_settings import get_settings
 from prusa_link.informers.filesystem.models import SDState, InternalFileTree
 from prusa_link.informers.state_manager import StateManager
+from prusa_link.input_output.serial.helpers import wait_for_instruction, \
+    enqueue_matchable, enqueue_collecting
+from prusa_link.input_output.serial.serial_queue import SerialQueue
 from prusa_link.input_output.serial.serial_reader import SerialReader
 from prusa_link.structures.constants import PRINTING_STATES
 from prusa_link.structures.model_classes import FileType
-from prusa_link.input_output.serial.serial_queue import SerialQueue
-from prusa_link.input_output.serial.helpers import wait_for_instruction, \
-    enqueue_matchable, enqueue_collecting
-from prusa_link.default_settings import get_settings
 from prusa_link.structures.regular_expressions import SD_PRESENT_REGEX, \
     BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX
 from prusa_link.updatable import ThreadedUpdatable

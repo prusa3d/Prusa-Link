@@ -5,20 +5,19 @@ import re
 
 from blinker import Signal
 
+from prusa_link.default_settings import get_settings
+from prusa_link.input_output.serial.helpers import wait_for_instruction, \
+    enqueue_matchable
 from prusa_link.input_output.serial.instruction import MatchableInstruction
+from prusa_link.input_output.serial.serial_queue import SerialQueue
 from prusa_link.input_output.serial.serial_reader import SerialReader
 from prusa_link.model import Model
 from prusa_link.structures.constants import PRINTING_STATES
 from prusa_link.structures.model_classes import Telemetry
-from prusa_link.input_output.serial.serial_queue import SerialQueue
-from prusa_link.input_output.serial.helpers import wait_for_instruction, \
-    enqueue_matchable
-from prusa_link.default_settings import get_settings
 from prusa_link.structures.regular_expressions import TEMPERATURE_REGEX, \
-    POSITION_REGEX, PRINT_TIME_REGEX, PRINT_INFO_REGEX, HEATING_REGEX,\
+    POSITION_REGEX, PRINT_TIME_REGEX, PRINT_INFO_REGEX, HEATING_REGEX, \
     HEATING_HOTEND_REGEX, FAN_RPM_REGEX
 from prusa_link.updatable import ThreadedUpdatable
-
 
 TIME = get_settings().TIME
 LOG = get_settings().LOG
