@@ -45,6 +45,15 @@ class SerialQueueSettings(BaseModel):
     SERIAL_QUEUE_MONITOR_INTERVAL = 1
 
 
+class IsPlannerFedSettings(BaseModel):
+
+    QUEUE_SIZE = 10000
+    HEAP_RATIO = 0.95
+    IGNORE_ABOVE = 1.0
+    DEFAULT_THRESHOLD = 0.13
+    USE_DYNAMIC_THRESHOLD = True
+
+
 class LogLevelSettings(BaseModel):
     DEFAULT = "INFO"
     PRUSA_LINK = "INFO"
@@ -65,6 +74,7 @@ class LogLevelSettings(BaseModel):
     PRINT_STATS = "INFO"
     JOB_ID = "INFO"
     INFO_SENDER = "INFO"
+    IS_PLANNER_FED = "INFO"
 
 
 class MountPointSettings(BaseModel):
@@ -93,6 +103,7 @@ class PathSettings(BaseModel):
     TMP_FILE = os.path.join(BASE_TMP_PATH, "currently_printing.gcode")
     PP_FILE = os.path.join(BASE_TMP_PATH, "power_panic")
     JOB_FILE = os.path.join(BASE_TMP_PATH, "job_id_data")
+    THRESHOLD_FILE = os.path.join(BASE_TMP_PATH, "threshold_data")
 
 
 class PiSetteings(BaseModel):
@@ -104,6 +115,7 @@ class FilePrinterSettings(BaseModel):
 
     STATS_EVERY = 100
     TAIL_COMMANDS = 10  # how many commands after the last progress report
+    PRINT_QUEUE_SIZE = 4
 
 
 class SettingsData(BaseModel):
@@ -118,6 +130,7 @@ class SettingsData(BaseModel):
     PATH: PathSettings = PathSettings()
     PI: PiSetteings = PiSetteings()
     FP: FilePrinterSettings = FilePrinterSettings()
+    IPF: IsPlannerFedSettings = IsPlannerFedSettings()
 
 
 def get_settings() -> SettingsData:

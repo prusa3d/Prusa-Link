@@ -1,12 +1,14 @@
 import logging
 import os
 import shutil
+from collections import deque
 from threading import Thread
 from time import sleep
 
 from blinker import Signal
 
 from prusa_link.default_settings import get_settings
+from prusa_link.input_output.serial.instruction import Instruction
 from prusa_link.print_stats import PrintStats
 from prusa_link.input_output.serial.helpers import enqueue_instruction, \
     wait_for_instruction
@@ -49,6 +51,8 @@ class FilePrinter:
         self.printing = False
         self.paused = False
         self.line_number = 0
+
+        self.enqueued = deque()
 
         self.thread = None
 
@@ -149,13 +153,16 @@ class FilePrinter:
         if self.to_print_stats(self.gcode_number):
             self.send_print_stats()
 
-        log.debug(f"USB printing gcode: {gcode}")
+        log.debug(f"USB enqueuing gcode: {gcode}")
         instruction = enqueue_instruction(self.serial_queue, gcode,
                                           to_front=True,
                                           to_checksum=True)
-        wait_for_instruction(instruction, lambda: self.printing)
+        self.enqueued.append(instruction)
+        if len(self.enqueued) >= FP.PRINT_QUEUE_SIZE:
+            wait_for: Instruction = self.enqueued.popleft()
+            wait_for_instruction(wait_for, lambda: self.printing)
 
-        log.debug(f"{gcode} confirmed")
+            log.debug(f"{wait_for.message} confirmed")
 
 
     def power_panic(self):
