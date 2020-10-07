@@ -102,8 +102,8 @@ class PiSetteings(BaseModel):
 
 class FilePrinterSettings(BaseModel):
 
-    stats_every = 100
-    tail_commands = 10  # how many commands after the last progress report
+    STATS_EVERY = 100
+    TAIL_COMMANDS = 10  # how many commands after the last progress report
 
 
 class SettingsData(BaseModel):
@@ -117,7 +117,7 @@ class SettingsData(BaseModel):
     MOUNT: MountPointSettings = MountPointSettings()
     PATH: PathSettings = PathSettings()
     PI: PiSetteings = PiSetteings()
-    FP = FilePrinterSettings = FilePrinterSettings()
+    FP: FilePrinterSettings = FilePrinterSettings()
 
 
 def get_settings() -> SettingsData:
