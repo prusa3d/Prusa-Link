@@ -221,9 +221,7 @@ class SerialQueue:
 
     def _paused_handler(self, sender, match: re.Match):
         # Another special case is when pausing. The "ok" is omitted
-        # Let's add it to the captured stuff and confirm it ourselves
-        # Yes, i force the match no matter what, it's a stupid special case
-        self.current_instruction.output_captured(None, match=match)
+        # Let's confirm it ourselves
         self._confirmed()
 
     def _yeeted_handler(self, sender, match: re.Match):
