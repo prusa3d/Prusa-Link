@@ -67,9 +67,7 @@ class CommandRunner:
                                 state_manager=self.state_manager,
                                 file_printer=self.file_printer,
                                 model=self.model)
-        self._run(command)
 
-    def _run(self, command: ResponseCommand):
         if self.running_command is not None:
             if self.running_command.command_id == command.command_id:
                 log.warning("Tried to run already running command")
