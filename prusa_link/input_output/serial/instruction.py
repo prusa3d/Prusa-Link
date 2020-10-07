@@ -1,6 +1,7 @@
 import re
 from enum import Enum
 from threading import Event
+from time import time
 
 
 class Instruction:
@@ -31,6 +32,11 @@ class Instruction:
         # Api for registering instruction regexps
         self.capturing_regexps = []
 
+        # Measuring the time between sending and confirmation will hopefully
+        # enable me to determine if the motion planner buffer is full
+        self.sent_at = None
+        self.time_to_confirm = None
+
     def __str__(self):
         return f"Instruction '{self.message.strip()}'"
 
@@ -43,11 +49,13 @@ class Instruction:
             self.needs_two_okays = False
             return False
 
+        self.time_to_confirm = time() - self.sent_at
         self.confirmed_event.set()
         return True
 
     def sent(self):
         self.sent_event.set()
+        self.sent_at = time()
 
     def output_captured(self, sender, match):
         pass

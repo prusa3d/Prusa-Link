@@ -13,6 +13,7 @@ from prusa_link.structures.regular_expressions import CONFIRMATION_REGEX, \
     HEATING_REGEX
 from prusa_link.util import run_slowly_die_fast
 from .instruction import Instruction
+from .is_planner_fed import IsPlannerFed
 from .serial_reader import SerialReader
 
 LOG = get_settings().LOG
@@ -56,6 +57,7 @@ class SerialQueue:
         # For numbered messages with checksums
         self.message_number = 0
 
+        # For stopping fast (power panic)
         self.closed = False
 
         self.serial_reader.add_handler(CONFIRMATION_REGEX,
@@ -67,6 +69,8 @@ class SerialQueue:
                                        self._paused_handler)
         self.serial_reader.add_handler(RESEND_REGEX,
                                        self._resend_handler)
+
+        self.is_planner_fed = IsPlannerFed()
 
     # --- Getters ---
 
@@ -80,8 +84,16 @@ class SerialQueue:
         # TODO: dirty, break it up or rename
 
         if self.current_instruction is None:
+
             if not self.priority_queue.empty():
-                self.current_instruction = self.priority_queue.get()
+                if self.is_planner_fed() and not self.queue.empty():
+                    self.current_instruction = self.queue.get()
+                    # Invalidate, so the unimportant queue doesn't go all
+                    # at once
+                    self.is_planner_fed.is_fed = False
+                    log.debug("Allowing a non-important instruction through")
+                else:
+                    self.current_instruction = self.priority_queue.get()
             elif not self.queue.empty():
                 self.current_instruction = self.queue.get()
 
@@ -205,8 +217,8 @@ class SerialQueue:
                 TEMPERATURE_REGEX in self.current_instruction.capturing_regexps:
             temperature_match = TEMPERATURE_REGEX.match(additional_output)
             if temperature_match:
-                self.current_instruction.output_captured(None,
-                                                       match=temperature_match)
+                self.current_instruction.output_captured(
+                    None, match=temperature_match)
 
         self._confirmed()
 
@@ -257,6 +269,11 @@ class SerialQueue:
                     self.serial_reader.remove_handler(
                         regexp, instruction.output_captured
                     )
+
+                if instruction.to_checksum:
+                    # Only do this for the print instructions
+                    self.is_planner_fed.process_value(
+                        instruction.time_to_confirm)
 
                 self.current_instruction = None
 
@@ -337,6 +354,7 @@ class MonitoredSerialQueue(SerialQueue):
 
     def stop(self):
         self.running = False
+        self.is_planner_fed.save()
         self.monitoring_thread.join()
 
     def _write(self):
