@@ -5,7 +5,6 @@ from prusa_link.structures.model_classes import States
 
 LOG = get_settings().LOG
 
-
 log = logging.getLogger(__name__)
 log.setLevel(LOG.COMMANDS)
 

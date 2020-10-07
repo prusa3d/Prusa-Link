@@ -30,13 +30,13 @@ class TimeValue(HeapItem):
 
 class IsPlannerFed:
     """
-    If the planner queu is full, I expect the printer to take longer when
+    If the planner queue is full, I expect the printer to take longer when
     confirming print instructions, if the time surpasses a threshold,
-    I assume full buffer. To stay futureproof, let's compute this threshold on
+    I assume full buffer. To stay future-proof, let's compute this threshold on
     the go.
 
     Let's measure the times for all instructions, disqualifying the ones that
-    took too long. Now the threshold computation mimmicks the way one would
+    took too long. Now the threshold computation mimics the way one would
     compute a moving median. I use the two heaps approach.
 
     left heap is a max_heap, the right one is a min_heap, when a number comes,
@@ -46,12 +46,12 @@ class IsPlannerFed:
 
     The threshold is an average between the two roots.
 
-    After the queue is full, the heaps shet the oldest values, so it can adapt,
+    After the queue is full, the heaps shed the oldest values, so it can adapt,
     if for some reason the print commands start taking different amounts of
     time during the print. Problems can arise in hi-res cylindrical vases
     and other shapes with homogeneously long segments.
 
-    To get rid of the inacurracies caused by an initially low number of
+    To get rid of the inaccuracies caused by an initially low number of
     measured values, let's use a threshold from a previous run, or a default one
     until the values accumulate.
     """
@@ -162,11 +162,11 @@ class IsPlannerFed:
             raise RuntimeError("Smaller value heap has a higher value than "
                                "the higher value heap, that's not right...")
 
-    def _short_push(self, item:TimeValue):
+    def _short_push(self, item: TimeValue):
         item.heap_name = HeapName.SHORT_TIMES
         self.short_times.push(item)
 
-    def _long_push(self, item:TimeValue):
+    def _long_push(self, item: TimeValue):
         item.heap_name = HeapName.LONG_TIMES
         self.long_times.push(item)
 

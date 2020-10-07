@@ -79,7 +79,7 @@ class Command:
         """
         Internal, wraps your actual command
         Makes it so if no failed is called and no exceptions are raised
-        and not catched, the command automatically responds with FINISHED
+        and not caught, the command automatically responds with FINISHED
 
         """
         try:
@@ -153,6 +153,8 @@ class ResponseCommand(Command):
         try:
             super().run_command()
         except:
+            # We already log it, but in the case of response commands,
+            # we need to reject it too
             pass
         finally:
             if self.state == CommandState.HAS_NOT_FAILED:

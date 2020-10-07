@@ -136,7 +136,7 @@ class FSMounts(Mounts):
     def __init__(self):
         super().__init__()
 
-        # Force the update, even if no events are catched, we need to see
+        # Force the update, even if no events are caught, we need to see
         # which things are mounted, before beginning to only observe changes
         self.force_update = True
 
