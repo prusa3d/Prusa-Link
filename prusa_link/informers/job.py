@@ -5,8 +5,8 @@ from enum import Enum
 from blinker import Signal
 
 from prusa_link.default_settings import get_settings
-from prusa_link.structures.constants import PRINTING_STATES, JOB_ENDING_STATES, \
-    BASE_STATES, JOB_ONGOING_STATES
+from prusa_link.structures.constants import PRINTING_STATES, \
+    JOB_ENDING_STATES, BASE_STATES, JOB_ONGOING_STATES
 from prusa_link.util import get_clean_path, ensure_directory
 
 LOG = get_settings().LOG
@@ -57,7 +57,7 @@ class Job:
         self.job_id_updated_signal.send(self, job_id=self.get_job_id())
 
     def state_changed(self, from_state, to_state):
-        """Called before anything regarfing state is sent"""
+        """Called before anything regarding state is sent"""
         if from_state in BASE_STATES and to_state in PRINTING_STATES \
                 and self.job_state == JobState.IDLE:
             self.job_started()

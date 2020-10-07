@@ -81,9 +81,11 @@ def get_checksum(message: str):
     for char in message.encode("ascii"):
         checksum ^= char
 
+
 def persist_file(file: typing.TextIO):
     file.flush()
     os.fsync(file.fileno())
+
 
 def get_gcode(line):
     return line.split(";", 1)[0].strip()

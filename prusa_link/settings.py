@@ -23,7 +23,7 @@ class Settings:
     # Changed before 0.0.3 - defaults aren't saved in the config file
     # Now we only create an example config file and the user is expected to
     # copy what he wishes to change
-    # This way, we can update the default values and not get overriden by
+    # This way, we can update the default values and not get overridden by
     # previous ones already in the config
 
     @staticmethod

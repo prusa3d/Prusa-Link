@@ -7,7 +7,7 @@ from time import time
 class Instruction:
     """Basic instruction which can be enqueued into SerialQueue"""
 
-    def __init__(self, message: str, to_checksum: bool=False):
+    def __init__(self, message: str, to_checksum: bool = False):
         if message.count("\n") != 0:
             raise RuntimeError("Instructions cannot contain newlines.")
 

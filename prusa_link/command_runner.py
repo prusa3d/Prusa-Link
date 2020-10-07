@@ -41,7 +41,7 @@ class CommandRunner:
         # Can't start a new thread for every command.
         # So let's recycle one in here
         self.command_thread = Thread(target=self.handle_commands,
-                                     name="command_runnaer")
+                                     name="command_runner")
         self.command_thread.start()
 
     def handle_commands(self):
@@ -51,8 +51,9 @@ class CommandRunner:
                 try:
                     self.running_command.run_command()
                 except:
+                    # Shall never actually happen
                     log.exception("Command failed unexpectedly, "
-                                  "captured to stay alive.")
+                                  "captured to stay alive. Might be a BUG.")
 
     def run(self, command_class: Type[ResponseCommand], api_response):
         """

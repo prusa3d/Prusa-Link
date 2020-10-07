@@ -64,14 +64,15 @@ class SerialReader:
         with self.lock:
             if regexp in self.pairing_dict:
                 pairing: RegexPairing = self.pairing_dict[regexp]
-                if pairing not in self.pattern_list :
-                    log.debug(f"{pairing} is not in {self.pattern_list}, ze fuck")
+                if pairing not in self.pattern_list:
+                    log.debug(f"{pairing} is not in {self.pattern_list}. "
+                              f"What?!")
 
                 if stops_matching is not None and \
                         stops_matching != pairing.stops_matching:
-                    raise RuntimeError("Cannot add the same regexp with different "
-                                       "stops_matching parameters than already "
-                                       "known.")
+                    raise RuntimeError("Cannot add the same regexp with "
+                                       "different stops_matching parameters "
+                                       "than already known.")
                 if priority is not None:
                     if priority > pairing.priority:
                         self.pattern_list.remove(pairing)
