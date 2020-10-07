@@ -40,7 +40,6 @@ class Command:
         self.serial_queue = serial_queue
 
         self.running = True
-        self.finished_signal = Signal()
 
         self.state = CommandState.HAS_NOT_FAILED
         self.reason_failed = ""
@@ -92,8 +91,6 @@ class Command:
             self.set_failed_info(e.args[0])
             raise
 
-        self.finished_signal.send(self)
-
     def _run_command(self, **kwargs):
         """Whatever it is, we need to accomplish"""
         ...
@@ -128,6 +125,7 @@ class ResponseCommand(Command):
             raise AttributeError("Cannot instantiate ResponseCommand without "
                                  "the api_response")
 
+        self.finished_signal = Signal()
         self.api_response = api_response
         self.command_id = get_command_id(self.api_response)
 
@@ -152,9 +150,13 @@ class ResponseCommand(Command):
         self.connect_api.emit_event(EmitEvents.FINISHED, self.command_id)
 
     def run_command(self):
-        super().run_command()
-
-        if self.state == CommandState.HAS_NOT_FAILED:
-            self.finish()
-        else:
-            self.reject(self.reason_failed)
+        try:
+            super().run_command()
+        except:
+            pass
+        finally:
+            if self.state == CommandState.HAS_NOT_FAILED:
+                self.finish()
+            else:
+                self.reject(self.reason_failed)
+            self.finished_signal.send(self)
