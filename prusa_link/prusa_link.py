@@ -3,7 +3,7 @@ import logging
 import threading
 from distutils.util import strtobool
 from json import JSONDecodeError
-from time import time, sleep
+from time import time
 from typing import Type
 
 from requests import RequestException
@@ -11,7 +11,7 @@ from serial import SerialException
 
 from prusa_link.command import ResponseCommand
 from prusa_link.command_handlers.execute_gcode import ExecuteGcode
-from prusa_link.command_handlers.send_info import SendInfo, SendInfoResponse
+from prusa_link.command_handlers.send_info import SendInfoResponse
 from prusa_link.command_handlers.pause_print import PausePrint
 from prusa_link.command_handlers.reset_printer import ResetPrinter
 from prusa_link.command_handlers.resume_print import ResumePrint
@@ -48,6 +48,7 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG.PRUSA_LINK)
 
 logging.root.setLevel(LOG.DEFAULT)
+
 
 class PrusaLink:
 

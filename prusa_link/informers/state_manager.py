@@ -62,7 +62,7 @@ def state_influencer(state_change: StateChange = None):
                     self.expect_change(state_change)
 
                 else:
-                    log.debug(f"Default expected state change is overriden")
+                    log.debug(f"Default expected state change is overridden")
 
                 func(self, *args, **kwargs)
                 self.state_may_have_changed()
@@ -314,7 +314,7 @@ class StateManager(Updatable):
         if self.base_state == States.READY:
             self.base_state = States.BUSY
 
-    # Cannot distinguish pauses from the uuser and the gcode
+    # Cannot distinguish pauses from the user and the gcode
     @state_influencer(StateChange(to_states={States.PAUSED: Sources.USER}))
     def paused(self):
         if self.printing_state == States.PRINTING:

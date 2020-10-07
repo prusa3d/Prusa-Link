@@ -75,7 +75,7 @@ class Serial:
                 self._reopen()
             except (serial.SerialException, FileNotFoundError,
                     PermissionError):
-                log.debug("Openning of the serial port failed. Retrying...")
+                log.debug("Opening of the serial port failed. Retrying...")
                 sleep(TIME.SERIAL_REOPEN_TIMEOUT)
             else:
                 break

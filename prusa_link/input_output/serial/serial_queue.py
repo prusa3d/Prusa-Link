@@ -31,9 +31,6 @@ class BadChecksumUseError(Exception):
 
 class SerialQueue:
 
-    # This thing could buffer messages, shame the printer is so stoooopid
-    # No need to have that functionality around tho
-
     def __init__(self, serial: Serial, serial_reader: SerialReader,
                  rx_size=SQ.RX_SIZE):
         self.serial = serial
@@ -324,10 +321,14 @@ class MonitoredSerialQueue(SerialQueue):
                  rx_size=128):
         super().__init__(serial, serial_reader, rx_size)
 
-        self.serial_reader.add_handler(BUSY_REGEX, self._renew_timeout)
-        self.serial_reader.add_handler(ATTENTION_REGEX, self._renew_timeout)
-        self.serial_reader.add_handler(HEATING_REGEX, self._renew_timeout)
-        self.serial_reader.add_handler(HEATING_HOTEND_REGEX, self._renew_timeout)
+        self.serial_reader.add_handler(BUSY_REGEX,
+                                       self._renew_timeout)
+        self.serial_reader.add_handler(ATTENTION_REGEX,
+                                       self._renew_timeout)
+        self.serial_reader.add_handler(HEATING_REGEX,
+                                       self._renew_timeout)
+        self.serial_reader.add_handler(HEATING_HOTEND_REGEX,
+                                       self._renew_timeout)
 
         # Remember when the last write or confirmation happened
         # If we want to time out, the communication has to be dead for some time
@@ -349,7 +350,7 @@ class MonitoredSerialQueue(SerialQueue):
             log.info(f"Timed out waiting for confirmation of "
                      f"{self.current_instruction} after "
                      f"{SQ.SERIAL_QUEUE_TIMEOUT}sec.")
-            log.debug("Assuming the printer yote our RX buffer")
+            log.debug("Assuming the printer yeeted our RX buffer")
             self._rx_buffer_got_yeeted()
 
     def stop(self):

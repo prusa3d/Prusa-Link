@@ -27,7 +27,7 @@ class ResetPrinter(ResponseCommand):
     command_name = "reset_printer"
     timeout = 20
     if timeout < TIME.PRINTER_BOOT_WAIT:
-        raise RuntimeError("Cannot have smallertimeout than boot wait.")
+        raise RuntimeError("Cannot have smaller timeout, than boot wait.")
 
     def _run_command(self):
         if PI.RESET_PIN == 23:

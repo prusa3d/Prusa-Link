@@ -10,6 +10,7 @@ FP = get_settings().FP
 log = logging.getLogger(__name__)
 log.setLevel(LOG.PRINT_STATS)
 
+
 class PrintStats:
 
     def __init__(self):
@@ -50,7 +51,8 @@ class PrintStats:
         total_time = time_per_command * self.total_gcode_count
         sec_remaining = total_time - self.print_time
         min_remaining = round(sec_remaining / 60)
-        log.debug(f"sec: {sec_remaining}, min: {min_remaining}, print_time: {self.print_time}")
+        log.debug(f"sec: {sec_remaining}, min: {min_remaining}, "
+                  f"print_time: {self.print_time}")
         fraction_done = gcode_number / self.total_gcode_count
         percent_done = round(fraction_done * 100)
 
