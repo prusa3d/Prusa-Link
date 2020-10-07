@@ -3,10 +3,10 @@ from queue import Queue, Empty
 from threading import Thread
 from time import time, sleep
 
-from prusa_link.input_output.serial.serial_queue import SerialQueue
+from prusa_link.default_settings import get_settings
 from prusa_link.input_output.serial.helpers import enqueue_instruction, \
     wait_for_instruction
-from prusa_link.default_settings import get_settings
+from prusa_link.input_output.serial.serial_queue import SerialQueue
 
 LOG = get_settings().LOG
 LCDQ = get_settings().LCDQ

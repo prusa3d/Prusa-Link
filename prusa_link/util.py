@@ -1,11 +1,11 @@
 import os
 import socket
+import typing
 from pathlib import Path
 from time import sleep, time
 from typing import Callable
 
 import requests
-import typing
 
 
 def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,

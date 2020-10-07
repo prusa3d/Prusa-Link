@@ -2,9 +2,9 @@ import logging
 from pathlib import Path
 
 from prusa_link.command import ResponseCommand
+from prusa_link.default_settings import get_settings
 from prusa_link.informers.filesystem.models import InternalFileTree
 from prusa_link.informers.state_manager import StateChange
-from prusa_link.default_settings import get_settings
 from prusa_link.structures.model_classes import States, Sources
 from prusa_link.structures.regular_expressions import OPEN_RESULT_REGEX
 

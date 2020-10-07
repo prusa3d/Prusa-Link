@@ -4,16 +4,16 @@ from enum import Enum
 
 from blinker import Signal
 
+from prusa_link.default_settings import get_settings
 from prusa_link.file_printer import FilePrinter
 from prusa_link.informers.state_manager import StateManager
 from prusa_link.input_output.connect_api import ConnectAPI
-from prusa_link.input_output.serial.serial import Serial
 from prusa_link.input_output.serial.helpers import wait_for_instruction, \
     enqueue_matchable, enqueue_instruction
+from prusa_link.input_output.serial.serial import Serial
 from prusa_link.input_output.serial.serial_queue import SerialQueue
 from prusa_link.input_output.serial.serial_reader import SerialReader
 from prusa_link.model import Model
-from prusa_link.default_settings import get_settings
 from prusa_link.structures.model_classes import EmitEvents
 from prusa_link.util import get_command_id
 

@@ -3,7 +3,6 @@ from threading import Event
 from time import sleep, time
 
 from prusa_link.command import ResponseCommand
-
 from prusa_link.default_settings import get_settings
 from prusa_link.structures.regular_expressions import PRINTER_BOOT_REGEX
 

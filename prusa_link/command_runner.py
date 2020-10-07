@@ -3,6 +3,7 @@ from threading import Thread, Event
 from typing import Type, Optional
 
 from prusa_link.command import Command, ResponseCommand
+from prusa_link.default_settings import get_settings
 from prusa_link.file_printer import FilePrinter
 from prusa_link.informers.state_manager import StateManager
 from prusa_link.input_output.connect_api import ConnectAPI
@@ -10,7 +11,6 @@ from prusa_link.input_output.serial.serial import Serial
 from prusa_link.input_output.serial.serial_queue import SerialQueue
 from prusa_link.input_output.serial.serial_reader import SerialReader
 from prusa_link.model import Model
-from prusa_link.default_settings import get_settings
 
 LOG = get_settings().LOG
 TIME = get_settings().TIME

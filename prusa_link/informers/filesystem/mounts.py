@@ -1,5 +1,6 @@
 import logging
 import os
+import select
 from typing import Dict, Set
 
 from blinker import Signal
@@ -7,9 +8,6 @@ from blinker import Signal
 from prusa_link.default_settings import get_settings
 from prusa_link.informers.filesystem.models import MountPoint
 from prusa_link.updatable import Updatable
-
-import select
-
 from prusa_link.util import get_clean_path, ensure_directory
 
 LOG = get_settings().LOG
