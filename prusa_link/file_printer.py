@@ -8,12 +8,12 @@ from time import sleep
 from blinker import Signal
 
 from prusa_link.default_settings import get_settings
-from prusa_link.input_output.serial.instruction import Instruction
-from prusa_link.print_stats import PrintStats
 from prusa_link.input_output.serial.helpers import enqueue_instruction, \
     wait_for_instruction
+from prusa_link.input_output.serial.instruction import Instruction
 from prusa_link.input_output.serial.serial_queue import SerialQueue
 from prusa_link.input_output.serial.serial_reader import SerialReader
+from prusa_link.print_stats import PrintStats
 from prusa_link.structures.regular_expressions import POWER_PANIC_REGEX, \
     PRINTER_BOOT_REGEX, ERROR_REGEX
 from prusa_link.util import get_clean_path, ensure_directory, get_gcode

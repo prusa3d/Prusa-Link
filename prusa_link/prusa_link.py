@@ -11,29 +11,29 @@ from serial import SerialException
 
 from prusa_link.command import ResponseCommand
 from prusa_link.command_handlers.execute_gcode import ExecuteGcode
-from prusa_link.command_handlers.send_info import SendInfoResponse
 from prusa_link.command_handlers.pause_print import PausePrint
 from prusa_link.command_handlers.reset_printer import ResetPrinter
 from prusa_link.command_handlers.resume_print import ResumePrint
+from prusa_link.command_handlers.send_info import SendInfoResponse
 from prusa_link.command_handlers.start_print import StartPrint
 from prusa_link.command_handlers.stop_print import StopPrint
 from prusa_link.command_runner import CommandRunner
+from prusa_link.default_settings import get_settings
 from prusa_link.file_printer import FilePrinter
 from prusa_link.info_sender import InfoSender
 from prusa_link.informers.filesystem.storage_controller import StorageController
-from prusa_link.informers.job import Job
-from prusa_link.informers.telemetry_gatherer import TelemetryGatherer
 from prusa_link.informers.ip_updater import IPUpdater, NO_IP
+from prusa_link.informers.job import Job
 from prusa_link.informers.state_manager import StateManager
+from prusa_link.informers.telemetry_gatherer import TelemetryGatherer
 from prusa_link.input_output.connect_api import ConnectAPI
 from prusa_link.input_output.lcd_printer import LCDPrinter
+from prusa_link.input_output.serial.helpers import enqueue_instruction
 from prusa_link.input_output.serial.serial import Serial
 from prusa_link.input_output.serial.serial_queue \
     import MonitoredSerialQueue
-from prusa_link.input_output.serial.helpers import enqueue_instruction
 from prusa_link.input_output.serial.serial_reader import SerialReader
 from prusa_link.model import Model
-from prusa_link.default_settings import get_settings
 from prusa_link.structures.constants import PRINTING_STATES
 from prusa_link.structures.model_classes import EmitEvents
 from prusa_link.util import get_command_id, run_slowly_die_fast

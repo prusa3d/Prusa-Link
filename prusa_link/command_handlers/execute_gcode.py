@@ -1,12 +1,11 @@
 import logging
 
 from prusa_link.command import ResponseCommand
-from prusa_link.informers.state_manager import StateChange
 from prusa_link.default_settings import get_settings
+from prusa_link.informers.state_manager import StateChange
 from prusa_link.input_output.serial.helpers import enqueue_list_from_str
 from prusa_link.structures.model_classes import Sources, States
 from prusa_link.structures.regular_expressions import REJECTION_REGEX
-
 
 LOG = get_settings().LOG
 
