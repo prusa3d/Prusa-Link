@@ -33,6 +33,10 @@ class FilePrinter:
         self.new_print_started_signal = Signal()
         self.print_ended_signal = Signal()
 
+        # I'd like centralised signals more, as now i have to pass everything
+        # explicitly
+        self.time_printing_signal = Signal()
+
         self.tmp_file_path = get_clean_path(PATH.TMP_FILE)
         self.pp_file_path = get_clean_path(PATH.PP_FILE)
         ensure_directory(os.path.dirname(self.tmp_file_path))
@@ -149,6 +153,11 @@ class FilePrinter:
 
     def print_gcode(self, gcode):
         self.gcode_number += 1
+
+        divisible = self.gcode_number % FP.STATS_EVERY == 0
+        if divisible:
+            time_printing = self.print_stats.get_time_printing()
+            self.time_printing_signal.send(time_printing=time_printing)
 
         if self.to_print_stats(self.gcode_number):
             self.send_print_stats()

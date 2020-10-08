@@ -35,7 +35,7 @@ from prusa_link.input_output.serial.serial_queue \
 from prusa_link.input_output.serial.serial_reader import SerialReader
 from prusa_link.model import Model
 from prusa_link.structures.constants import PRINTING_STATES
-from prusa_link.structures.model_classes import EmitEvents
+from prusa_link.structures.model_classes import EmitEvents, Telemetry
 from prusa_link.util import get_command_id, run_slowly_die_fast
 
 LOG = get_settings().LOG
@@ -105,6 +105,8 @@ class PrusaLink:
         self.telemetry_gatherer.update()
 
         self.file_printer = FilePrinter(self.serial_queue, self.serial_reader)
+        self.file_printer.time_printing_signal.connect(
+            self.time_printing_updated)
 
         self.state_manager = StateManager(self.serial_reader, self.file_printer)
         self.state_manager.state_changed_signal.connect(self.state_changed)
@@ -262,6 +264,11 @@ class PrusaLink:
 
     def media_ejected(self, sender, root):
         self.connect_api.emit_event(EmitEvents.MEDIUM_EJECTED, root=root)
+
+    def time_printing_updated(self, sender, time_printing):
+        self.model.set_telemetry(
+            new_telemetry=Telemetry(time_printing=time_printing))
+
 
     # --- Telemetry sending ---
 
