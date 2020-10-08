@@ -63,3 +63,6 @@ class PrintStats:
         else:
             return percent_done, min_remaining
 
+    def get_time_printing(self):
+        return self.print_time + (time() - self.segment_start)
+
