@@ -47,11 +47,11 @@ class ResetPrinter(ResponseCommand):
         except:
             self.serial.blip_dtr()
         else:
-            wiringpi.pinMode(22, wiringpi.OUTPUT)
-            wiringpi.digitalWrite(22, wiringpi.HIGH)
-            wiringpi.digitalWrite(22, wiringpi.LOW)
+            wiringpi.pinMode(PI.RESET_PIN, wiringpi.OUTPUT)
+            wiringpi.digitalWrite(PI.RESET_PIN, wiringpi.HIGH)
+            wiringpi.digitalWrite(PI.RESET_PIN, wiringpi.LOW)
             sleep(0.1)
-            wiringpi.digitalWrite(22, wiringpi.LOW)
+            wiringpi.digitalWrite(PI.RESET_PIN, wiringpi.LOW)
 
         while self.running and time() < times_out_at:
             if event.wait(TIME.QUIT_INTERVAL):
