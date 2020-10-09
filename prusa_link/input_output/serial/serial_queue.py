@@ -2,8 +2,10 @@ import logging
 import re
 from queue import Queue
 from threading import Lock, Thread
-from time import time
-from typing import List
+from time import time, sleep
+from typing import List, Optional
+
+from blinker import Signal
 
 from prusa_link.default_settings import get_settings
 from prusa_link.input_output.serial.serial import Serial
@@ -36,6 +38,10 @@ class SerialQueue:
         self.serial = serial
         self.serial_reader = serial_reader
 
+        # When the serial_queue cannot re-establish communication with the
+        # printer, let's signal this to other modules
+        self.serial_queue_failed = Signal()
+
         # A queue of instructions for the printer
         self.queue: Queue[Instruction] = Queue()
 
@@ -43,7 +49,7 @@ class SerialQueue:
         self.priority_queue: Queue[Instruction] = Queue()
 
         # Instruction that is currently being handled
-        self.current_instruction = None
+        self.current_instruction: Optional[Instruction] = None
 
         # Maximum bytes we'll write
         self.rx_max = rx_size
@@ -69,9 +75,7 @@ class SerialQueue:
 
         self.is_planner_fed = IsPlannerFed()
 
-    # --- Getters ---
-
-    def get_instruction(self):
+    def next_instruction(self):
         """
         If for some reason the current instruction is not None
         (didn't get confirmed for example), return it, otherwise
@@ -84,17 +88,17 @@ class SerialQueue:
 
             if not self.priority_queue.empty():
                 if self.is_planner_fed() and not self.queue.empty():
+                    self.is_planner_fed.is_fed = False
+                    log.debug("Allowing a non-important instruction through")
                     self.current_instruction = self.queue.get()
                     # Invalidate, so the unimportant queue doesn't go all
                     # at once
-                    self.is_planner_fed.is_fed = False
-                    log.debug("Allowing a non-important instruction through")
                 else:
                     self.current_instruction = self.priority_queue.get()
             elif not self.queue.empty():
                 self.current_instruction = self.queue.get()
 
-        return self.current_instruction
+    # --- Getters ---
 
     def get_current_delay(self):
         if self.is_empty() and self.current_instruction is None:
@@ -136,7 +140,8 @@ class SerialQueue:
 
     def _write(self):
         # message_number has been raced for, so let's not do that
-        instruction = self.get_instruction()
+        self.next_instruction()
+        instruction = self.current_instruction
 
         if not instruction.is_sent():
             # Is this the first time we are sending this?
@@ -240,6 +245,8 @@ class SerialQueue:
         else:
             log.error("Most likely the serial communication "
                       "will fall apart after this!")
+            log.error("So let's abort the print and regroup")
+            self._worst_case_scenario()
 
     # ---
 
@@ -308,10 +315,58 @@ class SerialQueue:
         instruction = Instruction("M110 N1")
         self.enqueue_one(instruction, to_front=True)
         while not self.closed:
-            if instruction.wait_for_confirmation(timeout=TIME.QUIT_INTERVAL):
+            if instruction.wait_for_confirmation(
+                    timeout=TIME.QUIT_INTERVAL):
                 break
         self.message_number = 1
-        
+
+    def _worst_case_scenario(self):
+        """
+        Everything has failed, let's abandon whatever we were doing and save
+        the printer/user
+        """
+        Thread(target=self._worst_case_body).start()
+
+    def _worst_case_body(self):
+        log.error("Communication failed, firmware was too hard to predict...")
+
+        # This shall inform the rest of the app about the situation,
+        # I expect this to reset the printer
+        self.serial_queue_failed.send()
+
+        with self.write_lock:
+            while self.current_instruction is not None:
+                instruction = self.current_instruction
+                instruction.sent()
+                while not instruction.confirm():
+                    pass
+                self.current_instruction = None
+                self.next_instruction()
+
+            sleep(10)
+
+            beep_instruction = Instruction("M300 S880 P200")
+            self._enqueue(beep_instruction, to_front=True)
+            stop_instruction = Instruction("M603")
+            self._enqueue(stop_instruction, to_front=True)
+            message_instruction = Instruction("M1 FW COMM ERR. Aborted")
+            self._enqueue(message_instruction, to_front=True)
+
+        self._try_writing()
+        while not self.closed:
+            if message_instruction.wait_for_confirmation(
+                    timeout=TIME.QUIT_INTERVAL):
+                break
+
+
+    def _execute_instruction(self, instruction):
+        self._enqueue(instruction, to_front=True)
+        self._write()
+        while not self.closed:
+            if instruction.wait_for_confirmation(
+                    timeout=TIME.QUIT_INTERVAL):
+                break
+
 
 class MonitoredSerialQueue(SerialQueue):
 

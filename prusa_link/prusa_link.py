@@ -12,7 +12,8 @@ from serial import SerialException
 from prusa_link.command import ResponseCommand
 from prusa_link.command_handlers.execute_gcode import ExecuteGcode
 from prusa_link.command_handlers.pause_print import PausePrint
-from prusa_link.command_handlers.reset_printer import ResetPrinter
+from prusa_link.command_handlers.reset_printer import ResetPrinter, \
+    ResetPrinterResponse
 from prusa_link.command_handlers.resume_print import ResumePrint
 from prusa_link.command_handlers.send_info import SendInfoResponse
 from prusa_link.command_handlers.start_print import StartPrint
@@ -24,7 +25,7 @@ from prusa_link.info_sender import InfoSender
 from prusa_link.informers.filesystem.storage_controller import StorageController
 from prusa_link.informers.ip_updater import IPUpdater, NO_IP
 from prusa_link.informers.job import Job
-from prusa_link.informers.state_manager import StateManager
+from prusa_link.informers.state_manager import StateManager, StateChange
 from prusa_link.informers.telemetry_gatherer import TelemetryGatherer
 from prusa_link.input_output.connect_api import ConnectAPI
 from prusa_link.input_output.lcd_printer import LCDPrinter
@@ -35,7 +36,8 @@ from prusa_link.input_output.serial.serial_queue \
 from prusa_link.input_output.serial.serial_reader import SerialReader
 from prusa_link.model import Model
 from prusa_link.structures.constants import PRINTING_STATES
-from prusa_link.structures.model_classes import EmitEvents, Telemetry
+from prusa_link.structures.model_classes import EmitEvents, Telemetry, States, \
+    Sources
 from prusa_link.util import get_command_id, run_slowly_die_fast
 
 LOG = get_settings().LOG
@@ -71,6 +73,7 @@ class PrusaLink:
 
         self.serial_queue = MonitoredSerialQueue(self.serial,
                                                  self.serial_reader)
+        self.serial_queue.serial_queue_failed.connect(self.serial_queue_failed)
 
         self.lcd_printer = LCDPrinter(self.serial_queue)
 
@@ -213,7 +216,7 @@ class PrusaLink:
             elif data["command"] == "RESUME_PRINT":
                 self.run_command(ResumePrint, api_response)
             elif data["command"] == "RESET_PRINTER":
-                self.run_command(ResetPrinter, api_response)
+                self.run_command(ResetPrinterResponse, api_response)
             else:
                 command_id = get_command_id(api_response)
                 self.connect_api.emit_event(EmitEvents.REJECTED, command_id,
@@ -269,6 +272,17 @@ class PrusaLink:
         self.model.set_telemetry(
             new_telemetry=Telemetry(time_printing=time_printing))
 
+    def serial_queue_failed(self, sender):
+        reset_command = ResetPrinter(self.serial_queue, self.serial_reader,
+                                     self.serial)
+        self.state_manager.expect_change(StateChange(
+            to_states={States.ERROR: Sources.WUI}))
+        self.state_manager.error()
+        try:
+            reset_command.run_command()
+        except:
+            log.exception("Failed to reset the printer. Oh my god... "
+                          "my attempt at safely failing has failed.")
 
     # --- Telemetry sending ---
 
