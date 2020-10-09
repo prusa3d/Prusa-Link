@@ -124,8 +124,6 @@ class SendInfoResponse(ResponseCommand, SendInfo):
     # SendInfoResponse -> ResponseCommand -> SendInfo -> Command
     # Yes, ResponseCommand has to pass more keyword arguments and SendInfo
     # picks the relevant ones, but it works, hurray!
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
 
     def create_event(self):
         event_object = super().create_event()
