@@ -2,19 +2,23 @@ import logging
 from threading import Event
 from time import sleep, time
 
-from prusa_link.command import ResponseCommand
+from prusa_link.command import ResponseCommand, Command
 from prusa_link.default_settings import get_settings
+from prusa_link.input_output.serial.serial import Serial
+from prusa_link.input_output.serial.serial_queue import SerialQueue
+from prusa_link.input_output.serial.serial_reader import SerialReader
 from prusa_link.structures.regular_expressions import PRINTER_BOOT_REGEX
 
 LOG = get_settings().LOG
 TIME = get_settings().TIME
 PI = get_settings().PI
+SQ = get_settings().SQ
 
 log = logging.getLogger(__name__)
 log.setLevel(LOG.COMMANDS)
 
 
-class ResetPrinter(ResponseCommand):
+class ResetPrinter(Command):
     """
     Tries if we have pigpio available, if not, uses DTR to reset the printer
     thanks @leptun.
@@ -24,14 +28,21 @@ class ResetPrinter(ResponseCommand):
     """
 
     command_name = "reset_printer"
-    timeout = 20
-    if timeout < TIME.PRINTER_BOOT_WAIT:
-        raise RuntimeError("Cannot have smaller timeout, than boot wait.")
+    timeout = 30
+    if timeout < TIME.PRINTER_BOOT_WAIT or timeout < SQ.SERIAL_QUEUE_TIMEOUT:
+        raise RuntimeError("Cannot have smaller timeout than what the printer "
+                           "needs to boot.")
+
+    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
+                 serial: Serial):
+        super().__init__(serial_queue)
+        self.serial_reader = serial_reader
+        self.serial = serial
 
     def _run_command(self):
         if PI.RESET_PIN == 23:
-            self.failed("Pin BCM_23 is by default connected straight to groud. "
-                        "This would destroy your pin.")
+            self.failed("Pin BCM_23 is by default connected straight to "
+                        "ground. This would destroy your pin.")
 
         times_out_at = time() + self.timeout
         event = Event()
@@ -61,4 +72,9 @@ class ResetPrinter(ResponseCommand):
 
         if time() > times_out_at:
             self.failed("Your printer has ignored the reset signal, your RPi "
-                        "is broken or you have configured a wrong pin")
+                        "is broken or you have configured a wrong pin,"
+                        "or our serial reading component broke..")
+
+
+class ResetPrinterResponse(ResponseCommand, ResetPrinter):
+    ...

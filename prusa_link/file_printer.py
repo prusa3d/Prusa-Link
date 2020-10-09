@@ -45,6 +45,9 @@ class FilePrinter:
         self.serial_reader = serial_reader
         self.print_stats = PrintStats()
 
+        self.serial_queue.serial_queue_failed.connect(
+            lambda sender: self.stop_print())
+
         self.serial_reader.add_handler(
             PRINTER_BOOT_REGEX, lambda sender, match: self.printer_reset())
         self.serial_reader.add_handler(
@@ -54,6 +57,7 @@ class FilePrinter:
 
         self.printing = False
         self.paused = False
+
         self.line_number = 0
 
         self.enqueued = deque()
