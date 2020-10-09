@@ -21,6 +21,7 @@ class PrintStats:
         self.total_gcode_count = 0
 
     def track_new_print(self, file_path):
+        self.total_gcode_count = 0
         self.print_time = 0
         self.has_inbuilt_stats = False
 
