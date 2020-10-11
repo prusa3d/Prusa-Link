@@ -15,7 +15,7 @@ from prusa_link.input_output.serial.serial_queue import SerialQueue
 from prusa_link.input_output.serial.serial_reader import SerialReader
 from prusa_link.print_stats import PrintStats
 from prusa_link.structures.regular_expressions import POWER_PANIC_REGEX, \
-    PRINTER_BOOT_REGEX, ERROR_REGEX
+    PRINTER_BOOT_REGEX, ERROR_REGEX, RESUMED_REGEX
 from prusa_link.util import get_clean_path, ensure_directory, get_gcode
 
 LOG = get_settings().LOG
@@ -54,6 +54,9 @@ class FilePrinter:
             POWER_PANIC_REGEX, lambda sender, match: self.power_panic())
         self.serial_reader.add_handler(
             ERROR_REGEX, lambda sender, match: self.printer_error())
+        self.serial_reader.add_handler(
+            RESUMED_REGEX,
+            lambda sender, match: self.resume() if self.printing else ...)
 
         self.printing = False
         self.paused = False

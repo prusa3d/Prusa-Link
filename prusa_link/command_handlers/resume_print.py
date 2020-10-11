@@ -17,5 +17,7 @@ class ResumePrint(TryUntilState):
     def _run_command(self):
         self._try_until_state(gcode="M602", desired_state=States.PRINTING)
 
-        if self.file_printer.printing:
-            self.file_printer.resume()
+        # If we were file printing, the module itself will recognize
+        # it should resume from serial
+        # if self.file_printer.printing:
+        #     self.file_printer.resume()
