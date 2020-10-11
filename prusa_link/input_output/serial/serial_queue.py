@@ -236,7 +236,8 @@ class SerialQueue:
         number = int(match.groups()[0])
         log.warning(f"Resend of {number} requested. Current is "
                     f"{self.message_number}")
-        if (self.current_instruction.to_checksum and
+        if (self.current_instruction is not None and
+                self.current_instruction.to_checksum and
                 self.message_number == number):
             self._recover_front()
         elif self.message_number < number:
