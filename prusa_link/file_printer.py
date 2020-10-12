@@ -55,8 +55,7 @@ class FilePrinter:
         self.serial_reader.add_handler(
             ERROR_REGEX, lambda sender, match: self.printer_error())
         self.serial_reader.add_handler(
-            RESUMED_REGEX,
-            lambda sender, match: self.resume() if self.printing else ...)
+            RESUMED_REGEX, lambda sender, match: self.resume())
 
         self.printing = False
         self.paused = False
@@ -227,8 +226,9 @@ class FilePrinter:
         self.print_stats.end_time_segment()
 
     def resume(self):
-        self.paused = False
-        self.print_stats.start_time_segment()
+        if self.printing:
+            self.paused = False
+            self.print_stats.start_time_segment()
 
     def stop_print(self):
         if self.printing:
