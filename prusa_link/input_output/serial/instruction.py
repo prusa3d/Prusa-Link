@@ -1,8 +1,15 @@
+import logging
 import re
 from enum import Enum
 from threading import Event
 from time import time
 
+from prusa_link.default_settings import get_settings
+
+LOG = get_settings().LOG
+
+log = logging.getLogger(__name__)
+log.setLevel(LOG.SERIAL_QUEUE)
 
 class Instruction:
     """Basic instruction which can be enqueued into SerialQueue"""
@@ -75,8 +82,9 @@ class Instruction:
 
 class MatchableInstruction(Instruction):
     """
-    Same as EasyInstruction but captures its output, which can be matched
-    to a regular expression
+    Matches using captures_matching.
+    HAS TO MATCH, otherwise refuses confirmation!
+    This should fix a communication error we're having.
     """
 
     def __init__(self, *args, capture_matching: re.Pattern = re.compile(r".*"),
@@ -90,9 +98,13 @@ class MatchableInstruction(Instruction):
         self.capturing_regexps = [capture_matching]
 
     def confirm(self) -> bool:
-        result = super().confirm()
-
-        return result
+        # Yes, matchables HAVE TO match now!
+        if not self.captured:
+            log.warning(f"Instruction {self.message} did not capture its "
+                        f"expected output, so it REFUSES to be confirmed!")
+            return False
+        else:
+            return super().confirm()
 
     def output_captured(self, sender, match):
         self.captured.append(match)
@@ -111,6 +123,8 @@ class CollectingInstruction(Instruction):
     only captures match object of capture_regex
     and ends the capture after end_regex matches
     the start and end matches shall be omitted
+
+    Also refuses confirmation if nothing gets matched.
     """
 
     class States(Enum):
@@ -152,3 +166,12 @@ class CollectingInstruction(Instruction):
             begin_match = self.begin_regex.match(match.string)
             if begin_match:
                 self.state = self.States.CAPTURING
+
+    def confirm(self) -> bool:
+        # Yes, collecting HAVE TO match now!
+        if self.state != self.States.ENDED:
+            log.warning(f"Instruction {self.message} did not capture its "
+                        f"expected output, so it REFUSES to be confirmed!")
+            return False
+        else:
+            return super().confirm()
