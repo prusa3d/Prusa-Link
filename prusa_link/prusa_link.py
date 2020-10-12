@@ -19,6 +19,7 @@ from prusa_link.command_handlers.send_info import SendInfoResponse
 from prusa_link.command_handlers.start_print import StartPrint
 from prusa_link.command_handlers.stop_print import StopPrint
 from prusa_link.command_runner import CommandRunner
+from prusa_link.crotitel_cronu import CrotitelCronu
 from prusa_link.default_settings import get_settings
 from prusa_link.file_printer import FilePrinter
 from prusa_link.info_sender import InfoSender
@@ -114,6 +115,8 @@ class PrusaLink:
         self.state_manager = StateManager(self.serial_reader, self.file_printer)
         self.state_manager.state_changed_signal.connect(self.state_changed)
         self.state_manager.job_id_updated_signal.connect(self.job_id_updated)
+
+        self.crotitel_cronu = CrotitelCronu(self.state_manager)
 
         # Write the initial state to the model
         self.model.state = self.state_manager.get_state()

@@ -104,6 +104,7 @@ class PathSettings(BaseModel):
     PP_FILE = os.path.join(BASE_TMP_PATH, "power_panic")
     JOB_FILE = os.path.join(BASE_TMP_PATH, "job_id_data")
     THRESHOLD_FILE = os.path.join(BASE_TMP_PATH, "threshold_data")
+    CROTITEL_CRONU = os.path.join(BASE_TMP_PATH, "cancel_daily_cron")
 
 
 class PiSetteings(BaseModel):
