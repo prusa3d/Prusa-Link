@@ -8,7 +8,7 @@ from blinker import Signal
 from prusa_link.default_settings import get_settings
 from prusa_link.input_output.serial.helpers import wait_for_instruction, \
     enqueue_matchable
-from prusa_link.input_output.serial.instruction import MatchableInstruction
+from prusa_link.input_output.serial.instruction import MandatoryMatchableInstruction
 from prusa_link.input_output.serial.serial_queue import SerialQueue
 from prusa_link.input_output.serial.serial_reader import SerialReader
 from prusa_link.model import Model
@@ -86,7 +86,7 @@ class TelemetryGatherer(ThreadedUpdatable):
     def telemetry_updated(self):
         self.updated_signal.send(self, telemetry=self.current_telemetry)
 
-    def temperature_result(self, instruction: MatchableInstruction):
+    def temperature_result(self, instruction: MandatoryMatchableInstruction):
         match = instruction.match()
         if match:
             groups = match.groups()
@@ -96,7 +96,7 @@ class TelemetryGatherer(ThreadedUpdatable):
             self.current_telemetry.target_bed = float(groups[3])
             self.telemetry_updated()
 
-    def position_result(self, instruction: MatchableInstruction):
+    def position_result(self, instruction: MandatoryMatchableInstruction):
         match = instruction.match()
         if match:
             groups = match.groups()
@@ -105,7 +105,7 @@ class TelemetryGatherer(ThreadedUpdatable):
             self.current_telemetry.axis_z = float(groups[6])
             self.telemetry_updated()
 
-    def fan_result(self, instruction: MatchableInstruction):
+    def fan_result(self, instruction: MandatoryMatchableInstruction):
         # Fans produce two matches, determine the information using groups
 
         for match in instruction.get_matches():
@@ -116,7 +116,7 @@ class TelemetryGatherer(ThreadedUpdatable):
                 self.current_telemetry.fan_print = float(print_fan_rpm)
         self.telemetry_updated()
 
-    def print_time_result(self, instruction: MatchableInstruction):
+    def print_time_result(self, instruction: MandatoryMatchableInstruction):
         match = instruction.match()
         if match and match.groups()[1]:
             groups = match.groups()
@@ -128,7 +128,7 @@ class TelemetryGatherer(ThreadedUpdatable):
             self.current_telemetry.time_printing = printing_time_sec
             self.telemetry_updated()
 
-    def flow_rate_result(self, instruction: MatchableInstruction):
+    def flow_rate_result(self, instruction: MandatoryMatchableInstruction):
         match = instruction.match()
         if match:
             groups = match.groups()
@@ -137,7 +137,7 @@ class TelemetryGatherer(ThreadedUpdatable):
                 self.current_telemetry.flow = flow
                 self.telemetry_updated()
 
-    def speed_multiplier_result(self, instruction: MatchableInstruction):
+    def speed_multiplier_result(self, instruction: MandatoryMatchableInstruction):
         match = instruction.match()
         if match:
             groups = match.groups()
@@ -146,7 +146,7 @@ class TelemetryGatherer(ThreadedUpdatable):
                 self.current_telemetry.speed = speed
                 self.telemetry_updated()
 
-    def print_info_result(self, instruction: MatchableInstruction):
+    def print_info_result(self, instruction: MandatoryMatchableInstruction):
         match = instruction.match()
         self.print_info_handler(None, match)
 

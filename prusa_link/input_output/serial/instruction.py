@@ -83,8 +83,6 @@ class Instruction:
 class MatchableInstruction(Instruction):
     """
     Matches using captures_matching.
-    HAS TO MATCH, otherwise refuses confirmation!
-    This should fix a communication error we're having.
     """
 
     def __init__(self, *args, capture_matching: re.Pattern = re.compile(r".*"),
@@ -97,15 +95,6 @@ class MatchableInstruction(Instruction):
 
         self.capturing_regexps = [capture_matching]
 
-    def confirm(self) -> bool:
-        # Yes, matchables HAVE TO match now!
-        if not self.captured:
-            log.warning(f"Instruction {self.message} did not capture its "
-                        f"expected output, so it REFUSES to be confirmed!")
-            return False
-        else:
-            return super().confirm()
-
     def output_captured(self, sender, match):
         self.captured.append(match)
 
@@ -115,6 +104,22 @@ class MatchableInstruction(Instruction):
 
     def get_matches(self):
         return self.captured
+
+
+class MandatoryMatchableInstruction(MatchableInstruction):
+    """
+    HAS TO MATCH, otherwise refuses confirmation!
+    This should fix a communication error we're having.
+    """
+
+    def confirm(self) -> bool:
+        # Yes, matchables HAVE TO match now!
+        if not self.captured:
+            log.warning(f"Instruction {self.message} did not capture its "
+                        f"expected output, so it REFUSES to be confirmed!")
+            return False
+        else:
+            return super().confirm()
 
 
 class CollectingInstruction(Instruction):
