@@ -33,7 +33,7 @@ class PrintStats:
                 if "M73" in gcode:
                     self.has_inbuilt_stats = True
 
-        log.info(f"New file loaded, contains {self.total_gcode_count} "
+        log.info(f"New file analyzed, contains {self.total_gcode_count} "
                  f"gcode commands and "
                  f"{'has' if self.has_inbuilt_stats else 'does not have'} "
                  f"inbuilt percent and time reporting.")
