@@ -106,7 +106,7 @@ class SDCard(ThreadedUpdatable):
                                 ro=True, mounted_at="/")
 
         if self.sd_state == SDState.ABSENT:
-            return tree
+            return None
 
         instruction = enqueue_collecting(self.serial_queue, "M20",
                                          begin_regex=BEGIN_FILES_REGEX,
