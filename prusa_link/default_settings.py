@@ -43,6 +43,7 @@ class SerialQueueSettings(BaseModel):
     RX_SIZE = 128
     SERIAL_QUEUE_TIMEOUT = 25
     SERIAL_QUEUE_MONITOR_INTERVAL = 1
+    HISTORY_LENGTH = 30
 
 
 class IsPlannerFedSettings(BaseModel):
