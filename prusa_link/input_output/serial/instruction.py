@@ -22,6 +22,9 @@ class Instruction:
         # This shall be exclusive for printing from files
         self.to_checksum = to_checksum
 
+        # If we are re-sending this instruction, let's matk it
+        self.re_sending = False
+
         # Can be changed before the instruction is sent.
         self.message = message
 
