@@ -1,5 +1,6 @@
 import logging
 import re
+from collections import deque
 from queue import Queue
 from threading import Lock, Thread
 from time import time, sleep
@@ -60,6 +61,14 @@ class SerialQueue:
         # For numbered messages with checksums
         self.message_number = 0
 
+        # When filament runs out or other buffer flushing calamity occurs
+        # We need to re-send some commands that we already had dismissed as
+        # confirmed
+        self.send_history = deque(maxlen=SQ.HISTORY_LENGTH)
+
+        # A list which will contain all messages needed to recover
+        self.recovery_list = []
+
         # For stopping fast (power panic)
         self.closed = False
 
@@ -85,8 +94,9 @@ class SerialQueue:
         # TODO: dirty, break it up or rename
 
         if self.current_instruction is None:
-
-            if not self.priority_queue.empty():
+            if self.recovery_list:
+                self.current_instruction = self.recovery_list.pop()
+            elif not self.priority_queue.empty():
                 if self.is_planner_fed() and not self.queue.empty():
                     self.is_planner_fed.is_fed = False
                     log.debug("Allowing a non-important instruction through")
@@ -138,24 +148,27 @@ class SerialQueue:
             checksum ^= byte
         return checksum
 
+    def _checksummed_sent(self, instruction):
+        # Only do this for the print instructions
+        if not instruction.re_sending:
+            self.send_history.append(instruction)
+        self.message_number += 1
+
     def _write(self):
-        # message_number has been raced for, so let's not do that
         self.next_instruction()
         instruction = self.current_instruction
 
-        if not instruction.is_sent():
-            # Is this the first time we are sending this?
-            if instruction.to_checksum:
-                self.message_number += 1
+        if instruction.to_checksum:
+            self._checksummed_sent(instruction)
 
-            for regexp in instruction.capturing_regexps:
-                self.serial_reader.add_handler(
-                    regexp,
-                    instruction.output_captured,
-                    priority=time()
-                )
+        for regexp in instruction.capturing_regexps:
+            self.serial_reader.add_handler(
+                regexp,
+                instruction.output_captured,
+                priority=time()
+            )
 
-            self.current_instruction.sent()
+        self.current_instruction.sent()
 
         data = self.get_data(instruction)
 
@@ -234,22 +247,33 @@ class SerialQueue:
 
     def _resend_handler(self, sender, match: re.Match):
         number = int(match.groups()[0])
-        log.warning(f"Resend of {number} requested. Current is "
-                    f"{self.message_number}")
-        if (self.current_instruction is not None and
-                self.current_instruction.to_checksum and
-                self.message_number == number):
-            self._recover_front()
-        elif self.message_number < number:
+        log.info(f"Resend of {number} requested. Current is "
+                 f"{self.message_number}")
+        if self.message_number >= number:
+            if (self.current_instruction is None or
+                    not self.current_instruction.to_checksum):
+                log.warning("Re-send requested for on a non-numbered message")
+            self._resend((self.message_number - number) + 1)
+        else:
             log.warning("We haven't sent anything with that number yet. "
                         "The communication shouldn't fail after this.")
-        else:
-            log.error("Most likely the serial communication "
-                      "will fall apart after this!")
-            log.error("So let's abort the print and regroup")
-            self._worst_case_scenario()
 
     # ---
+
+    def _resend(self, count):
+        with self.write_lock:
+            self.message_number -= count
+
+            # get the instructions newest first, they are going to reverse
+            # in the list
+            history = list(reversed(self.send_history))
+
+            self.recovery_list.clear()
+            for instruction_from_history in history[:count]:
+                instruction = Instruction(instruction_from_history.message,
+                                          to_checksum=True)
+                instruction.re_sending = True
+                self.recovery_list.append(instruction)
 
     def _confirmed(self):
         """
@@ -265,7 +289,7 @@ class SerialQueue:
                 instruction = self.current_instruction
 
                 # If the instruction did not refuse to be confirmed
-                # Yes, that needs to happen because of M602
+                # Yes, that needs to happen
                 log.debug(f"{instruction} confirmed")
 
                 for regexp in instruction.capturing_regexps:
@@ -274,7 +298,7 @@ class SerialQueue:
                     )
 
                 if instruction.to_checksum:
-                    # Only do this for the print instructions
+                    # Only check those times for check-summed instructions
                     self.is_planner_fed.process_value(
                         instruction.time_to_confirm)
 
@@ -301,17 +325,6 @@ class SerialQueue:
             if not self.is_empty():
                 self._write()
 
-    def _recover_front(self):
-        # The message that failed gets confirmed
-        # Let's stop that from happening as we need to re-send it
-        self.current_instruction.needs_two_okays = True
-
-        # The message errored out on send, so let's try it again
-        self.current_instruction.sent_event.clear()
-
-        # We'll be sending a message with the same number again
-        self.message_number -= 1
-
     def reset_message_number(self):
         instruction = Instruction("M110 N1")
         self.enqueue_one(instruction, to_front=True)
@@ -319,6 +332,7 @@ class SerialQueue:
             if instruction.wait_for_confirmation(
                     timeout=TIME.QUIT_INTERVAL):
                 break
+        self.send_history.clear()
         self.message_number = 1
 
     def _worst_case_scenario(self):
@@ -329,7 +343,7 @@ class SerialQueue:
         Thread(target=self._worst_case_body).start()
 
     def _worst_case_body(self):
-        log.error("Communication failed, firmware was too hard to predict...")
+        log.error("Communication failed. Aborting...")
 
         # This shall inform the rest of the app about the situation,
         # I expect this to reset the printer
