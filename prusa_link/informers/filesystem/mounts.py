@@ -193,6 +193,13 @@ class DirMounts(Mounts):
     def get_mountpoints(self):
         new_directory_dict: Dict[str, MountPoint] = {}
         for directory in self.configured_mounts:
+
+            # try to create non-existing ones
+            try:
+                ensure_directory(directory)
+            except OSError:
+                log.exception(f"Cannot create a dirextory at {directory}")
+
             if self.dir_belongs(directory):
                 read_only = not os.access(directory, os.W_OK)
                 mount_point = MountPoint(path=directory, ro=read_only,
