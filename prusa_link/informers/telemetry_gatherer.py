@@ -16,7 +16,7 @@ from prusa_link.structures.constants import PRINTING_STATES
 from prusa_link.structures.model_classes import Telemetry
 from prusa_link.structures.regular_expressions import TEMPERATURE_REGEX, \
     POSITION_REGEX, PRINT_TIME_REGEX, PRINT_INFO_REGEX, HEATING_REGEX, \
-    HEATING_HOTEND_REGEX, FAN_RPM_REGEX
+    HEATING_HOTEND_REGEX, FAN_RPM_REGEX, PERCENT_REGEX
 from prusa_link.updatable import ThreadedUpdatable
 
 TIME = get_settings().TIME
@@ -52,8 +52,8 @@ class TelemetryGatherer(ThreadedUpdatable):
             # we start after the print has been started.
             ("M27", PRINT_TIME_REGEX, self.print_time_result, lambda: True),
 
-            # ("M221", TBD, self.flow_rate_result, lambda: True),
-            # ("M220", TBD, self.speed_multiplier_result, lambda: True),
+            ("M221", PERCENT_REGEX, self.flow_rate_result, lambda: True),
+            ("M220", PERCENT_REGEX, self.speed_multiplier_result, lambda: True),
 
             ("M73", PRINT_INFO_REGEX, self.print_info_result,
              lambda: self.model.state in PRINTING_STATES),
