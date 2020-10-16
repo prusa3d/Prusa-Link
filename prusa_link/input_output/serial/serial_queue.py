@@ -351,9 +351,8 @@ class SerialQueue:
 
         with self.write_lock:
             while self.current_instruction is not None:
-                instruction = self.current_instruction
-                instruction.sent()
-                instruction.confirm(force=True)
+                self.current_instruction.sent()
+                self.current_instruction.confirm(force=True)
                 self.current_instruction = None
                 self.next_instruction()
 
