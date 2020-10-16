@@ -353,8 +353,7 @@ class SerialQueue:
             while self.current_instruction is not None:
                 instruction = self.current_instruction
                 instruction.sent()
-                while not instruction.confirm():
-                    pass
+                instruction.confirm(force=True)
                 self.current_instruction = None
                 self.next_instruction()
 
@@ -372,7 +371,6 @@ class SerialQueue:
             if message_instruction.wait_for_confirmation(
                     timeout=TIME.QUIT_INTERVAL):
                 break
-
 
     def _execute_instruction(self, instruction):
         self._enqueue(instruction, to_front=True)
