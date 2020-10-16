@@ -50,12 +50,12 @@ class Instruction:
     def __str__(self):
         return f"Instruction '{self.message.strip()}'"
 
-    def confirm(self) -> bool:
+    def confirm(self, force=False) -> bool:
         """
         Didn't think a confirmation would need to fail, but it needs to
         in some cases
         """
-        if self.needs_two_okays:
+        if self.needs_two_okays and not force:
             self.needs_two_okays = False
             return False
 
@@ -115,9 +115,9 @@ class MandatoryMatchableInstruction(MatchableInstruction):
     This should fix a communication error we're having.
     """
 
-    def confirm(self) -> bool:
+    def confirm(self, force=False) -> bool:
         # Yes, matchables HAVE TO match now!
-        if not self.captured:
+        if not self.captured and not force:
             log.warning(f"Instruction {self.message} did not capture its "
                         f"expected output, so it REFUSES to be confirmed!")
             return False
@@ -175,9 +175,9 @@ class CollectingInstruction(Instruction):
             if begin_match:
                 self.state = self.States.CAPTURING
 
-    def confirm(self) -> bool:
+    def confirm(self, force=False) -> bool:
         # Yes, collecting HAVE TO match now!
-        if self.state != self.States.ENDED:
+        if self.state != self.States.ENDED and not force:
             log.warning(f"Instruction {self.message} did not capture its "
                         f"expected output, so it REFUSES to be confirmed!")
             return False
