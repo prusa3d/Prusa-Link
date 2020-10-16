@@ -6,6 +6,7 @@ from json import JSONDecodeError
 from time import time
 from typing import Type
 
+from getmac import get_mac_address
 from requests import RequestException
 from serial import SerialException
 
@@ -24,6 +25,7 @@ from prusa_link.default_settings import get_settings
 from prusa_link.file_printer import FilePrinter
 from prusa_link.info_sender import InfoSender
 from prusa_link.informers.filesystem.storage_controller import StorageController
+from prusa_link.informers.getters import get_serial_number, get_uuid
 from prusa_link.informers.ip_updater import IPUpdater, NO_IP
 from prusa_link.informers.job import Job
 from prusa_link.informers.state_manager import StateManager, StateChange
@@ -96,8 +98,13 @@ class PrusaLink:
                 "Config load failed, lan_settings.ini missing or invalid.")
             raise
 
+        sn = get_serial_number(self.serial_queue)
+        uuid = get_uuid()
+        mac = get_mac_address()
+
         self.connect_api = ConnectAPI(address=address, port=port, token=token,
-                                      tls=tls, lcd_printer=self.lcd_printer)
+                                      tls=tls, sn=sn, uuid=uuid, mac=mac,
+                                      lcd_printer=self.lcd_printer)
         ConnectAPI.connection_error.connect(self.connection_error)
 
         self.telemetry_gatherer = TelemetryGatherer(self.serial_reader,
