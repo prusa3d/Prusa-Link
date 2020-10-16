@@ -127,8 +127,6 @@ class PrusaLink:
         self.storage = StorageController(self.serial_queue, self.serial_reader,
                                          self.state_manager)
         self.storage.updated_signal.connect(self.storage_updated)
-        self.storage.inserted_signal.connect(self.media_inserted)
-        self.storage.ejected_signal.connect(self.media_ejected)
 
         self.storage.sd_state_changed_signal.connect(self.sd_state_changed)
         # after connecting all the signals, do the first update manually
@@ -147,7 +145,12 @@ class PrusaLink:
         # Start individual informer threads after updating manually, so nothing
         # will race with itself
         self.telemetry_gatherer.start()
+
+        # Don't send ejected and inserted messages untill after the initial INFO
+        self.storage.inserted_signal.connect(self.media_inserted)
+        self.storage.ejected_signal.connect(self.media_ejected)
         self.storage.start()
+
         self.ip_updater.start()
 
         self.command_runner = CommandRunner(self.serial, self.serial_reader,
