@@ -13,6 +13,7 @@ FILE_PATH_REGEX = re.compile(r"^(.*\.GCO) (\d+)$")
 END_FILES_REGEX = re.compile(r"^End file list$")
 
 SD_PRESENT_REGEX = re.compile(r"^(echo:SD card ok)|(echo:SD init fail)$")
+SD_EJECTED_REGEX = re.compile(r"^(echo:SD card released)$")
 
 
 ANY_REGEX = re.compile(r".*")
