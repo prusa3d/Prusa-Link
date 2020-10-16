@@ -239,6 +239,14 @@ class SerialQueue:
 
         self._confirmed()
 
+    def _paused_handler(self, sender, match: re.Match):
+        # Another special case is when pausing. The "ok" is omitted
+        # Let's confirm it ourselves
+        self._confirmed()
+
+    def _yeeted_handler(self, sender, match: re.Match):
+        self._rx_buffer_got_yeeted()
+
     def _resend_handler(self, sender, match: re.Match):
         number = int(match.groups()[0])
         log.info(f"Resend of {number} requested. Current is "

@@ -1,4 +1,6 @@
 import logging
+from base64 import b64encode
+from hashlib import sha256
 from time import time
 
 from blinker import Signal
@@ -20,34 +22,34 @@ class ConnectAPI:
 
     connection_error = Signal()  # kwargs: path: str, json_dict: Dict[str, Any]
 
-    # Just checks if there is not more than one instance in existence,
-    # but this is not a singleton!
-    instance = None
-
-    def __init__(self, address, port, token, tls,
+    def __init__(self, address, port, token, tls, sn, uuid, mac,
                  lcd_printer: LCDPrinter):
-        assert self.instance is None, "If running more than one instance" \
-                                      "is required, consider moving the " \
-                                      "signals from class to instance " \
-                                      "variables."
 
         if address.startswith("http"):
             log.warning("Redundant protocol configured in lan_settings address")
             address = address.split("://", 1)[1]
 
-        self.address = address
-        self.port = port
-
-        self.started_on = time()
-
-        protocol = "https" if tls else "http"
-
         self.lcd_printer = lcd_printer
+
+        # compute the fingerprint
+
+        bytes_sn = sn.encode("ASCII")
+        bytes_uuid = uuid.encode("ASCII")
+        bytes_mac = mac.encode("ASCII")
+
+        printer_hash = sha256(bytes_uuid + bytes_mac + bytes_sn).digest()
+        for i in range(1000):
+            printer_hash = sha256(printer_hash).digest()
+
+        fingerprint = b64encode(printer_hash).decode("ASCII")
+        protocol = "https" if tls else "http"
 
         self.base_url = f"{protocol}://{address}:{port}"
         log.info(f"Prusa Connect is expected on address: {self.base_url}.")
         self.session = Session()
         self.session.headers['Printer-Token'] = token
+        log.debug(f"Setting fingerprint to {fingerprint}")
+        self.session.headers['Fingerprint'] = fingerprint
 
     def handle_error_code(self, code):
         if code == 400:
