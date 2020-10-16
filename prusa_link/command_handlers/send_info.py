@@ -5,6 +5,7 @@ from requests import RequestException
 
 from prusa_link.command import Command, ResponseCommand
 from prusa_link.default_settings import get_settings
+from prusa_link.informers.getters import get_uuid, get_serial_number
 from prusa_link.informers.ip_updater import NO_IP
 from prusa_link.input_output.connect_api import ConnectAPI
 from prusa_link.input_output.serial.serial_queue import SerialQueue
@@ -49,6 +50,7 @@ class SendInfo(Command):
     def _run_command(self):
         self.insert_type_and_version()
         self.insert_firmware_version()
+        self.insert_serial_number()
         self.insert_nozzle_diameter()
         self.insert_network_info()
         self.insert_additional_info()
@@ -91,6 +93,14 @@ class SendInfo(Command):
 
         self.printer_info.firmware = match.groups()[0]
 
+    def insert_serial_number(self):
+        serial_number = get_serial_number(self.serial_queue,
+                                          lambda: self.running)
+        if serial_number is None:
+            self.failed("Printer responded with something unexpected")
+
+        self.printer_info.sn = serial_number
+
     def insert_nozzle_diameter(self):
         instruction = self.do_matchable("M862.1 Q", NOZZLE_REGEX)
 
@@ -102,8 +112,7 @@ class SendInfo(Command):
 
     def insert_additional_info(self):
         self.printer_info.state = self.model.state.name
-        self.printer_info.sn = "4206942069"  # TODO: implement real getters
-        self.printer_info.uuid = "00000000-0000-0000-0000-000000000000"
+        self.printer_info.uuid = get_uuid()
         self.printer_info.appendix = False
         self.printer_info.files = self.model.api_file_tree
 
