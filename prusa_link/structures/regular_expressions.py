@@ -6,6 +6,7 @@ OPEN_RESULT_REGEX = re.compile(r"^(File opened).*|^(open failed).*")
 PRINTER_TYPE_REGEX = re.compile(r"^(\d{3,5})$")
 FW_REGEX = re.compile(r"^FIRMWARE_NAME:Prusa-Firmware ?((\d+\.)*\d).*$")
 NOZZLE_REGEX = re.compile(r"^(\d\.\d+)$")
+PERCENT_REGEX = re.compile(r"^(\d{0,3})%$")
 
 
 BEGIN_FILES_REGEX = re.compile(r"^Begin file list$")
