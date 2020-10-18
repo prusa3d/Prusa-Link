@@ -9,3 +9,6 @@ setuptools
 PyYAML
 appdirs
 sortedcontainers
+PoorWSGI
+python-daemon
+lockfile
