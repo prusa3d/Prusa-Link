@@ -10,3 +10,6 @@ PyYAML
 appdirs
 sortedcontainers
 wiringpi
+PoorWSGI
+python-daemon
+lockfile
