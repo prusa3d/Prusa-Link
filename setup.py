@@ -62,6 +62,7 @@ setup(
         'console_scripts': [
             'prusa_link = prusa_link.__main__:main',
             'prusa_link_install = installation.__main__:main',
+            'prisa-link-web = prusa.link.web.__main__:main'
         ]
     }
 )
