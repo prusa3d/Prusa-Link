@@ -11,6 +11,7 @@ LOG = get_settings().LOG
 log = logging.getLogger(__name__)
 log.setLevel(LOG.SERIAL_QUEUE)
 
+
 class Instruction:
     """Basic instruction which can be enqueued into SerialQueue"""
 
@@ -59,10 +60,10 @@ class Instruction:
         if self.needs_two_okays and not force:
             self.needs_two_okays = False
             return False
-
-        self.time_to_confirm = time() - self.sent_at
-        self.confirmed_event.set()
-        return True
+        else:
+            self.time_to_confirm = time() - self.sent_at
+            self.confirmed_event.set()
+            return True
 
     def sent(self):
         self.sent_event.set()
