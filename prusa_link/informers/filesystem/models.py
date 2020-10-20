@@ -107,7 +107,7 @@ class InternalFileTree:
         parts = Path(path).parts
 
         node = self
-        for part in parts[1:-1]:
+        for part in parts[:-1]:
             if part not in node.children_dict:
                 child = InternalFileTree(file_type=FileType.DIR, name=part,
                                          parent=node, ro=ro, m_time=m_time,
