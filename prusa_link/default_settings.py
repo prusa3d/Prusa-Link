@@ -21,6 +21,7 @@ class ConnectSettings(BaseModel):
 
 
 class IntervalSettings(BaseModel):
+
     # Intervals are in seconds
     TELEMETRY_INTERVAL = 1
     TELEMETRY_IDLE_INTERVAL = 0.25
@@ -34,6 +35,7 @@ class IntervalSettings(BaseModel):
     PRINTER_BOOT_WAIT = 8
     SEND_INFO_RETRY = 5
     SERIAL_REOPEN_TIMEOUT = 10
+    TEMP_TIMEOUT = 60
 
 
 class LCDQueueSettings(BaseModel):
