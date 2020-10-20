@@ -68,53 +68,46 @@ class SerialQueue:
 
         # A list which will contain all messages needed to recover
         self.recovery_list = []
+        self.rx_yeet_slot = None
 
         # For stopping fast (power panic)
         self.closed = False
 
-        self.serial_reader.add_handler(CONFIRMATION_REGEX,
-                                       self._confirmation_handler,
-                                       priority=float("inf"))
-        self.serial_reader.add_handler(FILE_OPEN_REGEX,
-                                       self._yeeted_handler)
-        self.serial_reader.add_handler(PAUSED_REGEX,
-                                       self._paused_handler)
-        self.serial_reader.add_handler(RESEND_REGEX,
-                                       self._resend_handler)
+        self.serial_reader.add_handler(
+            CONFIRMATION_REGEX, self._confirmation_handler,
+            priority=float("inf"))
+        # Another special case is when pausing. The "ok" is omitted
+        # Let's confirm it ourselves
+        self.serial_reader.add_handler(
+            PAUSED_REGEX, lambda sender, match: self._confirmed())
+        self.serial_reader.add_handler(
+            RESEND_REGEX, self._resend_handler)
 
         self.is_planner_fed = IsPlannerFed()
 
     def next_instruction(self):
         """
-        If for some reason the current instruction is not None
-        (didn't get confirmed for example), return it, otherwise
-        get a fresh instruction and set is as the current one.
+        Get a fresh instruction into the self.current_instruction handling slot
         """
 
-        # TODO: dirty, break it up or rename
-
-        if self.current_instruction is None:
-            if self.recovery_list:
-                self.current_instruction = self.recovery_list.pop()
-            elif not self.priority_queue.empty():
-                if self.is_planner_fed() and not self.queue.empty():
-                    self.is_planner_fed.is_fed = False
-                    log.debug("Allowing a non-important instruction through")
-                    self.current_instruction = self.queue.get()
-                    # Invalidate, so the unimportant queue doesn't go all
-                    # at once
-                else:
-                    self.current_instruction = self.priority_queue.get()
-            elif not self.queue.empty():
+        if self.current_instruction is not None:
+            raise RuntimeError("Cannot send a new instruction. "
+                               "When the last one didn't finish processing.")
+        if self.rx_yeet_slot is not None:
+            self.current_instruction = self.rx_yeet_slot
+            self.rx_yeet_slot = None
+        elif self.recovery_list:
+            self.current_instruction = self.recovery_list.pop()
+        elif not self.priority_queue.empty():
+            if self.is_planner_fed() and not self.queue.empty():
+                # Invalidate, so the unimportant queue doesn't go all at once
+                self.is_planner_fed.is_fed = False
+                log.debug("Allowing a non-important instruction through")
                 self.current_instruction = self.queue.get()
-
-    # --- Getters ---
-
-    def get_current_delay(self):
-        if self.is_empty() and self.current_instruction is None:
-            return 0
-        else:
-            return time() - self.last_event_on
+            else:
+                self.current_instruction = self.priority_queue.get()
+        elif not self.queue.empty():
+            self.current_instruction = self.queue.get()
 
     # --- If statements in methods ---
     def can_write(self):
@@ -122,14 +115,15 @@ class SerialQueue:
                not self.closed
 
     def is_empty(self):
-        return self.queue.empty() and self.priority_queue.empty()
+        return self.queue.empty() and self.priority_queue.empty() and \
+               not self.recovery_list and self.rx_yeet_slot is None
 
     # --- Actual methods ---
 
     def _try_writing(self):
         with self.write_lock:
             if self.can_write():
-                self._write()
+                self._send()
 
     def get_data(self, instruction):
         data = instruction.message.encode("ASCII")
@@ -148,39 +142,47 @@ class SerialQueue:
             checksum ^= byte
         return checksum
 
-    def _checksummed_sent(self, instruction):
-        # Only do this for the print instructions
-        if not instruction.re_sending:
-            self.send_history.append(instruction)
-        self.message_number += 1
-
-    def _write(self):
-        self.next_instruction()
-        instruction = self.current_instruction
-
-        if instruction.to_checksum:
-            self._checksummed_sent(instruction)
-
-        for regexp in instruction.capturing_regexps:
+    def _hookup_output_capture(self):
+        for regexp in self.current_instruction.capturing_regexps:
             self.serial_reader.add_handler(
                 regexp,
-                instruction.output_captured,
+                self.current_instruction.output_captured,
                 priority=time()
             )
 
+    def _teardown_output_capture(self):
+        for regexp in self.current_instruction.capturing_regexps:
+            self.serial_reader.remove_handler(
+                regexp, self.current_instruction.output_captured
+            )
+
+    def _send(self):
+        """
+        Gets a new instruction and depending on what appears
+        in the handling slot. Tries its best to send it
+        :return:
+        """
+        self.next_instruction()
+        instruction = self.current_instruction
+
+        if instruction.data is None:
+            if instruction.to_checksum:
+                self.send_history.append(instruction)
+                self.message_number += 1
+
+            instruction.data = self.get_data(instruction)
+
+        size = len(instruction.data)
+        if size > self.rx_max:
+            log.warning(f"The data {instruction.data.decode('ASCII')} "
+                        f"we're trying to write is {size}B. But we can "
+                        f"only send {self.rx_max}B max.")
+
+        self._hookup_output_capture()
         self.current_instruction.sent()
 
-        data = self.get_data(instruction)
-
-        size = len(data)
-        if size > self.rx_max:
-            raise RuntimeError(f"The data {data.decode('ASCII')} we're trying "
-                               f"to write is {size}B. But we can only send "
-                               f"{self.rx_max}B max.")
-
-        log.debug(f"{data.decode('ASCII')} sent")
-
-        self.serial.write(data)
+        log.debug(f"{instruction.data.decode('ASCII')} sent")
+        self.serial.write(self.current_instruction.data)
 
     def _enqueue(self, instruction: Instruction, to_front=False):
         if to_front:
@@ -237,14 +239,6 @@ class SerialQueue:
 
         self._confirmed()
 
-    def _paused_handler(self, sender, match: re.Match):
-        # Another special case is when pausing. The "ok" is omitted
-        # Let's confirm it ourselves
-        self._confirmed()
-
-    def _yeeted_handler(self, sender, match: re.Match):
-        self._rx_buffer_got_yeeted()
-
     def _resend_handler(self, sender, match: re.Match):
         number = int(match.groups()[0])
         log.info(f"Resend of {number} requested. Current is "
@@ -262,8 +256,6 @@ class SerialQueue:
 
     def _resend(self, count):
         with self.write_lock:
-            self.message_number -= count
-
             # get the instructions newest first, they are going to reverse
             # in the list
             history = list(reversed(self.send_history))
@@ -271,11 +263,11 @@ class SerialQueue:
             self.recovery_list.clear()
             for instruction_from_history in history[:count]:
                 instruction = Instruction(instruction_from_history.message,
-                                          to_checksum=True)
-                instruction.re_sending = True
+                                          to_checksum=True,
+                                          data=instruction_from_history.data)
                 self.recovery_list.append(instruction)
 
-    def _confirmed(self):
+    def _confirmed(self, force=False):
         """
         Printer _confirmed an instruction.
         Assume it confirms exactly one instruction once
@@ -284,7 +276,7 @@ class SerialQueue:
         if self.current_instruction is None or \
                 not self.current_instruction.is_sent():
             log.error("Unexpected message confirmation. Ignoring")
-        elif self.current_instruction.confirm():
+        elif self.current_instruction.confirm(force=force):
             with self.write_lock:
                 instruction = self.current_instruction
 
@@ -292,10 +284,7 @@ class SerialQueue:
                 # Yes, that needs to happen
                 log.debug(f"{instruction} confirmed")
 
-                for regexp in instruction.capturing_regexps:
-                    self.serial_reader.remove_handler(
-                        regexp, instruction.output_captured
-                    )
+                self._teardown_output_capture()
 
                 if instruction.to_checksum:
                     # Only check those times for check-summed instructions
@@ -303,27 +292,28 @@ class SerialQueue:
                         instruction.time_to_confirm)
 
                 self.current_instruction = None
-
-        elif not self.current_instruction.is_sent():
-            # Something thinks the instruction failed sending, re-send
-            self._try_writing()
         else:
             log.debug(f"{self.current_instruction} refused confirmation. "
                       f"Hopefully it has a reason for that")
 
-        #  rx_current decreased, let's try if we'll fit into the rx buffer
         self._try_writing()
 
-    def _rx_buffer_got_yeeted(self):
+    def _rx_got_yeeted(self):
         """
         Something caused the RX buffer to get thrown out, let's re-send
         everything supposed to be in it.
         """
-        log.debug(f"Think that RX Buffer got yeeted, re-sending instruction")
-        with self.write_lock:
-            # Let's bypass the check and write if we can.
-            if not self.is_empty():
-                self._write()
+        log.debug(f"Think that RX Buffer got yeeted, sending instruction again")
+        # Let's bypass the check and write if we can.
+        if self.current_instruction is not None:
+            instruction = self.current_instruction
+            # These two types have to be recovered in their own ways
+            with self.write_lock:
+                self.rx_yeet_slot = instruction
+                self._teardown_output_capture()
+                instruction.reset()
+                self.current_instruction = None
+                self._send()
 
     def reset_message_number(self):
         instruction = Instruction("M110 N1")
@@ -333,7 +323,7 @@ class SerialQueue:
                     timeout=TIME.QUIT_INTERVAL):
                 break
         self.send_history.clear()
-        self.message_number = 1
+        self.message_number = 0
 
     def _worst_case_scenario(self):
         """
@@ -350,10 +340,17 @@ class SerialQueue:
         self.serial_queue_failed.send()
 
         with self.write_lock:
+            if self.current_instruction is not None:
+                # To flush the one instruction, that has not yet been confirmed
+                # but has been sent, use the usual way
+                self.current_instruction.confirm(force=True)
+                self._teardown_output_capture()
+                self.next_instruction()
             while self.current_instruction is not None:
-                instruction = self.current_instruction
-                instruction.sent()
-                instruction.confirm(force=True)
+                # obviously don't send the other ones,
+                # so they can be handled faster
+                self.current_instruction.sent()
+                self.current_instruction.confirm(force=True)
                 self.current_instruction = None
                 self.next_instruction()
 
@@ -369,14 +366,6 @@ class SerialQueue:
         self._try_writing()
         while not self.closed:
             if message_instruction.wait_for_confirmation(
-                    timeout=TIME.QUIT_INTERVAL):
-                break
-
-    def _execute_instruction(self, instruction):
-        self._enqueue(instruction, to_front=True)
-        self._write()
-        while not self.closed:
-            if instruction.wait_for_confirmation(
                     timeout=TIME.QUIT_INTERVAL):
                 break
 
@@ -401,8 +390,15 @@ class MonitoredSerialQueue(SerialQueue):
         # Useful only with unbuffered messages
         self.running = True
         self.last_event_on = time()
-        self.monitoring_thread = Thread(target=self.keep_monitoring)
+        self.monitoring_thread = Thread(target=self.keep_monitoring,
+                                        name="sq_stall_recovery")
         self.monitoring_thread.start()
+
+    def get_current_delay(self):
+        if self.is_empty() and self.current_instruction is None:
+            return 0
+        else:
+            return time() - self.last_event_on
 
     def keep_monitoring(self):
         run_slowly_die_fast(lambda: self.running, TIME.QUIT_INTERVAL,
@@ -417,20 +413,20 @@ class MonitoredSerialQueue(SerialQueue):
                      f"{self.current_instruction} after "
                      f"{SQ.SERIAL_QUEUE_TIMEOUT}sec.")
             log.debug("Assuming the printer yeeted our RX buffer")
-            self._rx_buffer_got_yeeted()
+            self._rx_got_yeeted()
 
     def stop(self):
         self.running = False
         self.is_planner_fed.save()
         self.monitoring_thread.join()
 
-    def _write(self):
+    def _send(self):
         self.last_event_on = time()
-        super()._write()
+        super()._send()
 
-    def _confirmed(self):
+    def _confirmed(self, force=False):
         self.last_event_on = time()
-        super()._confirmed()
+        super()._confirmed(force=force)
 
     def _renew_timeout(self, sender, match: re.Match):
         self.last_event_on = time()
