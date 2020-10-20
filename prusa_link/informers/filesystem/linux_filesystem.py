@@ -125,16 +125,16 @@ class LinuxFilesystem(ThreadedUpdatable):
 
     def add_file(self, tree: InternalFileTree, file):
         path = file.path
-
-        # Cut out the mountpoint path.
-        # Use the name without leading or trailing slashes.
-        tree_path = path[len(tree.full_fs_path):].strip("/")
-        stats = file.stat()
-        size = stats.st_size
-        m_time = self.get_m_time(stats.st_mtime)
-        ro = not os.access(file.path, os.W_OK)
-        tree.add_file(path=tree_path, size=size, ro=ro, m_time=m_time,
-                      full_fs_path=path)
+        if not os.path.isdir(path):
+            # Cut out the mountpoint path.
+            # Use the name without leading or trailing slashes.
+            tree_path = path[len(tree.full_fs_path):].strip("/")
+            stats = file.stat()
+            size = stats.st_size
+            m_time = self.get_m_time(stats.st_mtime)
+            ro = not os.access(file.path, os.W_OK)
+            tree.add_file(path=tree_path, size=size, ro=ro, m_time=m_time,
+                          full_fs_path=path)
 
     def get_m_time(self, timestamp):
         m_datetime = datetime.fromtimestamp(timestamp)
