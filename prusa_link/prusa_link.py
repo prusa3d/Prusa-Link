@@ -41,6 +41,7 @@ from prusa_link.model import Model
 from prusa_link.structures.constants import PRINTING_STATES
 from prusa_link.structures.model_classes import EmitEvents, Telemetry, States, \
     Sources
+# from prusa_link.temp_ensurer import TempEnsurer
 from prusa_link.util import get_command_id, run_slowly_die_fast
 
 LOG = get_settings().LOG
@@ -174,6 +175,9 @@ class PrusaLink:
 
         self.info_sender.insist_on_sending_info()
 
+        # self.temp_ensurer = TempEnsurer(self.serial_reader, self.serial_queue)
+        # self.temp_ensurer.start()
+
         # After the initial states are distributed throughout the model,
         # let's open ourselves to some commands from connect
         self.connect_thread = threading.Thread(
@@ -195,6 +199,7 @@ class PrusaLink:
         self.serial.stop()
         self.connect_api.stop()
         self.info_sender.stop()
+        # self.temp_ensurer.stop()
 
         log.debug("Remaining threads, that could prevent us from quitting:")
         for thread in threading.enumerate():
