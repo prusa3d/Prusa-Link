@@ -14,7 +14,8 @@ log.setLevel(LOG.SERIAL_QUEUE)
 class Instruction:
     """Basic instruction which can be enqueued into SerialQueue"""
 
-    def __init__(self, message: str, to_checksum: bool = False):
+    def __init__(self, message: str, to_checksum: bool = False,
+                 data: bytes = None):
         if message.count("\n") != 0:
             raise RuntimeError("Instructions cannot contain newlines.")
 
@@ -22,11 +23,11 @@ class Instruction:
         # This shall be exclusive for printing from files
         self.to_checksum = to_checksum
 
-        # If we are re-sending this instruction, let's matk it
-        self.re_sending = False
-
         # Can be changed before the instruction is sent.
         self.message = message
+
+        # If already sent, this will contain the sent bytes
+        self.data = data
 
         # M602 is generous, it gives us a second "OK"
         # completely free of charge.
@@ -81,6 +82,10 @@ class Instruction:
 
     def is_confirmed(self):
         return self.confirmed_event.is_set()
+
+    def reset(self):
+        self.sent_at = None
+        self.sent_event.clear()
 
 
 class MatchableInstruction(Instruction):
