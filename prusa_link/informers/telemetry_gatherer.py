@@ -62,7 +62,8 @@ class TelemetryGatherer(ThreadedUpdatable):
         regex_handlers = {
             PRINT_INFO_REGEX: self.print_info_handler,
             HEATING_REGEX: self.heating_handler,
-            HEATING_HOTEND_REGEX: self.heating_hotend_handler
+            HEATING_HOTEND_REGEX: self.heating_hotend_handler,
+            TEMPERATURE_REGEX: self.temperature_handler
         }
 
         for regex, handler in regex_handlers.items():
@@ -86,8 +87,7 @@ class TelemetryGatherer(ThreadedUpdatable):
     def telemetry_updated(self):
         self.updated_signal.send(self, telemetry=self.current_telemetry)
 
-    def temperature_result(self, instruction: MandatoryMatchableInstruction):
-        match = instruction.match()
+    def temperature_handler(self, sender, match: re.Match):
         if match:
             groups = match.groups()
             self.current_telemetry.temp_nozzle = float(groups[0])
@@ -95,6 +95,11 @@ class TelemetryGatherer(ThreadedUpdatable):
             self.current_telemetry.temp_bed = float(groups[2])
             self.current_telemetry.target_bed = float(groups[3])
             self.telemetry_updated()
+
+    def temperature_result(self, instruction: MandatoryMatchableInstruction):
+        match = instruction.match()
+        if match:
+            self.temperature_handler(None, match)
 
     def position_result(self, instruction: MandatoryMatchableInstruction):
         match = instruction.match()
