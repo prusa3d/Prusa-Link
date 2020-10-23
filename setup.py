@@ -1,8 +1,8 @@
 import os
 
-from setuptools import setup, find_packages
+from setuptools import setup, find_namespace_packages
 
-from prusa_link import __version__, __doc__
+from prusa.link.printer_adapter import __version__, __doc__
 
 RPI_MODEL_PATH = "/sys/firmware/devicetree/base/model"
 
@@ -45,13 +45,13 @@ setup(
     maintainer="Tomáš Jozífek",
     maintainer_email="tomas.jozifek@prusa3d.cz",
     url="https://github.com/prusa3d/Prusa-Link",
-    packages=find_packages(),
+    packages=find_namespace_packages(),
     package_data={'installation.data_files':
                      ['prusa-link.service']},
     long_description=doc(),
     long_description_content_type="text/markdown",
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Natural Language :: English",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 3 :: Only",
@@ -60,8 +60,8 @@ setup(
     install_requires=REQUIRES,
     entry_points={
         'console_scripts': [
-            'prusa_link = prusa_link.__main__:main',
-            'prusa_link_install = installation.__main__:main',
+            'prusa_link = prusa.link.printer_adapter.__main__:main',
+            'prusa_link_install = prusa.link.installation.__main__:main',
             'prisa-link-web = prusa.link.web.__main__:main'
         ]
     }
