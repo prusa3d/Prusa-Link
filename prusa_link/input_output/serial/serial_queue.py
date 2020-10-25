@@ -255,17 +255,21 @@ class SerialQueue:
     # ---
 
     def _resend(self, count):
-        with self.write_lock:
-            # get the instructions newest first, they are going to reverse
-            # in the list
-            history = list(reversed(self.send_history))
+        if not 0 < count < len(self.send_history):
+            log.error("Impossible re-send request! Aborting...")
+            self._worst_case_scenario()
+        else:
+            with self.write_lock:
+                # get the instructions newest first, they are going to reverse
+                # in the list
+                history = list(reversed(self.send_history))
 
-            self.recovery_list.clear()
-            for instruction_from_history in history[:count]:
-                instruction = Instruction(instruction_from_history.message,
-                                          to_checksum=True,
-                                          data=instruction_from_history.data)
-                self.recovery_list.append(instruction)
+                self.recovery_list.clear()
+                for instruction_from_history in history[:count]:
+                    instruction = Instruction(instruction_from_history.message,
+                                              to_checksum=True,
+                                              data=instruction_from_history.data)
+                    self.recovery_list.append(instruction)
 
     def _confirmed(self, force=False):
         """
@@ -345,6 +349,7 @@ class SerialQueue:
                 # but has been sent, use the usual way
                 self.current_instruction.confirm(force=True)
                 self._teardown_output_capture()
+                self.current_instruction = None
                 self.next_instruction()
             while self.current_instruction is not None:
                 # obviously don't send the other ones,
