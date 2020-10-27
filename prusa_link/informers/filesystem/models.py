@@ -1,4 +1,5 @@
 import logging
+import weakref
 import os
 from enum import Enum
 from pathlib import Path
@@ -76,7 +77,7 @@ class InternalFileTree:
 
     @parent.setter
     def parent(self, parent: 'InternalFileTree'):
-        self._parent = parent
+        self._parent = weakref.ref(parent)
 
     def add_child(self, child: 'InternalFileTree'):
         self.children_dict[child.name] = child
