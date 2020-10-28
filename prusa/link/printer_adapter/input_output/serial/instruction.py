@@ -30,11 +30,6 @@ class Instruction:
         # If already sent, this will contain the sent bytes
         self.data = data
 
-        # M602 is generous, it gives us a second "OK"
-        # completely free of charge.
-        # This enables us to compensate for it
-        self.needs_two_okays = self.message.startswith("M602")
-
         # Event set when the write has been _confirmed by the printer
         self.confirmed_event = Event()
 
@@ -54,16 +49,11 @@ class Instruction:
 
     def confirm(self, force=False) -> bool:
         """
-        Didn't think a confirmation would need to fail, but it needs to
-        in some cases
+        Return False, if getting confirmed but not wanting to
         """
-        if self.needs_two_okays and not force:
-            self.needs_two_okays = False
-            return False
-        else:
-            self.time_to_confirm = time() - self.sent_at
-            self.confirmed_event.set()
-            return True
+        self.time_to_confirm = time() - self.sent_at
+        self.confirmed_event.set()
+        return True
 
     def sent(self):
         self.sent_event.set()
