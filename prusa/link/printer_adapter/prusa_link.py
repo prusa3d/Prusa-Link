@@ -216,7 +216,7 @@ class PrusaLink:
                               files=files.dict(exclude_none=True))
 
     def media_ejected(self, sender, root):
-        self.printer.event_cb(Event.MEDIUM_INSERTED, Source.FIRMWARE, root=root)
+        self.printer.event_cb(Event.MEDIUM_EJECTED, Source.FIRMWARE, root=root)
 
     def time_printing_updated(self, sender, time_printing):
         self.model.set_telemetry(
