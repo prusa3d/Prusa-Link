@@ -68,7 +68,7 @@ class SDCard(ThreadedUpdatable):
         self.state_manager = state_manager
 
         self.expecting_insertion = False
-        self.invalidated = False
+        self.invalidated = True
         self.last_updated = time()
 
         self.sd_state: SDState = SDState.UNSURE
