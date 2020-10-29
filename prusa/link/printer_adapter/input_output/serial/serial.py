@@ -8,6 +8,7 @@ import serial
 from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
+from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 
 LOG = get_settings().LOG
 TIME = get_settings().TIME
@@ -17,7 +18,8 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG.SERIAL)
 
 
-class Serial:
+class Serial(metaclass=MCSingleton):
+
     def __init__(self, serial_reader: SerialReader,
                  port="/dev/ttyAMA0", baudrate=115200, timeout=1,
                  write_timeout=0, connection_write_delay=10):

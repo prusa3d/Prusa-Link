@@ -8,6 +8,7 @@ from blinker import Signal
 from sortedcontainers import SortedKeyList
 
 from prusa.link.printer_adapter.default_settings import get_settings
+from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 
 LOG = get_settings().LOG
 
@@ -35,7 +36,7 @@ class RegexPairing:
         return self.__str__()
 
 
-class SerialReader:
+class SerialReader(metaclass=MCSingleton):
 
     def __init__(self):
         self.lock = Lock()

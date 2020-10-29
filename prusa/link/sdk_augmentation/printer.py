@@ -12,6 +12,7 @@ from prusa.connect.printer import const, Filesystem, InotifyHandler, \
     CommandArgs
 from prusa.link.printer_adapter.input_output.lcd_printer import LCDPrinter
 from prusa.link.printer_adapter.model import Model
+from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.sdk_augmentation.command import MyCommand
 
 log = getLogger("connect-printer")
@@ -19,7 +20,7 @@ log = getLogger("connect-printer")
 
 # TODO: rename, it is using the same name just because double underscores
 #  break otherwise
-class Printer(SDKPrinter):
+class Printer(SDKPrinter, metaclass=MCSingleton):
 
     def __init__(self,
                  lcd_printer: LCDPrinter,

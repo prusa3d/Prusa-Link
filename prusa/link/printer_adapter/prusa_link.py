@@ -2,14 +2,19 @@ import logging
 import threading
 from time import time
 
-from getmac import get_mac_address
 from requests import RequestException
 from serial import SerialException
 
+from prusa.connect.printer.const import Command as CommandType
 from prusa.connect.printer.const import Event, Source, State
+from prusa.link.printer_adapter.command_handlers.execute_gcode import \
+    ExecuteGcode
+from prusa.link.printer_adapter.command_handlers.pause_print import PausePrint
 from prusa.link.printer_adapter.command_handlers.reset_printer import \
     ResetPrinter
-from prusa.link.printer_adapter.command_runner import CommandRunner
+from prusa.link.printer_adapter.command_handlers.resume_print import ResumePrint
+from prusa.link.printer_adapter.command_handlers.start_print import StartPrint
+from prusa.link.printer_adapter.command_handlers.stop_print import StopPrint
 from prusa.link.printer_adapter.crotitel_cronu import CrotitelCronu
 from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.file_printer import FilePrinter
@@ -71,7 +76,7 @@ class PrusaLink:
 
         self.serial_queue = MonitoredSerialQueue(self.serial,
                                                  self.serial_reader)
-        self.serial_queue.serial_queue_failed.connect(self.serial_queue_failed)
+        MonitoredSerialQueue.get_instance().serial_queue_failed.connect(self.serial_queue_failed)
 
         self.lcd_printer = LCDPrinter(self.serial_queue)
 
@@ -81,6 +86,14 @@ class PrusaLink:
         self.printer = Printer.from_config_2(self.lcd_printer, self.model,
                                                CONN.CONNECT_CONFIG_PATH,
                                                printer_type, sn)
+
+        # Bind command handlers
+        self.printer.set_handler(CommandType.GCODE, self.execute_gcode)
+        self.printer.set_handler(CommandType.PAUSE_PRINT, self.pause_print)
+        # self.printer.set_handler(Command.RESET_PRINTER, self.reset_printer)
+        self.printer.set_handler(CommandType.RESUME_PRINT, self.resume_print)
+        self.printer.set_handler(CommandType.START_PRINT, self.start_print)
+        self.printer.set_handler(CommandType.STOP_PRINT, self.stop_print)
 
         self.telemetry_gatherer = TelemetryGatherer(self.serial_reader,
                                                     self.serial_queue,
@@ -142,12 +155,6 @@ class PrusaLink:
 
         self.ip_updater.start()
 
-        self.command_runner = CommandRunner(self.serial, self.serial_reader,
-                                            self.serial_queue,
-                                            self.printer,
-                                            self.state_manager,
-                                            self.file_printer, self.model)
-
         self.last_sent_telemetry = time()
 
         self.temp_ensurer = TempEnsurer(self.serial_reader, self.serial_queue)
@@ -160,7 +167,7 @@ class PrusaLink:
         self.telemetry_thread.start()
 
         self.sdk_loop_thread = threading.Thread(
-            target=self.sdk_loop(), name="sdk_loop")
+            target=self.sdk_loop(), name="sdk_loop", daemon=True)
         self.sdk_loop_thread.start()
 
         # Start this last, as it might start printing right away
@@ -171,7 +178,6 @@ class PrusaLink:
         self.telemetry_thread.join()
         self.storage.stop()
         self.lcd_printer.stop()
-        self.command_runner.stop()
         self.telemetry_gatherer.stop()
         self.ip_updater.stop()
         self.serial_queue.stop()
@@ -182,6 +188,26 @@ class PrusaLink:
         for thread in threading.enumerate():
             log.debug(thread)
         self.stopped_event.set()
+
+    # --- Command handlers ---
+
+    def execute_gcode(self, args):
+        return ExecuteGcode(args).run_command()
+
+    def pause_print(self, args):
+        return PausePrint(args).run_command()
+
+    def reset_printer(self, args):
+        return ResetPrinter(args).run_command()
+
+    def resume_print(self, args):
+        return ResumePrint(args).run_command()
+
+    def start_print(self, args):
+        return StartPrint(args).run_command()
+
+    def stop_print(self, args):
+        return StopPrint(args).run_command()
 
     # --- Signal handlers ---
 
@@ -227,8 +253,7 @@ class PrusaLink:
             new_telemetry=Telemetry(time_printing=time_printing))
 
     def serial_queue_failed(self, sender):
-        reset_command = ResetPrinter(self.serial_queue, self.serial_reader,
-                                     self.serial)
+        reset_command = ResetPrinter()
         self.state_manager.expect_change(StateChange(
             to_states={State.ERROR: Source.WUI}))
         self.state_manager.error()

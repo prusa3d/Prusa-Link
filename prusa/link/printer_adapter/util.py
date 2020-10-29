@@ -82,3 +82,10 @@ def persist_file(file: typing.TextIO):
 
 def get_gcode(line):
     return line.split(";", 1)[0].strip()
+
+
+def get_should_wait(should_wait=None):
+    if should_wait is None:
+        return lambda: True
+    else:
+        return should_wait
