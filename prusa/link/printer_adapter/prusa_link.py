@@ -23,7 +23,7 @@ from prusa.link.printer_adapter.informers.filesystem.storage_controller import \
 from prusa.link.printer_adapter.informers.telemetry_gatherer import \
     TelemetryGatherer
 from prusa.link.printer_adapter.informers.getters import get_serial_number, \
-    get_uuid, get_printer_type
+    get_printer_type
 from prusa.link.printer_adapter.input_output.lcd_printer import LCDPrinter
 from prusa.link.printer_adapter.input_output.serial.serial_queue \
     import MonitoredSerialQueue
@@ -75,8 +75,6 @@ class PrusaLink:
         self.lcd_printer = LCDPrinter(self.serial_queue)
 
         sn = get_serial_number(self.serial_queue)
-        uuid = get_uuid()
-        mac = get_mac_address()
         printer_type = get_printer_type(self.serial_queue)
 
         self.printer = Printer.from_config_2(self.lcd_printer, self.model,
@@ -144,8 +142,10 @@ class PrusaLink:
 
         self.last_sent_telemetry = time()
 
-        self.info_sender = InfoSender(self.serial_reader, self.printer)
-        self.info_sender.send_info()
+        self.info_sender = InfoSender(self.serial_queue, self.serial_reader,
+                                      self.printer, self.model,
+                                      self.lcd_printer)
+        self.info_sender.insist_on_sending_info()
 
         # self.temp_ensurer = TempEnsurer(self.serial_reader, self.serial_queue)
         # self.temp_ensurer.start()
