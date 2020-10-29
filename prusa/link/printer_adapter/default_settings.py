@@ -26,6 +26,7 @@ class IntervalSettings(BaseModel):
     TELEMETRY_INTERVAL = 1
     TELEMETRY_IDLE_INTERVAL = 0.25
     TELEMETRY_PRINTING_INTERVAL = 1
+    SLOW_TELEMETRY = 10  # for values, that aren't that important
     IP_UPDATE_INTERVAL = 2
     QUIT_INTERVAL = 0.1
     SD_INTERVAL = 0.1
