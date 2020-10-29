@@ -34,6 +34,7 @@ from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.model_classes import Telemetry, \
     FileTree
 from prusa.link.printer_adapter.structures.constants import PRINTING_STATES
+from prusa.link.printer_adapter.temp_ensurer import TempEnsurer
 from prusa.link.printer_adapter.util import run_slowly_die_fast
 from prusa.link.sdk_augmentation.printer import Printer
 
@@ -147,8 +148,8 @@ class PrusaLink:
                                       self.lcd_printer)
         self.info_sender.insist_on_sending_info()
 
-        # self.temp_ensurer = TempEnsurer(self.serial_reader, self.serial_queue)
-        # self.temp_ensurer.start()
+        self.temp_ensurer = TempEnsurer(self.serial_reader, self.serial_queue)
+        self.temp_ensurer.start()
 
         # After the initial states are distributed throughout the model,
         # let's open ourselves to some commands from connect
@@ -173,7 +174,7 @@ class PrusaLink:
         self.ip_updater.stop()
         self.serial_queue.stop()
         self.serial.stop()
-        # self.temp_ensurer.stop()
+        self.temp_ensurer.stop()
 
         log.debug("Remaining threads, that could prevent us from quitting:")
         for thread in threading.enumerate():

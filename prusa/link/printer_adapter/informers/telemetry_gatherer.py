@@ -45,7 +45,7 @@ class TelemetryGatherer(ThreadedUpdatable):
 
         # G-code, match regexp, handler, to_execute()
         self.telemetry_instructions = [
-            ("M105", TEMPERATURE_REGEX, self.temperature_result, lambda: True),
+            # ("M105", TEMPERATURE_REGEX, self.temperature_result, lambda: True),
             ("PRUSA FAN", FAN_RPM_REGEX, self.fan_result, lambda: True),
 
             # Sadly, we need Z height while printing
