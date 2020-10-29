@@ -19,7 +19,9 @@ from prusa.link.printer_adapter.structures.regular_expressions import \
     TEMPERATURE_REGEX, POSITION_REGEX, PRINT_TIME_REGEX, PRINT_INFO_REGEX, \
     HEATING_REGEX, HEATING_HOTEND_REGEX, FAN_RPM_REGEX, PERCENT_REGEX
 from prusa.link.printer_adapter.structures.model_classes import Telemetry
-from prusa.link.printer_adapter.structures.constants import PRINTING_STATES
+from prusa.link.printer_adapter.structures.constants import PRINTING_STATES, \
+    BASE_STATES
+from prusa.link.printer_adapter.structures.ticker import Ticker
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 
 TIME = get_settings().TIME
@@ -43,23 +45,28 @@ class TelemetryGatherer(ThreadedUpdatable):
         self.serial_reader = serial_reader
         self.serial_queue = serial_queue
 
+        self.slow_ticker = Ticker(TIME.SLOW_TELEMETRY)
+
         # G-code, match regexp, handler, to_execute()
         self.telemetry_instructions = [
-            # ("M105", TEMPERATURE_REGEX, self.temperature_result, lambda: True),
+            # ("M105", TEMPERATURE_REGEX, self.temperature_result, lambda: True)
             ("PRUSA FAN", FAN_RPM_REGEX, self.fan_result, lambda: True),
 
             # Sadly, we need Z height while printing
-            ("M114", POSITION_REGEX, self.position_result, lambda: True),
+            ("M114", POSITION_REGEX, self.position_result,
+             self.ask_for_positions),
             
             # State_manager depends on this one for detecting printing when
             # we start after the print has been started.
             ("M27", PRINT_TIME_REGEX, self.print_time_result, lambda: True),
 
-            ("M221", PERCENT_REGEX, self.flow_rate_result, lambda: True),
-            ("M220", PERCENT_REGEX, self.speed_multiplier_result, lambda: True),
+            ("M221", PERCENT_REGEX, self.flow_rate_result,
+             self.slow_ticker.should_tick),
+            ("M220", PERCENT_REGEX, self.speed_multiplier_result,
+             self.slow_ticker.should_tick),
 
             ("M73", PRINT_INFO_REGEX, self.print_info_result,
-             lambda: self.model.state in PRINTING_STATES),
+             self.ask_for_print_info),
         ]
 
         regex_handlers = {
@@ -75,6 +82,14 @@ class TelemetryGatherer(ThreadedUpdatable):
         self.current_telemetry = Telemetry()
 
         super().__init__()
+
+    def ask_for_print_info(self):
+        return self.model.state in PRINTING_STATES and \
+               self.slow_ticker.should_tick()
+
+    def ask_for_positions(self):
+        return self.model.state not in PRINTING_STATES or \
+               self.slow_ticker.should_tick()
 
     def _update(self):
         for gcode, regexp, result_handler, to_execute \
