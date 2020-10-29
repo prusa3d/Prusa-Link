@@ -4,12 +4,13 @@ from typing import Optional
 from prusa.connect.printer.const import State
 from prusa.link.printer_adapter.informers.filesystem.models import \
     InternalFileTree, SDState
+from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.structures.model_classes import FileTree, \
     Telemetry, PrinterInfo
 from prusa.link.printer_adapter.structures.constants import PRINTING_STATES
 
 
-class Model:
+class Model(metaclass=MCSingleton):
     """
     This class should collect every bit of info from all the informer classes
     Some values are reset upon reading, other, more state oriented should stay
