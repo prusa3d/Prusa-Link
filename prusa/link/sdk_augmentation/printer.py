@@ -32,6 +32,7 @@ class Printer(SDKPrinter):
         self.__sn = sn
         self.__fingerprint = sha256(sn.encode()).hexdigest()
         self.firmware = None
+        self.nozzle_diameter = None
         self.network_info = {
             "lan_mac": None,
             "lan_ipv4": None,
@@ -139,4 +140,5 @@ class Printer(SDKPrinter):
         info = super().get_info(args)
         info["files"] = self.model.file_tree.to_api_file_tree().dict(
             exclude_none=True)
+        info["nozzle_diameter"] = self.nozzle_diameter
         return info
