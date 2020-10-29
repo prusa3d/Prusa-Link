@@ -2,7 +2,7 @@ import logging
 from threading import Event
 from time import sleep, time
 
-from prusa.link.printer_adapter.command import ResponseCommand, Command
+from prusa.link.printer_adapter.command import Command
 from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.input_output.serial.serial import Serial
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
@@ -35,12 +35,6 @@ class ResetPrinter(Command):
     if timeout < TIME.PRINTER_BOOT_WAIT or timeout < SQ.SERIAL_QUEUE_TIMEOUT:
         raise RuntimeError("Cannot have smaller timeout than what the printer "
                            "needs to boot.")
-
-    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
-                 serial: Serial):
-        super().__init__(serial_queue)
-        self.serial_reader = serial_reader
-        self.serial = serial
 
     def _run_command(self):
         if PI.RESET_PIN == 23:
@@ -77,7 +71,3 @@ class ResetPrinter(Command):
             self.failed("Your printer has ignored the reset signal, your RPi "
                         "is broken or you have configured a wrong pin,"
                         "or our serial reading component broke..")
-
-
-class ResetPrinterResponse(ResponseCommand, ResetPrinter):
-    ...

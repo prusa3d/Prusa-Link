@@ -10,6 +10,7 @@ from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.model_classes import NetworkInfo
 from prusa.link.printer_adapter.structures.regular_expressions import SN_REGEX, \
     PRINTER_TYPE_REGEX, FW_REGEX, NOZZLE_REGEX
+from prusa.link.printer_adapter.util import get_should_wait
 
 PRINTER_TYPES = {
     300: PrinterType.I3MK3,
@@ -17,13 +18,6 @@ PRINTER_TYPES = {
     302: PrinterType.I3MK3S,
     20302: PrinterType.I3MK3S,
 }
-
-
-def get_should_wait(should_wait=None):
-    if should_wait is None:
-        return lambda: True
-    else:
-        return should_wait
 
 
 def get_serial_number(serial_queue: SerialQueue, should_wait=None):

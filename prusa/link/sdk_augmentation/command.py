@@ -1,7 +1,7 @@
 from multiprocessing import Event
-from typing import Optional, List, Any
+from threading import Thread
 
-from prusa.connect.printer import Command, const
+from prusa.connect.printer import Command
 from prusa.connect.printer.models import EventCallback
 
 
@@ -11,20 +11,13 @@ class MyCommand(Command):
         super().__init__(event_cb)
         self.new_event = Event()
 
-    def accept(self,
-               command_id: int,
-               command: str,
-               args: Optional[List[Any]] = None):
-        super().accept(command_id, command, args)
-        self.new_event.set()
+        # Can't start a new thread for every command.
+        # So let's recycle one in here
+        self.command_thread = Thread(target=self.handle_commands,
+                                     name="command_runner", daemon=True)
+        self.command_thread.start()
 
-    def reject(self, source: const.Source, reason: str, **kwargs):
-        super().reject(source, reason, **kwargs)
-        self.new_event.clear()
-
-    def finish(self,
-               source: const.Source,
-               event: const.Event = None,
-               **kwargs):
-        super().finish(source, event, **kwargs)
-        self.new_event.clear()
+    def handle_commands(self):
+        while True:
+            if self.new_cmd_evt.wait():
+                self()

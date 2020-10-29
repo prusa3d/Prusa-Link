@@ -17,6 +17,7 @@ from prusa.link.printer_adapter.util import run_slowly_die_fast
 from .instruction import Instruction
 from .is_planner_fed import IsPlannerFed
 from .serial_reader import SerialReader
+from ...structures.mc_singleton import MCSingleton
 
 LOG = get_settings().LOG
 SQ = get_settings().SQ
@@ -31,7 +32,7 @@ class BadChecksumUseError(Exception):
     ...
 
 
-class SerialQueue:
+class SerialQueue(metaclass=MCSingleton):
 
     def __init__(self, serial: Serial, serial_reader: SerialReader,
                  rx_size=SQ.RX_SIZE):

@@ -17,6 +17,7 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_instruction, wait_for_instruction
 from prusa.link.printer_adapter.print_stats import PrintStats
+from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.structures.regular_expressions import \
     POWER_PANIC_REGEX, PRINTER_BOOT_REGEX, ERROR_REGEX, RESUMED_REGEX
 from prusa.link.printer_adapter.util import get_clean_path, ensure_directory, \
@@ -31,14 +32,12 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG.FILE_PRINTER)
 
 
-class FilePrinter:
+class FilePrinter(metaclass=MCSingleton):
 
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader):
         self.new_print_started_signal = Signal()
         self.print_ended_signal = Signal()
 
-        # I'd like centralised signals more, as now i have to pass everything
-        # explicitly
         self.time_printing_signal = Signal()
 
         self.tmp_file_path = get_clean_path(PATH.TMP_FILE)
