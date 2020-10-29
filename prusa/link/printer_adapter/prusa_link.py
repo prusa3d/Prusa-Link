@@ -100,6 +100,10 @@ class PrusaLink:
 
         self.crotitel_cronu = CrotitelCronu(self.state_manager)
 
+        self.info_sender = InfoSender(self.serial_queue, self.serial_reader,
+                                      self.printer, self.model,
+                                      self.lcd_printer)
+
         # Write the initial state to the model
         self.model.state = self.state_manager.get_state()
 
@@ -124,6 +128,9 @@ class PrusaLink:
         # again, let's do the first one manually
         self.ip_updater.update()
 
+        # Before starting anything, let's write what we gathered to connect
+        self.info_sender.insist_on_sending_info()
+
         # Start individual informer threads after updating manually, so nothing
         # will race with itself
         self.telemetry_gatherer.start()
@@ -142,11 +149,6 @@ class PrusaLink:
                                             self.file_printer, self.model)
 
         self.last_sent_telemetry = time()
-
-        self.info_sender = InfoSender(self.serial_queue, self.serial_reader,
-                                      self.printer, self.model,
-                                      self.lcd_printer)
-        self.info_sender.insist_on_sending_info()
 
         self.temp_ensurer = TempEnsurer(self.serial_reader, self.serial_queue)
         self.temp_ensurer.start()
