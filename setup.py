@@ -46,7 +46,7 @@ setup(
     maintainer_email="tomas.jozifek@prusa3d.cz",
     url="https://github.com/prusa3d/Prusa-Link",
     packages=find_namespace_packages(),
-    package_data={'installation.data_files':
+    package_data={'prusa.link.installation.data_files':
                      ['prusa-link.service']},
     long_description=doc(),
     long_description_content_type="text/markdown",
