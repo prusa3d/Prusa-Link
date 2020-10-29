@@ -12,7 +12,7 @@ from pkg_resources import resource_filename
 # chmod bits for 644
 RW_R_R = S_IREAD | S_IWRITE | S_IRGRP | S_IROTH
 
-MODULE_PATH_TO_DATA_FILES = "installation.data_files"
+MODULE_PATH_TO_DATA_FILES = "prusa.link.installation.data_files"
 
 
 def file_copy(full_path_to, file_name, chmod_bits=None,
@@ -39,7 +39,6 @@ def install():
     print("Povoluji spouštění při startu a spouštím Prusa Link.")
     subprocess.run(["systemctl", "daemon-reload"])
     subprocess.run(["systemctl", "enable", "prusa-link.service"])
-    subprocess.run(["systemctl", "enable", "pigpiod.service"])
     subprocess.run(["systemctl", "restart", "prusa-link.service"])
 
     print("Hotovo")
