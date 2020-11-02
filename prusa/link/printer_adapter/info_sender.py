@@ -79,7 +79,7 @@ class InfoSender:
     def _try_sending_info(self):
         try:
             self.update_info()
-            self.printer.event_cb(**self.printer.get_info([]))
+            self.printer.event_cb(**self.printer.get_info())
         except:
             log.exception("Failed to update info")
         finally:

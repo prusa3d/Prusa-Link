@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from prusa.connect.printer.const import State, Source
-from prusa.link.printer_adapter.command import Command
+from prusa.link.printer_adapter.command import CommandHandler
 from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.informers.filesystem.models import \
     InternalFileTree
@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG.COMMANDS)
 
 
-class StartPrint(Command):
+class StartPrint(CommandHandler):
     command_name = "start print"
 
     def _run_command(self):
@@ -33,10 +33,10 @@ class StartPrint(Command):
             return
         # TODO: command_id retrieved in a really bad way
         self.state_manager.expect_change(
-            StateChange(self.printer.command.command_id,
+            StateChange(self.caller.command_id,
                         to_states={State.PRINTING: Source.CONNECT}))
 
-        file_path_string = self.args[0]
+        file_path_string = self.caller.args[0]
         path = Path(file_path_string)
         parts = path.parts
         log.info(parts)

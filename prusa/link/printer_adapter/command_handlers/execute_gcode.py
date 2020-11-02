@@ -1,7 +1,7 @@
 import logging
 
 from prusa.connect.printer.const import State, Source
-from prusa.link.printer_adapter.command import Command
+from prusa.link.printer_adapter.command import CommandHandler
 from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.informers.state_manager import StateChange
 from prusa.link.printer_adapter.input_output.serial.helpers import \
@@ -15,13 +15,13 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG.COMMANDS)
 
 
-class ExecuteGcode(Command):
+class ExecuteGcode(CommandHandler):
     command_name = "execute_gcode"
 
     def _run_command(self):
 
-        gcode = self.args[0]
-        force = self.args[1]
+        gcode = self.caller.args[0]
+        force = self.caller.args[1]
 
         if force:
             log.debug(f"Force sending gcode: '{gcode}'")

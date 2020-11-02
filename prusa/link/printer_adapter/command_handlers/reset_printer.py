@@ -2,13 +2,8 @@ import logging
 from threading import Event
 from time import sleep, time
 
-from prusa.link.printer_adapter.command import Command
+from prusa.link.printer_adapter.command import Command, CommandHandler
 from prusa.link.printer_adapter.default_settings import get_settings
-from prusa.link.printer_adapter.input_output.serial.serial import Serial
-from prusa.link.printer_adapter.input_output.serial.serial_queue import \
-    SerialQueue
-from prusa.link.printer_adapter.input_output.serial.serial_reader import\
-    SerialReader
 from prusa.link.printer_adapter.structures.regular_expressions import \
     PRINTER_BOOT_REGEX
 
@@ -71,3 +66,7 @@ class ResetPrinter(Command):
             self.failed("Your printer has ignored the reset signal, your RPi "
                         "is broken or you have configured a wrong pin,"
                         "or our serial reading component broke..")
+
+
+class ResetPrinterHandler(CommandHandler, ResetPrinter):
+    ...

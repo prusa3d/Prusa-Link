@@ -11,7 +11,7 @@ from prusa.link.printer_adapter.command_handlers.execute_gcode import \
     ExecuteGcode
 from prusa.link.printer_adapter.command_handlers.pause_print import PausePrint
 from prusa.link.printer_adapter.command_handlers.reset_printer import \
-    ResetPrinter
+    ResetPrinter, ResetPrinterHandler
 from prusa.link.printer_adapter.command_handlers.resume_print import ResumePrint
 from prusa.link.printer_adapter.command_handlers.start_print import StartPrint
 from prusa.link.printer_adapter.command_handlers.stop_print import StopPrint
@@ -191,23 +191,23 @@ class PrusaLink:
 
     # --- Command handlers ---
 
-    def execute_gcode(self, args):
-        return ExecuteGcode(args).run_command()
+    def execute_gcode(self, caller):
+        return ExecuteGcode(caller).run_command()
 
-    def pause_print(self, args):
-        return PausePrint(args).run_command()
+    def pause_print(self, caller):
+        return PausePrint(caller).run_command()
 
-    def reset_printer(self, args):
-        return ResetPrinter(args).run_command()
+    def reset_printer(self, caller):
+        return ResetPrinterHandler(caller).run_command()
 
-    def resume_print(self, args):
-        return ResumePrint(args).run_command()
+    def resume_print(self, caller):
+        return ResumePrint(caller).run_command()
 
-    def start_print(self, args):
-        return StartPrint(args).run_command()
+    def start_print(self, caller):
+        return StartPrint(caller).run_command()
 
-    def stop_print(self, args):
-        return StopPrint(args).run_command()
+    def stop_print(self, caller):
+        return StopPrint(caller).run_command()
 
     # --- Signal handlers ---
 

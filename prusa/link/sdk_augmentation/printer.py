@@ -20,7 +20,7 @@ log = getLogger("connect-printer")
 
 # TODO: rename, it is using the same name just because double underscores
 #  break otherwise
-class Printer(SDKPrinter, metaclass=MCSingleton):
+class Printer(SDKPrinter):
 
     def __init__(self,
                  lcd_printer: LCDPrinter,
@@ -53,7 +53,7 @@ class Printer(SDKPrinter, metaclass=MCSingleton):
         self.queue = Queue()
 
         self.command = MyCommand(self.event_cb)
-        self.set_handler(const.Command.SEND_INFO, self.get_info)
+        self.set_handler(const.Command.SEND_INFO, self.send_info)
         self.set_handler(const.Command.SEND_FILE_INFO, self.get_file_info)
 
         self.fs = Filesystem(sep=os.sep, event_cb=self.event_cb)
@@ -137,8 +137,8 @@ class Printer(SDKPrinter, metaclass=MCSingleton):
 
         return res
 
-    def get_info(self, args: CommandArgs) -> Dict[str, Any]:
-        info = super().get_info(args)
+    def get_info(self) -> Dict[str, Any]:
+        info = super().get_info()
         info["files"] = self.model.file_tree.to_api_file_tree().dict(
             exclude_none=True)
         info["nozzle_diameter"] = self.nozzle_diameter
