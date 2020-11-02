@@ -4,6 +4,7 @@ from typing import Optional
 from prusa.connect.printer.const import State
 from prusa.link.printer_adapter.informers.filesystem.models import \
     InternalFileTree, SDState
+from prusa.link.printer_adapter.informers.ip_updater import NO_IP
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.structures.model_classes import FileTree, \
     Telemetry, PrinterInfo
@@ -25,7 +26,7 @@ class Model(metaclass=MCSingleton):
         # so it resets upon being read
         self._telemetry: Telemetry = Telemetry()
         self._state: Optional[State] = None
-        self._local_ip: Optional[str] = None
+        self._local_ip: Optional[str] = NO_IP
         self._job_id: Optional[int] = None
         self._file_tree: Optional[InternalFileTree] = None
         self._sd_state: Optional[SDState] = None
@@ -75,8 +76,6 @@ class Model(metaclass=MCSingleton):
     @property
     def local_ip(self):
         with self.lock:
-            assert self._local_ip is not None, \
-                "You read ip too soon. No ip is known yet."
             return self._local_ip
 
     @local_ip.setter
