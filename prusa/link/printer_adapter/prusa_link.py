@@ -215,11 +215,13 @@ class PrusaLink:
         self.model.set_telemetry(telemetry)
 
     def ip_updated(self, sender, local_ip):
+        # If the value changed, update SDK
+        if self.model.local_ip != local_ip and local_ip != NO_IP:
+            self.info_sender.try_sending_info()
+
         self.model.local_ip = local_ip
 
         if local_ip is not NO_IP:
-            self.info_sender.try_sending_info()
-
             self.lcd_printer.enqueue_message(f"{local_ip}", duration=5)
         else:
             self.lcd_printer.enqueue_message(f"WiFi disconnected", duration=3)
