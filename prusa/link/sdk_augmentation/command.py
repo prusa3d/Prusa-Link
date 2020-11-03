@@ -9,7 +9,6 @@ class MyCommand(Command):
 
     def __init__(self, event_cb: EventCallback):
         super().__init__(event_cb)
-        self.new_event = Event()
 
         # Can't start a new thread for every command.
         # So let's recycle one in here

@@ -17,7 +17,7 @@ from prusa.link.printer_adapter.util import run_slowly_die_fast
 from .instruction import Instruction
 from .is_planner_fed import IsPlannerFed
 from .serial_reader import SerialReader
-from ...structures.mc_singleton import MCSingleton
+from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 
 LOG = get_settings().LOG
 SQ = get_settings().SQ
