@@ -20,51 +20,16 @@ log = getLogger("connect-printer")
 
 # TODO: rename, it is using the same name just because double underscores
 #  break otherwise
-class Printer(SDKPrinter):
+class MyPrinter(SDKPrinter, metaclass=MCSingleton):
 
-    def __init__(self,
-                 lcd_printer: LCDPrinter,
-                 model: Model,
-                 type_: const.PrinterType,
-                 sn: str,
-                 server: str,
-                 token: str = None,):
-        self.type = type_
-        self.__sn = sn
-        self.__fingerprint = sha256(sn.encode()).hexdigest()
-        self.firmware = None
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.lcd_printer = LCDPrinter.get_instance()
+        self.model = Model.get_instance()
         self.nozzle_diameter = None
-        self.network_info = {
-            "lan_mac": None,
-            "lan_ipv4": None,
-            "lan_ipv6": None,
-            "wifi_mac": None,
-            "wifi_ipv4": None,
-            "wifi_ipv6": None,
-            "wifi_ssid": None,
-        }
-
-        self.__state = const.State.BUSY
-        self.job_id = None
-
-        self.server = server
-        self.token = token
-        self.conn = Session()
-        self.queue = Queue()
-
-        self.command = MyCommand(self.event_cb)
-        self.set_handler(const.Command.SEND_INFO, self.send_info)
-        self.set_handler(const.Command.SEND_FILE_INFO, self.get_file_info)
-
-        self.fs = Filesystem(sep=os.sep, event_cb=self.event_cb)
-        self.inotify_handler = InotifyHandler(self.fs)
-
-        self.lcd_printer = lcd_printer
-        self.model = model
 
     @classmethod
-    def from_config_2(cls, lcd_printer: LCDPrinter, model: Model,
-                      path: str, type_: const.PrinterType, sn: str):
+    def from_config_2(cls, path: str, type_: const.PrinterType, sn: str):
         """Load lan_settings.ini config from `path` and create Printer instance
            from it.
         """
@@ -79,7 +44,7 @@ class Printer(SDKPrinter):
         if config['connect'].getboolean('tls'):
             protocol = "https"
         server = f"{protocol}://{connect_host}:{connect_port}"
-        printer = cls(lcd_printer, model, type_, sn, server, token)
+        printer = cls(type_, sn, server, token, MyCommand)
         return printer
 
     def parse_command(self, res):
@@ -88,43 +53,6 @@ class Printer(SDKPrinter):
         When response from connect is command (HTTP Status: 200 OK), it
         will set command object.
         """
-        # TODO: disgraceful, workaround as phu
-        forced = ("Force" in res.headers and res.headers["Force"] == "1")
-
-        if res.status_code == 200:
-            command_id: Optional[int] = None
-            try:
-                command_id = int(res.headers.get("Command-Id"))
-            except (TypeError, ValueError):
-                log.error("Invalid Command-Id header: %s",
-                          res.headers.get("Command-Id"))
-                self.event_cb(const.Event.REJECTED,
-                              const.Source.CONNECT,
-                              reason="Invalid Command-Id header")
-                return res
-
-            content_type = res.headers.get("content-type")
-            log.debug("parse_command res: %s", res.text)
-            try:
-                if content_type == "application/json":
-                    data = res.json()
-                    if self.command.check_state(command_id):
-                        self.command.accept(command_id,
-                                            data.get("command", ""),
-                                            data.get("args"))
-                elif content_type == "text/x.gcode":
-                    if self.command.check_state(command_id):
-                        self.command.accept(command_id,
-                                            const.Command.GCODE.value,
-                                            [res.text, forced])
-                else:
-                    raise ValueError("Invalid command content type")
-            except Exception as e:  # pylint: disable=broad-except
-                log.exception("")
-                self.event_cb(const.Event.REJECTED,
-                              const.Source.CONNECT,
-                              command_id=command_id,
-                              reason=str(e))
 
         if res.status_code == 400:
             self.lcd_printer.enqueue_400()
@@ -135,11 +63,12 @@ class Printer(SDKPrinter):
         elif res.status_code == 503:
             self.lcd_printer.enqueue_503()
 
+        res = super().parse_command(res)
+
         return res
 
     def get_info(self) -> Dict[str, Any]:
         info = super().get_info()
-        info["files"] = self.model.file_tree.to_api_file_tree().dict(
-            exclude_none=True)
         info["nozzle_diameter"] = self.nozzle_diameter
+        info["files"] = self.fs.to_dict()
         return info
