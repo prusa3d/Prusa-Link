@@ -2,7 +2,7 @@ import logging
 from threading import Thread
 from time import sleep
 
-from prusa.link.sdk_augmentation.printer import Printer
+from prusa.link.sdk_augmentation.printer import MyPrinter
 from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.informers.getters import get_network_info, \
     get_firmware_version, get_nozzle_diameter
@@ -25,7 +25,7 @@ log.setLevel(LOG.INFO_SENDER)
 class InfoSender:
 
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
-                 printer: Printer, model: Model, lcd_printer: LCDPrinter):
+                 printer: MyPrinter, model: Model, lcd_printer: LCDPrinter):
         self.printer = printer
         self.serial_reader = serial_reader
         self.serial_queue = serial_queue

@@ -17,13 +17,13 @@ INITIALISING state
 
 import logging
 import re
+from enum import Enum
 from time import time
+from typing import Optional
 
 from blinker import Signal
 
 from prusa.link.printer_adapter.default_settings import get_settings
-from prusa.link.printer_adapter.informers.filesystem.models import SDState, \
-    InternalFileTree
 from prusa.link.printer_adapter.informers.state_manager import StateManager
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
     SerialQueue
@@ -31,12 +31,12 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     wait_for_instruction, enqueue_matchable, enqueue_collecting
-from prusa.link.printer_adapter.structures.model_classes import FileType
 from prusa.link.printer_adapter.structures.regular_expressions import \
     SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX, \
     SD_EJECTED_REGEX
 from prusa.link.printer_adapter.structures.constants import PRINTING_STATES
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
+from prusa.link.sdk_augmentation.file import SDFile
 
 LOG = get_settings().LOG
 TIME = get_settings().TIME
@@ -45,10 +45,17 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG.SD_CARD)
 
 
+class SDState(Enum):
+    PRESENT = "PRESENT"
+    INITIALISING = "INITIALISING"
+    UNSURE = "UNSURE"
+    ABSENT = "ABSENT"
+
+
 class SDCard(ThreadedUpdatable):
     thread_name = "sd_updater"
 
-    # Cycle fast, re-scan on events or slowly
+    # Cycle fast, but re-scan only on events or in big intervals
     update_interval = TIME.SD_INTERVAL
 
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
@@ -56,8 +63,8 @@ class SDCard(ThreadedUpdatable):
 
         self.tree_updated_signal = Signal()  # kwargs: tree: FileTree
         self.state_changed_signal = Signal()  # kwargs: sd_state: SDState
-        self.inserted_signal = Signal()  # kwargs: root: str, files: FileTree
-        self.ejected_signal = Signal()  # kwargs: root: str
+        self.sd_mounted_signal = Signal()  # kwargs: files: SDFile
+        self.sd_unmounted_signal = Signal()
 
         self.serial_reader = serial_reader
         self.serial_reader.add_handler(
@@ -72,6 +79,8 @@ class SDCard(ThreadedUpdatable):
         self.last_updated = time()
 
         self.sd_state: SDState = SDState.UNSURE
+
+        self.files: Optional[SDFile] = None
 
         super().__init__()
 
@@ -89,12 +98,12 @@ class SDCard(ThreadedUpdatable):
         self.last_updated = time()
         self.invalidated = False
 
-        self.file_tree = self.construct_file_tree()
+        self.files = self.construct_file_tree()
 
         # If we do not know the sd state and no files were found,
         # check the SD presence
         if self.sd_state == SDState.UNSURE:
-            if self.file_tree:
+            if self.files:
                 self.sd_state_changed(SDState.PRESENT)
             else:
                 self.decide_presence()
@@ -102,14 +111,13 @@ class SDCard(ThreadedUpdatable):
         if self.sd_state == SDState.INITIALISING:
             self.sd_state_changed(SDState.PRESENT)
 
-        self.tree_updated_signal.send(self, tree=self.file_tree)
+        self.tree_updated_signal.send(self, tree=self.files)
 
     def construct_file_tree(self):
         if self.sd_state == SDState.ABSENT:
             return None
 
-        tree = InternalFileTree(name="SD Card", file_type=FileType.MOUNT,
-                                ro=True, mounted_at="/")
+        tree = SDFile(name="SD Card", is_dir=True, ro=True)
         instruction = enqueue_collecting(self.serial_queue, "M20",
                                          begin_regex=BEGIN_FILES_REGEX,
                                          capture_regex=FILE_PATH_REGEX,
@@ -141,16 +149,15 @@ class SDCard(ThreadedUpdatable):
         log.debug(f"SD state changed from {self.sd_state} to "
                   f"{new_state}")
 
-        if self.sd_state == SDState.INITIALISING and \
+        if self.sd_state in {SDState.INITIALISING, SDState.UNSURE} and \
                 new_state == SDState.PRESENT:
             log.debug("SD Card inserted")
-            self.inserted_signal.send(self, root=self.file_tree.full_path,
-                                      files=self.file_tree.to_api_file_tree())
+            self.sd_mounted_signal.send(self, files=self.files)
 
         elif self.sd_state == SDState.PRESENT and \
                 new_state in {SDState.ABSENT, SDState.INITIALISING}:
             log.debug("SD Card removed")
-            self.ejected_signal.send(self, root=self.file_tree.full_path)
+            self.sd_unmounted_signal.send(self)
 
         self.sd_state = new_state
         self.state_changed_signal.send(self, sd_state=self.sd_state)

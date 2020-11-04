@@ -1,13 +1,12 @@
 import logging
 import os
 import select
-from typing import Dict, Set
+from typing import Set
 
 from blinker import Signal
 
 from prusa.link.printer_adapter.default_settings import get_settings
-from prusa.link.printer_adapter.informers.filesystem.models import MountPoint
-from prusa.link.printer_adapter.updatable import Updatable
+from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 from prusa.link.printer_adapter.util import get_clean_path, ensure_directory
 
 LOG = get_settings().LOG
@@ -18,7 +17,7 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG.MOUNTPOINT)
 
 
-class Mounts(Updatable):
+class Mounts(ThreadedUpdatable):
     """
     This module is the base for modules tracking mounting and unmounting of
     supported mountpints
@@ -29,8 +28,8 @@ class Mounts(Updatable):
     def __init__(self):
         super().__init__()
 
-        self.mounted_signal = Signal()
-        self.unmounted_signal = Signal()
+        self.mounted_signal = Signal()  # kwargs = path: str
+        self.unmounted_signal = Signal()  # kwargs = path: str
 
         self.blacklisted_paths = self._get_clean_paths(MOUNT.BLACKLISTED_PATHS)
         self.blacklisted_names = MOUNT.BLACKLISTED_NAMES
@@ -48,26 +47,21 @@ class Mounts(Updatable):
         log.debug(f"Configured mounpoints: {self.configured_mounts}")
 
         self.mounted_set = set()
-        self.mounted_dict: Dict[str, MountPoint] = {}
 
     def _update(self):
         # Add non mount directories to the mounts
-        new_mount_dict = self.get_mountpoints()
+        new_mount_set = self.get_mountpoints()
 
-        new_mount_set = set(new_mount_dict.keys())
         added, removed = self.get_differences(new_mount_set)
 
         for path in added:
             log.info(f"Newly mounting {path}")
-            mount_point = new_mount_dict[path]
-            self.mounted_signal.send(self, mount_point=mount_point)
+            self.mounted_signal.send(self, path=path)
 
         for path in removed:
             log.info(f"Unmounted {path}")
-            mount_point = self.mounted_dict[path]
-            self.unmounted_signal.send(self, mount_point=mount_point)
+            self.unmounted_signal.send(self, path=path)
 
-        self.mounted_dict = new_mount_dict
         self.mounted_set = new_mount_set
 
     @staticmethod
@@ -130,6 +124,8 @@ class FSMounts(Mounts):
     """
 
     paths_to_mount = MOUNT.MOUNTPOINTS
+    thread_name = "fs_mounts_thread"
+    update_interval = 0
 
     def __init__(self):
         super().__init__()
@@ -149,24 +145,20 @@ class FSMounts(Mounts):
             self.force_update = False
 
             self.mtab.seek(0)
-            new_mount_dict: Dict[str, MountPoint] = {}
+            new_mount_set: Set[str] = set()
 
             line_list = self.mtab.readlines()
             for line in line_list:
-                _name, string_path, fs_type, flags, *_ = line.split(" ")
+                _name, string_path, fs_type, *_ = line.split(" ")
                 clean_path = get_clean_path(string_path)
 
                 if self.mount_belongs(clean_path, fs_type):
-                    ro = "rw" not in flags.split(",")
-
-                    mount_point = MountPoint(ro=ro, path=clean_path,
-                                             fs_type=fs_type)
-                    new_mount_dict[clean_path] = mount_point
+                    new_mount_set.add(clean_path)
             # If something changed, return the newly constructed dict
-            return new_mount_dict
+            return new_mount_set
         else:
             # Otherwise, return the same dict
-            return self.mounted_dict
+            return self.mounted_set
 
     def mount_belongs(self, path, fs_type):
         is_wanted = str(path) in self.configured_mounts
@@ -189,9 +181,11 @@ class DirMounts(Mounts):
             ensure_directory(directory)
 
     paths_to_mount = MOUNT.DIRECTORIES
+    thread_name = "dir_mounts_thread"
+    update_interval = TIME.DIR_RESCAN_INTERVAL
 
     def get_mountpoints(self):
-        new_directory_dict: Dict[str, MountPoint] = {}
+        new_directory_set: Set[str] = set()
         for directory in self.configured_mounts:
 
             # try to create non-existing ones
@@ -201,16 +195,14 @@ class DirMounts(Mounts):
                 log.exception(f"Cannot create a dirextory at {directory}")
 
             if self.dir_belongs(directory):
-                read_only = not os.access(directory, os.W_OK)
-                mount_point = MountPoint(path=directory, ro=read_only,
-                                         type="directory")
-                new_directory_dict[directory] = mount_point
+                new_directory_set.add(directory)
             else:
                 log.warning(f"Directory {directory} does not exist or isn't "
                             f"readable.")
-        return new_directory_dict
+        return new_directory_set
 
-    def dir_belongs(self, directory: str):
+    @staticmethod
+    def dir_belongs(directory: str):
         exists = os.path.exists(directory)
         readable = exists and os.access(directory, os.R_OK)
         return exists and readable

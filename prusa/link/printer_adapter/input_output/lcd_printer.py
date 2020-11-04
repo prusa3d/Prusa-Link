@@ -8,6 +8,7 @@ from prusa.link.printer_adapter.input_output.serial.serial_queue import \
     SerialQueue
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_instruction, wait_for_instruction
+from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 
 LOG = get_settings().LOG
 LCDQ = get_settings().LCDQ
@@ -25,7 +26,7 @@ class LCDMessage:
         self.text: str = text
 
 
-class LCDPrinter:
+class LCDPrinter(metaclass=MCSingleton):
 
     def __init__(self, serial_queue: SerialQueue):
         self.serial_queue = serial_queue

@@ -1,19 +1,19 @@
 import logging
-from typing import List, Optional
+from typing import Optional
 
 from blinker import Signal
 
+from prusa.connect.printer.files import File
 from prusa.link.printer_adapter.default_settings import get_settings
-from prusa.link.printer_adapter.informers.filesystem.models import \
-    InternalFileTree, SDState
-from prusa.link.printer_adapter.informers.filesystem.linux_filesystem import \
-    LinuxFilesystem
+from prusa.link.printer_adapter.informers.filesystem.mounts import FSMounts, \
+    DirMounts
 from prusa.link.printer_adapter.informers.filesystem.sd_card import SDCard
 from prusa.link.printer_adapter.informers.state_manager import StateManager
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
     SerialQueue
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
+from prusa.link.sdk_augmentation.file import SDFile
 
 LOG = get_settings().LOG
 TIME = get_settings().TIME
@@ -28,11 +28,10 @@ class StorageController:
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
                  state_manager: StateManager):
         self.updated_signal = Signal()  # kwargs: tree: FileTree
-        self.inserted_signal = Signal()  # kwargs: root: str, files: FileTree
-        self.ejected_signal = Signal()  # kwargs: root: str
-
-        # Pass this through
-        self.sd_state_changed_signal = Signal()  # kwargs: sd_state: SDState
+        self.dir_mounted_signal = Signal()
+        self.dir_unmounted_signal = Signal()
+        self.sd_mounted_signal = Signal()
+        self.sd_unmounted_signal = Signal()
 
         self.serial_reader = serial_reader
         self.serial_queue: SerialQueue = serial_queue
@@ -41,56 +40,46 @@ class StorageController:
         self.sd_card = SDCard(self.serial_queue, self.serial_reader,
                               self.state_manager)
         self.sd_card.tree_updated_signal.connect(self.sd_tree_updated)
-        self.sd_card.state_changed_signal.connect(self.sd_state_changed)
-        self.sd_card.inserted_signal.connect(self.media_inserted)
-        self.sd_card.ejected_signal.connect(self.media_ejected)
+        self.sd_card.sd_mounted_signal.connect(self.sd_mounted)
+        self.sd_card.sd_unmounted_signal.connect(self.sd_unmounted)
 
-        self.linux_fs = LinuxFilesystem(self.state_manager)
-        self.linux_fs.updated_signal.connect(self.fs_updated)
-        self.linux_fs.inserted_signal.connect(self.media_inserted)
-        self.linux_fs.ejected_signal.connect(self.media_ejected)
+        self.fs_mounts = FSMounts()
+        self.dir_mounts = DirMounts()
+        self.fs_mounts.mounted_signal.connect(self.dir_mounted)
+        self.fs_mounts.unmounted_signal.connect(self.dir_unmounted)
+        self.dir_mounts.mounted_signal.connect(self.dir_mounted)
+        self.dir_mounts.unmounted_signal.connect(self.dir_unmounted)
 
-        self.sd_tree: Optional[InternalFileTree] = None
-        self.fs_tree_list: List[InternalFileTree] = []
+        self.sd_tree: Optional[SDFile] = None
+
+    def dir_mounted(self, sender, path: str):
+        self.dir_mounted_signal.send(self, path=path)
+
+    def dir_unmounted(self, sender, path: str):
+        self.dir_unmounted_signal.send(self, path=path)
+
+    def sd_mounted(self, sender, files: File):
+        self.sd_mounted_signal.send(self, files=files)
+
+    def sd_unmounted(self, sender):
+        self.sd_unmounted_signal.send(self)
 
     def update(self):
         self.sd_card.update()
-        self.linux_fs.update()
+        self.fs_mounts.update()
+        self.dir_mounts.update()
 
     def start(self):
         self.sd_card.start()
-        self.linux_fs.start()
+        self.fs_mounts.start()
+        self.dir_mounts.start()
 
-    def sd_tree_updated(self, sender, tree: InternalFileTree):
+    def sd_tree_updated(self, sender, tree: SDFile):
         self.sd_tree = tree
-        self.updated()
-
-    def sd_state_changed(self, sender, sd_state: SDState):
-        self.sd_state_changed_signal.send(sender, sd_state=sd_state)
-
-    def fs_updated(self, sender, tree_list: List[InternalFileTree]):
-        self.fs_tree_list = tree_list
-        self.updated()
-
-    def updated(self):
-        root = InternalFileTree.new_root_node()
-        if self.sd_tree is not None:
-            root.add_child(self.sd_tree)
-
-        for tree in self.fs_tree_list:
-            root.add_child(tree)
-
-        log.debug(f"Constructed tree: \n{root}")
-
-        self.updated_signal.send(self, tree=root)
-
-    def media_inserted(self, sender, root, files):
-        self.inserted_signal.send(sender, root=root, files=files)
-
-    def media_ejected(self, sender, root):
-        self.ejected_signal.send(sender, root=root)
+        # TODO: what about this?
 
     def stop(self):
         self.sd_card.stop()
-        self.linux_fs.stop()
+        self.fs_mounts.stop()
+        self.dir_mounts.stop()
 

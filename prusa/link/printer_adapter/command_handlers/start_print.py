@@ -1,11 +1,10 @@
 import logging
 from pathlib import Path
 
+from prusa.connect.printer.files import File
 from prusa.connect.printer.const import State, Source
 from prusa.link.printer_adapter.command import CommandHandler
 from prusa.link.printer_adapter.default_settings import get_settings
-from prusa.link.printer_adapter.informers.filesystem.models import \
-    InternalFileTree
 from prusa.link.printer_adapter.informers.state_manager import StateChange
 from prusa.link.printer_adapter.structures.regular_expressions import \
     OPEN_RESULT_REGEX
@@ -52,9 +51,7 @@ class StartPrint(CommandHandler):
         self.state_manager.stop_expecting_change()
 
     def _start_file_print(self, path):
-        file_to_print: InternalFileTree = self.model.file_tree.get_file(path)
-        os_path = file_to_print.full_fs_path
-
+        os_path = self.printer.fs.get_os_path(path)
         self.file_printer.print(os_path)
 
     def _load_file(self, raw_path):

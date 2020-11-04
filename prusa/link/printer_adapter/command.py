@@ -14,7 +14,7 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     wait_for_instruction, enqueue_matchable, enqueue_instruction
 from prusa.link.printer_adapter.model import Model
-from prusa.link.sdk_augmentation.printer import Printer
+from prusa.link.sdk_augmentation.printer import MyPrinter
 from prusa.link.sdk_augmentation.command import MyCommand as SDKCommand
 
 LOG = get_settings().LOG
@@ -36,6 +36,7 @@ class Command:
         self.serial = Serial.get_instance()
         self.serial_reader = SerialReader.get_instance()
         self.model = Model.get_instance()
+        self.printer = MyPrinter.get_instance()
         self.state_manager = StateManager.get_instance()
         self.file_printer = FilePrinter.get_instance()
 

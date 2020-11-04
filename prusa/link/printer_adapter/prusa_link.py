@@ -1,12 +1,15 @@
 import logging
+import os
 import threading
 from time import time
 
 from requests import RequestException
 from serial import SerialException
 
+from prusa.connect.printer import SDKServerError
+from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType
-from prusa.connect.printer.const import Event, Source, State
+from prusa.connect.printer.const import Source, State
 from prusa.link.printer_adapter.command_handlers.execute_gcode import \
     ExecuteGcode
 from prusa.link.printer_adapter.command_handlers.pause_print import PausePrint
@@ -36,12 +39,11 @@ from prusa.link.printer_adapter.input_output.serial.serial import Serial
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.printer_adapter.model import Model
-from prusa.link.printer_adapter.structures.model_classes import Telemetry, \
-    FileTree
+from prusa.link.printer_adapter.structures.model_classes import Telemetry
 from prusa.link.printer_adapter.structures.constants import PRINTING_STATES
 from prusa.link.printer_adapter.temp_ensurer import TempEnsurer
 from prusa.link.printer_adapter.util import run_slowly_die_fast
-from prusa.link.sdk_augmentation.printer import Printer
+from prusa.link.sdk_augmentation.printer import MyPrinter
 
 LOG = get_settings().LOG
 TIME = get_settings().TIME
@@ -83,8 +85,7 @@ class PrusaLink:
         sn = get_serial_number(self.serial_queue)
         printer_type = get_printer_type(self.serial_queue)
 
-        self.printer = Printer.from_config_2(self.lcd_printer, self.model,
-                                               CONN.CONNECT_CONFIG_PATH,
+        self.printer = MyPrinter.from_config_2(CONN.CONNECT_CONFIG_PATH,
                                                printer_type, sn)
 
         # Bind command handlers
@@ -127,7 +128,11 @@ class PrusaLink:
                                          self.state_manager)
         self.storage.updated_signal.connect(self.storage_updated)
 
-        self.storage.sd_state_changed_signal.connect(self.sd_state_changed)
+        self.storage.dir_mounted_signal.connect(self.dir_mount)
+        self.storage.dir_unmounted_signal.connect(self.dir_unmount)
+        self.storage.sd_mounted_signal.connect(self.sd_mount)
+        self.storage.sd_unmounted_signal.connect(self.sd_unmount)
+
         # after connecting all the signals, do the first update manually
         self.storage.update()
 
@@ -148,9 +153,6 @@ class PrusaLink:
         # will race with itself
         self.telemetry_gatherer.start()
 
-        # Don't send ejected and inserted messages untill after the initial INFO
-        self.storage.inserted_signal.connect(self.media_inserted)
-        self.storage.ejected_signal.connect(self.media_ejected)
         self.storage.start()
 
         self.ip_updater.start()
@@ -216,10 +218,12 @@ class PrusaLink:
 
     def ip_updated(self, sender, local_ip):
         # If the value changed, update SDK
-        if self.model.local_ip != local_ip and local_ip != NO_IP:
-            self.info_sender.try_sending_info()
+        to_update_sdk = self.model.local_ip != local_ip and local_ip != NO_IP
 
         self.model.local_ip = local_ip
+
+        if to_update_sdk:
+            self.info_sender.try_sending_info()
 
         if local_ip is not NO_IP:
             self.lcd_printer.enqueue_message(f"{local_ip}", duration=5)
@@ -229,8 +233,17 @@ class PrusaLink:
     def storage_updated(self, sender, tree):
         self.model.file_tree = tree
 
-    def sd_state_changed(self, sender, sd_state):
-        self.model.sd_state = sd_state
+    def dir_mount(self, sender, path):
+        self.printer.mount(path, os.path.basename(path))
+
+    def dir_unmount(self, sender, path):
+        self.printer.unmount(os.path.basename(path))
+
+    def sd_mount(self, sender, files: File):
+        self.printer.fs.mount("SD Card", files, "", to_inotify=False)
+
+    def sd_unmount(self, sender):
+        self.printer.fs.umount("SD Card")
 
     def state_changed(self, sender: StateManager, command_id=None, source=None):
         state = sender.current_state
@@ -242,13 +255,6 @@ class PrusaLink:
 
     def job_id_updated(self, sender, job_id):
         self.model.job_id = job_id
-
-    def media_inserted(self, sender, root, files: FileTree):
-        self.printer.event_cb(Event.MEDIUM_INSERTED, Source.FIRMWARE, root=root,
-                              files=files.dict(exclude_none=True))
-
-    def media_ejected(self, sender, root):
-        self.printer.event_cb(Event.MEDIUM_EJECTED, Source.FIRMWARE, root=root)
 
     def time_printing_updated(self, sender, time_printing):
         self.model.set_telemetry(
@@ -291,5 +297,8 @@ class PrusaLink:
             try:
                 self.printer.loop()
             except RequestException:
+                self.lcd_printer.enqueue_connection_failed(
+                    self.ip_updater.local_ip == NO_IP)
+            except SDKServerError:
                 self.lcd_printer.enqueue_connection_failed(
                     self.ip_updater.local_ip == NO_IP)
