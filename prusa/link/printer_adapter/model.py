@@ -2,12 +2,10 @@ from threading import Lock
 from typing import Optional
 
 from prusa.connect.printer.const import State
-from prusa.link.printer_adapter.informers.filesystem.models import \
-    InternalFileTree, SDState
 from prusa.link.printer_adapter.informers.ip_updater import NO_IP
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
-from prusa.link.printer_adapter.structures.model_classes import FileTree, \
-    Telemetry, PrinterInfo
+from prusa.link.printer_adapter.structures.model_classes import Telemetry, \
+    PrinterInfo
 from prusa.link.printer_adapter.structures.constants import PRINTING_STATES
 
 
@@ -28,8 +26,6 @@ class Model(metaclass=MCSingleton):
         self._state: Optional[State] = None
         self._local_ip: Optional[str] = NO_IP
         self._job_id: Optional[int] = None
-        self._file_tree: Optional[InternalFileTree] = None
-        self._sd_state: Optional[SDState] = None
         self._printer_info: Optional[PrinterInfo] = None
 
     def get_and_reset_telemetry(self):
@@ -82,31 +78,6 @@ class Model(metaclass=MCSingleton):
     def local_ip(self, new_ip):
         with self.lock:
             self._local_ip = new_ip
-
-    @property
-    def file_tree(self):
-        with self.lock:
-            return self._file_tree
-
-    @property
-    def api_file_tree(self) -> FileTree:
-        with self.lock:
-            return self._file_tree.to_api_file_tree()
-
-    @file_tree.setter
-    def file_tree(self, new_tree):
-        with self.lock:
-            self._file_tree = new_tree
-
-    @property
-    def sd_state(self):
-        with self.lock:
-            return self._sd_state
-
-    @sd_state.setter
-    def sd_state(self, new_sd_state):
-        with self.lock:
-            self._sd_state = new_sd_state
 
     @property
     def job_id(self):
