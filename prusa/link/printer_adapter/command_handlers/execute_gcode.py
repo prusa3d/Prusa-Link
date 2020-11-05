@@ -21,7 +21,7 @@ class ExecuteGcode(CommandHandler):
     def _run_command(self):
 
         gcode = self.caller.args[0]
-        force = self.caller.args[1]
+        force = self.caller.force
 
         if force:
             log.debug(f"Force sending gcode: '{gcode}'")
