@@ -8,7 +8,11 @@ from prusa.link.printer_adapter.input_output.serial.serial_queue import \
     SerialQueue
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_instruction, wait_for_instruction
+from prusa.link.printer_adapter.input_output.serial.serial_reader import \
+    SerialReader
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
+from prusa.link.printer_adapter.structures.regular_expressions import \
+    LCD_UPDATE_REGEX
 
 LOG = get_settings().LOG
 LCDQ = get_settings().LCDQ
@@ -28,34 +32,58 @@ class LCDMessage:
 
 class LCDPrinter(metaclass=MCSingleton):
 
-    def __init__(self, serial_queue: SerialQueue):
+    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader):
         self.serial_queue = serial_queue
+        self.serial_reader = serial_reader
+
+        self.last_updated = time()
+        # When printing from our queue, the "LCD status updated gets printed
+        # lets try to ignore those
+        self.ignore = 0
+        self.serial_reader.add_handler(LCD_UPDATE_REGEX, self.lcd_updated)
 
         self.message_queue: Queue = Queue(maxsize=LCDQ.LCD_QUEUE_SIZE)
-        self.wait_until: float = time()
 
         self.running = True
         self.queue_thread: Thread = Thread(target=self.process_queue,
                                            name="LCDMessage")
         self.queue_thread.start()
 
+    def lcd_updated(self, sender, match):
+        if self.ignore > 0:
+            self.ignore -= 1
+        else:
+            self.last_updated = time()
+
     def process_queue(self):
         while self.running:
             try:
-                # because having this inline is so unreadable
                 message: LCDMessage
                 message = self.message_queue.get(timeout=TIME.QUIT_INTERVAL)
             except Empty:
                 pass
             else:
+                # Wait until it's been X seconds since FW updated the LCD
+                fw_msg_grace_end = self.last_updated + TIME.FW_MESSAGE_TIMEOUT
+                log.debug("Wait for FW message")
+                self.wait_until(fw_msg_grace_end)
+                log.debug(f"Print {message}")
+
+                self.ignore += 1
                 self.print_text(message.text)
                 # Wait until it's time to print another one or quit
-                wait_until = time() + message.duration
-                while self.running and time() < wait_until:
-                    # Sleep QUIT_INTERVAL or whatever else is left of the wait
-                    # Depending on what's smaller, don't sleep negative amounts
-                    to_sleep = min(TIME.QUIT_INTERVAL, self.wait_until - time())
-                    sleep(max(0, int(to_sleep)))
+                message_grace_end = time() + message.duration
+                log.debug("Wait for message")
+                self.wait_until(message_grace_end)
+                log.debug("Finished displaying message")
+
+    def wait_until(self, instant):
+        """Sleeps until a point in time or until it has been stopped"""
+        while self.running and time() < instant:
+            # Sleep QUIT_INTERVAL or whatever else is left of the wait
+            # Depending on what's smaller, don't sleep negative amounts
+            to_sleep = min(TIME.QUIT_INTERVAL, instant - time())
+            sleep(max(0, int(to_sleep)))
 
     def print_text(self, text: str):
         instruction = enqueue_instruction(self.serial_queue, f"M117 {text}")
