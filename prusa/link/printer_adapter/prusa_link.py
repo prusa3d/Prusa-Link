@@ -80,7 +80,7 @@ class PrusaLink:
                                                  self.serial_reader)
         MonitoredSerialQueue.get_instance().serial_queue_failed.connect(self.serial_queue_failed)
 
-        self.lcd_printer = LCDPrinter(self.serial_queue)
+        self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_reader)
 
         sn = get_serial_number(self.serial_queue)
         printer_type = get_printer_type(self.serial_queue)
