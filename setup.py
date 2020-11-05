@@ -1,33 +1,47 @@
+"""Setup.py for Prusa-Link software."""
 import os
+import re
 
+from sys import stderr
 from setuptools import setup, find_namespace_packages
 
 from prusa.link.printer_adapter import __version__, __doc__
 
 RPI_MODEL_PATH = "/sys/firmware/devicetree/base/model"
+RE_GIT = re.compile(r'(-e )?git\+|:')
+RE_EGG = re.compile(r'#egg=(.*)$')
+REQUIRES = []
 
-is_raspberry = False
 
+def fill_requires(filename):
+    """Fill REQUIRES lists."""
+    with open(filename, "r") as requirements:
+        for line in requirements:
+            line = line.strip()
+            if RE_GIT.match(line):
+                match = RE_EGG.search(line)
+                if match:
+                    REQUIRES.append("%s @ %s" % (match.groups()[0], line))
+                else:
+                    print(
+                        'Dependency to a git repository must have the format:',
+                        file=stderr)
+                    print(
+                        '\tgit+ssh://git@github.com/xxx/xxx#egg=package_name',
+                        file=stderr)
+            else:
+                REQUIRES.append(line)
+
+
+fill_requires("requirements.txt")
 try:
     if os.path.exists(RPI_MODEL_PATH):
         with open(RPI_MODEL_PATH) as model_file:
-            model = model_file.read()
-            if "Pi" in model:
-                is_raspberry = True
-except:
+            if "Pi" in model_file.read():
+                fill_requires("requirements-pi.txt")
+except Exception:  # pylint: disable=broad-except
     print("This is not a Raspberry Pi -> wiringpi installation won't be "
           "attempted!")
-
-if is_raspberry:
-    requirements_path = "requirements-pi.txt"
-else:
-    requirements_path = "requirements.txt"
-
-
-REQUIRES = []
-with open(requirements_path, "r") as requirements_path:
-    for line in requirements_path:
-        REQUIRES.append(line.strip())
 
 
 def doc():
@@ -47,7 +61,7 @@ setup(
     url="https://github.com/prusa3d/Prusa-Link",
     packages=find_namespace_packages(),
     package_data={'prusa.link.installation.data_files':
-                     ['prusa-link.service']},
+                  ['prusa-link.service']},
     long_description=doc(),
     long_description_content_type="text/markdown",
     classifiers=[
