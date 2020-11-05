@@ -1,15 +1,1 @@
-cysystemd
-blinker
-pyserial
-requests
-getmac
-elevate
-pydantic
-setuptools
-PyYAML
-appdirs
-sortedcontainers
 wiringpi
-PoorWSGI
-python-daemon
-lockfile
