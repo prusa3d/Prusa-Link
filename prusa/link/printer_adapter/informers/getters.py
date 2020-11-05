@@ -10,7 +10,6 @@ from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.model_classes import NetworkInfo
 from prusa.link.printer_adapter.structures.regular_expressions import SN_REGEX, \
     PRINTER_TYPE_REGEX, FW_REGEX, NOZZLE_REGEX
-from prusa.link.printer_adapter.util import get_should_wait
 
 PRINTER_TYPES = {
     300: PrinterType.I3MK3,
@@ -20,8 +19,7 @@ PRINTER_TYPES = {
 }
 
 
-def get_serial_number(serial_queue: SerialQueue, should_wait=None):
-    should_wait = get_should_wait(should_wait)
+def get_serial_number(serial_queue: SerialQueue, should_wait=lambda: True):
     instruction = enqueue_matchable(serial_queue, "PRUSA SN", SN_REGEX,
                                     to_front=True)
     wait_for_instruction(instruction, should_wait)
@@ -30,8 +28,7 @@ def get_serial_number(serial_queue: SerialQueue, should_wait=None):
         return match.groups()[0]
 
 
-def get_printer_type(serial_queue: SerialQueue, should_wait=None):
-    should_wait = get_should_wait(should_wait)
+def get_printer_type(serial_queue: SerialQueue, should_wait=lambda: True):
     instruction = enqueue_matchable(serial_queue, "M862.2 Q",
                                     PRINTER_TYPE_REGEX, to_front=True)
     wait_for_instruction(instruction, should_wait)
@@ -49,9 +46,7 @@ def get_printer_type(serial_queue: SerialQueue, should_wait=None):
         raise RuntimeError(f"Unsupported printer model '{code}'")
 
 
-def get_firmware_version(serial_queue: SerialQueue, should_wait=None):
-    should_wait = get_should_wait(should_wait)
-
+def get_firmware_version(serial_queue: SerialQueue, should_wait=lambda: True):
     instruction = enqueue_matchable(serial_queue, "M115",
                                     FW_REGEX, to_front=True)
     wait_for_instruction(instruction, should_wait)
@@ -62,8 +57,7 @@ def get_firmware_version(serial_queue: SerialQueue, should_wait=None):
     return match.groups()[0]
 
 
-def get_nozzle_diameter(serial_queue: SerialQueue, should_wait=None):
-    should_wait = get_should_wait(should_wait)
+def get_nozzle_diameter(serial_queue: SerialQueue, should_wait=lambda: True):
     instruction = enqueue_matchable(serial_queue, "M862.1 Q",
                                     NOZZLE_REGEX, to_front=True)
     wait_for_instruction(instruction, should_wait)
