@@ -6,7 +6,7 @@ class MCSingleton(type):
 
     def __call__(cls, *args, **kwargs):
         if cls.__instance is not None:
-            raise RuntimeError("There can be only one singleton in existance")
+            raise RuntimeError("There can be only one singleton in existence")
         else:
             instance = cls.__new__(cls)
             instance.__init__(*args, **kwargs)

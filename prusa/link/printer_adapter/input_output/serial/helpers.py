@@ -7,15 +7,14 @@ from prusa.link.printer_adapter.input_output.serial.instruction import \
     MatchableInstruction
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
     SerialQueue
-from prusa.link.printer_adapter.util import get_should_wait
 
 TIME = get_settings().TIME
 
 
-def wait_for_instruction(instruction, should_wait: Callable[[], bool] = None,
+def wait_for_instruction(instruction,
+                         should_wait: Callable[[], bool] = lambda: True,
                          check_every=TIME.QUIT_INTERVAL):
     """Wait until the instruction is done, or we shouldn't wait anymore"""
-    should_wait = get_should_wait(should_wait)
     while should_wait():
         if instruction.wait_for_confirmation(timeout=check_every):
             break
