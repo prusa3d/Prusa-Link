@@ -243,7 +243,7 @@ class PrusaLink:
         self.printer.fs.mount("SD Card", files, "", to_inotify=False)
 
     def sd_unmount(self, sender):
-        self.printer.fs.umount("SD Card")
+        self.printer.fs.unmount("SD Card")
 
     def state_changed(self, sender: StateManager, command_id=None, source=None):
         state = sender.current_state
