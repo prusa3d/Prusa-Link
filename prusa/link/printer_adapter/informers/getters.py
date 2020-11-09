@@ -1,15 +1,18 @@
 from getmac import get_mac_address
 
 from prusa.connect.printer.const import PrinterType
+from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.informers.ip_updater import NO_IP
+from prusa.link.printer_adapter.input_output.serial.instruction import \
+    MatchableInstruction
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
     SerialQueue
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_matchable, wait_for_instruction, enqueue_instruction
 from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.model_classes import NetworkInfo
-from prusa.link.printer_adapter.structures.regular_expressions import SN_REGEX, \
-    PRINTER_TYPE_REGEX, FW_REGEX, NOZZLE_REGEX
+from prusa.link.printer_adapter.structures.regular_expressions import \
+    SN_REGEX, PRINTER_TYPE_REGEX, FW_REGEX, NOZZLE_REGEX
 
 PRINTER_TYPES = {
     300: PrinterType.I3MK3,
@@ -18,13 +21,30 @@ PRINTER_TYPES = {
     20302: PrinterType.I3MK3S,
 }
 
+SN = get_settings().SN
+
+
+class NoSNError(Exception):
+    ...
+
 
 def get_serial_number(serial_queue: SerialQueue, should_wait=lambda: True):
-    instruction = enqueue_matchable(serial_queue, "PRUSA SN", SN_REGEX,
-                                    to_front=True)
+    instruction = MatchableInstruction("PRUSA SN", capture_matching=SN_REGEX)
+    serial_queue.enqueue_one(instruction, to_front=True)
     wait_for_instruction(instruction, should_wait)
     match = instruction.match()
-    if match is not None:
+    if match is None and not SN.SERIAL_NUMBER:
+        raise NoSNError("Cannot get the printer serial number. "
+                        "Upgrade your printer's firmware, but at the time "
+                        "of writing this, it's not fixed yet. "
+                        "So fill your settings in the config file. Go to "
+                        "/home/pi/.config/Prusa-Link/config_example.yaml "
+                        "and copy the [SN] section to config.yaml, "
+                        "then fill in your printer's serial number "
+                        "manually.")
+    elif SN.SERIAL_NUMBER:
+        return SN.SERIAL_NUMBER
+    else:
         return match.groups()[0]
 
 

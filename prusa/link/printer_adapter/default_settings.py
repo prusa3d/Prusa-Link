@@ -42,7 +42,7 @@ class IntervalSettings(BaseModel):
 
 
 class LCDQueueSettings(BaseModel):
-    LCD_QUEUE_SIZE = 20
+    LCD_QUEUE_SIZE = 30
 
 
 class SerialQueueSettings(BaseModel):
@@ -125,7 +125,12 @@ class FilePrinterSettings(BaseModel):
     PRINT_QUEUE_SIZE = 4
 
 
+class SerialNumberWorkaround(BaseModel):
+    SERIAL_NUMBER = ""
+
+
 class SettingsData(BaseModel):
+
     """ Object supposed to hold all settings """
     CONN: ConnectSettings = ConnectSettings()
     SERIAL: SerialSettings = SerialSettings()
@@ -138,6 +143,7 @@ class SettingsData(BaseModel):
     PI: PiSetteings = PiSetteings()
     FP: FilePrinterSettings = FilePrinterSettings()
     IPF: IsPlannerFedSettings = IsPlannerFedSettings()
+    SN: SerialNumberWorkaround = SerialNumberWorkaround()
 
 
 def get_settings() -> SettingsData:
