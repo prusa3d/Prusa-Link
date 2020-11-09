@@ -31,7 +31,7 @@ from prusa.link.printer_adapter.informers.filesystem.storage_controller import \
 from prusa.link.printer_adapter.informers.telemetry_gatherer import \
     TelemetryGatherer
 from prusa.link.printer_adapter.informers.getters import get_serial_number, \
-    get_printer_type
+    get_printer_type, NoSNError
 from prusa.link.printer_adapter.input_output.lcd_printer import LCDPrinter
 from prusa.link.printer_adapter.input_output.serial.serial_queue \
     import MonitoredSerialQueue
@@ -82,7 +82,12 @@ class PrusaLink:
 
         self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_reader)
 
-        sn = get_serial_number(self.serial_queue)
+        # TODO: get rid of this after it's fixed
+        try:
+            sn = get_serial_number(self.serial_queue)
+        except NoSNError:
+            self.lcd_printer.enqueue_no_sn()
+            raise
         printer_type = get_printer_type(self.serial_queue)
 
         self.printer = MyPrinter.from_config_2(CONN.CONNECT_CONFIG_PATH,
