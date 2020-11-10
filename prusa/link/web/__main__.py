@@ -1,7 +1,7 @@
 """main() command line function."""
 from argparse import ArgumentParser
 from traceback import format_exc
-from os import kill, geteuid
+from os import kill, geteuid, path
 from grp import getgrnam
 from pwd import getpwnam
 from signal import SIGTERM
@@ -9,13 +9,18 @@ from socket import error as SocketError
 
 from daemon import DaemonContext
 from lockfile.pidlockfile import PIDLockFile
+from appdirs import user_config_dir
 
-from .lib.config import Config, logger as log
+from .. import __application__, __vendor__
+from ..config import Config, logger as log
+
 from .lib.daemon import Daemon
 
 # pylint: disable=too-many-return-statements
 # pylint: disable=too-many-branches
 # pylint: disable=too-many-statements
+CONFIG_FILE = path.join(user_config_dir(__application__, __vendor__),
+                        "prusa-link.ini")
 
 
 def main():
@@ -25,34 +30,35 @@ def main():
         description="Prusa Link Web interface.")
     parser.add_argument(
         "command", nargs='?', default="start", type=str,
-        help="Daemon action (start|stop|restart|status)")
+        help="daemon action (start|stop|restart|status) (default: start)")
     parser.add_argument(
         "-f", "--foreground", action="store_true",
-        help="Run as script on foreground")
+        help="run as script on foreground")
     parser.add_argument(
-        "-c", "--config", default="/etc/prusa-link/web.ini", type=str,
-        help="Path to config file.", metavar="<file>")
+        "-c", "--config", default=CONFIG_FILE, type=str,
+        help="path to config file (default: %s)" % CONFIG_FILE,
+        metavar="<file>")
     parser.add_argument(
         "-p", "--pidfile", type=str,
-        help="Path to pid file", metavar="<FILE>")
+        help="path to pid file", metavar="<FILE>")
     parser.add_argument(
         "-a", "--address", type=str,
         help="IP listening address (host or IP)", metavar="<ADDRESS>")
     parser.add_argument(
-        "-b", "--port", type=str,
+        "-b", "--port", type=int,
         help="TCP/IP listening port", metavar="<PORT>")
     parser.add_argument(
         "-i", "--info", action="store_true",
-        help="More verbose logging level INFO is set.")
+        help="more verbose logging level INFO is set")
     parser.add_argument(
         "-d", "--debug", action="store_true",
-        help="DEBUG logging level is set.")
+        help="DEBUG logging level is set")
 
     args = parser.parse_args()
 
     try:
         config = Config(args)
-        pid_file = PIDLockFile(config.pid_file)
+        pid_file = PIDLockFile(config.daemon.pid_file)
 
         if args.command == "stop":
             if pid_file.is_locked():
@@ -92,8 +98,8 @@ def main():
             files_preserve=[log.handlers[0].socket.fileno()])
 
         if geteuid() == 0 and not args.foreground:
-            context.uid = getpwnam(config.user).pw_uid
-            context.gid = getgrnam(config.group).gr_gid
+            context.uid = getpwnam(config.daemon.user).pw_uid
+            context.gid = getgrnam(config.daemon.group).gr_gid
 
         with context:
             log.info(

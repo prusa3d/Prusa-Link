@@ -31,6 +31,7 @@ class ThreadingServer(ThreadingMixIn, SingleServer):
 
 class RequestLogger:
     """Create new logger with syslog handler for requests."""
+    # pylint: disable=no-self-use
 
     def write(self, message):
         """Send request message to log."""
@@ -43,6 +44,7 @@ class RequestLogger:
 
 class ErrorLogger:
     """Create new logger with syslog handler for errors."""
+    # pylint: disable=no-self-use
 
     def write(self, message):
         """Send request message to log."""

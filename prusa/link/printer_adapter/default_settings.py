@@ -91,6 +91,8 @@ class MountPointSettings(BaseModel):
     DIRECTORIES = [
         os.path.expanduser("~/Prusa Link gcodes")
     ]
+
+    # TODO: this is must be constants
     BLACKLISTED_TYPES = [
     ]
     BLACKLISTED_PATHS = [
