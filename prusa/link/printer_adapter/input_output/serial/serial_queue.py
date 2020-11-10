@@ -12,7 +12,8 @@ from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.input_output.serial.serial import Serial
 from prusa.link.printer_adapter.structures.regular_expressions import \
     CONFIRMATION_REGEX, PAUSED_REGEX, RESEND_REGEX, TEMPERATURE_REGEX, \
-    BUSY_REGEX, ATTENTION_REGEX, HEATING_HOTEND_REGEX, HEATING_REGEX
+    BUSY_REGEX, ATTENTION_REGEX, HEATING_HOTEND_REGEX, HEATING_REGEX, \
+    M110_REGEXP
 from prusa.link.printer_adapter.util import run_slowly_die_fast
 from .instruction import Instruction
 from .is_planner_fed import IsPlannerFed
@@ -165,10 +166,24 @@ class SerialQueue(metaclass=MCSingleton):
         self.next_instruction()
         instruction = self.current_instruction
 
+        # If the instruction is M110 read the value it'll set and save it
+        m110_match = M110_REGEXP.match(instruction.message)
+        if m110_match:
+            self.send_history.clear()
+            log.debug("The message number is getting reset")
+            number = m110_match.groups()[1]
+            if number is not None:
+                try:
+                    self.message_number = int(number)
+                except ValueError:
+                    self.message_number = 0
+
         if instruction.data is None:
             if instruction.to_checksum:
                 self.send_history.append(instruction)
                 self.message_number += 1
+                if self.message_number > 1000000000:
+                    self.reset_message_number()
 
             instruction.data = self.get_data(instruction)
 
@@ -328,14 +343,12 @@ class SerialQueue(metaclass=MCSingleton):
                 self._send()
 
     def reset_message_number(self):
-        instruction = Instruction("M110 N1")
+        instruction = Instruction("M110 N0")
         self.enqueue_one(instruction, to_front=True)
         while not self.closed:
             if instruction.wait_for_confirmation(
                     timeout=TIME.QUIT_INTERVAL):
                 break
-        self.send_history.clear()
-        self.message_number = 0
 
     def _worst_case_scenario(self):
         """
