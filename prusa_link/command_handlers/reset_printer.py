@@ -34,7 +34,7 @@ class ResetPrinter(Command):
                            "needs to boot.")
 
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
-                 serial: Serial):
+                 serial: Serial, **kwargs):
         super().__init__(serial_queue)
         self.serial_reader = serial_reader
         self.serial = serial
