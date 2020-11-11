@@ -250,7 +250,12 @@ class PrusaLink:
     def sd_unmount(self, sender):
         self.printer.fs.unmount("SD Card")
 
-    def state_changed(self, sender: StateManager, command_id=None, source=None):
+    def state_changed(self, sender: StateManager, command_id=None,
+                      source=None):
+        if source is None:
+            source = Source.WUI
+            log.warning(f"State change had no source "
+                        f"{sender.current_state.value()}")
         state = sender.current_state
         job_id = sender.get_job_id()
         self.model.state = state

@@ -1,7 +1,6 @@
 import logging
 import re
 from collections import deque
-from queue import Queue
 from threading import Lock, Thread
 from time import time, sleep
 from typing import List, Optional
@@ -45,10 +44,10 @@ class SerialQueue(metaclass=MCSingleton):
         self.serial_queue_failed = Signal()
 
         # A queue of instructions for the printer
-        self.queue: Queue[Instruction] = Queue()
+        self.queue: deque[Instruction] = deque()
 
         # This one shall contain time critical instructions
-        self.priority_queue: Queue[Instruction] = Queue()
+        self.priority_queue: deque[Instruction] = deque()
 
         # Instruction that is currently being handled
         self.current_instruction: Optional[Instruction] = None
@@ -74,6 +73,12 @@ class SerialQueue(metaclass=MCSingleton):
         # For stopping fast (power panic)
         self.closed = False
 
+        # Workaround around M110 involves syncing the FW buffers using a G4
+        # Whenever an M110 comes, a G4 needs to be prepended.
+        # To avoid getting stuck in an endless loop, let's flip a flag
+        self.m110_workaround_slot = None
+        self.worked_around_m110 = False
+
         self.serial_reader.add_handler(
             CONFIRMATION_REGEX, self._confirmation_handler,
             priority=float("inf"))
@@ -86,6 +91,22 @@ class SerialQueue(metaclass=MCSingleton):
 
         self.is_planner_fed = IsPlannerFed()
 
+    def peek_next(self):
+        """Look, what the next instruction is going to be"""
+        if self.m110_workaround_slot is not None:
+            return self.m110_workaround_slot
+        if self.rx_yeet_slot is not None:
+            return self.rx_yeet_slot
+        elif self.recovery_list:
+            return self.recovery_list.pop()
+        elif self.priority_queue:
+            if self.is_planner_fed() and self.queue:
+                return self.queue[-1]
+            else:
+                return self.priority_queue[-1]
+        elif self.queue:
+            return self.queue[-1]
+
     def next_instruction(self):
         """
         Get a fresh instruction into the self.current_instruction handling slot
@@ -96,19 +117,21 @@ class SerialQueue(metaclass=MCSingleton):
                                "When the last one didn't finish processing.")
         if self.rx_yeet_slot is not None:
             self.current_instruction = self.rx_yeet_slot
-            self.rx_yeet_slot = None
+        if self.m110_workaround_slot is not None:
+            self.current_instruction = self.m110_workaround_slot
+            self.m110_workaround_slot = None
         elif self.recovery_list:
             self.current_instruction = self.recovery_list.pop()
-        elif not self.priority_queue.empty():
-            if self.is_planner_fed() and not self.queue.empty():
+        elif self.priority_queue:
+            if self.is_planner_fed() and self.queue:
                 # Invalidate, so the unimportant queue doesn't go all at once
                 self.is_planner_fed.is_fed = False
                 log.debug("Allowing a non-important instruction through")
-                self.current_instruction = self.queue.get()
+                self.current_instruction = self.queue.pop()
             else:
-                self.current_instruction = self.priority_queue.get()
-        elif not self.queue.empty():
-            self.current_instruction = self.queue.get()
+                self.current_instruction = self.priority_queue.pop()
+        elif self.queue:
+            self.current_instruction = self.queue.pop()
 
     # --- If statements in methods ---
     def can_write(self):
@@ -116,7 +139,7 @@ class SerialQueue(metaclass=MCSingleton):
                not self.closed
 
     def is_empty(self):
-        return self.queue.empty() and self.priority_queue.empty() and \
+        return not self.queue and not self.priority_queue and \
                not self.recovery_list and self.rx_yeet_slot is None
 
     # --- Actual methods ---
@@ -163,12 +186,28 @@ class SerialQueue(metaclass=MCSingleton):
         in the handling slot. Tries its best to send it
         :return:
         """
+        next_instruction = self.peek_next()
+        if M110_REGEXP.match(next_instruction.message) and \
+                not self.worked_around_m110:
+            self.m110_workaround_slot = Instruction("G4 S0.001")
+            self.worked_around_m110 = True
+
         self.next_instruction()
         instruction = self.current_instruction
+
+        if instruction.data is None:
+            if instruction.to_checksum:
+                self.send_history.append(instruction)
+                self.message_number += 1
+                if self.message_number == 1000000000:
+                    self._reset_message_number()
+
+            instruction.data = self.get_data(instruction)
 
         # If the instruction is M110 read the value it'll set and save it
         m110_match = M110_REGEXP.match(instruction.message)
         if m110_match:
+            self.worked_around_m110 = False
             self.send_history.clear()
             log.debug("The message number is getting reset")
             number = m110_match.groups()[1]
@@ -177,15 +216,6 @@ class SerialQueue(metaclass=MCSingleton):
                     self.message_number = int(number)
                 except ValueError:
                     self.message_number = 0
-
-        if instruction.data is None:
-            if instruction.to_checksum:
-                self.send_history.append(instruction)
-                self.message_number += 1
-                if self.message_number > 1000000000:
-                    self.reset_message_number()
-
-            instruction.data = self.get_data(instruction)
 
         size = len(instruction.data)
         if size > self.rx_max:
@@ -201,9 +231,9 @@ class SerialQueue(metaclass=MCSingleton):
 
     def _enqueue(self, instruction: Instruction, to_front=False):
         if to_front:
-            self.priority_queue.put(instruction)
+            self.priority_queue.appendleft(instruction)
         else:
-            self.queue.put(instruction)
+            self.queue.appendleft(instruction)
 
     def enqueue_one(self, instruction: Instruction, to_front=False):
         """
@@ -343,12 +373,16 @@ class SerialQueue(metaclass=MCSingleton):
                 self._send()
 
     def reset_message_number(self):
+        """
+        Does not wait for the result, everything that gets enqueued after this
+        will be executed after this. If this is no longer true, stuff will break
+        """
+        with self.write_lock:
+            self._reset_message_number()
+
+    def _reset_message_number(self):
         instruction = Instruction("M110 N0")
-        self.enqueue_one(instruction, to_front=True)
-        while not self.closed:
-            if instruction.wait_for_confirmation(
-                    timeout=TIME.QUIT_INTERVAL):
-                break
+        self._enqueue(instruction, to_front=True)
 
     def _worst_case_scenario(self):
         """
