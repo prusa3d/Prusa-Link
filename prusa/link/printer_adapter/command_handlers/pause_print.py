@@ -15,6 +15,9 @@ class PausePrint(TryUntilState):
     command_name = "pause print"
 
     def _run_command(self):
+        if self.state_manager.get_state() != State.PRINTING:
+            self.failed("Cannot pause when not printing.")
+
         if self.file_printer.printing:
             self.file_printer.pause()
 
