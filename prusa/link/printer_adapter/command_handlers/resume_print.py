@@ -15,6 +15,9 @@ class ResumePrint(TryUntilState):
     command_name = "resume print"
 
     def _run_command(self):
+        if self.state_manager.get_state() != State.PAUSED:
+            self.failed("Cannot resume when not paused.")
+
         self._try_until_state(gcode="M602", desired_state=State.PRINTING)
 
         # If we were file printing, the module itself will recognize
