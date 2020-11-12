@@ -1,4 +1,3 @@
-import logging
 from time import time
 
 from prusa.link.printer_adapter.default_settings import get_settings
@@ -12,14 +11,7 @@ from prusa.link.printer_adapter.structures.regular_expressions import \
     TEMPERATURE_REGEX
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 
-LOG = get_settings().LOG
 TIME = get_settings().TIME
-
-
-log = logging.getLogger(__name__)
-log.setLevel(LOG.PRUSA_LINK)
-
-logging.root.setLevel(LOG.DEFAULT)
 
 
 class TempEnsurer(ThreadedUpdatable):
