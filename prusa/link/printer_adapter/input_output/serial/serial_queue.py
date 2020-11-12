@@ -289,9 +289,6 @@ class SerialQueue(metaclass=MCSingleton):
         # Let's confirm it ourselves
         self._confirmed()
 
-    def _yeeted_handler(self, sender, match: re.Match):
-        self._rx_got_yeeted()
-
     def _resend_handler(self, sender, match: re.Match):
         number = int(match.groups()[0])
         log.info(f"Resend of {number} requested. Current is "
