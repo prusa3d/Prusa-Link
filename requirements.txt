@@ -5,7 +5,7 @@ cysystemd
 elevate
 getmac
 lockfile
-PoorWSGI
+PoorWSGI>=2.3.0
 pydantic
 pyserial
 python-daemon
