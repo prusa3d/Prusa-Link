@@ -1,7 +1,7 @@
 """main() command line function."""
 from argparse import ArgumentParser
 from traceback import format_exc
-from os import kill, geteuid, path
+from os import kill, geteuid, path, mkdir, chmod
 from grp import getgrnam
 from pwd import getpwnam
 from signal import SIGTERM
@@ -62,23 +62,23 @@ def main():
 
         if args.command == "stop":
             if pid_file.is_locked():
-                log.info(
-                    "Stopping service with pid %d", pid_file.read_pid())
+                print(
+                    "Stopping service with pid", pid_file.read_pid())
                 kill(pid_file.read_pid(), SIGTERM)
             return 0
 
         if args.command == "status":
             if pid_file.is_locked():
-                log.info(
-                    "Service running with pid %d", pid_file.read_pid())
+                print(
+                    "Service running with pid", pid_file.read_pid())
                 return 0
             log.info("Service not running")
             return 1
 
         if args.command == "restart":
             if pid_file.is_locked():
-                log.info(
-                    "Restarting service with pid %d", pid_file.read_pid())
+                print(
+                    "Restarting service with pid", pid_file.read_pid())
                 kill(pid_file.read_pid(), SIGTERM)
         elif args.command == "start":
             pass
@@ -95,7 +95,13 @@ def main():
             pidfile=pid_file,
             stdout=daemon.stdout,
             stderr=daemon.stderr,
-            files_preserve=[log.handlers[0].socket.fileno()])
+            umask=0o002,
+            files_preserve=[log.root.handlers[0].socket.fileno()])
+
+        pid_dir = path.dirname(config.daemon.pid_file)
+        if pid_dir == '/var/run/prusa-link' and not path.exists(pid_dir):
+            mkdir(pid_dir)
+            chmod(pid_dir, 0o777)
 
         if geteuid() == 0 and not args.foreground:
             context.uid = getpwnam(config.daemon.user).pw_uid
@@ -105,6 +111,7 @@ def main():
             log.info(
                 "Starting service with pid %d", pid_file.read_pid())
             daemon.run()
+            log.info("Shutdown")
         return 0
 
     except KeyboardInterrupt:

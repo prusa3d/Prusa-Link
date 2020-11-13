@@ -72,7 +72,7 @@ class Config(Get):
             "daemon",
             (
                 ("data_dir", str, ''),  # user_data_dir by default
-                ("pid_file", str, "./prusa-link.pid"),  # relative to data_dir
+                ("pid_file", str, "/var/run/prusa-link/prusa-link.pid"),
                 ("user", str, "pi"),
                 ("group", str, "pi"),
             )))
@@ -88,7 +88,7 @@ class Config(Get):
                                         f'.local/share/{__application__}')
 
         if args.pidfile:
-            self.daemon.pid_file = args.pidfile
+            self.daemon.pid_file = abspath(args.pidfile)
         self.daemon.pid_file = abspath(join(self.daemon.data_dir,
                                             self.daemon.pid_file))
 

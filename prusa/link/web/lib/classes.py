@@ -4,11 +4,8 @@ Main server classes for handling request.
 """
 from wsgiref.simple_server import WSGIServer
 from socketserver import ForkingMixIn, ThreadingMixIn
-from logging import getLogger
 
-from .. import __package__ as package
-
-log = getLogger(package)
+from ...config import log_http as log
 
 
 class SingleServer(WSGIServer):
@@ -39,7 +36,7 @@ class RequestLogger:
 
     def fileno(self):
         """Return file number for daemon context."""
-        return log.handlers[0].socket.fileno()
+        return log.root.handlers[0].socket.fileno()
 
 
 class ErrorLogger:
@@ -52,4 +49,4 @@ class ErrorLogger:
 
     def fileno(self):
         """Return file number for daemon context."""
-        return log.handlers[0].socket.fileno()
+        return log.root.handlers[0].socket.fileno()
