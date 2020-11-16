@@ -295,10 +295,11 @@ class PrusaLink:
                             self.send_telemetry)
 
     def send_telemetry(self):
-        telemetry = self.model.get_and_reset_telemetry()
-        state = telemetry.state
-        kwargs = telemetry.dict(exclude={"state"}, exclude_none=True)
-        self.printer.telemetry(state=state, **kwargs)
+        if self.printer.queue.empty():
+            telemetry = self.model.get_and_reset_telemetry()
+            state = telemetry.state
+            kwargs = telemetry.dict(exclude={"state"}, exclude_none=True)
+            self.printer.telemetry(state=state, **kwargs)
 
     # --- SDK loop runner ---
 
