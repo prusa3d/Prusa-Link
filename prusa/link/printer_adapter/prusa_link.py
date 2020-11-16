@@ -174,7 +174,7 @@ class PrusaLink:
         self.telemetry_thread.start()
 
         self.sdk_loop_thread = threading.Thread(
-            target=self.sdk_loop(), name="sdk_loop", daemon=True)
+            target=self.sdk_loop, name="sdk_loop", daemon=True)
         self.sdk_loop_thread.start()
 
         # Start this last, as it might start printing right away
@@ -187,9 +187,9 @@ class PrusaLink:
         self.lcd_printer.stop()
         self.telemetry_gatherer.stop()
         self.ip_updater.stop()
+        self.temp_ensurer.stop()
         self.serial_queue.stop()
         self.serial.stop()
-        self.temp_ensurer.stop()
 
         log.debug("Remaining threads, that could prevent us from quitting:")
         for thread in threading.enumerate():
