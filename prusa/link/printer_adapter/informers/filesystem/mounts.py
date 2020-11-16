@@ -166,6 +166,7 @@ class FSMounts(Mounts):
         return is_wanted and type_valid
 
     def stop(self):
+        super().stop()
         self.mtab.close()
 
 
