@@ -95,7 +95,7 @@ class SerialQueue(metaclass=MCSingleton):
         """Look, what the next instruction is going to be"""
         if self.m110_workaround_slot is not None:
             return self.m110_workaround_slot
-        if self.rx_yeet_slot is not None:
+        elif self.rx_yeet_slot is not None:
             return self.rx_yeet_slot
         elif self.recovery_list:
             return self.recovery_list.pop()
@@ -115,12 +115,12 @@ class SerialQueue(metaclass=MCSingleton):
         if self.current_instruction is not None:
             raise RuntimeError("Cannot send a new instruction. "
                                "When the last one didn't finish processing.")
-        if self.rx_yeet_slot is not None:
-            self.current_instruction = self.rx_yeet_slot
-            self.rx_yeet_slot = None
         if self.m110_workaround_slot is not None:
             self.current_instruction = self.m110_workaround_slot
             self.m110_workaround_slot = None
+        elif self.rx_yeet_slot is not None:
+            self.current_instruction = self.rx_yeet_slot
+            self.rx_yeet_slot = None
         elif self.recovery_list:
             self.current_instruction = self.recovery_list.pop()
         elif self.priority_queue:
