@@ -4,7 +4,7 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 
 from prusa.connect.printer.const import State, Source
-from prusa.link.printer_adapter import __version__
+from prusa.link import __version__
 
 
 class Telemetry(BaseModel):

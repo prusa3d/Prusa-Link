@@ -26,27 +26,4 @@ class ThreadingServer(ThreadingMixIn, SingleServer):
     type = "Threading"
 
 
-class RequestLogger:
-    """Create new logger with syslog handler for requests."""
-    # pylint: disable=no-self-use
 
-    def write(self, message):
-        """Send request message to log."""
-        log.info(message)
-
-    def fileno(self):
-        """Return file number for daemon context."""
-        return log.root.handlers[0].socket.fileno()
-
-
-class ErrorLogger:
-    """Create new logger with syslog handler for errors."""
-    # pylint: disable=no-self-use
-
-    def write(self, message):
-        """Send request message to log."""
-        log.error(message)
-
-    def fileno(self):
-        """Return file number for daemon context."""
-        return log.root.handlers[0].socket.fileno()

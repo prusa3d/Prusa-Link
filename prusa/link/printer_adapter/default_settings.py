@@ -11,15 +11,6 @@ HOME = expanduser("~")
 instance = None
 
 
-class SerialSettings(BaseModel):
-    PRINTER_PORT = "/dev/ttyAMA0"
-    PRINTER_BAUDRATE = 115200
-
-
-class ConnectSettings(BaseModel):
-    CONNECT_CONFIG_PATH = "/boot/lan_settings.ini"
-
-
 class IntervalSettings(BaseModel):
 
     # Intervals are in seconds
@@ -88,9 +79,6 @@ class MountPointSettings(BaseModel):
     MOUNTPOINTS = [
     ]
     # Just directories
-    DIRECTORIES = [
-        os.path.expanduser("~/Prusa Link gcodes")
-    ]
 
     # TODO: this is must be constants
     BLACKLISTED_TYPES = [
@@ -134,8 +122,6 @@ class SerialNumberWorkaround(BaseModel):
 class SettingsData(BaseModel):
 
     """ Object supposed to hold all settings """
-    CONN: ConnectSettings = ConnectSettings()
-    SERIAL: SerialSettings = SerialSettings()
     TIME: IntervalSettings = IntervalSettings()
     LCDQ: LCDQueueSettings = LCDQueueSettings()
     SQ: SerialQueueSettings = SerialQueueSettings()
@@ -155,4 +141,3 @@ def get_settings() -> SettingsData:
         path = os.path.join(config_dir, "config.yaml")
         instance = Settings(SettingsData, path)
     return instance.settings
-
