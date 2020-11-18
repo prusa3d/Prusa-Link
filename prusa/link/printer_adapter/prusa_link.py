@@ -1,10 +1,11 @@
-import logging
 import os
 import threading
 from time import time
 
 from requests import RequestException
 from serial import SerialException
+
+from prusa.link.config import log_adapter as log
 
 from prusa.connect.printer import SDKServerError
 from prusa.connect.printer.files import File
@@ -45,21 +46,13 @@ from prusa.link.printer_adapter.temp_ensurer import TempEnsurer
 from prusa.link.printer_adapter.util import run_slowly_die_fast
 from prusa.link.sdk_augmentation.printer import MyPrinter
 
-LOG = get_settings().LOG
 TIME = get_settings().TIME
-SERIAL = get_settings().SERIAL
-CONN = get_settings().CONN
-
-
-log = logging.getLogger(__name__)
-log.setLevel(LOG.PRUSA_LINK)
-
-logging.root.setLevel(LOG.DEFAULT)
 
 
 class PrusaLink:
 
-    def __init__(self):
+    def __init__(self, cfg):
+        self.cfg = cfg
         self.running = True
         self.stopped_event = threading.Event()
 
@@ -68,8 +61,8 @@ class PrusaLink:
 
         try:
             self.serial = Serial(self.serial_reader,
-                                 port=SERIAL.PRINTER_PORT,
-                                 baudrate=SERIAL.PRINTER_BAUDRATE)
+                                 port=cfg.printer.port,
+                                 baudrate=cfg.printer.baudrate)
         except SerialException:
             log.exception(
                 "Cannot talk to the printer using the RPi port, "
@@ -90,7 +83,7 @@ class PrusaLink:
             raise
         printer_type = get_printer_type(self.serial_queue)
 
-        self.printer = MyPrinter.from_config_2(CONN.CONNECT_CONFIG_PATH,
+        self.printer = MyPrinter.from_config_2(cfg.connect.config,
                                                printer_type, sn)
 
         # Bind command handlers
@@ -129,7 +122,8 @@ class PrusaLink:
         # TODO: Hook onto the events
         self.job_id = Job()
 
-        self.storage = StorageController(self.serial_queue, self.serial_reader,
+        self.storage = StorageController(cfg, self.serial_queue,
+                                         self.serial_reader,
                                          self.state_manager)
         self.storage.updated_signal.connect(self.storage_updated)
 
