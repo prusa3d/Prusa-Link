@@ -117,6 +117,7 @@ class SerialQueue(metaclass=MCSingleton):
                                "When the last one didn't finish processing.")
         if self.rx_yeet_slot is not None:
             self.current_instruction = self.rx_yeet_slot
+            self.rx_yeet_slot = None
         if self.m110_workaround_slot is not None:
             self.current_instruction = self.m110_workaround_slot
             self.m110_workaround_slot = None
