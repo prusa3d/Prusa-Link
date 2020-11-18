@@ -176,12 +176,13 @@ class DirMounts(Mounts):
     having the fs_type of "directory".
     """
 
-    def __init__(self):
+    def __init__(self, cfg):
+        DirMounts.paths_to_mount = cfg.connect.directories
         super().__init__()
+
         for directory in self.configured_mounts:
             ensure_directory(directory)
 
-    paths_to_mount = MOUNT.DIRECTORIES
     thread_name = "dir_mounts_thread"
     update_interval = TIME.DIR_RESCAN_INTERVAL
 

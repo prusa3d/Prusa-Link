@@ -18,6 +18,7 @@ LOG_FORMAT_SYSLOG = \
     "%(levelname)s: %(message)s {%(funcName)s():%(lineno)d}"
 
 logger = getLogger('prusa-link')
+log_adapter = getLogger('prusa-link.adapter')
 log_http = getLogger('prusa-link.http')
 
 # pylint: disable=too-many-ancestors
@@ -74,7 +75,7 @@ class Config(Get):
                 ("data_dir", str, ''),  # user_data_dir by default
                 ("pid_file", str, "/var/run/prusa-link/prusa-link.pid"),
                 ("user", str, "pi"),
-                ("group", str, "pi"),
+                ("group", str, "dialout"),  # creepy permissions on pi
             )))
         if args.foreground:
             pwd = getpwuid(getuid())
@@ -99,7 +100,7 @@ class Config(Get):
         self.http = Model(self.get_section(
             "http",
             (
-                ("address", str, "127.0.0.1"),
+                ("address", str, "0.0.0.0"),
                 ("port", int, 8080),
                 ("type", str, "threading"),
                 ("digest", str, "./passwd.digest")  # relative to user_conf_dir
@@ -113,9 +114,9 @@ class Config(Get):
                                         f'.config/{__application__}',
                                         self.http.digest))
 
-        # [serial]
-        self.serial = Model(self.get_section(
-            "serial",
+        # [printer]
+        self.printer = Model(self.get_section(
+            "printer",
             (
                 ("port", str, "/dev/ttyAMA0"),
                 ("baudrate", int, 115200)
@@ -157,6 +158,7 @@ class Config(Get):
         """Logger setting is more complex."""
 
         self.get_logger('main', args)
+        self.get_logger('adapter', args)
         self.get_logger('http', args)
 
         if args.foreground:

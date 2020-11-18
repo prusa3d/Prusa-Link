@@ -25,7 +25,8 @@ log.setLevel(LOG.STORAGE)
 
 class StorageController:
 
-    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
+    def __init__(self, cfg, serial_queue: SerialQueue,
+                 serial_reader: SerialReader,
                  state_manager: StateManager):
         self.updated_signal = Signal()  # kwargs: tree: FileTree
         self.dir_mounted_signal = Signal()
@@ -44,7 +45,7 @@ class StorageController:
         self.sd_card.sd_unmounted_signal.connect(self.sd_unmounted)
 
         self.fs_mounts = FSMounts()
-        self.dir_mounts = DirMounts()
+        self.dir_mounts = DirMounts(cfg)
         self.fs_mounts.mounted_signal.connect(self.dir_mounted)
         self.fs_mounts.unmounted_signal.connect(self.dir_unmounted)
         self.dir_mounts.mounted_signal.connect(self.dir_mounted)

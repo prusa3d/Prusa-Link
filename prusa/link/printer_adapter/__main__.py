@@ -1,30 +1,55 @@
-import logging
+from os import path
+from argparse import ArgumentParser
 
-from cysystemd.journal import JournaldLogHandler
+from appdirs import user_config_dir
 
 from .prusa_link import PrusaLink
+from ..config import Config, logger as log
+from .. import __application__, __vendor__
 
-DEFAULT_LOG_LEVEL = "INFO"
-CONSOLE_FORMAT = (
-    "%(asctime)s %(levelname)s {%(module)s.%(funcName)s():%(lineno)d} "
-    "[%(threadName)s]: %(message)s ")
-JOURNAL_FORMAT = (
-    "%(module)s.%(funcName)s():%(lineno)d [%(threadName)s]: %(message)s ")
+CONFIG_FILE = path.join(user_config_dir(__application__, __vendor__),
+                        "prusa-link.ini")
 
-journal_handler = JournaldLogHandler()
-journal_handler.setFormatter(logging.Formatter(JOURNAL_FORMAT))
 
-logging.basicConfig(format=CONSOLE_FORMAT)
-logging.root.setLevel(DEFAULT_LOG_LEVEL)
-logging.root.addHandler(journal_handler)
+class Args:
+    """Temporary ArgumenParser compatibility class."""
+    config = CONFIG_FILE
+    pidfile = None
+    address = None
+    port = None
+
+    def __init__(self, args):
+        self.foreground = args.foreground
+        self.info = args.info
+        self.debug = args.debug
 
 
 def main():
-    prusa_link = PrusaLink()
+    parser = ArgumentParser(
+        prog="prusa-link",
+        description="Prusa Link printer adapter.")
+    parser.add_argument(
+        "-f", "--foreground", action="store_true",
+        help="run as script on foreground")
+    parser.add_argument(
+        "-i", "--info", action="store_true",
+        help="more verbose logging level INFO is set")
+    parser.add_argument(
+        "-d", "--debug", action="store_true",
+        help="DEBUG logging level is set")
+
+    args = parser.parse_args()
+
+    cfg = Config(Args(args))
+    log.info('Starting adapter for port %s', cfg.printer.port)
+    log.debug('watafa')
+    prusa_link = PrusaLink(cfg)
     try:
         prusa_link.stopped_event.wait()
     except KeyboardInterrupt:
         prusa_link.stop()
+    except Exception:   # pylint: disable=broad-except
+        log.exception("Exception on server")
 
 
 if __name__ == '__main__':

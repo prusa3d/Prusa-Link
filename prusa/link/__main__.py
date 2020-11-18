@@ -5,16 +5,14 @@ from os import kill, geteuid, path, mkdir, chmod
 from grp import getgrnam
 from pwd import getpwnam
 from signal import SIGTERM
-from socket import error as SocketError
 
 from daemon import DaemonContext
 from lockfile.pidlockfile import PIDLockFile
 from appdirs import user_config_dir
 
-from .. import __application__, __vendor__
-from ..config import Config, logger as log
-
-from .lib.daemon import Daemon
+from . import __application__, __vendor__
+from .config import Config, logger as log
+from .daemon import Daemon
 
 # pylint: disable=too-many-return-statements
 # pylint: disable=too-many-branches
@@ -26,8 +24,8 @@ CONFIG_FILE = path.join(user_config_dir(__application__, __vendor__),
 def main():
     """Standard main function."""
     parser = ArgumentParser(
-        prog="prusa-link-web",
-        description="Prusa Link Web interface.")
+        prog="prusa-link",
+        description="Prusa Link daemon.")
     parser.add_argument(
         "command", nargs='?', default="start", type=str,
         help="daemon action (start|stop|restart|status) (default: start)")
@@ -95,15 +93,15 @@ def main():
             pidfile=pid_file,
             stdout=daemon.stdout,
             stderr=daemon.stderr,
-            umask=0o002,
-            files_preserve=[log.root.handlers[0].socket.fileno()])
+            files_preserve=[log.root.handlers[0].socket.fileno()],
+            signal_map={SIGTERM: daemon.sigterm})
 
         pid_dir = path.dirname(config.daemon.pid_file)
         if pid_dir == '/var/run/prusa-link' and not path.exists(pid_dir):
             mkdir(pid_dir)
             chmod(pid_dir, 0o777)
 
-        if geteuid() == 0 and not args.foreground:
+        if geteuid() == 0:
             context.uid = getpwnam(config.daemon.user).pw_uid
             context.gid = getgrnam(config.daemon.group).gr_gid
 
@@ -114,12 +112,6 @@ def main():
             log.info("Shutdown")
         return 0
 
-    except KeyboardInterrupt:
-        log.info('Shutdown server (keyboard interrupt)')
-        return 1
-    except SocketError:
-        log.exception("Shutdown by SocketError")
-        return 1
     except Exception as exc:  # pylint: disable=broad-except
         log.info("%s", args)
         log.debug("%s", format_exc())

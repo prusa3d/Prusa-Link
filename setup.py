@@ -74,9 +74,9 @@ setup(
     install_requires=REQUIRES,
     entry_points={
         'console_scripts': [
+            'prusa-link = prusa.link.__main__:main',
             'prusa_link = prusa.link.printer_adapter.__main__:main',
-            'prusa_link_install = prusa.link.installation.__main__:main',
-            'prisa-link-web = prusa.link.web.__main__:main'
+            'prusa_link_install = prusa.link.installation.__main__:main'
         ]
     }
 )
