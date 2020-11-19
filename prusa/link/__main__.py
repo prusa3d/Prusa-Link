@@ -102,6 +102,7 @@ def main():
             chmod(pid_dir, 0o777)
 
         if geteuid() == 0:
+            context.initgroups = True  # need only for RPi, don't know why
             context.uid = getpwnam(config.daemon.user).pw_uid
             context.gid = getgrnam(config.daemon.group).gr_gid
 
