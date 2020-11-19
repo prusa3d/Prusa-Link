@@ -75,7 +75,7 @@ class Config(Get):
                 ("data_dir", str, ''),  # user_data_dir by default
                 ("pid_file", str, "/var/run/prusa-link/prusa-link.pid"),
                 ("user", str, "pi"),
-                ("group", str, "dialout"),  # creepy permissions on pi
+                ("group", str, "pi"),
             )))
         if args.foreground:
             pwd = getpwuid(getuid())
