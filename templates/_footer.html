@@ -1,0 +1,16 @@
+     <div id="push"></div>
+    </div><!-- wrap -->
+
+    <div class="container">
+      <p class="credit"><small>
+        Copyright &copy; 2020 Prusa Research a.s.
+        All rights reserved.
+      </small></p>
+      {%- if template_info is defined %}
+      {%- from 'template_info.html' import render_info %}
+      <pre class="template_info">
+        {{ render_info(template_info.context().get_exported()) }}
+      </pre>
+      {% endif %}
+  </body>
+</html>

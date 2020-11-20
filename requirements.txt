@@ -4,6 +4,7 @@ blinker
 elevate
 extendparser
 getmac
+jinja2-template-info
 lockfile
 PoorWSGI>=2.3.0
 pydantic
