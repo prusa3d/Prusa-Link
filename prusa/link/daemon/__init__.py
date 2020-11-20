@@ -92,7 +92,7 @@ class Daemon():
             log_adapter.exception("Adapter was not start")
             self.http.raise_exception(KeyboardInterrupt)
             self.http.join()
-            return
+            return 1
 
         try:
             self.prusa_link.stopped_event.wait()
@@ -102,9 +102,11 @@ class Daemon():
             self.prusa_link.stop()
             self.http.raise_exception(KeyboardInterrupt)
             self.http.join()
+            return 0
         except Exception:   # pylint: disable=broad-except
             log_adapter.exception("Unknown Exception")
             self.http.raise_exception(KeyboardInterrupt)
+            return 1
 
     def sigterm(self, signum, frame):
         """Raise KeyboardInterrupt exceptions in threads."""
