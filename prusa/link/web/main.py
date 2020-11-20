@@ -3,7 +3,7 @@ from os import makedirs
 from os.path import abspath, join
 
 from poorwsgi import state
-from poorwsgi.response import  HTTPException, \
+from poorwsgi.response import HTTPException, \
     JSONResponse, Response, EmptyResponse
 
 from .. import __version__
@@ -11,6 +11,12 @@ from ..config import log_http as log
 
 from .lib.core import app
 from .lib.auth import check_api_key
+from .lib.view import generate_page
+
+
+@app.route('/')
+def index(req):
+    return generate_page(req, "index.html")
 
 
 @app.route('/api/version')

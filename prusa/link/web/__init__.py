@@ -9,6 +9,7 @@ from prusa.link.config import log_http as log
 from .lib.core import app
 from .lib.classes import ThreadingServer
 
+__import__('errors', globals=globals(), level=1)
 __import__('main', globals=globals(), level=1)
 # __import__('wizard', globals=globals(), level=1)
 # __import__('login', globals=globals(), level=1)

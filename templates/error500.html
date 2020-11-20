@@ -1,0 +1,25 @@
+{# vim:set softtabstop=2: -#}
+{% set title = '500 Internal Server Error' -%}
+{#% set refresh = 15 %#}
+{% include "_header.html" %}
+
+    <div class="container">
+      <div class="jumbotron http-error">
+        <h1>{{ title }}</h1>
+        <p>
+          <b>We're sorry, but there is a error in service.</b>
+          <br><br>Please try again later.
+        </p>
+      </div>
+
+    {% if debug %}
+      <h2> Exception Traceback</h2>
+      <pre class="striped">
+{%- for line in traceback -%}
+<div>{{ line }}</div>
+{%- endfor -%}
+      </pre>
+    {% endif %}
+    </div>
+
+{% include "_footer.html" %}
