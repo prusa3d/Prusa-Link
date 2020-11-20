@@ -11,8 +11,8 @@ from extendparser.get import Get
 from .. import __application__
 
 LOG_FORMAT_FOREGROUND = \
-    "%(asctime)s %(levelname)s: %(name)s: %(message)s "\
-    "{%(funcName)s():%(lineno)d}"
+    "%(asctime)s %(levelname)s {%(module)s.%(funcName)s():%(lineno)d} "\
+    "[%(threadName)s]: %(message)s "
 LOG_FORMAT_SYSLOG = \
     "%(name)s[%(process)d]: "\
     "%(levelname)s: %(message)s {%(funcName)s():%(lineno)d}"
