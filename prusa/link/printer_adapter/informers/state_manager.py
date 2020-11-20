@@ -350,3 +350,14 @@ class StateManager(Updatable, metaclass=MCSingleton):
     def error(self):
         log.debug(f"Overriding the state with ERROR")
         self.override_state = State.ERROR
+
+    @state_influencer(StateChange(to_states={State.ERROR: Source.SERIAL}))
+    def serial_error(self):
+        log.debug(f"Overriding the state with ERROR")
+        self.override_state = State.ERROR
+
+    @state_influencer(StateChange(to_states={State.READY: Source.SERIAL}))
+    def serial_error_resolved(self):
+        if self.override_state == State.ERROR:
+            log.debug(f"Removing the ERROR state")
+            self.override_state = None

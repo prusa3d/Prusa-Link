@@ -4,6 +4,7 @@ from threading import Thread, Lock
 from time import sleep
 
 import serial
+from blinker import Signal
 
 from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
@@ -35,6 +36,9 @@ class Serial(metaclass=MCSingleton):
         self.serial = None
         self.serial_reader = serial_reader
 
+        self.failed_signal = Signal()
+        self.renewed_signal = Signal()
+
         self.running = True
         self._renew_serial_connection()
 
@@ -43,36 +47,39 @@ class Serial(metaclass=MCSingleton):
         self.read_thread.start()
 
     def _reopen(self):
-        # Prevent writing while reopening serial
-        with self.write_lock:
-            if self.serial is not None and self.serial.is_open:
-                self.serial.close()
+        if self.serial is not None and self.serial.is_open:
+            self.serial.close()
 
-            # Prevent a hangup on serial close, this will make it,
-            # so the printer resets only on reboot or replug,
-            # not on prusa_link restarts
-            f = open(self.port)
-            attrs = termios.tcgetattr(f)
-            log.debug(f"Serial attributes: {attrs}")
-            # disable hangup
-            attrs[2] = attrs[2] & ~termios.HUPCL
-            # TCSAFLUSH set after everything is done
-            termios.tcsetattr(f, termios.TCSAFLUSH, attrs)
-            f.close()
+        # Prevent a hangup on serial close, this will make it,
+        # so the printer resets only on reboot or replug,
+        # not on prusa_link restarts
+        f = open(self.port)
+        attrs = termios.tcgetattr(f)
+        log.debug(f"Serial attributes: {attrs}")
+        # disable hangup
+        attrs[2] = attrs[2] & ~termios.HUPCL
+        # TCSAFLUSH set after everything is done
+        termios.tcsetattr(f, termios.TCSAFLUSH, attrs)
+        f.close()
 
-            self.serial = serial.Serial(port=self.port, baudrate=self.baudrate,
-                                        timeout=self.timeout,
-                                        write_timeout=self.write_timeout)
+        self.serial = serial.Serial(port=self.port, baudrate=self.baudrate,
+                                    timeout=self.timeout,
+                                    write_timeout=self.write_timeout)
 
-            # No idea what these mean, but they seem to be 0, when the printer
-            # isn't going to restart
-            # FIXME: thought i could determine whether the printer is going to
-            #  restart or not. But that proved unreliable
-            # if attrs[0] != 0 or attrs[1] != 0:
-            log.debug("Waiting for the printer to boot")
-            sleep(TIME.PRINTER_BOOT_WAIT)
+        # No idea what these mean, but they seem to be 0, when the printer
+        # isn't going to restart
+        # FIXME: thought i could determine whether the printer is going to
+        #  restart or not. But that proved unreliable
+        # if attrs[0] != 0 or attrs[1] != 0:
+        log.debug("Waiting for the printer to boot")
+        sleep(TIME.PRINTER_BOOT_WAIT)
 
     def _renew_serial_connection(self):
+        # Never call this without locking the write lock first!
+
+        # When just starting, this is fine as the signal handlers
+        # can't be connected yet
+        self.failed_signal.send(self)
         while self.running:
             try:
                 self._reopen()
@@ -81,6 +88,7 @@ class Serial(metaclass=MCSingleton):
                 sleep(TIME.SERIAL_REOPEN_TIMEOUT)
             else:
                 break
+        self.renewed_signal.send(self)
 
     def _read_continually(self):
         """Ran in a thread, reads stuff over an over"""
@@ -90,7 +98,10 @@ class Serial(metaclass=MCSingleton):
             except serial.SerialException:
                 log.error("Failed when reading from the printer. "
                           "Trying to re-open")
-                self._renew_serial_connection()
+
+                with self.write_lock: # Let's lock the writing
+                    # if the serial is broken
+                    self._renew_serial_connection()
             except UnicodeDecodeError:
                 log.error("Failed decoding a message")
             else:
@@ -108,20 +119,19 @@ class Serial(metaclass=MCSingleton):
 
         :param message: the message to be sent
         """
-        # with self.write_read_lock:
-        # Why would i not want to write and handle reads at the same time?
         log.debug(f"Sending to printer: {message}")
 
-        errored_out = False
+        sent = False
+
         with self.write_lock:
-            try:
-                self.serial.write(message)
-            except serial.SerialException:
-                log.error(
-                    f"Serial error when sending '{message}' to the printer")
-                errored_out = True
-        if errored_out:
-            self._renew_serial_connection()
+            while not sent and self.running:
+                try:
+                    self.serial.write(message)
+                except serial.SerialException:
+                    log.error(
+                        f"Serial error when sending '{message}' to the printer")
+                    self._renew_serial_connection()
+                else: sent = True
 
     def blip_dtr(self):
         with self.write_lock:

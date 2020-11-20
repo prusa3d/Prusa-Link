@@ -59,19 +59,14 @@ class PrusaLink:
         self.model = Model()
         self.serial_reader = SerialReader()
 
-        try:
-            self.serial = Serial(self.serial_reader,
-                                 port=cfg.printer.port,
-                                 baudrate=cfg.printer.baudrate)
-        except SerialException:
-            log.exception(
-                "Cannot talk to the printer using the RPi port, "
-                "is it enabled? Is the Pi configured correctly?")
-            raise
+        self.serial = Serial(self.serial_reader,
+	                     port=cfg.printer.port,
+	                     baudrate=cfg.printer.baudrate)
 
         self.serial_queue = MonitoredSerialQueue(self.serial,
                                                  self.serial_reader)
-        MonitoredSerialQueue.get_instance().serial_queue_failed.connect(self.serial_queue_failed)
+        MonitoredSerialQueue.get_instance().serial_queue_failed.connect(
+            self.serial_queue_failed)
 
         self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_reader)
 
@@ -109,6 +104,10 @@ class PrusaLink:
         self.state_manager = StateManager(self.serial_reader, self.file_printer)
         self.state_manager.state_changed_signal.connect(self.state_changed)
         self.state_manager.job_id_updated_signal.connect(self.job_id_updated)
+
+        # Connect serial to state manager
+        self.serial.failed_signal.connect(self.serial_failed)
+        self.serial.renewed_signal.connect(self.serial_renewed)
 
         self.crotitel_cronu = CrotitelCronu(self.state_manager)
 
@@ -212,6 +211,12 @@ class PrusaLink:
 
     # --- Signal handlers ---
 
+    def serial_failed(self, sender):
+        self.state_manager.serial_error()
+
+    def serial_renewed(self, sender):
+        self.state_manager.serial_error_resolved()
+
     def telemetry_gathered(self, sender, telemetry):
         self.model.set_telemetry(telemetry)
 
@@ -266,9 +271,7 @@ class PrusaLink:
 
     def serial_queue_failed(self, sender):
         reset_command = ResetPrinter()
-        self.state_manager.expect_change(StateChange(
-            to_states={State.ERROR: Source.WUI}))
-        self.state_manager.error()
+        self.state_manager.serial_error()
         try:
             reset_command.run_command()
         except:
