@@ -109,9 +109,70 @@ def main():
         with context:
             log.info(
                 "Starting service with pid %d", pid_file.read_pid())
-            daemon.run()
+            retval = daemon.run()
             log.info("Shutdown")
-        return 0
+            return retval
+
+    except Exception as exc:  # pylint: disable=broad-except
+        log.info("%s", args)
+        log.debug("%s", format_exc())
+        log.fatal("%s", exc)
+        parser.error("%s" % exc)
+        return 1
+
+
+class Args:
+    """Temporary ArgumenParser compatibility class."""
+    config = CONFIG_FILE
+    pidfile = None
+    address = None
+    port = None
+
+    def __init__(self, args):
+        self.foreground = args.foreground
+        self.info = args.info
+        self.debug = args.debug
+
+
+def systemd():
+    """Compatibility main fce for systemd."""
+    parser = ArgumentParser(
+        prog="prusa-link",
+        description="Prusa Link printer adapter.")
+    parser.add_argument(
+        "-f", "--foreground", action="store_true",
+        help="run as script on foreground")
+    parser.add_argument(
+        "-i", "--info", action="store_true",
+        help="more verbose logging level INFO is set")
+    parser.add_argument(
+        "-d", "--debug", action="store_true",
+        help="DEBUG logging level is set")
+
+    args = parser.parse_args()
+
+    cfg = Config(Args(args))
+    log.info('Starting adapter for port %s', cfg.printer.port)
+
+    try:
+        daemon = Daemon(cfg)
+
+        context = DaemonContext(
+            detach_process=False,
+            stdout=daemon.stdout,
+            stderr=daemon.stderr,
+            files_preserve=[log.root.handlers[0].socket.fileno()],
+            signal_map={SIGTERM: daemon.sigterm})
+
+        if geteuid() == 0:
+            context.initgroups = True  # need only for RPi, don't know why
+            context.uid = getpwnam(cfg.daemon.user).pw_uid
+            context.gid = getgrnam(cfg.daemon.group).gr_gid
+
+        with context:
+            retval = daemon.run()
+            log.info("Shutdown")
+            return retval
 
     except Exception as exc:  # pylint: disable=broad-except
         log.info("%s", args)

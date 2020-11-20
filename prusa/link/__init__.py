@@ -1,4 +1,4 @@
-"""Package meta data"""
+"""Original Prusa Link printer adapter."""
 __application__ = "Prusa-Link"
 __vendor__ = "PrusaResearch"
 
