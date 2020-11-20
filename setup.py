@@ -5,7 +5,7 @@ import re
 from sys import stderr
 from setuptools import setup, find_namespace_packages
 
-from prusa.link.printer_adapter import __version__, __doc__
+from prusa.link import __version__, __doc__
 
 RPI_MODEL_PATH = "/sys/firmware/devicetree/base/model"
 RE_GIT = re.compile(r'(-e )?git\+|:')
@@ -75,7 +75,7 @@ setup(
     entry_points={
         'console_scripts': [
             'prusa-link = prusa.link.__main__:main',
-            'prusa_link = prusa.link.printer_adapter.__main__:main',
+            'prusa_link = prusa.link.__main__:systemd',
             'prusa_link_install = prusa.link.installation.__main__:main'
         ]
     }

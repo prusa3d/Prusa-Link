@@ -138,14 +138,14 @@ class Config(Get):
 
         Config.instance = self
 
-    def get_logger(self, name, args):
+    def get_logger(self, name, args, fallback="WARNING"):
         """Set specific logger value"""
         if args.debug:
             log_level = "DEBUG"
         elif args.info:
             log_level = "INFO"
         else:
-            log_level = self.get("logging", name, fallback="WARNING")
+            log_level = self.get("logging", name, fallback=fallback)
             check_log_level(log_level)
 
         if name == 'main':
@@ -159,7 +159,7 @@ class Config(Get):
 
         self.get_logger('main', args)
         self.get_logger('adapter', args)
-        self.get_logger('http', args)
+        self.get_logger('http', args, 'INFO')  # http requests
 
         if args.foreground:
             log_format = LOG_FORMAT_FOREGROUND
