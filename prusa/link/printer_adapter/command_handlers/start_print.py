@@ -1,7 +1,6 @@
 import logging
 from pathlib import Path
 
-from prusa.connect.printer.files import File
 from prusa.connect.printer.const import State, Source
 from prusa.link.printer_adapter.command import CommandHandler
 from prusa.link.printer_adapter.default_settings import get_settings
@@ -47,6 +46,7 @@ class StartPrint(CommandHandler):
         else:
             self._start_file_print(str(path))
 
+        self.state_manager.job.set_file_path(str(path))
         self.state_manager.printing()
         self.state_manager.stop_expecting_change()
 
