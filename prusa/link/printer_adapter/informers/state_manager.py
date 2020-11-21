@@ -280,7 +280,8 @@ class StateManager(Updatable, metaclass=MCSingleton):
                 log.debug("Unexpected state change. This is weird")
             self.expected_state_change = None
 
-            self.job.state_changed(self.last_state, self.current_state)
+            self.job.state_changed(self.last_state, self.current_state,
+                                   command_id=command_id)
             self.state_changed_signal.send(self, command_id=command_id,
                                            source=source)
             self.job.tick()
