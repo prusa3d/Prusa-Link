@@ -291,7 +291,7 @@ class StateManager(Updatable, metaclass=MCSingleton):
     # --- State changing methods ---
 
     # This state change can change the state to "PRINTING"
-    @state_influencer(StateChange(to_states={State.PRINTING: Source.HW}))  # USER
+    @state_influencer(StateChange(to_states={State.PRINTING: Source.USER}))
     def printing(self):
         if self.printing_state is None:
             self.printing_state = State.PRINTING
@@ -315,12 +315,12 @@ class StateManager(Updatable, metaclass=MCSingleton):
             self.base_state = State.BUSY
 
     # Cannot distinguish pauses from the user and the gcode
-    @state_influencer(StateChange(to_states={State.PAUSED: Source.HW}))  # USER
+    @state_influencer(StateChange(to_states={State.PAUSED: Source.USER}))
     def paused(self):
         if self.printing_state == State.PRINTING:
             self.printing_state = State.PAUSED
 
-    @state_influencer(StateChange(to_states={State.PRINTING: Source.HW}))  # USER
+    @state_influencer(StateChange(to_states={State.PRINTING: Source.USER}))
     def resumed(self):
         if self.printing_state == State.PAUSED:
             self.printing_state = State.PRINTING
@@ -341,7 +341,7 @@ class StateManager(Updatable, metaclass=MCSingleton):
         if self.base_state == State.BUSY:
             self.base_state = State.READY
 
-    @state_influencer(StateChange(to_states={State.ATTENTION: Source.HW}))  # USER
+    @state_influencer(StateChange(to_states={State.ATTENTION: Source.USER}))
     def attention(self):
         log.debug(f"Overriding the state with ATTENTION")
         self.override_state = State.ATTENTION
