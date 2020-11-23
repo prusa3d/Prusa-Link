@@ -7,8 +7,9 @@ import os
 
 from poorwsgi import Application
 
-PKG_DIR = abspath(join(dirname(__file__), pardir, pardir, pardir))
-DATA_DIR = abspath(join(PKG_DIR, pardir, 'share', 'prusa-link'))
+PKG_DIR = abspath(join(dirname(__file__), pardir, pardir, pardir, pardir))
+DATA_DIR = abspath(join(PKG_DIR, pardir, pardir, pardir,
+                        'share', 'prusa-link'))
 STATIC_DIR = abspath(
         os.environ.get('PRUSA_LINK_STATIC', join(DATA_DIR, 'static')))
 TEMPL_DIR = abspath(
@@ -17,7 +18,6 @@ TEMPL_DIR = abspath(
 app = application = Application(__package__)
 app.keep_blank_values = 1
 app.document_root = STATIC_DIR
-app.debug = True
 
 # will be set later
 app.cfg = None

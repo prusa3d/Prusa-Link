@@ -19,6 +19,7 @@ __import__('main', globals=globals(), level=1)
 def init(cfg):
     """Set application variables."""
     app.cfg = cfg
+    app.debug = cfg.debug
     app.auth_map = PasswordMap(cfg.http.digest)
 
     if exists(cfg.http.digest):  # is configured yet

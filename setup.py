@@ -7,6 +7,7 @@ from setuptools import setup, find_namespace_packages
 
 from prusa.link import __version__, __doc__
 
+STATIC_FILES = 'share/prusa-link'
 RPI_MODEL_PATH = "/sys/firmware/devicetree/base/model"
 RE_GIT = re.compile(r'(-e )?git\+|:')
 RE_EGG = re.compile(r'#egg=(.*)$')
@@ -50,6 +51,21 @@ def doc():
         return readme.read().strip()
 
 
+def find_data_files(directory, target_folder=""):
+    """Find files in directory, and prepare tuple for setup."""
+    rv = []      # pylint: disable=C0103
+    for root, dirs, files in os.walk(directory):   # pylint: disable=W0612
+        if target_folder:
+            rv.append((target_folder+root[len(directory):],
+                       list(root+'/'+f
+                            for f in files if f[0] != '.' and f[-1] != '~')))
+        else:
+            rv.append((root,
+                       list(root+'/'+f
+                            for f in files if f[0] != '.' and f[-1] != '~')))
+    return rv
+
+
 setup(
     name="prusa-link",
     version=__version__,
@@ -59,9 +75,12 @@ setup(
     maintainer="Tomáš Jozífek",
     maintainer_email="tomas.jozifek@prusa3d.cz",
     url="https://github.com/prusa3d/Prusa-Link",
-    packages=find_namespace_packages(),
+    packages=find_namespace_packages(include=['prusa.*']),
     package_data={'prusa.link.installation.data_files':
                   ['prusa-link.service']},
+    data_files=[]
+        + find_data_files('static', STATIC_FILES+'/static')
+        + find_data_files('templates', STATIC_FILES+'/templates'),
     long_description=doc(),
     long_description_content_type="text/markdown",
     classifiers=[
