@@ -11,9 +11,7 @@ TEMPLATE_INFO_DIR = abspath(
         join(PKG_DIR, pardir, pardir, pardir,
              'share', 'jinja2_template_info', 'templates'))
 
-
 TEMPL_PATH = (TEMPLATE_INFO_DIR, TEMPL_DIR)
-print(TEMPL_PATH)
 
 
 def generate_page(request, template, **kwargs):

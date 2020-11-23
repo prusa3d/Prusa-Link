@@ -67,6 +67,7 @@ class Config(Get):
         super().__init__()
 
         self.read(args.config)
+        self.debug = args.debug
 
         # [daemon]
         self.daemon = Model(self.get_section(
