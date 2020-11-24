@@ -120,9 +120,6 @@ class PrusaLink:
         # Write the initial state to the model
         self.model.state = self.state_manager.get_state()
 
-        # TODO: Hook onto the events
-        self.job_id = Job()
-
         self.storage = StorageController(cfg, self.serial_queue,
                                          self.serial_reader,
                                          self.state_manager)

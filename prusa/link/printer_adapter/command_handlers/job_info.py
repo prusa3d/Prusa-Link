@@ -20,12 +20,7 @@ class JobInfo(CommandHandler):
             self.failed("Cannot get job info, "
                         "when there is no job in progress.")
 
-        values = dict()
-        if self.state_manager.job.get_start_cmd_id() is not None:
-            values["file_path"] = self.state_manager.job.get_file_path()
-
-        if self.state_manager.job.get_start_cmd_id() is not None:
-            values["start_cmd_id"] = self.state_manager.job.get_start_cmd_id()
+        values = self.state_manager.job.get_job_info_data()
 
         self.printer.event_cb(event=Event.JOB_INFO,
                               source=Source.CONNECT,

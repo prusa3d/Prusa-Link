@@ -46,7 +46,7 @@ class StartPrint(CommandHandler):
         else:
             self._start_file_print(str(path))
 
-        self.state_manager.job.set_file_path(str(path))
+        self.state_manager.job.set_file_path(str(path), filename_only=False)
         self.state_manager.printing()
         self.state_manager.stop_expecting_change()
 
