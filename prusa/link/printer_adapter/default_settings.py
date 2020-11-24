@@ -98,7 +98,7 @@ class PathSettings(BaseModel):
     BASE_TMP_PATH = "/var/tmp/Prusa-Link/"
     TMP_FILE = os.path.join(BASE_TMP_PATH, "currently_printing.gcode")
     PP_FILE = os.path.join(BASE_TMP_PATH, "power_panic")
-    JOB_FILE = os.path.join(BASE_TMP_PATH, "job_id_data")
+    JOB_FILE = os.path.join(BASE_TMP_PATH, "job_id_data.json")
     THRESHOLD_FILE = os.path.join(BASE_TMP_PATH, "threshold_data")
     CROTITEL_CRONU = os.path.join(BASE_TMP_PATH, "cancel_daily_cron")
 

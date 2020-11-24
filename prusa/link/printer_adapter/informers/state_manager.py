@@ -82,16 +82,16 @@ class StateManager(Updatable, metaclass=MCSingleton):
                  file_printer: FilePrinter):
 
         self.file_printer = file_printer
-
-        self.job = Job()
+        self.serial_reader: SerialReader = serial_reader
 
         self.state_changed_signal = Signal()  # kwargs: command_id: int,
+
+        self.job = Job(self.serial_reader)
         #                                       source: Sources
         # Pass job_id updates through
         self.job_id_updated_signal = Signal()  # kwargs: job_id: int
         self.job.job_id_updated_signal.connect(self.job_id_updated)
 
-        self.serial_reader: SerialReader = serial_reader
 
         # The ACTUAL states considered when reporting
         self.base_state: State = State.READY

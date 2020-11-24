@@ -20,7 +20,7 @@ SD_EJECTED_REGEX = re.compile(r"^(echo:SD card released)$")
 
 ANY_REGEX = re.compile(r".*")
 CONFIRMATION_REGEX = re.compile(r"^ok\s?(.*)$")  # highest priority
-FILE_OPEN_REGEX = re.compile(r"^echo:Now fresh file: .*$")
+FILE_OPEN_REGEX = re.compile(r"^echo:enqueing \"M23 ([^\"]+)\"$")
 PAUSED_REGEX = re.compile(r"^// action:paused$")
 
 REJECTION_REGEX = re.compile(r"^(echo:Unknown command: (\"[^\"]*\"))|"
