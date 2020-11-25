@@ -78,7 +78,7 @@ setup(
     packages=find_namespace_packages(include=['prusa.*']),
     package_data={'prusa.link.installation.data_files':
                   ['prusa-link.service']},
-    data_files=[]
+    data_files=[(STATIC_FILES, ['README.md', 'ChangeLog'])]
         + find_data_files('static', STATIC_FILES+'/static')
         + find_data_files('templates', STATIC_FILES+'/templates'),
     long_description=doc(),
