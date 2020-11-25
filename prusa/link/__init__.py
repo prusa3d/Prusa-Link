@@ -2,7 +2,7 @@
 __application__ = "Prusa-Link"
 __vendor__ = "PrusaResearch"
 
-__version__ = "0.1.2"
+__version__ = "0.1.3-dev"
 __date__ = "23 Nov 2020"
 __copyright__ = "(c) 2020 Prusa 3D"
 __author_name__ = "Tomáš Jozífek"
