@@ -1,0 +1,11 @@
+# ChangeLog
+
+Version 0.1.3-dev
+
+    * Report at least a file name for SD prints
+
+Version 0.1.2
+
+    * New FW (3.9.2.3566) required
+    * local web service on http://IP-address:8080
+    * file upload from Prusa Slicer (use `PrusaSlicer` Api-Key)
