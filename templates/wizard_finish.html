@@ -1,0 +1,46 @@
+{# vim:set softtabstop=2: -#}
+{% set title = 'Wizard' -%}
+{#% set refresh = 15 %#}
+{% include "_header.html" %}
+{% set active="finish" %}
+{% include "_wizard.html" %}
+
+        <div class="col-md-9">
+          <h1>Finish</h1>
+          {% set printer = wizard.daemon.prusa_link.printer %}
+          {% set cfg = wizard.daemon.cfg %}
+
+          <h3>Authorization</h3>
+          <ul>
+            <li>Username: <span class="white">{{ wizard.username }}</span></li>
+            <li>Api-Key: <span class="white">{{ wizard.api_key }}</span></li>
+          </ul>
+
+          <h3>Network</h3>
+          <ul>
+            <li>Wifi MAC: <span class="white">{{ printer.network_info.wifi_mac }}</span></li>
+            <li>Wifi IPv4: <span class="white">{{ printer.network_info.wifi_ipv4 }}</span></li>
+          </ul>
+
+          <h3>Printer</h3>
+          <ul>
+            <li>Port: <span class="white">{{ cfg.printer.port }}</span></li>
+            <li>Baudrate: <span class="white">{{ cfg.printer.baudrate }}</span></li>
+            <li>Type: <span class="white">{{ printer.type | printer_type }}</span></li>
+            <li>SN: <span class="white">{{ wizard.serial_number }}</span></li>
+            <li>Firmware: <span class="white">{{ printer.firmware }}</span></li>
+          </ul>
+
+          <h3>Connect</h3>
+          <ul>
+            <li>Server: <span class="white">{{ printer.server }}</span></li>
+            <li>Token: <span class="white">{{ printer.token }}</span></li>
+          </ul>
+
+        <form method="post">
+          <input type="submit" value="Confirm">
+        </form>
+        </div>{# /col-md-9 so end of content  #}
+      </div>{# /row #}
+    </div>{# /container #}
+{% include "_footer.html" %}

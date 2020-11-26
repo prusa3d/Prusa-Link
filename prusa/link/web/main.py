@@ -5,18 +5,22 @@ from os.path import abspath, join
 from poorwsgi import state
 from poorwsgi.response import HTTPException, \
     JSONResponse, Response, EmptyResponse
+from poorwsgi.digest import check_digest
 
 from .. import __version__
 from ..config import log_http as log
 
 from .lib.core import app
-from .lib.auth import check_api_key
+from .lib.auth import check_api_key, check_config, REALM
 from .lib.view import generate_page
 
 
 @app.route('/')
+@check_config
+@check_digest(REALM)
 def index(req):
-    return generate_page(req, "index.html")
+    """Return status page"""
+    return generate_page(req, "index.html", api_map=app.api_map)
 
 
 @app.route('/api/version')

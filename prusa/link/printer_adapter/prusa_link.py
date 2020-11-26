@@ -1,6 +1,7 @@
 import os
 import threading
 from time import time
+from hashlib import sha256
 
 from requests import RequestException
 from serial import SerialException
@@ -22,6 +23,7 @@ from prusa.link.printer_adapter.command_handlers.start_print import StartPrint
 from prusa.link.printer_adapter.command_handlers.stop_print import StopPrint
 from prusa.link.printer_adapter.crotitel_cronu import CrotitelCronu
 from prusa.link.printer_adapter.default_settings import get_settings
+from prusa.link.printer_adapter.sn_reader import SNReader
 from prusa.link.printer_adapter.file_printer import FilePrinter
 from prusa.link.printer_adapter.info_sender import InfoSender
 from prusa.link.printer_adapter.informers.ip_updater import IPUpdater, NO_IP
@@ -72,15 +74,19 @@ class PrusaLink:
         self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_reader)
 
         # TODO: get rid of this after it's fixed
+        serial_number = None
+        fingerprint = None
         try:
-            sn = get_serial_number(self.serial_queue)
+            serial_number = get_serial_number(self.serial_queue)
+            fingerprint = sha256(serial_number.encode()).hexdigest()
         except NoSNError:
             self.lcd_printer.enqueue_no_sn()
-            raise
+            self.sn_reader = SNReader(cfg)
+            self.sn_reader.updated_signal.connect(self.sn_readed)
         printer_type = get_printer_type(self.serial_queue)
 
-        self.printer = MyPrinter.from_config_2(cfg.connect.config,
-                                               printer_type, sn)
+        self.printer = MyPrinter(printer_type, serial_number, fingerprint)
+        self.printer.set_connection(cfg.connect.config)
 
         # Bind command handlers
         self.printer.set_handler(CommandType.GCODE, self.execute_gcode)
@@ -218,6 +224,12 @@ class PrusaLink:
 
     def serial_renewed(self, sender):
         self.state_manager.serial_error_resolved()
+
+    def sn_readed(self, serial_number):
+        """Update SN when user set it by wizard."""
+        self.printer.sn = serial_number
+        self.printer.fingerprint = sha256(serial_number.encode()).hexdigest()
+        self.sn_reader.stop()
 
     def telemetry_gathered(self, sender, telemetry):
         self.model.set_telemetry(telemetry)

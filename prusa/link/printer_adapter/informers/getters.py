@@ -33,19 +33,9 @@ def get_serial_number(serial_queue: SerialQueue, should_wait=lambda: True):
     serial_queue.enqueue_one(instruction, to_front=True)
     wait_for_instruction(instruction, should_wait)
     match = instruction.match()
-    if match is None and not SN.SERIAL_NUMBER:
-        raise NoSNError("Cannot get the printer serial number. "
-                        "Upgrade your printer's firmware, but at the time "
-                        "of writing this, it's not fixed yet. "
-                        "So fill your settings in the config file. Go to "
-                        "/home/pi/.config/Prusa-Link/config_example.yaml "
-                        "and copy the [SN] section to config.yaml, "
-                        "then fill in your printer's serial number "
-                        "manually.")
-    elif SN.SERIAL_NUMBER:
-        return SN.SERIAL_NUMBER
-    else:
-        return match.groups()[0]
+    if match is None:
+        raise NoSNError("Cannot get the printer serial number.")
+    return match.groups()[0]
 
 
 def get_printer_type(serial_queue: SerialQueue, should_wait=lambda: True):
