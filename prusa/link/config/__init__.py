@@ -104,7 +104,9 @@ class Config(Get):
                 ("address", str, "0.0.0.0"),
                 ("port", int, 8080),
                 ("type", str, "threading"),
-                ("digest", str, "./passwd.digest")  # relative to user_conf_dir
+                # relative to user_conf_dir
+                ("digest", str, "./passwd.digest"),
+                ("api_keys", str, "./api_keys")
             )))
 
         if args.address:
@@ -114,14 +116,22 @@ class Config(Get):
         self.http.digest = abspath(join(self.daemon.home,
                                         f'.config/{__application__}',
                                         self.http.digest))
+        self.http.api_keys = abspath(join(self.daemon.home,
+                                          f'.config/{__application__}',
+                                          self.http.api_keys))
 
         # [printer]
         self.printer = Model(self.get_section(
             "printer",
             (
                 ("port", str, "/dev/ttyAMA0"),
-                ("baudrate", int, 115200)
+                ("baudrate", int, 115200),
+                ("serial_file", str, "./serial_file")
             )))
+
+        self.printer.serial_file = abspath(join(self.daemon.home,
+                                                f'.config/{__application__}',
+                                                self.printer.serial_file))
 
         # [connect]
         self.connect = Model.get(

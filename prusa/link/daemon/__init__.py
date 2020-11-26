@@ -81,7 +81,7 @@ class Daemon():
     def run(self, daemon=True):
         """Run daemon."""
 
-        self.http = ExThread(target=run_http, args=(self.cfg, daemon),
+        self.http = ExThread(target=run_http, args=(self, not daemon),
                              name="http")
         self.http.start()
 

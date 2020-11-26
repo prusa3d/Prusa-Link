@@ -1,0 +1,25 @@
+    <div class="container">
+
+      <div class="row">
+        <div class="col-md-3">
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link {{ 'active' if active == 'welcome' else '' }}" href="/wizard">Welcome</a></li>
+            <li class="nav-item">
+              <a class="nav-link disabled {{ 'active' if active == 'language' else '' }}" href="/wizard/language">Language</a></li>
+            <li class="nav-item">
+              <a class="nav-link {{ 'active' if active == 'auth' else '' }}" href="/wizard/auth">Authorization</a></li>
+            <li class="nav-item ">
+              <a class="nav-link disabled {{ 'active' if active == 'wifi' else '' }}" href="/wizard/wifi">Wifi</a></li>
+            <li class="nav-item">
+              <a class="nav-link disabled {{ 'active' if active == 'net' else '' }}" href="/wizard/net">Network</a></li>
+            <li class="nav-item">
+              <a class="nav-link {{ 'active' if active == 'printer' else '' }}" href="/wizard/printer">Printer</a></li>
+            <li class="nav-item">
+              <a class="nav-link disabled {{ 'active' if active == 'connect' else '' }}" href="/wizard/connect">Connect</a></li>
+            <li class="nav-item">
+              <a class="nav-link disabled{{ 'active' if active == 'system' else '' }}" href="/wizard/system">System</a></li>
+            <li class="nav-item">
+              <a class="nav-link disabled {{ 'active' if active == 'finish' else '' }}" href="/wizard/finish">Finish</a></li>
+          </ul>
+        </div>{# /col-md-3 #}

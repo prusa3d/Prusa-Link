@@ -22,6 +22,7 @@ app.document_root = STATIC_DIR
 # will be set later
 app.cfg = None
 app.wizard = None
+app.api_map = list()
 
 app.secret_key = sha256(str(time()).encode()).hexdigest()
 app.auth_type = 'Digest'

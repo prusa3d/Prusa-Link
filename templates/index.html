@@ -7,8 +7,10 @@
       <div class="jumbotron http-error">
         <h1>Prusa Link</h1>
         <p></p>
-        <p>For uploading gcodes from Prusa Slicer use Api-Key:
-          <code>PrusaSlicer</code>
+        <p>For uploading gcodes from Prusa Slicer use one of Api-Key:</p>
+          {% for key in api_map %}
+          <code>{{ key }}</code>
+          {% endfor %}
         </p>
       </div>
     </div>
