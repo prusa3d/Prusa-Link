@@ -1,0 +1,35 @@
+{# vim:set softtabstop=2: -#}
+{% set title = 'Wizard' -%}
+{#% set refresh = 15 %#}
+{% include "_header.html" %}
+{% set active="welcome" %}
+{% include "_wizard.html" %}
+
+        <div class="col-md-9">
+          <h1>Welcome in Wizard</h1>
+          {% if not wizard.daemon.prusa_link or not wizard.daemon.prusa_link.printer %}
+          <h3>There is problem in communication with printer</h3>
+          <p>Please check printer settings, if RPi port is on, and if Prusa Link
+            is connected to printer right. Prusa Link have some time to printer
+            when is alive.</p>
+
+          <p>Wait a few seconds and refresh the page. If problems still continues,
+            try to power off and power on your printer / Prusa Link, and try it again.</p>
+
+          {# TODO: some prusa-link log to see what's happen. #}
+
+          <a class="" href="/wizard">Refresh</a>
+          {# TODO: do some javascript call to check the printer, and then
+            refresh is automaticaly #}
+          {% else %}
+          {% set printer = wizard.daemon.prusa_link.printer %}
+          <h3>Prusa Link detect <big>Original Prusa i3 MK3 ({{ printer.type }})</big></h3>
+          <p><b>Perfect!</b> You can continue.</p>
+
+          <a class="" href="/wizard/auth">Next</a>
+          {% endif %}
+
+        </div>{# /col-md-9 so end of content  #}
+      </div>{# /row #}
+    </div>{# /container #}
+{% include "_footer.html" %}

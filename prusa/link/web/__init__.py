@@ -1,6 +1,6 @@
 """Init file for web application module."""
-from os.path import exists
 from time import sleep
+from os.path import exists
 from wsgiref.simple_server import make_server
 
 from poorwsgi.digest import PasswordMap
@@ -8,39 +8,51 @@ from poorwsgi.digest import PasswordMap
 from prusa.link.config import log_http as log
 from .lib.core import app
 from .lib.classes import ThreadingServer
+from .lib.wizard import Wizard
 
 __import__('errors', globals=globals(), level=1)
 __import__('main', globals=globals(), level=1)
-# __import__('wizard', globals=globals(), level=1)
+__import__('wizard', globals=globals(), level=1)
 # __import__('login', globals=globals(), level=1)
 # __import__('page', globals=globals(), level=1)
 
 
-def init(cfg):
+def init(daemon):
     """Set application variables."""
-    app.cfg = cfg
-    app.debug = cfg.debug
-    app.auth_map = PasswordMap(cfg.http.digest)
+    app.cfg = daemon.cfg
+    app.debug = daemon.cfg.debug
+    app.auth_map = PasswordMap(daemon.cfg.http.digest)
+    app.api_map = list()
 
-    if exists(cfg.http.digest):  # is configured yet
-        log.info("Found %s, loading login endpoints.", cfg.http.digest)
-        app.wizard = False
-        app.auth_map.load()  # load table from test.digest file
+    app.daemon = daemon
+
+    if exists(app.auth_map.pathname):
+        log.info("Found %s, loading...", app.auth_map.pathname)
+        app.auth_map.load()
     else:
-        log.info("No %s was found, loading wizard endpoints.", cfg.http.digest)
-        app.wizard = True
+        log.info("No %s was found", app.auth_map.pathname)
+
+    if exists(app.cfg.http.api_keys):
+        log.info("Found %s, loading...", app.cfg.http.api_keys)
+        with open(app.cfg.http.api_keys) as apifile:
+            for line in apifile:
+                app.api_map.append(line.strip())
+    else:
+        log.info("No %s was found", app.cfg.http.api_keys)
+
+    app.wizard = Wizard(app)
 
 
-def run_http(cfg, daemon=True):
+def run_http(daemon, foreground=False):
     """Run http thread"""
     log.info('Starting server for http://%s:%d',
-             cfg.http.address, cfg.http.port)
+             daemon.cfg.http.address, daemon.cfg.http.port)
 
-    init(cfg)
+    init(daemon)
     while True:
         try:
-            httpd = make_server(cfg.http.address,
-                                cfg.http.port,
+            httpd = make_server(daemon.cfg.http.address,
+                                daemon.cfg.http.port,
                                 app,
                                 server_class=ThreadingServer,
                                 )
@@ -52,7 +64,7 @@ def run_http(cfg, daemon=True):
             return 0
         except Exception:   # pylint: disable=broad-except
             log.exception("Exception")
-            if not daemon:
+            if foreground:
                 log.info("Shutdown http")
                 return 1
         sleep(1)
