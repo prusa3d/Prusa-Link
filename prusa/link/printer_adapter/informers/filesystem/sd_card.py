@@ -84,7 +84,7 @@ class SDCard(ThreadedUpdatable):
 
         super().__init__()
 
-    def _update(self):
+    def update(self):
         # Do not update while printing
         if self.state_manager.get_state() in PRINTING_STATES:
             return

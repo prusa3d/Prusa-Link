@@ -91,7 +91,7 @@ class TelemetryGatherer(ThreadedUpdatable):
         return self.model.state not in PRINTING_STATES or \
                self.slow_ticker.should_tick()
 
-    def _update(self):
+    def update(self):
         for gcode, regexp, result_handler, to_execute \
                 in self.telemetry_instructions:
             if to_execute():

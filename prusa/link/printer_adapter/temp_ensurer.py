@@ -33,7 +33,7 @@ class TempEnsurer(ThreadedUpdatable):
     def temperatures_recorded(self, sender=None, match=None):
         self.last_seen = time()
 
-    def _update(self):
+    def update(self):
         if time() - self.last_seen > TIME.TEMP_TIMEOUT:
             self.turn_reporting_on()
 
