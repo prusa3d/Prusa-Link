@@ -16,7 +16,6 @@ from prusa.link.printer_adapter.structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, PRINT_INFO_REGEX, \
     CONFIRMATION_REGEX, PRINT_TIME_REGEX
-from prusa.link.printer_adapter.updatable import Updatable
 
 LOG = get_settings().LOG
 TIME = get_settings().TIME
@@ -76,7 +75,7 @@ def state_influencer(state_change: StateChange = None):
     return inner
 
 
-class StateManager(Updatable, metaclass=MCSingleton):
+class StateManager(metaclass=MCSingleton):
 
     def __init__(self, serial_reader: SerialReader,
                  file_printer: FilePrinter):

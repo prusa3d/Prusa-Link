@@ -48,7 +48,7 @@ class Mounts(ThreadedUpdatable):
 
         self.mounted_set = set()
 
-    def _update(self):
+    def update(self):
         # Add non mount directories to the mounts
         new_mount_set = self.get_mountpoints()
 

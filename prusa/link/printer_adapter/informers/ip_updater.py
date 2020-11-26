@@ -30,7 +30,7 @@ class IPUpdater(ThreadedUpdatable):
 
         super().__init__()
 
-    def _update(self):
+    def update(self):
         try:
             local_ip = get_local_ip()
         except socket.error:
