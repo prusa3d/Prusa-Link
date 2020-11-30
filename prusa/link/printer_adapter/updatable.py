@@ -13,7 +13,6 @@ class ThreadedUpdatable():
     update_interval = 1
 
     def __init__(self):
-        super().__init__()
         self.running = True
         self.thread = Thread(target=self.__keep_updating,
                              name=self.thread_name)

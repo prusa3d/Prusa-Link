@@ -1,4 +1,4 @@
-"""Wizard object which store all settings values configured by wizard."""
+"""Configuration wizard library."""
 from secrets import token_urlsafe
 
 from ...config import log_http as log
@@ -15,7 +15,7 @@ def is_valid_sn(serial):
 
 
 class Wizard:
-    """Wizard model singleton"""
+    """Configuration wizard singleton with validation methods."""
     # pylint: disable=too-many-instance-attributes
     instance = None
 
@@ -47,7 +47,7 @@ class Wizard:
         Wizard.instance = self
 
     def check_auth(self):
-        """Check valid values for auth part."""
+        """Check if auth values are valid."""
         errors = {}
         if len(self.username) < 7:
             errors['username'] = True
@@ -61,7 +61,7 @@ class Wizard:
         return not errors
 
     def check_printer(self):
-        """Check valid serial number and printer connection."""
+        """Check if serial number and printer are valid."""
         errors = {}
         # TODO: check printer connection
         if not is_valid_sn(self.serial_number):
@@ -77,6 +77,6 @@ class Wizard:
 
     def write_api_key(self):
         """Write api_key to file"""
-        log.info("Writing SN to %s", self.cfg.printer.serial_file)
+        log.info("Writing Api-Key to %s", self.cfg.http.api_keys)
         with open(self.cfg.http.api_keys, 'w') as keyfile:
             keyfile.write(self.api_key)

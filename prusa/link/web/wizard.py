@@ -10,7 +10,7 @@ from .lib.core import app
 
 
 def check_step(step):
-    """"Check preview wizard step. If was not ok, redirect to it."""
+    """"Check a step of the wizard. If it was not OK, redirect back to it."""
     def wrapper(fun):
         @wraps(fun)
         def handler(req):

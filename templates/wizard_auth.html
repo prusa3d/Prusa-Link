@@ -18,7 +18,7 @@
               <div class="col-sm-10">
                 <input type="text" class="form-control {{ 'is-invalid' if errors.get('username') else '' }}" id="username" name="username" value="{{ wizard.username or '' }}" required>
                 <div class="invalid-feedback">
-                  Please provide a username with enough length.
+                  Please provide a username with sufficient length.
                 </div>
               </div>
             </div>
@@ -38,7 +38,7 @@
               <div class="col-sm-10">
                 <input type="password" class="form-control {{ 'is-invalid' if errors.get('repassword') else '' }}" id="repassword" name="repassword" value="{{ wizard.repassword or '' }}" required>
                 <div class="invalid-feedback">
-                  Password must be same.
+                  Passwords must be same.
                 </div>
               </div>
             </div>
@@ -52,7 +52,7 @@
               <div class="col-sm-10">
                 <input type="text" class="form-control {{ 'is-invalid' if errors.get('api_key') else '' }}" id="api_key" name="api_key" value="{{ wizard.api_key or '' }}">
                 <div class="invalid-feedback">
-                  Please provide a Api-Key with enough length.
+                  Please provide an Api-Key with sufficient length.
                 </div>
               </div>
 
