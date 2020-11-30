@@ -1,7 +1,7 @@
 import logging
 
 from prusa.connect.printer.const import Source, Event
-from prusa.link.printer_adapter.command import CommandHandler
+from prusa.link.printer_adapter.command import ResponseCommand
 from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.informers.job import JobState
 
@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG.COMMANDS)
 
 
-class JobInfo(CommandHandler):
+class JobInfo(ResponseCommand):
     command_name = "job_info"
 
     def _run_command(self):

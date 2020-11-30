@@ -1,14 +1,12 @@
-from multiprocessing import Event
 from threading import Thread
 
 from prusa.connect.printer import Command
-from prusa.connect.printer.models import EventCallback
 
 
-class MyCommand(Command):
+class CommandHandler:
 
-    def __init__(self, event_cb: EventCallback):
-        super().__init__(event_cb)
+    def __init__(self, sdk_command: Command):
+        self.sdk_command = sdk_command
 
         # Can't start a new thread for every command.
         # So let's recycle one in here
@@ -18,5 +16,5 @@ class MyCommand(Command):
 
     def handle_commands(self):
         while True:
-            if self.new_cmd_evt.wait():
-                self()
+            if self.sdk_command.new_cmd_evt.wait():
+                self.sdk_command()
