@@ -6,15 +6,15 @@
 {% include "_wizard.html" %}
 
         <div class="col-md-9">
-          <h1>Welcome in Wizard</h1>
+          <h1>Welcome to Prusa Link configuration Wizard</h1>
           {% if not wizard.daemon.prusa_link or not wizard.daemon.prusa_link.printer %}
           <h3>There is problem in communication with printer</h3>
           <p>Please check printer settings, if RPi port is on, and if Prusa Link
-            is connected to printer right. Prusa Link have some time to printer
-            when is alive.</p>
+            is connected to printer correctly. Prusa Link gives some time to printer
+            until printer is ready.</p>
 
-          <p>Wait a few seconds and refresh the page. If problems still continues,
-            try to power off and power on your printer / Prusa Link, and try it again.</p>
+          <p>Wait a few seconds and refresh the page. If problems still persists,
+            try to power off and power on your printer / Prusa Link and try it again.</p>
 
           {# TODO: some prusa-link log to see what's happen. #}
 
@@ -23,7 +23,7 @@
             refresh is automaticaly #}
           {% else %}
           {% set printer = wizard.daemon.prusa_link.printer %}
-          <h3>Prusa Link detect <big>Original Prusa i3 MK3 ({{ printer.type }})</big></h3>
+          <h3>Prusa Link detected <big>Original Prusa i3 MK3 ({{ printer.type }})</big></h3>
           <p><b>Perfect!</b> You can continue.</p>
 
           <a class="" href="/wizard/auth">Next</a>

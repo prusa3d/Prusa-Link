@@ -8,11 +8,11 @@
         <div class="col-md-9">
           <h1>Printer</h1>
 
-          <p>We detect {{ wizard.daemon.prusa_link.printer.type }} printer on
+          <p>We detected {{ wizard.daemon.prusa_link.printer.type }} printer on
             {{ wizard.daemon.cfg.printer.port }}.</p>
 
           <form method="post">
-            <p>Please fill the serial number of your printer to correct
+            <p>Please fill the serial number of your printer for correct
               communication with Connect.</p>
 
             {% set errors = wizard.errors.get('printer', {}) %}
@@ -21,7 +21,7 @@
               <div class="col-sm-10">
                 <input type="text" class="form-control {{ 'is-invalid' if errors.get('serial_number') else '' }}" id="serial_number" name="serial_number" value="{{ wizard.serial_number or '' }}" required>
                 <div class="invalid-feedback">
-                  Please provide a valid serail number.
+                  Please provide a valid serial number.
                 </div>
               </div>
             </div>
