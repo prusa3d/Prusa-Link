@@ -1,19 +1,14 @@
-import os
-import configparser
-from hashlib import sha256
 from logging import getLogger
-from queue import Queue
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
-from requests import Session
 
 from prusa.connect.printer import Printer as SDKPrinter
-from prusa.connect.printer import const, Filesystem, InotifyHandler, \
-    CommandArgs
+
+
 from prusa.link.printer_adapter.input_output.lcd_printer import LCDPrinter
 from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
-from prusa.link.sdk_augmentation.command import MyCommand
+from prusa.link.sdk_augmentation.command_handler import CommandHandler
 
 log = getLogger("connect-printer")
 
@@ -27,25 +22,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.lcd_printer = LCDPrinter.get_instance()
         self.model = Model.get_instance()
         self.nozzle_diameter = None
-
-    @classmethod
-    def from_config_2(cls, path: str, type_: const.PrinterType, sn: str):
-        """Load lan_settings.ini config from `path` and create Printer instance
-           from it.
-        """
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"ini file: `{path}` doesn't exist")
-        config = configparser.ConfigParser()
-        config.read(path)
-        connect_host = config['connect']['address']
-        connect_port = config['connect'].getint('port')
-        token = config['connect']['token']
-        protocol = "http"
-        if config['connect'].getboolean('tls'):
-            protocol = "https"
-        server = f"{protocol}://{connect_host}:{connect_port}"
-        printer = cls(type_, sn, server, token, MyCommand)
-        return printer
+        self.command_handler = CommandHandler(self.command)
 
     def parse_command(self, res):
         """Parse telemetry response.

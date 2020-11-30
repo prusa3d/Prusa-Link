@@ -30,6 +30,7 @@ class IntervalSettings(BaseModel):
     SERIAL_REOPEN_TIMEOUT = 10
     TEMP_TIMEOUT = 60
     FW_MESSAGE_TIMEOUT = 5
+    STATE_CHANGE_TIMEOUT = 5
 
 
 class LCDQueueSettings(BaseModel):

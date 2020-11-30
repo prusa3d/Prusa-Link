@@ -4,20 +4,19 @@ from time import time
 from hashlib import sha256
 
 from requests import RequestException
-from serial import SerialException
 
 from prusa.link.config import log_adapter as log
 
 from prusa.connect.printer import SDKServerError
 from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType
-from prusa.connect.printer.const import Source, State
+from prusa.connect.printer.const import Source
 from prusa.link.printer_adapter.command_handlers.execute_gcode import \
     ExecuteGcode
 from prusa.link.printer_adapter.command_handlers.job_info import JobInfo
 from prusa.link.printer_adapter.command_handlers.pause_print import PausePrint
 from prusa.link.printer_adapter.command_handlers.reset_printer import \
-    ResetPrinter, ResetPrinterHandler
+    ResetPrinter, ResetPrinterResponse
 from prusa.link.printer_adapter.command_handlers.resume_print import ResumePrint
 from prusa.link.printer_adapter.command_handlers.start_print import StartPrint
 from prusa.link.printer_adapter.command_handlers.stop_print import StopPrint
@@ -27,9 +26,7 @@ from prusa.link.printer_adapter.sn_reader import SNReader
 from prusa.link.printer_adapter.file_printer import FilePrinter
 from prusa.link.printer_adapter.info_sender import InfoSender
 from prusa.link.printer_adapter.informers.ip_updater import IPUpdater, NO_IP
-from prusa.link.printer_adapter.informers.job import Job
-from prusa.link.printer_adapter.informers.state_manager import StateManager, \
-    StateChange
+from prusa.link.printer_adapter.informers.state_manager import StateManager
 from prusa.link.printer_adapter.informers.filesystem.storage_controller import \
     StorageController
 from prusa.link.printer_adapter.informers.telemetry_gatherer import \
@@ -206,7 +203,7 @@ class PrusaLink:
         return PausePrint(caller).run_command()
 
     def reset_printer(self, caller):
-        return ResetPrinterHandler(caller).run_command()
+        return ResetPrinterResponse(caller).run_command()
 
     def resume_print(self, caller):
         return ResumePrint(caller).run_command()

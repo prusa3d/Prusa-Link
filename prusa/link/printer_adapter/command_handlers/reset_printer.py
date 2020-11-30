@@ -2,7 +2,7 @@ import logging
 from threading import Event
 from time import sleep, time
 
-from prusa.link.printer_adapter.command import Command, CommandHandler
+from prusa.link.printer_adapter.command import Command, ResponseCommand
 from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.structures.regular_expressions import \
     PRINTER_BOOT_REGEX
@@ -68,5 +68,5 @@ class ResetPrinter(Command):
                         "or our serial reading component broke..")
 
 
-class ResetPrinterHandler(CommandHandler, ResetPrinter):
+class ResetPrinterResponse(ResponseCommand, ResetPrinter):
     ...
