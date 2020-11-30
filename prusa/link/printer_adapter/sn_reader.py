@@ -17,13 +17,13 @@ class SNReader(ThreadedUpdatable):
         super().__init__()
 
     def update(self):
-        if self.serial_number is None:
+        if not self.serial_number:
             try:
                 with open(self.serial_file, 'r') as snfile:
                     self.serial_number = snfile.read().strip()
             except IOError:
                 pass
 
-        if self.serial_number is not None:
+        if self.serial_number:
             self.updated_signal.send(self.serial_number)
             self.running = False
