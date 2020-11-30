@@ -15,7 +15,7 @@ from prusa.link.printer_adapter.input_output.serial.helpers import \
     wait_for_instruction, enqueue_matchable, enqueue_instruction
 from prusa.link.printer_adapter.model import Model
 from prusa.link.sdk_augmentation.printer import MyPrinter
-from prusa.link.sdk_augmentation.command import MyCommand as SDKCommand
+from prusa.connect.printer.command import Command as SDKCommand
 
 LOG = get_settings().LOG
 
@@ -80,7 +80,7 @@ class Command:
         self.running = False
 
 
-class CommandHandler(Command):
+class ResponseCommand(Command):
 
     def __init__(self, caller: SDKCommand):
         self.caller = caller

@@ -82,10 +82,6 @@ class SerialQueue(metaclass=MCSingleton):
         self.serial_reader.add_handler(
             CONFIRMATION_REGEX, self._confirmation_handler,
             priority=float("inf"))
-        # Another special case is when pausing. The "ok" is omitted
-        # Let's confirm it ourselves
-        self.serial_reader.add_handler(
-            PAUSED_REGEX, lambda sender, match: self._confirmed())
         self.serial_reader.add_handler(
             RESEND_REGEX, self._resend_handler)
 
