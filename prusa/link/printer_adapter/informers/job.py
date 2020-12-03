@@ -147,9 +147,9 @@ class Job:
             data["filename_only"] = self.filename_only
 
         if self.job_start_cmd_id is not None:
-            data["job_start_cmd_id"] = self.job_start_cmd_id
+            data["start_cmd_id"] = self.job_start_cmd_id
 
         if self.printing_file_path is not None:
-            data["printing_file_path"] = self.printing_file_path
+            data["file_path"] = self.printing_file_path
 
         return data
