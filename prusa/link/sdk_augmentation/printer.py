@@ -1,9 +1,7 @@
 from logging import getLogger
 from typing import Dict, Any
 
-
 from prusa.connect.printer import Printer as SDKPrinter
-
 
 from prusa.link.printer_adapter.input_output.lcd_printer import LCDPrinter
 from prusa.link.printer_adapter.model import Model
@@ -49,3 +47,10 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         info["nozzle_diameter"] = self.nozzle_diameter
         info["files"] = self.fs.to_dict()
         return info
+
+    def set_connect(self, settings):
+        """Set server and token from Settings class."""
+        self.server = SDKPrinter.connect_url(settings.service_connect.hostname,
+                                             settings.service_connect.tls,
+                                             settings.service_connect.port)
+        self.token = settings.service_connect.token

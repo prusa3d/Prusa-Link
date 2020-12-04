@@ -6,6 +6,7 @@ from os.path import join, pardir, dirname, abspath
 import os
 
 from poorwsgi import Application
+from poorwsgi.digest import PasswordMap
 
 PKG_DIR = abspath(join(dirname(__file__), pardir, pardir, pardir, pardir))
 DATA_DIR = abspath(join(PKG_DIR, pardir, pardir, pardir,
@@ -21,9 +22,11 @@ app.document_root = STATIC_DIR
 
 # will be set later
 app.cfg = None
+app.settings = None
 app.wizard = None
-app.api_map = list()
+app.api_key = None
 
 app.secret_key = sha256(str(time()).encode()).hexdigest()
 app.auth_type = 'Digest'
 app.auth_timeout = 60
+app.auth_map = PasswordMap()

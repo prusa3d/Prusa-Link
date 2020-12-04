@@ -17,6 +17,7 @@ class SNReader(ThreadedUpdatable):
         super().__init__()
 
     def update(self):
+        """Try to read searial_file with serial number."""
         if not self.serial_number:
             try:
                 with open(self.serial_file, 'r') as snfile:

@@ -1,5 +1,13 @@
 # ChangeLog
 
+0.1.4.dev
+
+    * JOB_INFO fix
+    * Service must be start using daemon script prusa-link
+    * Implicit config path is /etc/Prusa-Link/prusa-link.ini
+    * Wizard - part II
+
+
 0.1.3 (2020-12-01)
 
     * Report at least a file name for SD prints

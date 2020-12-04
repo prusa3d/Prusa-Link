@@ -177,7 +177,7 @@ class DirMounts(Mounts):
     """
 
     def __init__(self, cfg):
-        DirMounts.paths_to_mount = cfg.connect.directories
+        DirMounts.paths_to_mount = cfg.printer.directories
         super().__init__()
 
         for directory in self.configured_mounts:
