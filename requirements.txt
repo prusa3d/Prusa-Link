@@ -1,7 +1,6 @@
 git+ssh://git@dream.webjet.cz/Prusa-Connect-SDK-Printer.git@0.1.3#egg=prusa.connect.sdk.printer
 appdirs
 blinker
-elevate
 extendparser
 getmac
 jinja2-template-info
