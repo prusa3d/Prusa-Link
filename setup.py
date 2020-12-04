@@ -76,8 +76,6 @@ setup(
     maintainer_email="tomas.jozifek@prusa3d.cz",
     url="https://github.com/prusa3d/Prusa-Link",
     packages=find_namespace_packages(include=['prusa.*']),
-    package_data={'prusa.link.installation.data_files':
-                  ['prusa-link.service']},
     data_files=[(STATIC_FILES, ['README.md', 'ChangeLog'])]
         + find_data_files('static', STATIC_FILES+'/static')
         + find_data_files('templates', STATIC_FILES+'/templates'),
@@ -93,9 +91,7 @@ setup(
     install_requires=REQUIRES,
     entry_points={
         'console_scripts': [
-            'prusa-link = prusa.link.__main__:main',
-            'prusa_link = prusa.link.__main__:systemd',
-            'prusa_link_install = prusa.link.installation.__main__:main'
+            'prusa-link = prusa.link.__main__:main'
         ]
     }
 )
