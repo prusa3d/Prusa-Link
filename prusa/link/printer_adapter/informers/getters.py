@@ -21,8 +21,6 @@ PRINTER_TYPES = {
     20302: PrinterType.I3MK3S,
 }
 
-SN = get_settings().SN
-
 
 class NoSNError(Exception):
     ...

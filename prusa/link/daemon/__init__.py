@@ -5,7 +5,7 @@ import ctypes
 
 from ..printer_adapter.prusa_link import PrusaLink
 from ..web import run_http
-from ..config import logger, log_http, log_adapter
+from ..config import logger, log_http, log_adapter, Settings
 
 
 class RequestLogger:
@@ -70,6 +70,7 @@ class Daemon():
             raise RuntimeError("Daemon can be only one.")
 
         self.cfg = config
+        self.settings = None
 
         self.stdout = RequestLogger()
         self.stderr = ErrorLogger()
@@ -81,13 +82,16 @@ class Daemon():
     def run(self, daemon=True):
         """Run daemon."""
 
+        self.settings = Settings(self.cfg.printer.settings)
         self.http = ExThread(target=run_http, args=(self, not daemon),
                              name="http")
-        self.http.start()
+
+        if self.settings.service_local.enable:
+            self.http.start()
 
         log_adapter.info('Starting adapter for port %s', self.cfg.printer.port)
         try:
-            self.prusa_link = PrusaLink(self.cfg)
+            self.prusa_link = PrusaLink(self.cfg, self.settings)
         except Exception:  # pylint: disable=broad-except
             log_adapter.exception("Adapter was not start")
             self.http.raise_exception(KeyboardInterrupt)

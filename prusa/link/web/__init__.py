@@ -1,12 +1,12 @@
 """Init file for web application module."""
 from time import sleep
-from os.path import exists
 from wsgiref.simple_server import make_server
 
-from poorwsgi.digest import PasswordMap
+from poorwsgi.digest import hexdigest
 
-from prusa.link.config import log_http as log
+from ..config import log_http as log
 from .lib.core import app
+from .lib.auth import REALM
 from .lib.classes import ThreadingServer
 from .lib.wizard import Wizard
 
@@ -20,25 +20,25 @@ __import__('wizard', globals=globals(), level=1)
 def init(daemon):
     """Set application variables."""
     app.cfg = daemon.cfg
+    app.settings = daemon.settings
     app.debug = daemon.cfg.debug
-    app.auth_map = PasswordMap(daemon.cfg.http.digest)
-    app.api_map = list()
 
     app.daemon = daemon
 
-    if exists(app.auth_map.pathname):
-        log.info("Found %s, loading...", app.auth_map.pathname)
-        app.auth_map.load()
+    service_local = app.settings.service_local
+    if service_local.username and service_local.password:
+        digest = hexdigest(service_local.username, REALM,
+                           service_local.password)
+        app.auth_map.set(REALM, service_local.username, digest)
+        log.info("Authentication was set")
     else:
-        log.info("No %s was found", app.auth_map.pathname)
+        log.info("No authentication was set")
 
-    if exists(app.cfg.http.api_keys):
-        log.info("Found %s, loading...", app.cfg.http.api_keys)
-        with open(app.cfg.http.api_keys) as apifile:
-            for line in apifile:
-                app.api_map.append(line.strip())
+    if service_local.api_key:
+        app.api_key = service_local.api_key
+        log.info("Api-Key was set.")
     else:
-        log.info("No %s was found", app.cfg.http.api_keys)
+        log.info("No Api-Key was set.")
 
     app.wizard = Wizard(app)
 

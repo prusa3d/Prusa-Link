@@ -8,7 +8,7 @@ from pwd import getpwnam, getpwuid
 
 from extendparser.get import Get
 
-from .. import __application__
+CONNECT = 'test.connect.prusa3d.com'
 
 LOG_FORMAT_FOREGROUND = \
     "%(asctime)s %(levelname)s {%(module)s.%(funcName)s():%(lineno)d} "\
@@ -57,7 +57,7 @@ class Model(dict):
 
 
 class Config(Get):
-    """Prusa Link Web Config."""
+    """This class handles prusa-link.ini configuration file."""
     instance = None
 
     def __init__(self, args):
@@ -73,8 +73,8 @@ class Config(Get):
         self.daemon = Model(self.get_section(
             "daemon",
             (
-                ("data_dir", str, ''),  # user_data_dir by default
-                ("pid_file", str, "/var/run/prusa-link/prusa-link.pid"),
+                ("data_dir", str, ''),  # user home by default
+                ("pid_file", str, "./prusa-link.pid"),
                 ("user", str, "pi"),
                 ("group", str, "pi"),
             )))
@@ -86,8 +86,7 @@ class Config(Get):
             self.daemon.home = getpwnam(self.daemon.user).pw_dir
 
         if not self.daemon.data_dir:
-            self.daemon.data_dir = join(self.daemon.home,
-                                        f'.local/share/{__application__}')
+            self.daemon.data_dir = self.daemon.home
 
         if args.pidfile:
             self.daemon.pid_file = abspath(args.pidfile)
@@ -103,22 +102,12 @@ class Config(Get):
             (
                 ("address", str, "0.0.0.0"),
                 ("port", int, 8080),
-                ("type", str, "threading"),
-                # relative to user_conf_dir
-                ("digest", str, "./passwd.digest"),
-                ("api_keys", str, "./api_keys")
             )))
 
         if args.address:
             self.http.address = args.address
-        if args.port:
-            self.http.port = args.port
-        self.http.digest = abspath(join(self.daemon.home,
-                                        f'.config/{__application__}',
-                                        self.http.digest))
-        self.http.api_keys = abspath(join(self.daemon.home,
-                                          f'.config/{__application__}',
-                                          self.http.api_keys))
+        if args.tcp_port:
+            self.http.port = args.tcp_port
 
         # [printer]
         self.printer = Model(self.get_section(
@@ -126,26 +115,22 @@ class Config(Get):
             (
                 ("port", str, "/dev/ttyAMA0"),
                 ("baudrate", int, 115200),
-                ("serial_file", str, "./serial_file")
-            )))
-
-        self.printer.serial_file = abspath(join(self.daemon.home,
-                                                f'.config/{__application__}',
-                                                self.printer.serial_file))
-
-        # [connect]
-        self.connect = Model.get(
-            self, "connect",
-            (
-                ("config", str, "/boot/lan_settings.ini"),
+                ("serial_file", str, "./serial_file"),
+                ("settings", str, "./prusa_printer_settings.ini"),
                 ("mountpoints", tuple, [], ':'),
                 # relative to HOME
                 ("directories", tuple, ("./Prusa Link gcodes",), ':')
-            ))
-        self.connect.config = abspath(self.connect.config)
-        self.connect.directories = tuple(
-            abspath(join(self.daemon.home, item))
-            for item in self.connect.directories)
+            )))
+        if args.serial_port:
+            self.printer.port = args.serial_port
+
+        self.printer.serial_file = abspath(join(self.daemon.data_dir,
+                                                self.printer.serial_file))
+        self.printer.settings = abspath(join(self.daemon.data_dir,
+                                             self.printer.settings))
+        self.printer.directories = tuple(
+            abspath(join(self.daemon.data_dir, item))
+            for item in self.printer.directories)
 
         Config.instance = self
 
@@ -187,3 +172,73 @@ class Config(Get):
         logger.root.addHandler(handler)
         formatter = Formatter(log_format)
         handler.setFormatter(formatter)
+
+
+class Settings(Get):
+    """This class handles prusa_printer_settings.ini configuration file.
+
+    File prusa_printer_settings.ini is official Prusa settings file, which has
+    shared format between all printers, and Prusa Connect can generate it.
+    """
+    instance = None
+
+    def __init__(self, settings_file):
+        if Settings.instance is not None:
+            raise RuntimeError('Config is singleton')
+
+        super().__init__()
+
+        self.read(settings_file)
+
+        # [printer]
+        self.printer = Model(self.get_section(
+            'printer',
+            (
+                ('type', str, 'MK3'),
+                ('name', str, ''),
+                ('location', str, '')
+            )))
+        if self.printer.type != 'MK3':
+            raise ValueError("Settings file for different printer!")
+
+        # [network]
+        self.network = Model(self.get_section(
+            'network',
+            (
+                ('hostname', str, ''),
+            )))
+
+        # [service::connect]
+        self.service_connect = Model(self.get_section(
+            'service::connect',
+            (
+                ('hostname', str, CONNECT),
+                ('tls', int, 1),
+                ('port', int, 0),  # 0 means 443 with tls, or 80 without tls
+                ('token', str, '')
+            )))
+
+        # [service::local]
+        self.service_local = Model(self.get_section(
+            'service::local',
+            (
+                ('enable', int, 1),
+                ('username', str, ''),
+                ('password', str, ''),
+                ('api_key', str, '')
+            )))
+
+        Settings.instance = self
+
+    def set_section(self, name, model):
+        """Set section from model"""
+        if name not in self:
+            self.add_section(name)
+        for key, val in model.items():
+            self.set(name, key, str(val))
+
+    def update(self):
+        self.set_section('printer', self.printer)
+        self.set_section('network', self.network)
+        self.set_section('service::connect', self.service_connect)
+        self.set_section('service::local', self.service_local)
