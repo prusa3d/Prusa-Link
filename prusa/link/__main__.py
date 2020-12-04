@@ -39,8 +39,11 @@ def main():
         "-a", "--address", type=str,
         help="IP listening address (host or IP)", metavar="<ADDRESS>")
     parser.add_argument(
-        "-b", "--port", type=int,
+        "-t", "--tcp-port", type=int,
         help="TCP/IP listening port", metavar="<PORT>")
+    parser.add_argument(
+        "-s", "--serial-port", type=str,
+        help="Serial (printer's) port", metavar="<PORT>")
     parser.add_argument(
         "-i", "--info", action="store_true",
         help="more verbose logging level INFO is set")

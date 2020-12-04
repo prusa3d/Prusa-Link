@@ -24,21 +24,25 @@
 
           <h3>Printer</h3>
           <ul>
+            <li>Name: <span class="white">{{ wizard.printer_name }}</span></li>
+            <li>Location: <span class="white">{{ wizard.printer_location }}</span></li>
+            <li>Type: <span class="white">{{ printer.type | printer_type }}</span></li>
             <li>Port: <span class="white">{{ cfg.printer.port }}</span></li>
             <li>Baudrate: <span class="white">{{ cfg.printer.baudrate }}</span></li>
-            <li>Type: <span class="white">{{ printer.type | printer_type }}</span></li>
             <li>SN: <span class="white">{{ wizard.serial_number }}</span></li>
             <li>Firmware: <span class="white">{{ printer.firmware }}</span></li>
           </ul>
 
           <h3>Connect</h3>
           <ul>
-            <li>Server: <span class="white">{{ printer.server }}</span></li>
+            <li>Server: <span class="white">{{ connect_url }}</span></li>
+            {% if printer.token %}
             <li>Token: <span class="white">{{ printer.token }}</span></li>
+            {% endif %}
           </ul>
 
-        <form method="post">
-          <input type="submit" value="Confirm">
+        <form method="post" action="/wizard/finish-register">
+          <input type="submit" value="Save and Register Printer">
         </form>
         </div>{# /col-md-9 so end of content  #}
       </div>{# /row #}

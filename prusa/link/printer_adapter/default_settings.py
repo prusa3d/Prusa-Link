@@ -1,7 +1,6 @@
 import os
 from os.path import expanduser
 
-from appdirs import user_config_dir
 from pydantic import BaseModel
 
 from prusa.link.printer_adapter.settings import Settings
@@ -116,10 +115,6 @@ class FilePrinterSettings(BaseModel):
     PRINT_QUEUE_SIZE = 4
 
 
-class SerialNumberWorkaround(BaseModel):
-    SERIAL_NUMBER = ""
-
-
 class SettingsData(BaseModel):
 
     """ Object supposed to hold all settings """
@@ -132,13 +127,11 @@ class SettingsData(BaseModel):
     PI: PiSetteings = PiSetteings()
     FP: FilePrinterSettings = FilePrinterSettings()
     IPF: IsPlannerFedSettings = IsPlannerFedSettings()
-    SN: SerialNumberWorkaround = SerialNumberWorkaround()
 
 
 def get_settings() -> SettingsData:
     global instance
     if instance is None:
-        config_dir = user_config_dir("Prusa-Link", "PrusaResearch")
-        path = os.path.join(config_dir, "config.yaml")
+        path = os.path.join('/var/tmp/Prusa-Link', "config.yaml")
         instance = Settings(SettingsData, path)
     return instance.settings

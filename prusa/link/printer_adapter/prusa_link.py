@@ -51,8 +51,9 @@ TIME = get_settings().TIME
 
 class PrusaLink:
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, settings):
         self.cfg = cfg
+        self.settings = settings
         self.running = True
         self.stopped_event = threading.Event()
 
@@ -60,8 +61,8 @@ class PrusaLink:
         self.serial_reader = SerialReader()
 
         self.serial = Serial(self.serial_reader,
-	                     port=cfg.printer.port,
-	                     baudrate=cfg.printer.baudrate)
+                             port=cfg.printer.port,
+                             baudrate=cfg.printer.baudrate)
 
         self.serial_queue = MonitoredSerialQueue(self.serial,
                                                  self.serial_reader)
@@ -84,7 +85,8 @@ class PrusaLink:
         printer_type = get_printer_type(self.serial_queue)
 
         self.printer = MyPrinter(printer_type, serial_number, fingerprint)
-        self.printer.set_connection(cfg.connect.config)
+        self.printer.register_handler = self.printer_registered
+        self.printer.set_connect(settings)
         if self.sn_reader:
             self.sn_reader.start()  # event need self.printer
 
@@ -229,6 +231,13 @@ class PrusaLink:
         """Update SN when it was set by the user using the wizard."""
         self.printer.sn = serial_number
         self.printer.fingerprint = sha256(serial_number.encode()).hexdigest()
+
+    def printer_registered(self, token):
+        """Store settings with updated token when printer was registered."""
+        self.settings.service_connect.token = token
+        self.settings.update()
+        with open(self.cfg.printer.settings, 'w') as ini:
+            self.settings.write(ini)
 
     def telemetry_gathered(self, sender, telemetry):
         self.model.set_telemetry(telemetry)

@@ -23,7 +23,7 @@
             refresh is automaticaly #}
           {% else %}
           {% set printer = wizard.daemon.prusa_link.printer %}
-          <h3>Prusa Link detected <big>Original Prusa i3 MK3 ({{ printer.type }})</big></h3>
+          <h3>Prusa Link detected <big>{{ printer.type | printer_type }}</big></h3>
           <p><b>Perfect!</b> You can continue.</p>
 
           <a class="" href="/wizard/auth">Next</a>
