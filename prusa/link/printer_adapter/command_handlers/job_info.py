@@ -26,9 +26,9 @@ class JobInfo(ResponseCommand):
         if not "filename_only" in data and "file_path" in data:
             file_obj = self.printer.fs.get(data['file_path'])
             if file_obj:
-                if "m_time" in file_obj:
+                if "m_time" in file_obj.attrs:
                     data['m_time'] = file_obj.attrs['m_time']
-                if 'size' in file_obj:
+                if 'size' in file_obj.attrs:
                     data['size'] = file_obj.attrs['size']
 
         self.printer.event_cb(event=Event.JOB_INFO,
