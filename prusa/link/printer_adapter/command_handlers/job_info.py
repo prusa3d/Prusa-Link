@@ -22,6 +22,15 @@ class JobInfo(ResponseCommand):
 
         data = self.state_manager.job.get_job_info_data()
 
+        # add other attributes required to compute a file hash
+        if not "filename_only" in data and "file_path" in data:
+            file_obj = self.printer.fs.get(data['file_path'])
+            if file_obj:
+                if "m_time" in file_obj:
+                    data['m_time'] = file_obj.attrs['m_time']
+                if 'size' in file_obj:
+                    data['size'] = file_obj.attrs['size']
+
         self.printer.event_cb(event=Event.JOB_INFO,
                               source=Source.CONNECT,
                               command_id=self.caller.command_id,
