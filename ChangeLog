@@ -6,6 +6,7 @@
     * Service must be start using daemon script prusa-link
     * Implicit config path is /etc/Prusa-Link/prusa-link.ini
     * Wizard - part II
+    * Api-Key in INFO event
 
 
 0.1.3 (2020-12-01)
