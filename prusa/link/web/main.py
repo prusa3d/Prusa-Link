@@ -20,7 +20,7 @@ from .lib.view import generate_page
 @check_digest(REALM)
 def index(req):
     """Return status page"""
-    return generate_page(req, "index.html", api_map=app.api_map)
+    return generate_page(req, "index.html", api_key=app.api_key)
 
 
 @app.route('/api/version')
