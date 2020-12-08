@@ -50,6 +50,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
 
     def set_connect(self, settings):
         """Set server and token from Settings class."""
+        self.api_key = settings.service_local.api_key
         self.server = SDKPrinter.connect_url(settings.service_connect.hostname,
                                              settings.service_connect.tls,
                                              settings.service_connect.port)
