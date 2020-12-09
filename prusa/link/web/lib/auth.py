@@ -14,7 +14,7 @@ def check_api_key(func):
     @wraps(func)
     def handler(req, *args, **kwargs):
         api_key = req.headers.get('X-Api-Key')
-        if api_key not in app.api_map:
+        if api_key != app.api_key:
             res = Response(data="Bad X-Api-Key.",
                            status_code=state.HTTP_FORBIDDEN)
             raise HTTPException(res)
