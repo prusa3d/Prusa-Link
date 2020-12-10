@@ -15,7 +15,7 @@ def internal_server_error(req):
     """Obsluha chyby 500 Internal Server Error."""
     type_, error, traceback = exc_info()    # pylint: disable=unused-variable
     traceback = format_tb(traceback)
-    log.error('\n%s', ''.join(traceback))
+    log.error('\n%s%s', ''.join(traceback), repr(error))
     try:
         kwargs = {}
         if app.debug:
@@ -24,7 +24,7 @@ def internal_server_error(req):
         return make_response(generate_page(req, "error500.html",
                                            error=repr(error), **kwargs),
                              status_code=500)
-    except Exception:
+    except Exception:  # pylint: disable=broad-except
         traceback = format_exc()
         log.error(traceback)
         return "500 - Service Unavailable", 500
