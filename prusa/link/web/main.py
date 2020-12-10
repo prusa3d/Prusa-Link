@@ -69,7 +69,7 @@ def api_upload(req, location):
 
     if foldername.startswith('/'):
         foldername = '.'+foldername
-    foldername = abspath(join(app.cfg.connect.directories[0], foldername))
+    foldername = abspath(join(app.cfg.printer.directories[0], foldername))
     filename = join(foldername, req.form['file'].filename)
     log.info("Store file to %s::%s", location, filename)
     makedirs(foldername, exist_ok=True)
