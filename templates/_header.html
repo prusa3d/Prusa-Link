@@ -1,31 +1,36 @@
 <!DOCTYPE html>
 <html id="html" lang="cs">
-  <head>
+
+<head>
     <meta charset="utf-8">
     <title>Prusa Link{{ ' | ' + title if title is defined else '' }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
-  {%- if refresh %}
-    <meta http-equiv="refresh" content="{{ refresh }}; url=/" />
-  {%- endif %}
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" /> {%- if refresh %}
+    <meta http-equiv="refresh" content="{{ refresh }}; url=/" /> {%- endif %}
 
+    <link rel="stylesheet" href="/css/fonts.css">
     <link rel="stylesheet" href="/css/bootstrap.min.css">
     <link rel="stylesheet" href="/css/bootstrap.connect.css">
     <link rel="stylesheet" href="/css/bootstrap.prusa-link.css">
+    <link rel="stylesheet" href="/css/buttons.css">
 
     <script src="/js/jquery-3.3.1.slim.min.js"></script>
     <script src="/js/popper.min.js"></script>
     <script src="/js/bootstrap.min.js"></script>
 
-    <link href="/favicon.ico" type="image/x-icon" rel="shortcut icon"/>
-  </head>
-  <body>
-    <div id="wrap">
+    <link href="/favicon.ico" type="image/x-icon" rel="shortcut icon" />
+</head>
 
-    <div class="container">
-      <nav class="navbar navbar-dark">
-        <span class="navbar-brand">
-            <a href="/"><img src="/img/prusa-link-logo.svg" alt="Prusa Link"/></a> Wizard</span>
-      </nav>
-    </div>
+<body class="d-flex flex-column h-100">
 
+    <header>
+        <nav class="navbar navbar-expand-md navbar-dark">
+            <div class="container-fluid">
+                <span class="flex-even d-flex justify-content-center navbar-brand">
+                    <img src="/img/prusa-link-logo.svg" alt="Prusa Link" height="40"/>
+                </span>
+            </div>
+        </nav>
+    </header>
+
+    <div class="flex-shrink-0">

@@ -3,13 +3,19 @@
 {#% set refresh = 15 %#}
 {% include "_header.html" %}
 {% set active="finish" %}
-{% include "_wizard.html" %}
 
-        <div class="col-md-9">
-          <h1>Finish</h1>
-          {% set printer = wizard.daemon.prusa_link.printer %}
-          {% set cfg = wizard.daemon.cfg %}
+<div class="container">
+  <div class="row">
+    <div class="col-md-12">
+        <h1>Recap</h1>
+        {% set printer = wizard.daemon.prusa_link.printer %}
+        {% set cfg = wizard.daemon.cfg %}
+    </div>
+  </div>
 
+  <div class="row">
+      <div class="col-md-6">
+          
           <h3>Authorization</h3>
           <ul>
             <li>Username: <span class="white">{{ wizard.username }}</span></li>
@@ -21,7 +27,9 @@
             <li>Wifi MAC: <span class="white">{{ printer.network_info.wifi_mac }}</span></li>
             <li>Wifi IPv4: <span class="white">{{ printer.network_info.wifi_ipv4 }}</span></li>
           </ul>
+        </div>{# /col-md-6 so end of content  #}
 
+        <div class="col-md-6">
           <h3>Printer</h3>
           <ul>
             <li>Name: <span class="white">{{ wizard.printer_name }}</span></li>
@@ -41,10 +49,25 @@
             {% endif %}
           </ul>
 
-        <form method="post" action="/wizard/finish-register">
-          <input type="submit" value="Save and Register Printer">
-        </form>
-        </div>{# /col-md-9 so end of content  #}
+        </div>{# /col-md-6 so end of content  #}
       </div>{# /row #}
+
+      <div class="row">
+        <div class="col-md-12">
+          <form method="post" action="/wizard/finish-register" id="form">
+            <div class="container navigation">
+              <div class="row">
+                  <div class="col">
+                    <a href="/wizard/connect" class="btn btn-back btn-outline-light"><img src="../img/arrow-left.svg" height="16" /> BACK | Prusa Connect settings</a>
+                  </div>
+                  <div class="col-xs-auto">
+                    <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Save and Register Printer | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
+                  </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
     </div>{# /container #}
 {% include "_footer.html" %}
