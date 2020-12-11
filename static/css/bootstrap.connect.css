@@ -93,3 +93,56 @@ section {
     color: #797979 !important;
     font-family: "Atlas Grotesk Web Medium";
 }
+.btn {
+    font-family: "Atlas Grotesk Web Bold";
+    border: 1px solid transparent;
+    padding: 0.3em 0.75em;
+    white-space: pre-line;
+    word-break: break-word;
+}
+
+.btn img {
+    position: relative;
+    top: -2px;
+    padding: 0;
+}
+
+.btn svg.append {
+    margin-right: 0;
+    margin-left: 0.25em;
+}
+
+.btn-group .btn {
+    border-right-width: 0;
+}
+
+.btn-group .btn:last-child {
+    border-right-width: 1px;
+}
+
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-outline-success,
+.btn-outline-warning,
+.btn-outline-danger,
+.btn-outline-info,
+.btn-outline-light,
+.btn-outline-dark {
+    border-color: white;
+    color: white;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-secondary:hover,
+.btn-outline-success:hover,
+.btn-outline-warning:hover,
+.btn-outline-danger:hover,
+.btn-outline-info:hover,
+.btn-outline-light:hover,
+.btn-outline-dark:hover {
+    color: black !important;
+}
+
+.btn-back {
+    color: #585858 !important;
+}
