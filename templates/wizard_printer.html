@@ -3,17 +3,14 @@
 {#% set refresh = 15 %#}
 {% include "_header.html" %}
 {% set active="printer" %}
-{% include "_wizard.html" %}
 
-        <div class="col-md-9">
-          <h1>Printer</h1>
+<div class="container">
+  <div class="row">
+      <div class="col-md-12">
+          <h1>Setup Printer</h1>
 
-          <p>We detected {{ wizard.daemon.prusa_link.printer.type }} printer on
-            {{ wizard.daemon.cfg.printer.port }}.</p>
-
-          <form method="post">
-            <p>Please fill the serial number of your printer for correct
-              communication with Connect.</p>
+          <form method="post" id="form">
+            <p>Please fill the name of the printer, which will be used at Prusa Connect, location where the printer placed and serial number of your printer if not already filled.</p>
 
             {% set errors = wizard.errors.get('printer', {}) %}
             <div class="form-group row">
@@ -46,8 +43,23 @@
               </div>
             </div>
 
-            <input type="submit" value="Next"/>
+            <p><i>We detected {{ wizard.daemon.prusa_link.printer.type }} printer on
+            {{ wizard.daemon.cfg.printer.port }}.</i></p>
+
+            <div class="container navigation">
+              <div class="row">
+                  <div class="col">
+                    <a href="/wizard/auth" class="btn btn-back btn-outline-light"><img src="../img/arrow-left.svg" height="16" /> BACK | Authorization</a>
+                  </div>
+                  <div class="col-xs-auto">
+                    <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Setup printer | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
+                  </div>
+              </div>
+            </div>
           </form>
+
+          
+
         </div>{# /col-md-9 so end of content  #}
       </div>{# /row #}
     </div>{# /container #}

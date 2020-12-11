@@ -3,33 +3,47 @@
 {#% set refresh = 15 %#}
 {% include "_header.html" %}
 {% set active="welcome" %}
-{% include "_wizard.html" %}
 
-        <div class="col-md-9">
-          <h1>Welcome to Prusa Link configuration Wizard</h1>
-          {% if not wizard.daemon.prusa_link or not wizard.daemon.prusa_link.printer %}
-          <h3>There is problem in communication with printer</h3>
-          <p>Please check printer settings, if RPi port is on, and if Prusa Link
-            is connected to printer correctly. Prusa Link gives some time to printer
-            until printer is ready.</p>
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="align-center">Welcome to Prusa Link configuration Wizard</h1>
+            {% if not wizard.daemon.prusa_link or not wizard.daemon.prusa_link.printer %}
 
-          <p>Wait a few seconds and refresh the page. If problems still persists,
-            try to power off and power on your printer / Prusa Link and try it again.</p>
+            <h3>There is problem in communication with printer</h3>
+            <p>Please check printer settings, if RPi port is on, and if Prusa Link is connected to printer correctly. Prusa Link gives some time to printer until printer is ready.</p>
 
-          {# TODO: some prusa-link log to see what's happen. #}
+            <p>Wait a few seconds and refresh the page. If problems still persists, try to power off and power on your printer / Prusa Link and try it again.</p>
 
-          <a class="" href="/wizard">Refresh</a>
-          {# TODO: do some javascript call to check the printer, and then
-            refresh is automaticaly #}
-          {% else %}
-          {% set printer = wizard.daemon.prusa_link.printer %}
-          <h3>Prusa Link detected <big>{{ printer.type | printer_type }}</big></h3>
-          <p><b>Perfect!</b> You can continue.</p>
+            {# TODO: some prusa-link log to see what's happen. #}
 
-          <a class="" href="/wizard/auth">Next</a>
-          {% endif %}
+            <a href="/wizard" class="btn btn-outline-light align-center" style="width: 200px;margin: 2em auto;display: block;">Refresh</a>
+            {# TODO: do some javascript call to check the printer, and then refresh is automaticaly #}
+            
+            {% else %}
+            
+            {% set printer = wizard.daemon.prusa_link.printer %}
 
-        </div>{# /col-md-9 so end of content  #}
-      </div>{# /row #}
-    </div>{# /container #}
+            <p class="align-center">Prusa Link detected</p>
+            <div class="img-center">
+                <img src="img/printers/{{ 'Original-Prusa-i3-MK3' if printer.type == 'Original Prusa i3 MK3' else 'Original-Prusa-i3-MK3S' }}.svg" height="200" width="200" />
+            </div>
+            
+            <h2 class="align-center">{{ printer.type | printer_type }}</h2>
+
+            <div class="container navigation">
+                <div class="row">
+                    <div class="col"><b>Great!</b> You can continue to Authorization</div>
+                    <div class="col-xs-auto">
+                        <a href="/wizard/auth" class="btn btn-outline-light">Authorization | NEXT <img src="img/arrow-right.svg" height="16" /></a>
+                    </div>
+                </div>
+            </div>
+
+
+            {% endif %}
+        </div>{# /col-md-12 so end of content #}
+    </div>{# /row #}
+</div>{# /container #}
+
 {% include "_footer.html" %}

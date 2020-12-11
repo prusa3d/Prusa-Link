@@ -3,14 +3,14 @@
 {#% set refresh = 15 %#}
 {% include "_header.html" %}
 {% set active="auth" %}
-{% include "_wizard.html" %}
 
-        <div class="col-md-9">
+<div class="container">
+  <div class="row">
+      <div class="col-md-12">
           <h1>Authorization</h1>
-          <form method="post">
-            <p>Please set administration username and password. Prusa Link will
-              use HTTP Digest authorization. All values must be <b>7 characters
-              length at least</b>.</p>
+          <form method="post" id="form">
+            <p>Prusa Link will use HTTP Digest authorization. Please set administration username and password.<br />All values must be <i>7 characters
+              length at least</i>.</p>
 
             {% set errors = wizard.errors.get('auth', {}) %}
             <div class="form-group row">
@@ -43,7 +43,7 @@
               </div>
             </div>
 
-            <p>You probably want to set <code>Api-Key</code> for other
+            <p>You probably want to set <b>Api-Key</b> for other
               applications to use internal API of Prusa Link. For example
               Prusa Slicer can upload files to Prusa Link after slicing.</p>
 
@@ -58,7 +58,17 @@
 
             </div>
 
-            <input type="submit" value="Next"/>
+            <div class="container navigation">
+              <div class="row">
+                  <div class="col">
+                    <a href="/wizard" class="btn btn-back btn-outline-light"><img src="../img/arrow-left.svg" height="16" /> BACK | Welcome</a>
+                  </div>
+                  <div class="col-xs-auto">
+                    <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Setup printer | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
+                  </div>
+              </div>
+            </div>
+
           </form>
         </div>{# /col-md-9 so end of content  #}
       </div>{# /row #}
