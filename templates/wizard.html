@@ -26,7 +26,7 @@
 
             <p class="align-center">Prusa Link detected</p>
             <div class="img-center">
-                <img src="img/printers/{{ 'Original-Prusa-i3-MK3' if printer.type == 'Original Prusa i3 MK3' else 'Original-Prusa-i3-MK3S' }}.svg" height="200" width="200" />
+                <img src="img/printers/{{ printer.type }}.svg" height="200" width="200" />
             </div>
             
             <h2 class="align-center">{{ printer.type | printer_type }}</h2>
@@ -46,4 +46,5 @@
     </div>{# /row #}
 </div>{# /container #}
 
+{% include "_wizard.html" %}
 {% include "_footer.html" %}
