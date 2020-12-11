@@ -145,8 +145,9 @@ class Config(Get):
             check_log_level(log_level)
 
         if name == 'main':
-            logger_ = getLogger('prusa-link')
-            logger_.setLevel(log_level)
+            getLogger('prusa-link').setLevel(log_level)
+            getLogger('urllib3').setLevel(log_level)
+            getLogger('connect-printer').setLevel(log_level)
         else:
             getLogger(f'prusa-link.{name}').setLevel(log_level)
 
