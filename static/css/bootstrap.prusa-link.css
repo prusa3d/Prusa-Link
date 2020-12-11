@@ -1,29 +1,47 @@
-body, html {
-  font-size: 20px;
-  color: #7a7a7a;
-  background-color: hsl(0, 0%, 4%);
-  height: 100%;
+body,
+html {
+    font-size: 18px;
+    color: #7a7a7a;
+    background-color: hsl(0, 0%, 4%);
+    height: 100%;
+    font-family: "Atlas Grotesk Web Light";
 }
 
 a {
-  color: #fff !important;
+    color: #fff !important;
 }
 
-a:hover {
-  border-bottom: .1rem solid #0f0;
-  text-decoration: none;
+a.active {
+    text-decoration: underline !important;
 }
 
-h1, h2, h3, h4 {
-  color: #f5f5f5;
+h1,
+h2,
+h3,
+h4 {
+    color: #f5f5f5;
+    margin-top: 2em;
+    margin-bottom: 2em;
+}
+
+h1 {
+    font-size: 28px;
+}
+
+h2 {
+    font-size: 22px;
+}
+
+h3 {
+    font-size: 18px;
 }
 
 pre {
-  color: #7a7a7a;
+    color: #7a7a7a;
 }
 
-p > b {
-  color: #f5f5f5;
+p>b {
+    color: #f5f5f5;
 }
 
 .jumbotron {
@@ -36,30 +54,52 @@ p > b {
     border-bottom: .1rem solid transparent;
 }
 
-a.nav-link.active {
-  border-bottom: .1rem solid #fff;
-}
-
 .navbar-logo {
-  background: white url("/img/prusa-link-logo.svg") no-repeat 50%;
-  background-size: cover;
-  width: 288px;
-  height: 69px;
-  bottom: 3px;
-  display: flex;
+    background: white url("/img/prusa-link-logo.svg") no-repeat 50%;
+    background-size: cover;
+    width: 288px;
+    height: 69px;
+    bottom: 3px;
+    display: flex;
 }
 
 .white {
-  color: #f5f5f5;
+    color: #f5f5f5;
 }
 
-#wrap {
-    min-height: 100%;
-    height: auto !important;
-    height: 100%;
-    /* Negative indent footer by it's height */
-    margin: 0 auto -70px;
+.progress {
+    margin-bottom: 3em;
 }
-#push, .footer {
-    height: 70px;
+
+.progress,
+.progress-bar {
+    overflow: visible;
+}
+
+.progress-bar a {
+    position: relative;
+    top: 2em;
+    text-decoration: underline;
+    text-decoration-color: #6c757d;
+}
+
+.progress-bar a:hover {
+    text-decoration: none;
+}
+
+.align-center {
+    text-align: center;
+}
+
+.text-muted {
+    font-size: 0.75em;
+}
+
+.img-center {
+    margin-right: auto;
+    margin-left: auto;
+    width: 200px;
+}
+.navigation {
+    margin-top: 2em;
 }
