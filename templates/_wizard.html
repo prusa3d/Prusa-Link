@@ -1,42 +1,28 @@
-<div class="container">
+</div>
 
-    <div class="row">
-        <div class="col-md-3">
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link {{ 'active' if active == 'welcome' else '' }}" href="/wizard">Welcome</a>
-                </li>
-                <!--
-                    <li class="nav-item">
-                        <a class="nav-link disabled {{ 'active' if active == 'language' else '' }}" href="/wizard/language">Language</a>
-                    </li>  
-                -->
-                <li class="nav-item">
-                    <a class="nav-link {{ 'active' if active == 'auth' else '' }}" href="/wizard/auth">Authorization</a>
-                </li>
-                <!--
-                    <li class="nav-item ">
-                        <a class="nav-link disabled {{ 'active' if active == 'wifi' else '' }}" href="/wizard/wifi">Wifi</a>
-                    </li>
-                -->
-                <!--
-                    <li class="nav-item">
-                        <a class="nav-link disabled {{ 'active' if active == 'net' else '' }}" href="/wizard/net">Network</a>
-                    </li>
-                -->
-                <li class="nav-item">
-                    <a class="nav-link {{ 'active' if active == 'printer' else '' }}" href="/wizard/printer">Printer</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ 'active' if active == 'connect' else '' }}" href="/wizard/connect">Connect</a>
-                </li>
-                <!--
-                    <li class="nav-item">
-                        <a class="nav-link disabled{{ 'active' if active == 'system' else '' }}" href="/wizard/system">System</a>
-                    </li>
-                -->
-                <li class="nav-item">
-                    <a class="nav-link {{ 'active' if active == 'finish' else '' }}" href="/wizard/finish">Finish</a>
-                </li>
-            </ul>
-        </div>{# /col-md-3 #}
+<footer class="footer mt-auto py-3">
+    <div class="container">
+
+<div class="progress">
+    {%- if active == 'welcome' or active == 'auth' or active == 'printer' or active == 'connect' or active == 'finish'%}
+    <div class="progress-bar bg-warning {{ 'progress-bar-striped progress-bar-animated' if active == 'welcome' else '' }}" role="progressbar" style="width: 20%" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">
+        <a href="/wizard">1. Welcome</a>
+    </div>
+    {%- endif %} {%- if active == 'auth' or active == 'printer' or active == 'connect' or active == 'finish'%}
+    <div class="progress-bar bg-warning {{ 'progress-bar-striped progress-bar-animated' if active == 'auth' else '' }}" role="progressbar" style="width: 20%" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">
+        <a href="/wizard/auth">2. Authorization</a>
+    </div>
+    {%- endif %} {%- if active == 'printer' or active == 'connect' or active == 'finish' %}
+    <div class="progress-bar bg-warning {{ 'progress-bar-striped progress-bar-animated' if active == 'printer' else '' }}" role="progressbar" style="width: 20%" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">
+        <a href="/wizard/printer">3. Setup Printer</a>
+    </div>
+    {%- endif %} {%- if active == 'connect' or active == 'finish' %}
+    <div class="progress-bar bg-warning {{ 'progress-bar-striped progress-bar-animated' if active == 'connect' else '' }}" role="progressbar" style="width: 20%" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">
+        <a href="/wizard/connect">4. Prusa Connect settings</a>
+    </div>
+    {%- endif %} {%- if active == 'finish' %}
+    <div class="progress-bar bg-warning {{ 'progress-bar-striped progress-bar-animated' if active == 'finish' else '' }}" role="progressbar" style="width: 20%" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">
+        <a href="/wizard/finish">5. Recap</a>
+    </div>
+    {%- endif %}
+</div>
