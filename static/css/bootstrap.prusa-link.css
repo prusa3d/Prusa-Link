@@ -107,3 +107,12 @@ p>b {
 code {
     color: white;
 }
+
+.api-key {
+    font-size: 22px;
+    cursor: copy;
+}
+
+.api-key img {
+    margin-left: 0.5em;
+}

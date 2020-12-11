@@ -4,13 +4,12 @@
 {% include "_header.html" %}
 
     <div class="container">
-      <div class="jumbotron http-error">
-        <h1>Prusa Link</h1>
-        <p></p>
-        <p>For uploading gcodes from the Prusa Slicer use this Api-Key:
-          <code>{{ api_key }}</code>
+        <h1 class="align-center">API key</h1>
+        <p class="align-center">For uploading gcodes from the Prusa Slicer use this Api-Key</p>
+        <p class="align-center">
+          <code class="api-key" id="apikey" onclick="navigator.clipboard.writeText(document.getElementById('apikey').innerText)" title="Click to copy to clipboard">{{ api_key }}<img src="img/copy.svg" height="16" /></code>
         </p>
-      </div>
+
     </div>
 
   </div>
