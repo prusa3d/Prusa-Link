@@ -103,3 +103,7 @@ p>b {
 .navigation {
     margin-top: 2em;
 }
+
+code {
+    color: white;
+}
