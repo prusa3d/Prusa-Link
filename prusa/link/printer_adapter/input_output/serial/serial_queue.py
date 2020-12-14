@@ -94,7 +94,7 @@ class SerialQueue(metaclass=MCSingleton):
         elif self.rx_yeet_slot is not None:
             return self.rx_yeet_slot
         elif self.recovery_list:
-            return self.recovery_list.pop()
+            return self.recovery_list[-1]
         elif self.priority_queue:
             if self.is_planner_fed() and self.queue:
                 return self.queue[-1]
