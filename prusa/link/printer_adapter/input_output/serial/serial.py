@@ -84,7 +84,8 @@ class Serial(metaclass=MCSingleton):
             try:
                 self._reopen()
             except (serial.SerialException, FileNotFoundError):
-                log.warning("Opening of the serial port failed. Retrying...")
+                log.warning(f"Opening of the serial port {self.port} failed. "
+                            f"Retrying...")
                 sleep(TIME.SERIAL_REOPEN_TIMEOUT)
             else:
                 break
