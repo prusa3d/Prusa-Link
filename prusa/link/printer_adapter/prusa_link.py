@@ -276,7 +276,7 @@ class PrusaLink:
         if source is None:
             source = Source.WUI
             log.warning(f"State change had no source "
-                        f"{sender.current_state.value()}")
+                        f"{sender.current_state.value}")
         state = sender.current_state
         job_id = sender.get_job_id()
         self.model.state = state
