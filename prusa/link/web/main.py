@@ -36,6 +36,32 @@ def api_version(req):
     )
 
 
+@app.route('/api/connection')
+@check_config
+def api_connection(req):
+    """Returns printer connection info"""
+    cfg = app.daemon.cfg
+    printer = app.daemon.prusa_link.printer
+    return JSONResponse(
+        data=
+        {
+            "current":
+                {
+                    "state": "%s" % printer.state,
+                    "port": "%s" % cfg.printer.port,
+                    "baudrate": "%s" % cfg.printer.baudrate,
+                },
+            "options":
+                {
+                    "ports": [cfg.printer.port],
+                    "baudrates": [cfg.printer.baudrate],
+                    "portPreference": cfg.printer.port,
+                    "baudratePreference": cfg.printer.baudrate,
+                    "autoconnect": True
+                }
+        }
+    )
+
 @app.route('/api/files/<location>', state.METHOD_POST)
 @check_api_key
 def api_upload(req, location):
