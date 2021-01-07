@@ -22,6 +22,7 @@ from prusa.link.printer_adapter.command_handlers.start_print import StartPrint
 from prusa.link.printer_adapter.command_handlers.stop_print import StopPrint
 from prusa.link.printer_adapter.crotitel_cronu import CrotitelCronu
 from prusa.link.printer_adapter.default_settings import get_settings
+from prusa.link.printer_adapter.informers.filesystem.sd_card import SDState
 from prusa.link.printer_adapter.sn_reader import SNReader
 from prusa.link.printer_adapter.file_printer import FilePrinter
 from prusa.link.printer_adapter.info_sender import InfoSender
@@ -270,6 +271,9 @@ class PrusaLink:
 
     def sd_unmount(self, sender):
         self.printer.fs.unmount("SD Card")
+
+    def sd_ready(self):
+        return self.storage.sd_card.sd_state == SDState.PRESENT
 
     def state_changed(self, sender: StateManager, command_id=None,
                       source=None):

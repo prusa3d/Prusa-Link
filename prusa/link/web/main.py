@@ -53,12 +53,42 @@ def api_connection(req):
                 },
             "options":
                 {
-                    "ports": [cfg.printer.port],
-                    "baudrates": [cfg.printer.baudrate],
-                    "portPreference": cfg.printer.port,
-                    "baudratePreference": cfg.printer.baudrate,
+                    "ports": "%s" % [cfg.printer.port],
+                    "baudrates": "%s" % [cfg.printer.baudrate],
+                    "portPreference": "%s" % cfg.printer.port,
+                    "baudratePreference": "%s" % cfg.printer.baudrate,
                     "autoconnect": True
                 }
+        }
+    )
+
+
+@app.route('/api/printer')
+@check_config
+def api_printer(req):
+    """Returns printer telemetry info"""
+    gatherer = app.daemon.prusa_link.telemetry_gatherer
+    telemetry = gatherer.current_telemetry
+
+    # Call STOP, so value is not "None"
+    gatherer.stop()
+
+    return JSONResponse(
+        data=
+        {
+            "temperature": {
+                "tool0": {
+                    "actual": "%s" % telemetry.temp_nozzle,
+                    "target": "%s" % telemetry.target_nozzle,
+                },
+                "bed": {
+                    "actual": "%s" % telemetry.temp_bed,
+                    "target": "%s" % telemetry.target_bed,
+                },
+            },
+            "sd": {
+                "ready": "%s" % app.daemon.prusa_link.sd_ready()
+            },
         }
     )
 
