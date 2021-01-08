@@ -100,6 +100,7 @@ class Daemon():
 
         try:
             self.prusa_link.stopped_event.wait()
+            return 0
         except KeyboardInterrupt:
             logger.info('Keyboard interrupt')
             log_adapter.info("Shutdown adapter")
