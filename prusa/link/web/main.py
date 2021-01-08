@@ -53,10 +53,10 @@ def api_connection(req):
                 },
             "options":
                 {
-                    "ports": "%s" % [cfg.printer.port],
-                    "baudrates": "%s" % [cfg.printer.baudrate],
-                    "portPreference": "%s" % cfg.printer.port,
-                    "baudratePreference": "%s" % cfg.printer.baudrate,
+                    "ports": [cfg.printer.port],
+                    "baudrates": [cfg.printer.baudrate],
+                    "portPreference": cfg.printer.port,
+                    "baudratePreference": cfg.printer.baudrate,
                     "autoconnect": True
                 }
         }

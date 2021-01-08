@@ -59,9 +59,9 @@ class Model(metaclass=MCSingleton):
             second_merge.update(new_telemetry.dict())
             self._last_telemetry = Telemetry(**second_merge)
 
-    # Returns last known telemetry values without resetting to None
     @property
     def last_telemetry(self):
+        """Returns telemetry values without resetting to None."""
         with self.lock:
             return self._last_telemetry
 
