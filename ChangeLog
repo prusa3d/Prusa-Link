@@ -6,6 +6,7 @@
     * Fixed state changed handler
     * Added new endpoint /api/connections with JSON response
     * Skipped pidfile when process is not alive
+    * Added new endpoint /api/printer with JSON response
 
 0.2.0 (2020-12-14)
 
