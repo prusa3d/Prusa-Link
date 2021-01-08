@@ -1,8 +1,11 @@
 # ChangeLog
 
-0.2.1-dev
+0.3.0-dev
 
-    * Skip pidfile when process is not alive
+    * Fixed broken command resends
+    * Fixed state changed handler
+    * Added new endpoint /api/connections with JSON response
+    * Skipped pidfile when process is not alive
 
 0.2.0 (2020-12-14)
 
