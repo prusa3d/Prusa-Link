@@ -272,9 +272,9 @@ class PrusaLink:
     def sd_unmount(self, sender):
         self.printer.fs.unmount("SD Card")
 
-    # Returns if sd_state is PRESENT
     @property
     def sd_ready(self):
+        """Returns if sd_state is PRESENT."""
         return self.storage.sd_card.sd_state == SDState.PRESENT
 
     def state_changed(self, sender: StateManager, command_id=None,
