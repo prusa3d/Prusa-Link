@@ -67,30 +67,27 @@ def api_connection(req):
 @check_config
 def api_printer(req):
     """Returns printer telemetry info"""
-    gatherer = app.daemon.prusa_link.telemetry_gatherer
-    telemetry = gatherer.current_telemetry
-
-    # Call STOP, so value is not "None"
-    gatherer.stop()
+    telemetry = app.daemon.prusa_link.model.last_telemetry
 
     return JSONResponse(
         data=
         {
             "temperature": {
                 "tool0": {
-                    "actual": "%s" % telemetry.temp_nozzle,
-                    "target": "%s" % telemetry.target_nozzle,
+                    "actual": "%.2f" % telemetry.temp_nozzle,
+                    "target": "%.2f" % telemetry.target_nozzle,
                 },
                 "bed": {
-                    "actual": "%s" % telemetry.temp_bed,
-                    "target": "%s" % telemetry.target_bed,
+                    "actual": "%.2f" % telemetry.temp_bed,
+                    "target": "%.2f" % telemetry.target_bed,
                 },
             },
             "sd": {
-                "ready": "%s" % app.daemon.prusa_link.sd_ready()
+                "ready": "%s" % app.daemon.prusa_link.sd_ready
             },
         }
     )
+
 
 @app.route('/api/files/<location>', state.METHOD_POST)
 @check_api_key
