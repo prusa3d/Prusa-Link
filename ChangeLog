@@ -1,5 +1,9 @@
 # ChangeLog
 
+0.2.1-dev
+
+    * Skip pidfile when process is not alive
+
 0.2.0 (2020-12-14)
 
     * JOB_INFO fix
