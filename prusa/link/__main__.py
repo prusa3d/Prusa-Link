@@ -17,6 +17,15 @@ from .daemon import Daemon
 CONFIG_FILE = '/etc/Prusa-Link/prusa-link.ini'
 
 
+def check_process(pid):
+    """Check if process with pid is alive."""
+    try:
+        kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
 def main():
     """Standard main function."""
     parser = ArgumentParser(
@@ -56,27 +65,27 @@ def main():
     try:
         config = Config(args)
         pid_file = PIDLockFile(config.daemon.pid_file)
+        pid = pid_file.read_pid() if pid_file.is_locked() else None
 
         if args.command == "stop":
-            if pid_file.is_locked():
-                print(
-                    "Stopping service with pid", pid_file.read_pid())
-                kill(pid_file.read_pid(), SIGTERM)
+            if pid and check_process(pid):
+                print("Stopping service with pid", pid)
+                kill(pid, SIGTERM)
+            else:
+                print("Service not running")
             return 0
 
         if args.command == "status":
-            if pid_file.is_locked():
-                print(
-                    "Service running with pid", pid_file.read_pid())
+            if pid and check_process(pid):
+                print("Service running with pid", pid)
                 return 0
-            log.info("Service not running")
+            print("Service not running")
             return 1
 
         if args.command == "restart":
-            if pid_file.is_locked():
-                print(
-                    "Restarting service with pid", pid_file.read_pid())
-                kill(pid_file.read_pid(), SIGTERM)
+            if pid and check_process(pid):
+                print("Restarting service with pid", pid)
+                kill(pid, SIGTERM)
         elif args.command == "start":
             pass
         elif not args.foreground:
@@ -87,6 +96,13 @@ def main():
         if args.foreground:
             log.info("Starting service on foreground.")
             return daemon.run(False)
+
+        if pid:
+            if not check_process(pid):
+                pid_file.break_lock()
+            else:
+                print("Service is already running")
+                return 1
 
         context = DaemonContext(
             pidfile=pid_file,

@@ -78,7 +78,7 @@ class Config(Get):
                 ("user", str, "pi"),
                 ("group", str, "pi"),
             )))
-        if args.foreground:
+        if args.foreground or getuid() != 0:
             pwd = getpwuid(getuid())
             self.daemon.user = pwd.pw_name
             self.daemon.home = pwd.pw_dir
