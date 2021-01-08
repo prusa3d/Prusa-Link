@@ -23,6 +23,7 @@ class Model(metaclass=MCSingleton):
         # retrieved from the printer (except printer state)
         # so it resets upon being read
         self._telemetry: Telemetry = Telemetry()
+        self._last_telemetry: Telemetry = Telemetry()
         self._state: Optional[State] = None
         self._local_ip: Optional[str] = NO_IP
         self._job_id: Optional[int] = None
@@ -53,6 +54,16 @@ class Model(metaclass=MCSingleton):
             merge = self._telemetry.dict()
             merge.update(new_telemetry.dict())
             self._telemetry = Telemetry(**merge)
+
+            second_merge = self._last_telemetry.dict()
+            second_merge.update(new_telemetry.dict())
+            self._last_telemetry = Telemetry(**second_merge)
+
+    # Returns last known telemetry values without resetting to None
+    @property
+    def last_telemetry(self):
+        with self.lock:
+            return self._last_telemetry
 
     @property
     def state(self):
@@ -89,5 +100,5 @@ class Model(metaclass=MCSingleton):
         with self.lock:
             self._job_id = new_job_id
 
-        
+
 
