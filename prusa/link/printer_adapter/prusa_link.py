@@ -94,7 +94,7 @@ class PrusaLink:
         # Bind command handlers
         self.printer.set_handler(CommandType.GCODE, self.execute_gcode)
         self.printer.set_handler(CommandType.PAUSE_PRINT, self.pause_print)
-        # self.printer.set_handler(CommandType.RESET_PRINTER, self.reset_printer)
+        self.printer.set_handler(CommandType.RESET_PRINTER, self.reset_printer)
         self.printer.set_handler(CommandType.RESUME_PRINT, self.resume_print)
         self.printer.set_handler(CommandType.START_PRINT, self.start_print)
         self.printer.set_handler(CommandType.STOP_PRINT, self.stop_print)
