@@ -61,9 +61,9 @@ class TelemetryGatherer(ThreadedUpdatable):
             ("M27", PRINT_TIME_REGEX, self.print_time_result, lambda: True),
 
             ("M221", PERCENT_REGEX, self.flow_rate_result,
-             self.slow_ticker.should_tick),
+             self.slow_ticker.output),
             ("M220", PERCENT_REGEX, self.speed_multiplier_result,
-             self.slow_ticker.should_tick),
+             self.slow_ticker.output),
 
             ("M73", PRINT_INFO_REGEX, self.print_info_result,
              self.ask_for_print_info),
@@ -85,11 +85,11 @@ class TelemetryGatherer(ThreadedUpdatable):
 
     def ask_for_print_info(self):
         return self.model.state in PRINTING_STATES and \
-               self.slow_ticker.should_tick()
+               self.slow_ticker.output()
 
     def ask_for_positions(self):
         return self.model.state not in PRINTING_STATES or \
-               self.slow_ticker.should_tick()
+               self.slow_ticker.output()
 
     def update(self):
         for gcode, regexp, result_handler, to_execute \
@@ -101,6 +101,7 @@ class TelemetryGatherer(ThreadedUpdatable):
                 result_handler(instruction)
 
         self.current_telemetry = Telemetry()
+        self.slow_ticker.update()
 
     def telemetry_updated(self):
         self.updated_signal.send(self, telemetry=self.current_telemetry)
@@ -165,6 +166,7 @@ class TelemetryGatherer(ThreadedUpdatable):
         if match:
             groups = match.groups()
             speed = int(groups[0])
+            log.debug(f"Speed is {speed}%")
             if 0 <= speed <= 999:
                 self.current_telemetry.speed = speed
                 self.telemetry_updated()
@@ -177,7 +179,19 @@ class TelemetryGatherer(ThreadedUpdatable):
         if match:
             groups = match.groups()
             progress = int(groups[0])
-            mins_remaining = int(groups[1])
+            speed_agnostic_mins_remaining = int(groups[1])
+
+            if self.model.last_telemetry.speed is not None:
+                speed_multiplier = self.model.last_telemetry.speed / 100
+            else:
+                speed_multiplier = 1
+            inverse_speed_multiplier = speed_multiplier ** -1
+
+            mins_remaining = int(speed_agnostic_mins_remaining *
+                                 inverse_speed_multiplier)
+            log.debug(f"Mins without speed considering "
+                      f"{speed_agnostic_mins_remaining}, mins otherwise "
+                      f"{mins_remaining}")
             secs_remaining = mins_remaining * 60
             if 0 <= progress <= 100:
                 self.current_telemetry.progress = progress
