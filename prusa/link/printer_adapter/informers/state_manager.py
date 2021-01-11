@@ -327,19 +327,19 @@ class StateManager(metaclass=MCSingleton):
 
     @state_influencer(
         StateChange(to_states={State.READY: Source.MARLIN},
-                    from_states={State.ATTENTION: Source.HW,  # USER,
-                                 State.ERROR: Source.HW}))  # USER
+                    from_states={State.ATTENTION: Source.USER,
+                                 State.ERROR: Source.USER,
+                                 State.BUSY: Source.HW}))
     def ok(self):
-        if self.override_state is not None:
-            log.debug(f"No longer having state {self.override_state}")
-            self.override_state = None
-            self.state_may_have_changed()
+        if self.base_state == State.BUSY:
+            self.base_state = State.READY
 
         if self.printing_state == State.FINISHED:
             self.printing_state = None
 
-        if self.base_state == State.BUSY:
-            self.base_state = State.READY
+        if self.override_state is not None:
+            log.debug(f"No longer having state {self.override_state}")
+            self.override_state = None
 
     @state_influencer(StateChange(to_states={State.ATTENTION: Source.USER}))
     def attention(self):
