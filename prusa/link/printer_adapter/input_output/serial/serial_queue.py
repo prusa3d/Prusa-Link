@@ -294,6 +294,9 @@ class SerialQueue(metaclass=MCSingleton):
             if (self.current_instruction is None or
                     not self.current_instruction.to_checksum):
                 log.warning("Re-send requested for on a non-numbered message")
+                # If that happened, the non-numbered message got yeeted from the
+                # buffer, so let's solve that first
+                self._rx_got_yeeted()
             self._resend((self.message_number - number) + 1)
         else:
             log.warning("We haven't sent anything with that number yet. "
