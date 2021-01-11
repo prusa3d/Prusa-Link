@@ -1,7 +1,7 @@
 import logging
 
 from prusa.connect.printer.const import Source, Event
-from prusa.link.printer_adapter.command import ResponseCommand
+from prusa.link.printer_adapter.command import ResponseCommand, Command
 from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.informers.job import JobState
 
@@ -11,8 +11,8 @@ LOG = get_settings().LOG
 log = logging.getLogger(__name__)
 log.setLevel(LOG.COMMANDS)
 
-
-class JobInfo(ResponseCommand):
+# FIXME: This is ugly, ideally, the info would be written into the model
+class JobInfo(Command):
     command_name = "job_info"
 
     def _run_command(self):
@@ -31,9 +31,16 @@ class JobInfo(ResponseCommand):
                 if 'size' in file_obj.attrs:
                     data['size'] = file_obj.attrs['size']
 
-        self.printer.event_cb(event=Event.JOB_INFO,
+        return dict(job_id=self.state_manager.job.get_job_id(),
+                    state=self.state_manager.get_state().value,
+                    **data)
+
+
+class JobInfoResponse(ResponseCommand, JobInfo):
+
+    def _run_command(self):
+        data = super()._run_command()
+        self.printer.event_cb(command_id=self.caller.command_id,
+                              event=Event.JOB_INFO,
                               source=Source.CONNECT,
-                              command_id=self.caller.command_id,
-                              job_id=self.state_manager.job.get_job_id(),
-                              state=self.state_manager.get_state().value,
                               **data)
