@@ -13,7 +13,7 @@ from prusa.connect.printer.const import Command as CommandType
 from prusa.connect.printer.const import Source
 from prusa.link.printer_adapter.command_handlers.execute_gcode import \
     ExecuteGcode
-from prusa.link.printer_adapter.command_handlers.job_info import JobInfo
+from prusa.link.printer_adapter.command_handlers.job_info import JobInfoResponse
 from prusa.link.printer_adapter.command_handlers.pause_print import PausePrint
 from prusa.link.printer_adapter.command_handlers.reset_printer import \
     ResetPrinter, ResetPrinterResponse
@@ -218,7 +218,7 @@ class PrusaLink:
         return StopPrint(caller).run_command()
 
     def job_info(self, caller):
-        return JobInfo(caller).run_command()
+        return JobInfoResponse(caller).run_command()
 
     # --- Signal handlers ---
 
