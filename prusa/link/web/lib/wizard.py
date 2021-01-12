@@ -70,7 +70,7 @@ class Wizard:
             errors['password'] = True
         if self.password != self.repassword:
             errors['repassword'] = True
-        if self.api_key and len(self.username) < 7:
+        if len(self.api_key) < 7:
             errors['api_key'] = True
         self.errors['auth'] = errors
         return not errors
