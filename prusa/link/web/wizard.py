@@ -1,15 +1,15 @@
 """Wizard endpoints"""
+import time
 from functools import wraps
 
 from poorwsgi import state, redirect
 from poorwsgi.digest import hexdigest
-
 from prusa.connect.printer import Printer
 
 from .lib import try_int
-from .lib.view import generate_page
 from .lib.auth import REALM
 from .lib.core import app
+from .lib.view import generate_page
 
 
 def check_printer(fun):
@@ -132,6 +132,12 @@ def wizard_finish_post(req):
     # set connect connection
     printer = wizard.daemon.prusa_link.printer
     printer.set_connect(app.settings)
+
+    # wait up to one second for printer.sn to be set
+    for i in range(10):
+        if printer.sn:
+            break
+        time.sleep(.1)
 
     # register printer
     if app.settings.service_connect.token:

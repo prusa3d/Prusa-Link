@@ -8,6 +8,7 @@
     * Skipped pidfile when process is not alive
     * Added new endpoint /api/printer with JSON response
     * Fix complain in wizard about `api-key` when `username` was too short
+    * Fix printer.sn being unset in the wizard by waiting for it
 
 0.2.0 (2020-12-14)
 
