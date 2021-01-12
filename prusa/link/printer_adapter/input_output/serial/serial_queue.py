@@ -73,6 +73,9 @@ class SerialQueue(metaclass=MCSingleton):
         # For stopping fast (power panic)
         self.closed = False
 
+        # Flag to be set when serial communication fails
+        self.has_failed = False
+
         # Workaround around M110 involves syncing the FW buffers using a G4
         # Whenever an M110 comes, a G4 needs to be prepended.
         # To avoid getting stuck in an endless loop, let's flip a flag
@@ -381,50 +384,65 @@ class SerialQueue(metaclass=MCSingleton):
         instruction = Instruction("M110 N0")
         self._enqueue(instruction, to_front=True)
 
+    def _flush_queues(self):
+        if self.current_instruction is not None:
+            # To flush the one instruction, that has not yet been confirmed
+            # but has been sent, use the usual way
+            self.current_instruction.confirm(force=True)
+            self._teardown_output_capture()
+            self.current_instruction = None
+            self.next_instruction()
+        while self.current_instruction is not None:
+            # obviously don't send the other ones,
+            # so they can be handled faster
+            self.current_instruction.sent()
+            self.current_instruction.confirm(force=True)
+            self.current_instruction = None
+            self.next_instruction()
+
     def _worst_case_scenario(self):
         """
         Everything has failed, let's abandon whatever we were doing and save
         the printer/user
         """
-        Thread(target=self._worst_case_body).start()
-
-    def _worst_case_body(self):
+        self.has_failed = True
         log.error("Communication failed. Aborting...")
-
-        # This shall inform the rest of the app about the situation,
-        # I expect this to reset the printer
         self.serial_queue_failed.send()
 
+    def printer_reset(self, was_printing):
+        Thread(target=self._printer_reset, args=(was_printing, ),
+               name="serial_queue_reset_thread").start()
+
+    def _printer_reset(self, was_printing):
+        """Printer resets for two reasons, it has been stopped by the user,
+        or the serial communication failed"""
         with self.write_lock:
-            if self.current_instruction is not None:
-                # To flush the one instruction, that has not yet been confirmed
-                # but has been sent, use the usual way
-                self.current_instruction.confirm(force=True)
-                self._teardown_output_capture()
-                self.current_instruction = None
-                self.next_instruction()
-            while self.current_instruction is not None:
-                # obviously don't send the other ones,
-                # so they can be handled faster
-                self.current_instruction.sent()
-                self.current_instruction.confirm(force=True)
-                self.current_instruction = None
-                self.next_instruction()
+            self._flush_queues()
+            sleep(TIME.PRINTER_BOOT_WAIT)
 
-            sleep(10)
+            final_instruction = None
 
-            beep_instruction = Instruction("M300 S880 P200")
-            self._enqueue(beep_instruction, to_front=True)
-            stop_instruction = Instruction("M603")
-            self._enqueue(stop_instruction, to_front=True)
-            message_instruction = Instruction("M1 FW COMM ERR. Aborted")
-            self._enqueue(message_instruction, to_front=True)
+            if self.has_failed:
+                beep_instruction = Instruction("M300 S880 P200")
+                self._enqueue(beep_instruction, to_front=True)
+                stop_instruction = Instruction("M603")
+                self._enqueue(stop_instruction, to_front=True)
+                message_instruction = Instruction("M1 FW COMM ERR. Aborted")
+                self._enqueue(message_instruction, to_front=True)
+                final_instruction = message_instruction
+                self.has_failed = False
+            elif was_printing:
+                stop_instruction = Instruction("M603")
+                self._enqueue(stop_instruction, to_front=True)
+                final_instruction = stop_instruction
 
-        self._try_writing()
-        while not self.closed:
-            if message_instruction.wait_for_confirmation(
-                    timeout=TIME.QUIT_INTERVAL):
-                break
+        if final_instruction is not None:
+            self._try_writing()
+            while not self.closed:
+                if final_instruction.wait_for_confirmation(
+                        timeout=TIME.QUIT_INTERVAL):
+                    break
+
 
 
 class MonitoredSerialQueue(SerialQueue):

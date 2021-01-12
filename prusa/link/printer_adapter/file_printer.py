@@ -19,7 +19,7 @@ from prusa.link.printer_adapter.input_output.serial.helpers import \
 from prusa.link.printer_adapter.print_stats import PrintStats
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.structures.regular_expressions import \
-    POWER_PANIC_REGEX, PRINTER_BOOT_REGEX, ERROR_REGEX, RESUMED_REGEX
+    POWER_PANIC_REGEX, ERROR_REGEX, RESUMED_REGEX
 from prusa.link.printer_adapter.util import get_clean_path, ensure_directory, \
     get_gcode
 
@@ -51,8 +51,6 @@ class FilePrinter(metaclass=MCSingleton):
         self.serial_queue.serial_queue_failed.connect(
             lambda sender: self.stop_print())
 
-        self.serial_reader.add_handler(
-            PRINTER_BOOT_REGEX, lambda sender, match: self.printer_reset())
         self.serial_reader.add_handler(
             POWER_PANIC_REGEX, lambda sender, match: self.power_panic())
         self.serial_reader.add_handler(
@@ -212,9 +210,6 @@ class FilePrinter(metaclass=MCSingleton):
         print_ending = (gcode_number ==
                         self.print_stats.total_gcode_count - FP.TAIL_COMMANDS)
         return (do_stats and divisible) or print_ending
-
-    def printer_reset(self):
-        self.stop_print()
 
     def printer_error(self):
         # TODO: Maybe pause in some cases instead

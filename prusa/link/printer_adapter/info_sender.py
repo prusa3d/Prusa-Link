@@ -12,8 +12,6 @@ from prusa.link.printer_adapter.input_output.serial.serial_queue import \
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.printer_adapter.model import Model
-from prusa.link.printer_adapter.structures.regular_expressions import \
-    PRINTER_BOOT_REGEX
 
 LOG = get_settings().LOG
 TIME = get_settings().TIME
@@ -35,10 +33,6 @@ class InfoSender:
 
         self.info_updating_thread = None
         self.running = True
-
-        # Try sending info after every reset
-        self.serial_reader.add_handler(
-            PRINTER_BOOT_REGEX, lambda sender, match: self.try_sending_info())
 
     def update_info(self):
         self.printer.network_info = get_network_info(

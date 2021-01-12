@@ -1,6 +1,6 @@
 import os
 import threading
-from time import time
+from time import time, sleep
 from hashlib import sha256
 
 from requests import RequestException
@@ -23,6 +23,8 @@ from prusa.link.printer_adapter.command_handlers.stop_print import StopPrint
 from prusa.link.printer_adapter.crotitel_cronu import CrotitelCronu
 from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.informers.filesystem.sd_card import SDState
+from prusa.link.printer_adapter.input_output.serial.instruction import \
+    Instruction
 from prusa.link.printer_adapter.sn_reader import SNReader
 from prusa.link.printer_adapter.file_printer import FilePrinter
 from prusa.link.printer_adapter.info_sender import InfoSender
@@ -43,6 +45,8 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
 from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.model_classes import Telemetry
 from prusa.link.printer_adapter.structures.constants import PRINTING_STATES
+from prusa.link.printer_adapter.structures.regular_expressions import \
+    PRINTER_BOOT_REGEX
 from prusa.link.printer_adapter.temp_ensurer import TempEnsurer
 from prusa.link.printer_adapter.util import run_slowly_die_fast
 from prusa.link.sdk_augmentation.printer import MyPrinter
@@ -69,6 +73,8 @@ class PrusaLink:
                                                  self.serial_reader)
         MonitoredSerialQueue.get_instance().serial_queue_failed.connect(
             self.serial_queue_failed)
+
+        self.serial_reader.add_handler(PRINTER_BOOT_REGEX, self.printer_reset)
 
         self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_reader)
 
@@ -271,6 +277,12 @@ class PrusaLink:
 
     def sd_unmount(self, sender):
         self.printer.fs.unmount("SD Card")
+
+    def printer_reset(self, sender, match):
+        was_printing = self.state_manager.get_state() in PRINTING_STATES
+        self.file_printer.stop_print()
+        self.serial_queue.printer_reset(was_printing)
+        self.info_sender.try_sending_info()
 
     @property
     def sd_ready(self):
