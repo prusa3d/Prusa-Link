@@ -78,7 +78,7 @@ class Model(metaclass=MCSingleton):
             if (new_state == State.PRINTING and
                     self._state in {State.READY, State.BUSY}):
                 self._telemetry.progress = 0
-                self._telemetry.printing_time = 0
+                self._telemetry.time_printing = 0
 
     @property
     def local_ip(self):

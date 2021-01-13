@@ -74,8 +74,6 @@ class PrusaLink:
         MonitoredSerialQueue.get_instance().serial_queue_failed.connect(
             self.serial_queue_failed)
 
-        self.serial_reader.add_handler(PRINTER_BOOT_REGEX, self.printer_reset)
-
         self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_reader)
 
         # TODO: get rid of this after it's fixed
@@ -124,6 +122,7 @@ class PrusaLink:
 
         # Connect serial to state manager
         self.serial.failed_signal.connect(self.serial_failed)
+
         self.serial.renewed_signal.connect(self.serial_renewed)
 
         self.crotitel_cronu = CrotitelCronu(self.state_manager)
@@ -173,6 +172,10 @@ class PrusaLink:
 
         self.temp_ensurer = TempEnsurer(self.serial_reader, self.serial_queue)
         self.temp_ensurer.start()
+
+        # Connect the printer reset handler later, so it cannot fail because of
+        # uninitialised stuff
+        self.serial_reader.add_handler(PRINTER_BOOT_REGEX, self.printer_reset)
 
         # After the initial states are distributed throughout the model,
         # let's open ourselves to some commands from connect
