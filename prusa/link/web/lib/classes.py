@@ -2,10 +2,11 @@
 
 Main server classes for handling request.
 """
+import logging
 from wsgiref.simple_server import WSGIServer
 from socketserver import ForkingMixIn, ThreadingMixIn
 
-from ...config import log_http as log
+log = logging.getLogger(__name__)
 
 
 class SingleServer(WSGIServer):

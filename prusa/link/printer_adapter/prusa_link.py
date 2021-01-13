@@ -1,11 +1,10 @@
+import logging
 import os
 import threading
-from time import time, sleep
+from time import time
 from hashlib import sha256
 
 from requests import RequestException
-
-from prusa.link.config import log_adapter as log
 
 from prusa.connect.printer import SDKServerError
 from prusa.connect.printer.files import File
@@ -21,10 +20,7 @@ from prusa.link.printer_adapter.command_handlers.resume_print import ResumePrint
 from prusa.link.printer_adapter.command_handlers.start_print import StartPrint
 from prusa.link.printer_adapter.command_handlers.stop_print import StopPrint
 from prusa.link.printer_adapter.crotitel_cronu import CrotitelCronu
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.informers.filesystem.sd_card import SDState
-from prusa.link.printer_adapter.input_output.serial.instruction import \
-    Instruction
 from prusa.link.printer_adapter.sn_reader import SNReader
 from prusa.link.printer_adapter.file_printer import FilePrinter
 from prusa.link.printer_adapter.info_sender import InfoSender
@@ -44,14 +40,15 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.model_classes import Telemetry
-from prusa.link.printer_adapter.structures.constants import PRINTING_STATES
+from prusa.link.printer_adapter.structures.constants import PRINTING_STATES, \
+    TELEMETRY_IDLE_INTERVAL, TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL
 from prusa.link.printer_adapter.structures.regular_expressions import \
     PRINTER_BOOT_REGEX
 from prusa.link.printer_adapter.temp_ensurer import TempEnsurer
 from prusa.link.printer_adapter.util import run_slowly_die_fast
 from prusa.link.sdk_augmentation.printer import MyPrinter
 
-TIME = get_settings().TIME
+log = logging.getLogger(__name__)
 
 
 class PrusaLink:
@@ -325,12 +322,12 @@ class PrusaLink:
 
     def get_telemetry_interval(self):
         if self.model.state in PRINTING_STATES:
-            return TIME.TELEMETRY_PRINTING_INTERVAL
+            return TELEMETRY_PRINTING_INTERVAL
         else:
-            return TIME.TELEMETRY_IDLE_INTERVAL
+            return TELEMETRY_IDLE_INTERVAL
 
     def keep_sending_telemetry(self):
-        run_slowly_die_fast(lambda: self.running, TIME.QUIT_INTERVAL,
+        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
                             lambda: self.get_telemetry_interval(),
                             self.send_telemetry)
 

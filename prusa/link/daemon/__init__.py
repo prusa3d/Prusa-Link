@@ -1,43 +1,48 @@
 """Daemon class implementation."""
+import abc
+import logging
+from logging.handlers import SysLogHandler
 from threading import Thread
 
 import ctypes
 
+from ..config import Config, Settings
 from ..printer_adapter.prusa_link import PrusaLink
+from ..printer_adapter.util import get_syslog_handler_fileno
 from ..web import run_http
-from ..config import logger, log_http, log_adapter, Settings
 
 
-class RequestLogger:
-    """Create new logger with syslog handler for requests.
+log = logging.getLogger(__name__)
 
-    stdout of process will be redirect to log.info of log_http logger.
+
+class DaemonLogger:
     """
-    # pylint: disable=no-self-use
+    Adapt a syslog handled logger into a python file-like object
+    for use with DaemonContext as stdout and stderr args
+    """
 
+    def __init__(self, config: Config):
+        self.config = config
+
+    @abc.abstractmethod
     def write(self, message):
         """Send request message to log."""
-        log_http.info(message)
 
     def fileno(self):
         """Return file number for daemon context."""
-        return log_http.root.handlers[0].socket.fileno()
+        return get_syslog_handler_fileno(self.config)
 
 
-class ErrorLogger:
-    """Create new logger with syslog handler for errors.
-
-    stderr of process will be redirect to log.error of prusa-link logger.
-    """
-    # pylint: disable=no-self-use
+class STDOutLogger(DaemonLogger):
 
     def write(self, message):
-        """Send request message to log."""
-        logger.error(message)
+        logging.root.info(message)
 
-    def fileno(self):
-        """Return file number for daemon context."""
-        return logger.root.handlers[0].socket.fileno()
+
+class STDErrLogger(DaemonLogger):
+
+    def write(self, message):
+        logging.root.error(message)
 
 
 class ExThread(Thread):
@@ -45,22 +50,22 @@ class ExThread(Thread):
     def raise_exception(self, exc):
         """Raise exception in thread."""
         if not self.is_alive():
-            logger.info("Thread %s is not alive", self.name)
+            log.info("Thread %s is not alive", self.name)
             return
 
         res = ctypes.pythonapi.PyThreadState_SetAsyncExc(
             ctypes.c_long(self.ident),
             ctypes.py_object(exc))
         if res == 0:
-            logger.error("Invalid thread id for %s", self.name)
+            log.error("Invalid thread id for %s", self.name)
             raise ValueError("Invalid thread id")
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(self.ident, 0)
-            logger.error("Exception raise failure for %s",  self.name)
+            log.error("Exception raise failure for %s",  self.name)
             raise RuntimeError('Exception raise failure')
 
 
-class Daemon():
+class Daemon:
     """HTTP Daemon based on wsgiref."""
     instance = None
 
@@ -72,8 +77,8 @@ class Daemon():
         self.cfg = config
         self.settings = None
 
-        self.stdout = RequestLogger()
-        self.stderr = ErrorLogger()
+        self.stdout = STDOutLogger(config)
+        self.stderr = STDErrLogger(config)
 
         self.http = None
         self.prusa_link = None
@@ -89,11 +94,11 @@ class Daemon():
         if self.settings.service_local.enable:
             self.http.start()
 
-        log_adapter.info('Starting adapter for port %s', self.cfg.printer.port)
+        log.info('Starting adapter for port %s', self.cfg.printer.port)
         try:
             self.prusa_link = PrusaLink(self.cfg, self.settings)
         except Exception:  # pylint: disable=broad-except
-            log_adapter.exception("Adapter was not start")
+            log.exception("Adapter was not start")
             self.http.raise_exception(KeyboardInterrupt)
             self.http.join()
             return 1
@@ -102,14 +107,14 @@ class Daemon():
             self.prusa_link.stopped_event.wait()
             return 0
         except KeyboardInterrupt:
-            logger.info('Keyboard interrupt')
-            log_adapter.info("Shutdown adapter")
+            log.info('Keyboard interrupt')
+            log.info("Shutdown adapter")
             self.prusa_link.stop()
             self.http.raise_exception(KeyboardInterrupt)
             self.http.join()
             return 0
         except Exception:   # pylint: disable=broad-except
-            log_adapter.exception("Unknown Exception")
+            log.exception("Unknown Exception")
             self.http.raise_exception(KeyboardInterrupt)
             return 1
 

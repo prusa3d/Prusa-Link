@@ -1,5 +1,6 @@
 """main() command line function."""
-from argparse import ArgumentParser
+import logging
+from argparse import ArgumentParser, ArgumentTypeError
 from traceback import format_exc
 from os import kill, geteuid, path, mkdir, chmod
 from grp import getgrnam
@@ -9,13 +10,26 @@ from signal import SIGTERM
 from daemon import DaemonContext
 from lockfile.pidlockfile import PIDLockFile
 
-from .config import Config, logger as log
+from prusa.link.printer_adapter.util import get_syslog_handler_fileno
+from .config import Config
 from .daemon import Daemon
+
+log = logging.getLogger(__name__)
+
 
 # pylint: disable=too-many-return-statements
 # pylint: disable=too-many-statements
 CONFIG_FILE = '/etc/Prusa-Link/prusa-link.ini'
 
+def set_log_levels(config: Config):
+    for module, log_level in config.log_settings.items():
+        logging.getLogger(module).setLevel(log_level)
+
+def log_level(log_level):
+    if len(log_level.split("=")) != 2:
+        raise ArgumentTypeError("log level needs to be specified in format"
+                                "<module_path>=<log_level>")
+    return log_level
 
 def check_process(pid):
     """Check if process with pid is alive."""
@@ -24,7 +38,6 @@ def check_process(pid):
         return True
     except OSError:
         return False
-
 
 def main():
     """Standard main function."""
@@ -59,32 +72,39 @@ def main():
     parser.add_argument(
         "-d", "--debug", action="store_true",
         help="DEBUG logging level is set")
+    parser.add_argument(
+        "-l", "--module-log-level", action="append",
+        help="sets the log level of any submodule(s). ",
+        type=log_level)
 
     args = parser.parse_args()
 
     try:
         config = Config(args)
+
+        set_log_levels(config)
+
         pid_file = PIDLockFile(config.daemon.pid_file)
         pid = pid_file.read_pid() if pid_file.is_locked() else None
 
         if args.command == "stop":
             if pid and check_process(pid):
-                print("Stopping service with pid", pid)
+                log.info("Stopping service with pid", pid)
                 kill(pid, SIGTERM)
             else:
-                print("Service not running")
+                log.info("Service not running")
             return 0
 
         if args.command == "status":
             if pid and check_process(pid):
-                print("Service running with pid", pid)
+                log.info("Service running with pid", pid)
                 return 0
-            print("Service not running")
+            log.info("Service not running")
             return 1
 
         if args.command == "restart":
             if pid and check_process(pid):
-                print("Restarting service with pid", pid)
+                log.info("Restarting service with pid", pid)
                 kill(pid, SIGTERM)
         elif args.command == "start":
             pass
@@ -101,14 +121,14 @@ def main():
             if not check_process(pid):
                 pid_file.break_lock()
             else:
-                print("Service is already running")
+                log.info("Service is already running")
                 return 1
 
         context = DaemonContext(
             pidfile=pid_file,
             stdout=daemon.stdout,
             stderr=daemon.stderr,
-            files_preserve=[log.root.handlers[0].socket.fileno()],
+            files_preserve=[get_syslog_handler_fileno(config)],  # Redundant IMO
             signal_map={SIGTERM: daemon.sigterm})
 
         pid_dir = path.dirname(config.daemon.pid_file)
@@ -131,7 +151,7 @@ def main():
     except Exception as exc:  # pylint: disable=broad-except
         log.info("%s", args)
         log.debug("%s", format_exc())
-        log.fatal("%s", exc)
+        log.exception("%s", exc)
         parser.error("%s" % exc)
         return 1
 

@@ -3,16 +3,12 @@ from pathlib import Path
 
 from prusa.connect.printer.const import State, Source
 from prusa.link.printer_adapter.command import ResponseCommand
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.informers.state_manager import StateChange
 from prusa.link.printer_adapter.structures.regular_expressions import \
     OPEN_RESULT_REGEX
 
-LOG = get_settings().LOG
-
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.COMMANDS)
 
 
 class StartPrint(ResponseCommand):

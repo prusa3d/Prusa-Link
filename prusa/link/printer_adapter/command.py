@@ -3,7 +3,6 @@ import re
 from typing import Any, Dict
 
 from prusa.connect.printer.const import Source
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.file_printer import FilePrinter
 from prusa.link.printer_adapter.informers.state_manager import StateManager
 from prusa.link.printer_adapter.input_output.serial.serial import Serial
@@ -17,11 +16,8 @@ from prusa.link.printer_adapter.model import Model
 from prusa.link.sdk_augmentation.printer import MyPrinter
 from prusa.connect.printer.command import Command as SDKCommand
 
-LOG = get_settings().LOG
-
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.COMMANDS)
 
 
 class CommandFailed(Exception):

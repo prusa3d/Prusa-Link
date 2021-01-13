@@ -1,10 +1,11 @@
 """Config class definition."""
-
+import logging
 from logging import getLogger, Formatter, StreamHandler
 from logging.handlers import SysLogHandler
 from os import getuid
 from os.path import abspath, join
 from pwd import getpwnam, getpwuid
+from typing import Iterable
 
 from extendparser.get import Get
 
@@ -17,13 +18,20 @@ LOG_FORMAT_SYSLOG = \
     "%(name)s[%(process)d]: "\
     "%(levelname)s: %(message)s {%(funcName)s():%(lineno)d}"
 
-logger = getLogger('prusa-link')
-log_adapter = getLogger('prusa-link.adapter')
-log_http = getLogger('prusa-link.http')
-
 # pylint: disable=too-many-ancestors
 # pylint: disable=too-many-instance-attributes
 
+
+def get_log_level_dict(log_levels: Iterable[str]):
+    log_level_dict = {}
+    for log_config in log_levels:
+        parts = log_config.split("=")
+        if len(parts) != 2:
+            raise ValueError("Log level settings needs to contain exactly one "
+                             "\"=\"")
+        name, loglevel = parts
+        log_level_dict[name] = loglevel
+    return log_level_dict
 
 def check_log_level(value):
     """Check valid log level."""
@@ -94,7 +102,25 @@ class Config(Get):
                                             self.daemon.pid_file))
 
         # [logging]
-        self.set_logger(args)
+        logging.root.setLevel(log_level)
+
+        workaround_log_settings = Model(self.get_section(
+            "log",
+            (
+                ("levels", tuple, tuple(), ";"),
+            )
+
+        ))
+
+        # Let's combine the config log setting and cmd args
+        # with cmd args overriding config values
+        self.log_settings = get_log_level_dict(workaround_log_settings.levels)
+        if args.module_log_level is not None:
+            override_log_settings = get_log_level_dict(args.module_log_level)
+            self.log_settings.update(override_log_settings)
+
+        # Let's save the handler we've configured for later use
+        self.configured_handler = self.get_log_handler(args)
 
         # [http]
         self.http = Model(self.get_section(
@@ -134,45 +160,26 @@ class Config(Get):
 
         Config.instance = self
 
-    def get_logger(self, name, args, fallback="WARNING"):
-        """Set specific logger value"""
-        if args.debug:
-            log_level = "DEBUG"
-        elif args.info:
-            log_level = "INFO"
-        else:
-            log_level = self.get("logging", name, fallback=fallback)
-            check_log_level(log_level)
-
-        if name == 'main':
-            getLogger('prusa-link').setLevel(log_level)
-            getLogger('urllib3').setLevel(log_level)
-            getLogger('connect-printer').setLevel(log_level)
-        else:
-            getLogger(f'prusa-link.{name}').setLevel(log_level)
-
-    def set_logger(self, args):
-        """Logger setting is more complex."""
-
-        self.get_logger('main', args)
-        self.get_logger('adapter', args)
-        self.get_logger('http', args, 'INFO')  # http requests
+    def get_log_handler(self, args):
+        """Logger setting are more complex."""
 
         if args.foreground:
             log_format = LOG_FORMAT_FOREGROUND
-            handler = StreamHandler()
+            configured_handler = StreamHandler()
         else:
             log_format = LOG_FORMAT_SYSLOG
             log_syslog = self.get("logging", "syslog", fallback="/dev/log")
-            handler = SysLogHandler(log_syslog, SysLogHandler.LOG_DAEMON)
+            configured_handler = SysLogHandler(log_syslog,
+                                               SysLogHandler.LOG_DAEMON)
 
         log_format = self.get("logging", "format", fallback=log_format)
 
-        for hdlr in logger.root.handlers:  # reset root logger handlers
-            logger.root.removeHandler(hdlr)
-        logger.root.addHandler(handler)
+        for handler in logging.root.handlers:  # reset root logger handlers
+            logging.root.removeHandler(handler)
+        logging.root.addHandler(configured_handler)
         formatter = Formatter(log_format)
-        handler.setFormatter(formatter)
+        configured_handler.setFormatter(formatter)
+        return configured_handler
 
 
 class Settings(Get):

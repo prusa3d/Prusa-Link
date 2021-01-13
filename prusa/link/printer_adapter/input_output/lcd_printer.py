@@ -3,24 +3,20 @@ from queue import Queue, Empty
 from threading import Thread
 from time import time, sleep
 
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
     SerialQueue
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_instruction, wait_for_instruction
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
+from prusa.link.printer_adapter.structures.constants import LCD_QUEUE_SIZE, \
+    FW_MESSAGE_TIMEOUT, QUIT_INTERVAL
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.structures.regular_expressions import \
     LCD_UPDATE_REGEX
 
-LOG = get_settings().LOG
-LCDQ = get_settings().LCDQ
-TIME = get_settings().TIME
-
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.LCD_PRINTER)
 
 
 class LCDMessage:
@@ -42,7 +38,7 @@ class LCDPrinter(metaclass=MCSingleton):
         self.ignore = 0
         self.serial_reader.add_handler(LCD_UPDATE_REGEX, self.lcd_updated)
 
-        self.message_queue: Queue = Queue(maxsize=LCDQ.LCD_QUEUE_SIZE)
+        self.message_queue: Queue = Queue(maxsize=LCD_QUEUE_SIZE)
 
         self.running = True
         self.queue_thread: Thread = Thread(target=self.process_queue,
@@ -59,12 +55,12 @@ class LCDPrinter(metaclass=MCSingleton):
         while self.running:
             try:
                 message: LCDMessage
-                message = self.message_queue.get(timeout=TIME.QUIT_INTERVAL)
+                message = self.message_queue.get(timeout=QUIT_INTERVAL)
             except Empty:
                 pass
             else:
                 # Wait until it's been X seconds since FW updated the LCD
-                fw_msg_grace_end = self.last_updated + TIME.FW_MESSAGE_TIMEOUT
+                fw_msg_grace_end = self.last_updated + FW_MESSAGE_TIMEOUT
                 log.debug("Wait for FW message")
                 self.wait_until(fw_msg_grace_end)
                 log.debug(f"Print {message}")
@@ -82,8 +78,8 @@ class LCDPrinter(metaclass=MCSingleton):
         while self.running and time() < instant:
             # Sleep QUIT_INTERVAL or whatever else is left of the wait
             # Depending on what's smaller, don't sleep negative amounts
-            to_sleep = min(TIME.QUIT_INTERVAL, instant - time())
-            sleep(max(0., to_sleep))
+            to_sleep = min(QUIT_INTERVAL, instant - time())
+            sleep(max(0, to_sleep))
 
     def print_text(self, text: str):
         instruction = enqueue_instruction(self.serial_queue, f"M117 {text}")

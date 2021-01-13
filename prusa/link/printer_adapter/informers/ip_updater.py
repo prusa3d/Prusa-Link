@@ -4,23 +4,21 @@ from time import time
 
 from blinker import Signal
 
-from prusa.link.printer_adapter.default_settings import get_settings
+from prusa.link.printer_adapter.structures.constants import IP_UPDATE_INTERVAL, \
+    SHOW_IP_INTERVAL
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 from prusa.link.printer_adapter.util import get_local_ip
 
 NO_IP = "NO_IP"
 
-LOG = get_settings().LOG
-TIME = get_settings().TIME
-
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.IP_UPDATER)
+log.setLevel("INFO")
 
 
 class IPUpdater(ThreadedUpdatable):
     thread_name = "ip_updater"
-    update_interval = TIME.IP_UPDATE_INTERVAL
+    update_interval = IP_UPDATE_INTERVAL
 
     def __init__(self):
         self.updated_signal = Signal()
@@ -46,7 +44,7 @@ class IPUpdater(ThreadedUpdatable):
                 self.local_ip = local_ip
                 self.ip_updated()
             elif time() > self.update_ip_on:
-                self.update_ip_on = time() + TIME.SHOW_IP_INTERVAL
+                self.update_ip_on = time() + SHOW_IP_INTERVAL
                 self.ip_updated()
 
     def ip_updated(self):

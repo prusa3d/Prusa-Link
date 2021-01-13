@@ -1,14 +1,17 @@
 """Init file for web application module."""
+import logging
 from time import sleep
 from wsgiref.simple_server import make_server
 
 from poorwsgi.digest import hexdigest
 
-from ..config import log_http as log
 from .lib.core import app
 from .lib.auth import REALM
 from .lib.classes import ThreadingServer
 from .lib.wizard import Wizard
+
+log = logging.getLogger(__name__)
+
 
 __import__('errors', globals=globals(), level=1)
 __import__('main', globals=globals(), level=1)

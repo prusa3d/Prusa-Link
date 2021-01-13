@@ -6,15 +6,14 @@ from typing import Set
 from blinker import Signal
 
 from prusa.link.printer_adapter.default_settings import get_settings
+from prusa.link.printer_adapter.structures.constants import BLACKLISTED_PATHS, \
+    BLACKLISTED_NAMES, BLACKLISTED_TYPES, QUIT_INTERVAL, DIR_RESCAN_INTERVAL
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 from prusa.link.printer_adapter.util import get_clean_path, ensure_directory
 
-LOG = get_settings().LOG
-TIME = get_settings().TIME
 MOUNT = get_settings().MOUNT
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.MOUNTPOINT)
 
 
 class Mounts(ThreadedUpdatable):
@@ -31,8 +30,8 @@ class Mounts(ThreadedUpdatable):
         self.mounted_signal = Signal()  # kwargs = path: str
         self.unmounted_signal = Signal()  # kwargs = path: str
 
-        self.blacklisted_paths = self._get_clean_paths(MOUNT.BLACKLISTED_PATHS)
-        self.blacklisted_names = MOUNT.BLACKLISTED_NAMES
+        self.blacklisted_paths = self._get_clean_paths(BLACKLISTED_PATHS)
+        self.blacklisted_names = BLACKLISTED_NAMES
 
         candidate_mountpoints = self._get_clean_paths(self.paths_to_mount)
 
@@ -140,7 +139,7 @@ class FSMounts(Mounts):
 
     def get_mountpoints(self):
         # Non empty epoll result means something regarding mounts has changed
-        epoll_result = self.epoll_obj.poll(TIME.QUIT_INTERVAL)
+        epoll_result = self.epoll_obj.poll(QUIT_INTERVAL)
         if epoll_result or self.force_update:
             self.force_update = False
 
@@ -162,7 +161,7 @@ class FSMounts(Mounts):
 
     def mount_belongs(self, path, fs_type):
         is_wanted = str(path) in self.configured_mounts
-        type_valid = is_wanted and fs_type not in MOUNT.BLACKLISTED_TYPES
+        type_valid = is_wanted and fs_type not in BLACKLISTED_TYPES
         return is_wanted and type_valid
 
     def stop(self):
@@ -184,7 +183,7 @@ class DirMounts(Mounts):
             ensure_directory(directory)
 
     thread_name = "dir_mounts_thread"
-    update_interval = TIME.DIR_RESCAN_INTERVAL
+    update_interval = DIR_RESCAN_INTERVAL
 
     def get_mountpoints(self):
         new_directory_set: Set[str] = set()

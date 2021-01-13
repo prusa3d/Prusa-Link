@@ -1,14 +1,10 @@
 import logging
 from time import time
 
-from prusa.link.printer_adapter.default_settings import get_settings
+from prusa.link.printer_adapter.structures.constants import TAIL_COMMANDS
 from prusa.link.printer_adapter.util import get_gcode
 
-LOG = get_settings().LOG
-FP = get_settings().FP
-
 log = logging.getLogger(__name__)
-log.setLevel(LOG.PRINT_STATS)
 
 
 class PrintStats:
@@ -59,7 +55,7 @@ class PrintStats:
 
         log.debug(f"Print stats: {percent_done}% done,  {min_remaining}")
 
-        if gcode_number == self.total_gcode_count - FP.TAIL_COMMANDS:
+        if gcode_number == self.total_gcode_count - TAIL_COMMANDS:
             return 100, min_remaining
         else:
             return percent_done, min_remaining

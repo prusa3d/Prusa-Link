@@ -13,6 +13,7 @@
     * Enabled the RESET_PRINTER command
     * Fixed printer resetting multiple times when it gets reset mid-print
     * Fixed accidentally hogging CPU when displaying LCD messages
+    * Set log levels by module name in config or as command arguments
 
 0.2.0 (2020-12-14)
 

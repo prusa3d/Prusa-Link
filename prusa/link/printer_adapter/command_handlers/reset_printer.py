@@ -4,16 +4,14 @@ from time import sleep, time
 
 from prusa.link.printer_adapter.command import Command, ResponseCommand
 from prusa.link.printer_adapter.default_settings import get_settings
+from prusa.link.printer_adapter.structures.constants import \
+    SERIAL_QUEUE_TIMEOUT, QUIT_INTERVAL, PRINTER_BOOT_WAIT
 from prusa.link.printer_adapter.structures.regular_expressions import \
     PRINTER_BOOT_REGEX
 
-LOG = get_settings().LOG
-TIME = get_settings().TIME
 PI = get_settings().PI
-SQ = get_settings().SQ
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.COMMANDS)
 
 
 class ResetPrinter(Command):
@@ -27,7 +25,7 @@ class ResetPrinter(Command):
 
     command_name = "reset_printer"
     timeout = 30
-    if timeout < TIME.PRINTER_BOOT_WAIT or timeout < SQ.SERIAL_QUEUE_TIMEOUT:
+    if timeout < PRINTER_BOOT_WAIT or timeout < SERIAL_QUEUE_TIMEOUT:
         raise RuntimeError("Cannot have smaller timeout than what the printer "
                            "needs to boot.")
 
@@ -57,7 +55,7 @@ class ResetPrinter(Command):
             wiringpi.digitalWrite(PI.RESET_PIN, wiringpi.LOW)
 
         while self.running and time() < times_out_at:
-            if event.wait(TIME.QUIT_INTERVAL):
+            if event.wait(QUIT_INTERVAL):
                 break
 
         self.serial_reader.remove_handler(PRINTER_BOOT_REGEX, waiter)

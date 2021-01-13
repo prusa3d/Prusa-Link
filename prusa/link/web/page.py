@@ -1,8 +1,9 @@
 """Base page support."""
-
-from prusa.link.config import logger as log
+import logging
 
 from .lib.core import app
+
+log = logging.getLogger(__name__)
 
 @app.route("/test")
 def root(req):

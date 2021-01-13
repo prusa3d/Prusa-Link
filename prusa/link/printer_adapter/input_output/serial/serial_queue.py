@@ -7,10 +7,9 @@ from typing import List, Optional
 
 from blinker import Signal
 
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.input_output.serial.serial import Serial
 from prusa.link.printer_adapter.structures.regular_expressions import \
-    CONFIRMATION_REGEX, PAUSED_REGEX, RESEND_REGEX, TEMPERATURE_REGEX, \
+    CONFIRMATION_REGEX, RESEND_REGEX, TEMPERATURE_REGEX, \
     BUSY_REGEX, ATTENTION_REGEX, HEATING_HOTEND_REGEX, HEATING_REGEX, \
     M110_REGEXP
 from prusa.link.printer_adapter.util import run_slowly_die_fast
@@ -18,14 +17,10 @@ from .instruction import Instruction
 from .is_planner_fed import IsPlannerFed
 from .serial_reader import SerialReader
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
-
-LOG = get_settings().LOG
-SQ = get_settings().SQ
-TIME = get_settings().TIME
-
+from ...structures.constants import PRINTER_BOOT_WAIT, QUIT_INTERVAL, \
+    SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT, RX_SIZE, HISTORY_LENGTH
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.SERIAL_QUEUE)
 
 
 class BadChecksumUseError(Exception):
@@ -35,7 +30,7 @@ class BadChecksumUseError(Exception):
 class SerialQueue(metaclass=MCSingleton):
 
     def __init__(self, serial: Serial, serial_reader: SerialReader,
-                 rx_size=SQ.RX_SIZE):
+                 rx_size=RX_SIZE):
         self.serial = serial
         self.serial_reader = serial_reader
 
@@ -64,7 +59,7 @@ class SerialQueue(metaclass=MCSingleton):
         # When filament runs out or other buffer flushing calamity occurs
         # We need to re-send some commands that we already had dismissed as
         # confirmed
-        self.send_history = deque(maxlen=SQ.HISTORY_LENGTH)
+        self.send_history = deque(maxlen=HISTORY_LENGTH)
 
         # A list which will contain all messages needed to recover
         self.recovery_list = []
@@ -418,7 +413,7 @@ class SerialQueue(metaclass=MCSingleton):
         or the serial communication failed"""
         with self.write_lock:
             self._flush_queues()
-            sleep(TIME.PRINTER_BOOT_WAIT)
+            sleep(PRINTER_BOOT_WAIT)
 
             final_instruction = None
 
@@ -440,7 +435,7 @@ class SerialQueue(metaclass=MCSingleton):
             self._try_writing()
             while not self.closed:
                 if final_instruction.wait_for_confirmation(
-                        timeout=TIME.QUIT_INTERVAL):
+                        timeout=QUIT_INTERVAL):
                     break
 
 
@@ -476,17 +471,17 @@ class MonitoredSerialQueue(SerialQueue):
             return time() - self.last_event_on
 
     def keep_monitoring(self):
-        run_slowly_die_fast(lambda: self.running, TIME.QUIT_INTERVAL,
-                            lambda: SQ.SERIAL_QUEUE_MONITOR_INTERVAL,
+        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
+                            lambda: SERIAL_QUEUE_MONITOR_INTERVAL,
                             self.check_status)
 
     def check_status(self):
-        if self.get_current_delay() > SQ.SERIAL_QUEUE_TIMEOUT:
+        if self.get_current_delay() > SERIAL_QUEUE_TIMEOUT:
             # The printer did not respond in time, lets assume it forgot
             # what it was supposed to do
             log.info(f"Timed out waiting for confirmation of "
                      f"{self.current_instruction} after "
-                     f"{SQ.SERIAL_QUEUE_TIMEOUT}sec.")
+                     f"{SERIAL_QUEUE_TIMEOUT}sec.")
             log.debug("Assuming the printer yeeted our RX buffer")
             self._rx_got_yeeted()
 

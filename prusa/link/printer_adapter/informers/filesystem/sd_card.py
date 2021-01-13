@@ -23,7 +23,6 @@ from typing import Optional
 
 from blinker import Signal
 
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.informers.state_manager import StateManager
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
     SerialQueue
@@ -34,15 +33,12 @@ from prusa.link.printer_adapter.input_output.serial.helpers import \
 from prusa.link.printer_adapter.structures.regular_expressions import \
     SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX, \
     SD_EJECTED_REGEX
-from prusa.link.printer_adapter.structures.constants import PRINTING_STATES
+from prusa.link.printer_adapter.structures.constants import PRINTING_STATES, \
+    SD_INTERVAL, SD_FILESCAN_INTERVAL
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 from prusa.link.sdk_augmentation.file import SDFile
 
-LOG = get_settings().LOG
-TIME = get_settings().TIME
-
 log = logging.getLogger(__name__)
-log.setLevel(LOG.SD_CARD)
 
 
 class SDState(Enum):
@@ -56,7 +52,7 @@ class SDCard(ThreadedUpdatable):
     thread_name = "sd_updater"
 
     # Cycle fast, but re-scan only on events or in big intervals
-    update_interval = TIME.SD_INTERVAL
+    update_interval = SD_INTERVAL
 
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
                  state_manager: StateManager):
@@ -92,7 +88,7 @@ class SDCard(ThreadedUpdatable):
         # Do not update, when the interval didn't pass and the tree wasn't
         # invalidated
         if not self.invalidated and \
-                time() - self.last_updated < TIME.SD_FILESCAN_INTERVAL:
+                time() - self.last_updated < SD_FILESCAN_INTERVAL:
             return
 
         self.last_updated = time()
