@@ -40,7 +40,6 @@ class JobInfoResponse(ResponseCommand, JobInfo):
 
     def _run_command(self):
         data = super()._run_command()
-        self.printer.event_cb(command_id=self.caller.command_id,
-                              event=Event.JOB_INFO,
-                              source=Source.CONNECT,
-                              **data)
+        return dict(event=Event.JOB_INFO,
+                    source=Source.CONNECT,
+                    **data)
