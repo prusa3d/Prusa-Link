@@ -1,9 +1,13 @@
+import logging
 import os
 import socket
 import typing
+from logging.handlers import SysLogHandler
 from pathlib import Path
 from time import sleep, time
 from typing import Callable
+
+log = logging.getLogger(__name__)
 
 
 def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,
@@ -82,3 +86,11 @@ def persist_file(file: typing.TextIO):
 
 def get_gcode(line):
     return line.split(";", 1)[0].strip()
+
+
+def get_syslog_handler_fileno(config):
+    if isinstance(config.configured_handler, SysLogHandler):
+        return config.configured_handler.socket.fileno()
+    else:
+        log.warning(f"Expected to see the SysLogHandler, but got "
+                    f"{type(config.configured_handler).__name__}")

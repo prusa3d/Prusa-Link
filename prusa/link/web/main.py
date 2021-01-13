@@ -1,4 +1,5 @@
 """Main pages and core API"""
+import logging
 from os import makedirs
 from os.path import abspath, join
 
@@ -8,11 +9,12 @@ from poorwsgi.response import HTTPException, \
 from poorwsgi.digest import check_digest
 
 from .. import __version__
-from ..config import log_http as log
 
 from .lib.core import app
 from .lib.auth import check_api_key, check_config, REALM
 from .lib.view import generate_page
+
+log = logging.getLogger(__name__)
 
 
 @app.route('/')

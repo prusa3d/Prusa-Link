@@ -15,12 +15,9 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.sdk_augmentation.file import SDFile
 
-LOG = get_settings().LOG
-TIME = get_settings().TIME
 MOUNT = get_settings().MOUNT
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.STORAGE)
 
 
 class StorageController:

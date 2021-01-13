@@ -6,7 +6,6 @@ from typing import Union, Dict
 from blinker import Signal
 
 from prusa.connect.printer.const import State, Source
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.file_printer import FilePrinter
 from prusa.link.printer_adapter.informers.job import Job
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
@@ -17,12 +16,8 @@ from prusa.link.printer_adapter.structures.regular_expressions import \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, PRINT_INFO_REGEX, \
     CONFIRMATION_REGEX, PRINT_TIME_REGEX
 
-LOG = get_settings().LOG
-TIME = get_settings().TIME
-
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.STATE_MANAGER)
 
 
 class StateChange:

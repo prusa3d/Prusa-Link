@@ -1,17 +1,15 @@
 from time import time
 
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
     SerialQueue
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_instruction
+from prusa.link.printer_adapter.structures.constants import TEMP_TIMEOUT
 from prusa.link.printer_adapter.structures.regular_expressions import \
     TEMPERATURE_REGEX
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
-
-TIME = get_settings().TIME
 
 
 class TempEnsurer(ThreadedUpdatable):
@@ -34,7 +32,7 @@ class TempEnsurer(ThreadedUpdatable):
         self.last_seen = time()
 
     def update(self):
-        if time() - self.last_seen > TIME.TEMP_TIMEOUT:
+        if time() - self.last_seen > TEMP_TIMEOUT:
             self.turn_reporting_on()
 
     def turn_reporting_on(self):

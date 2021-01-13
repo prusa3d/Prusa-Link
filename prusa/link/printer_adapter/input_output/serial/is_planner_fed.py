@@ -5,17 +5,15 @@ from enum import Enum
 from typing import Optional
 
 from prusa.link.printer_adapter.default_settings import get_settings
+from prusa.link.printer_adapter.structures.constants import QUEUE_SIZE, \
+    DEFAULT_THRESHOLD, USE_DYNAMIC_THRESHOLD, IGNORE_ABOVE, HEAP_RATIO
 from prusa.link.printer_adapter.structures.heap import MinHeap, MaxHeap, \
     HeapItem
 from prusa.link.printer_adapter.util import ensure_directory, get_clean_path
 
-LOG = get_settings().LOG
-IPF = get_settings().IPF
 PATH = get_settings().PATH
 
-
 log = logging.getLogger(__name__)
-log.setLevel(LOG.IS_PLANNER_FED)
 
 
 class HeapName(Enum):
@@ -58,19 +56,19 @@ class IsPlannerFed:
     """
 
     def __init__(self):
-        self.times_queue = deque(maxlen=IPF.QUEUE_SIZE)
+        self.times_queue = deque(maxlen=QUEUE_SIZE)
 
         self.threshold_path = get_clean_path(PATH.THRESHOLD_FILE)
         ensure_directory(os.path.dirname(self.threshold_path))
 
-        if not IPF.USE_DYNAMIC_THRESHOLD:
-            self.default_threshold = IPF.DEFAULT_THRESHOLD
+        if not USE_DYNAMIC_THRESHOLD:
+            self.default_threshold = DEFAULT_THRESHOLD
         else:
             try:
                 with open(self.threshold_path) as threshold_file:
                     self.default_threshold = float(threshold_file.read())
             except (FileNotFoundError, ValueError):
-                self.default_threshold = IPF.DEFAULT_THRESHOLD
+                self.default_threshold = DEFAULT_THRESHOLD
 
         self.is_fed = False
 
@@ -84,7 +82,7 @@ class IsPlannerFed:
     @property
     def threshold(self):
         if self.item_count < self.times_queue.maxlen or \
-                not IPF.USE_DYNAMIC_THRESHOLD:
+                not USE_DYNAMIC_THRESHOLD:
             return self.default_threshold
         else:
             return self.get_dynamic_threshold()
@@ -107,7 +105,7 @@ class IsPlannerFed:
         """
         :param value: how long it took from send to confirmation
         """
-        if value > IPF.IGNORE_ABOVE:
+        if value > IGNORE_ABOVE:
             return
 
         if self.item_count >= self.times_queue.maxlen:
@@ -153,7 +151,7 @@ class IsPlannerFed:
         num_long = len(self.long_times)
         num_short = len(self.short_times)
         total = num_long + num_short
-        ideal_short_count = round(total * IPF.HEAP_RATIO)
+        ideal_short_count = round(total * HEAP_RATIO)
         if num_short < ideal_short_count - 1:
             self._short_push(self.long_times.pop())
         elif num_short > ideal_short_count + 1:

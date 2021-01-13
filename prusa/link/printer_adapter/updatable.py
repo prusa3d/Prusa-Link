@@ -1,10 +1,8 @@
 """Definition for ThreadUpdatable class."""
 from threading import Thread
 
-from prusa.link.printer_adapter.default_settings import get_settings
+from prusa.link.printer_adapter.structures.constants import QUIT_INTERVAL
 from prusa.link.printer_adapter.util import run_slowly_die_fast
-
-TIME = get_settings().TIME
 
 
 class ThreadedUpdatable():
@@ -22,7 +20,7 @@ class ThreadedUpdatable():
         self.thread.start()
 
     def __keep_updating(self):
-        run_slowly_die_fast(lambda: self.running, TIME.QUIT_INTERVAL,
+        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
                             lambda: self.update_interval, self.update)
 
     def stop(self):

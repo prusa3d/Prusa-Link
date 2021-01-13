@@ -1,4 +1,5 @@
 """Wizard endpoints"""
+import logging
 import time
 from functools import wraps
 
@@ -10,6 +11,8 @@ from .lib import try_int
 from .lib.auth import REALM
 from .lib.core import app
 from .lib.view import generate_page
+
+log = logging.getLogger(__name__)
 
 
 def check_printer(fun):

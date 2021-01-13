@@ -1,13 +1,15 @@
 """Zakladní obecná obsluha url."""
+import logging
 from sys import exc_info
 
 from traceback import format_tb, format_exc
 
 from poorwsgi.response import make_response
 
-from ..config import log_http as log
 from .lib.view import generate_page
 from .lib.core import app
+
+log = logging.getLogger(__name__)
 
 
 @app.http_state(500)

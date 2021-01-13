@@ -6,17 +6,13 @@ from time import sleep
 import serial
 from blinker import Signal
 
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
+from prusa.link.printer_adapter.structures.constants import PRINTER_BOOT_WAIT, \
+    SERIAL_REOPEN_TIMEOUT
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 
-LOG = get_settings().LOG
-TIME = get_settings().TIME
-
-
 log = logging.getLogger(__name__)
-log.setLevel(LOG.SERIAL)
 
 
 class Serial(metaclass=MCSingleton):
@@ -72,7 +68,7 @@ class Serial(metaclass=MCSingleton):
         #  restart or not. But that proved unreliable
         # if attrs[0] != 0 or attrs[1] != 0:
         log.debug("Waiting for the printer to boot")
-        sleep(TIME.PRINTER_BOOT_WAIT)
+        sleep(PRINTER_BOOT_WAIT)
 
     def _renew_serial_connection(self):
         # Never call this without locking the write lock first!
@@ -86,7 +82,7 @@ class Serial(metaclass=MCSingleton):
             except (serial.SerialException, FileNotFoundError):
                 log.warning(f"Opening of the serial port {self.port} failed. "
                             f"Retrying...")
-                sleep(TIME.SERIAL_REOPEN_TIMEOUT)
+                sleep(SERIAL_REOPEN_TIMEOUT)
             else:
                 break
         self.renewed_signal.send(self)
@@ -138,7 +134,7 @@ class Serial(metaclass=MCSingleton):
         with self.write_lock:
             self.serial.dtr = False
             self.serial.dtr = True
-            sleep(TIME.PRINTER_BOOT_WAIT)
+            sleep(PRINTER_BOOT_WAIT)
 
     def stop(self):
         self.running = False

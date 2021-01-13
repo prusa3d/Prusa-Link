@@ -2,8 +2,9 @@ import logging
 from threading import Thread
 from time import sleep
 
+from prusa.link.printer_adapter.structures.constants import SEND_INFO_RETRY, \
+    PRINTER_BOOT_WAIT
 from prusa.link.sdk_augmentation.printer import MyPrinter
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.informers.getters import get_network_info, \
     get_firmware_version, get_nozzle_diameter
 from prusa.link.printer_adapter.input_output.lcd_printer import LCDPrinter
@@ -13,11 +14,7 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.printer_adapter.model import Model
 
-LOG = get_settings().LOG
-TIME = get_settings().TIME
-
 log = logging.getLogger(__name__)
-log.setLevel(LOG.INFO_SENDER)
 
 
 class InfoSender:
@@ -56,7 +53,7 @@ class InfoSender:
                               "start. Retrying")
                 self.lcd_printer.enqueue_message("Failed starting up")
                 self.lcd_printer.enqueue_message("handshake failed")
-                sleep(TIME.SEND_INFO_RETRY)
+                sleep(SEND_INFO_RETRY)
                 self.lcd_printer.enqueue_message("Retrying...")
             else:
                 break
@@ -64,7 +61,7 @@ class InfoSender:
     def try_sending_info(self):
         if self.info_updating_thread is None:
             # Wait for the printer to boot
-            sleep(TIME.PRINTER_BOOT_WAIT)
+            sleep(PRINTER_BOOT_WAIT)
             self.info_updating_thread = Thread(target=self._try_sending_info)
             self.info_updating_thread.start()
         else:

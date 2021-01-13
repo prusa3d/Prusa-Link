@@ -1,19 +1,17 @@
 import re
 from typing import List, Callable
 
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.input_output.serial.instruction import \
     Instruction, MandatoryMatchableInstruction, CollectingInstruction, \
     MatchableInstruction
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
     SerialQueue
-
-TIME = get_settings().TIME
+from prusa.link.printer_adapter.structures.constants import QUIT_INTERVAL
 
 
 def wait_for_instruction(instruction,
                          should_wait: Callable[[], bool] = lambda: True,
-                         check_every=TIME.QUIT_INTERVAL):
+                         check_every=QUIT_INTERVAL):
     """Wait until the instruction is done, or we shouldn't wait anymore"""
     while should_wait():
         if instruction.wait_for_confirmation(timeout=check_every):

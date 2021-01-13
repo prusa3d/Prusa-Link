@@ -1,5 +1,4 @@
 """Try read SN from file."""
-from os import path
 
 from blinker import Signal
 

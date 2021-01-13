@@ -2,14 +2,10 @@ import logging
 
 from prusa.connect.printer.const import Source, Event
 from prusa.link.printer_adapter.command import ResponseCommand, Command
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.informers.job import JobState
-
-LOG = get_settings().LOG
 
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.COMMANDS)
 
 # FIXME: This is ugly, ideally, the info would be written into the model
 class JobInfo(Command):

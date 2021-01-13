@@ -1,7 +1,6 @@
 from getmac import get_mac_address
 
 from prusa.connect.printer.const import PrinterType
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.informers.ip_updater import NO_IP
 from prusa.link.printer_adapter.input_output.serial.instruction import \
     MatchableInstruction

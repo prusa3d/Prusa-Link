@@ -7,14 +7,10 @@ from typing import Dict, List, Callable
 from blinker import Signal
 from sortedcontainers import SortedKeyList
 
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
-
-LOG = get_settings().LOG
 
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.SERIAL_READER)
 
 
 class RegexPairing:
