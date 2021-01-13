@@ -1,11 +1,12 @@
 """Configuration wizard library."""
+import logging
 from secrets import token_urlsafe
 from socket import gethostbyname
 from urllib.request import urlopen
 
 from prusa.connect.printer import Printer
 
-from ...config import log_http as log
+log = logging.getLogger(__name__)
 
 
 def is_valid_sn(serial):

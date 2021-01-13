@@ -16,12 +16,9 @@ from prusa.link.printer_adapter.structures.regular_expressions import \
     FILE_OPEN_REGEX
 from prusa.link.printer_adapter.util import get_clean_path, ensure_directory
 
-LOG = get_settings().LOG
-TIME = get_settings().TIME
 PATH = get_settings().PATH
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.JOB_ID)
 
 
 class JobState(Enum):

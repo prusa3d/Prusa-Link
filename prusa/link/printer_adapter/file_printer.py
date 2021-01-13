@@ -17,19 +17,17 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_instruction, wait_for_instruction
 from prusa.link.printer_adapter.print_stats import PrintStats
+from prusa.link.printer_adapter.structures.constants import STATS_EVERY, \
+    PRINT_QUEUE_SIZE, TAIL_COMMANDS, QUIT_INTERVAL
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.structures.regular_expressions import \
     POWER_PANIC_REGEX, ERROR_REGEX, RESUMED_REGEX
 from prusa.link.printer_adapter.util import get_clean_path, ensure_directory, \
     get_gcode
 
-LOG = get_settings().LOG
-FP = get_settings().FP
 PATH = get_settings().PATH
-TIME = get_settings().TIME
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.FILE_PRINTER)
 
 
 class FilePrinter(metaclass=MCSingleton):
@@ -161,7 +159,7 @@ class FilePrinter(metaclass=MCSingleton):
     def print_gcode(self, gcode):
         self.gcode_number += 1
 
-        divisible = self.gcode_number % FP.STATS_EVERY == 0
+        divisible = self.gcode_number % STATS_EVERY == 0
         if divisible:
             time_printing = self.print_stats.get_time_printing()
             self.time_printing_signal.send(time_printing=time_printing)
@@ -174,7 +172,7 @@ class FilePrinter(metaclass=MCSingleton):
                                           to_front=True,
                                           to_checksum=True)
         self.enqueued.append(instruction)
-        if len(self.enqueued) >= FP.PRINT_QUEUE_SIZE:
+        if len(self.enqueued) >= PRINT_QUEUE_SIZE:
             wait_for: Instruction = self.enqueued.popleft()
             wait_for_instruction(wait_for, lambda: self.printing)
 
@@ -205,10 +203,10 @@ class FilePrinter(metaclass=MCSingleton):
         wait_for_instruction(instruction, lambda: self.printing)
 
     def to_print_stats(self, gcode_number):
-        divisible = gcode_number % FP.STATS_EVERY == 0
+        divisible = gcode_number % STATS_EVERY == 0
         do_stats = not self.print_stats.has_inbuilt_stats
         print_ending = (gcode_number ==
-                        self.print_stats.total_gcode_count - FP.TAIL_COMMANDS)
+                        self.print_stats.total_gcode_count - TAIL_COMMANDS)
         return (do_stats and divisible) or print_ending
 
     def printer_error(self):
@@ -217,7 +215,7 @@ class FilePrinter(metaclass=MCSingleton):
 
     def wait_for_unpause(self):
         while self.printing and self.paused:
-            sleep(TIME.QUIT_INTERVAL)
+            sleep(QUIT_INTERVAL)
 
     def pause(self):
         self.paused = True

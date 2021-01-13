@@ -2,17 +2,13 @@ import logging
 
 from prusa.connect.printer.const import State, Source
 from prusa.link.printer_adapter.command import ResponseCommand
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.informers.state_manager import StateChange
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_list_from_str
 from prusa.link.printer_adapter.structures.regular_expressions import \
     REJECTION_REGEX
 
-LOG = get_settings().LOG
-
 log = logging.getLogger(__name__)
-log.setLevel(LOG.COMMANDS)
 
 
 class ExecuteGcode(ResponseCommand):

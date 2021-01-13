@@ -5,7 +5,6 @@ import re
 
 from blinker import Signal
 
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.input_output.serial.instruction import \
     MandatoryMatchableInstruction
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
@@ -20,21 +19,16 @@ from prusa.link.printer_adapter.structures.regular_expressions import \
     HEATING_REGEX, HEATING_HOTEND_REGEX, FAN_RPM_REGEX, PERCENT_REGEX
 from prusa.link.printer_adapter.structures.model_classes import Telemetry
 from prusa.link.printer_adapter.structures.constants import PRINTING_STATES, \
-    BASE_STATES
+    TELEMETRY_INTERVAL, SLOW_TELEMETRY
 from prusa.link.printer_adapter.structures.ticker import Ticker
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 
-TIME = get_settings().TIME
-LOG = get_settings().LOG
-
-
 log = logging.getLogger(__name__)
-log.setLevel(LOG.TELEMETRY_GATHERER)
 
 
 class TelemetryGatherer(ThreadedUpdatable):
     thread_name = "telemetry"
-    update_interval = TIME.TELEMETRY_INTERVAL
+    update_interval = TELEMETRY_INTERVAL
 
     def __init__(self, serial_reader: SerialReader, serial_queue: SerialQueue,
                  model: Model):
@@ -45,7 +39,7 @@ class TelemetryGatherer(ThreadedUpdatable):
         self.serial_reader = serial_reader
         self.serial_queue = serial_queue
 
-        self.slow_ticker = Ticker(TIME.SLOW_TELEMETRY)
+        self.slow_ticker = Ticker(SLOW_TELEMETRY)
 
         # G-code, match regexp, handler, to_execute()
         self.telemetry_instructions = [

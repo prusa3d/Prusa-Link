@@ -4,12 +4,8 @@ from enum import Enum
 from threading import Event
 from time import time
 
-from prusa.link.printer_adapter.default_settings import get_settings
-
-LOG = get_settings().LOG
 
 log = logging.getLogger(__name__)
-log.setLevel(LOG.SERIAL_QUEUE)
 
 
 class Instruction:
