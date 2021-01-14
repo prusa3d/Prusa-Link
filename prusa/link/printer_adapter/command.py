@@ -69,8 +69,11 @@ class Command:
             self.failed(f"Command interrupted")
 
     def run_command(self) -> Dict[str, Any]:
-        self._run_command()
-        return dict(source=Source.CONNECT)
+        data = self._run_command()
+        default_data = dict(source=Source.CONNECT)
+        if data is not None:
+            default_data.update(data)
+        return default_data
 
     def _run_command(self):
         """Put implementation here"""
