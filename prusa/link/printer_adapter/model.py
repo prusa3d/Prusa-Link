@@ -1,4 +1,5 @@
 from threading import Lock
+
 from typing import Optional
 
 from prusa.connect.printer.const import State
@@ -52,11 +53,11 @@ class Model(metaclass=MCSingleton):
         with self.lock:
             # let's merge them, instead of overwriting
             merge = self._telemetry.dict()
-            merge.update(new_telemetry.dict())
+            merge.update(new_telemetry.dict(exclude_none=True))
             self._telemetry = Telemetry(**merge)
 
             second_merge = self._last_telemetry.dict()
-            second_merge.update(new_telemetry.dict())
+            second_merge.update(new_telemetry.dict(exclude_none=True))
             self._last_telemetry = Telemetry(**second_merge)
 
     @property
