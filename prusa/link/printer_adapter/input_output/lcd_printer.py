@@ -83,7 +83,7 @@ class LCDPrinter(metaclass=MCSingleton):
             # Sleep QUIT_INTERVAL or whatever else is left of the wait
             # Depending on what's smaller, don't sleep negative amounts
             to_sleep = min(TIME.QUIT_INTERVAL, instant - time())
-            sleep(max(0, int(to_sleep)))
+            sleep(max(0., to_sleep))
 
     def print_text(self, text: str):
         instruction = enqueue_instruction(self.serial_queue, f"M117 {text}")

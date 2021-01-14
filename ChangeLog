@@ -12,6 +12,7 @@
     * Fixed some telemetry being sent basically at random
     * Enabled the RESET_PRINTER command
     * Fixed printer resetting multiple times when it gets reset mid-print
+    * Fixed accidentally hogging CPU when displaying LCD messages
 
 0.2.0 (2020-12-14)
 
