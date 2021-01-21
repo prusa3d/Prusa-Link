@@ -86,11 +86,3 @@ def persist_file(file: typing.TextIO):
 
 def get_gcode(line):
     return line.split(";", 1)[0].strip()
-
-
-def get_syslog_handler_fileno(config):
-    if isinstance(config.configured_handler, SysLogHandler):
-        return config.configured_handler.socket.fileno()
-    else:
-        log.warning(f"Expected to see the SysLogHandler, but got "
-                    f"{type(config.configured_handler).__name__}")

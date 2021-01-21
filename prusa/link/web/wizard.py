@@ -12,8 +12,6 @@ from .lib.auth import REALM
 from .lib.core import app
 from .lib.view import generate_page
 
-log = logging.getLogger(__name__)
-
 
 def check_printer(fun):
     """Check if printer is initialized."""
