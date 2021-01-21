@@ -1,15 +1,14 @@
 """Daemon class implementation."""
 import abc
 import logging
-from logging.handlers import SysLogHandler
 from threading import Thread
 
 import ctypes
 
 from ..config import Config, Settings
 from ..printer_adapter.prusa_link import PrusaLink
-from ..printer_adapter.util import get_syslog_handler_fileno
 from ..web import run_http
+import prusa.link.printer_adapter.prusa_link
 
 
 log = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ class DaemonLogger:
 
     def fileno(self):
         """Return file number for daemon context."""
-        return get_syslog_handler_fileno(self.config)
+        return self.config.configured_handler.socket.fileno()
 
 
 class STDOutLogger(DaemonLogger):
@@ -77,6 +76,7 @@ class Daemon:
         self.cfg = config
         self.settings = None
 
+        # FIXME: http logs into stdout and stderr, let's not do that
         self.stdout = STDOutLogger(config)
         self.stderr = STDErrLogger(config)
 
@@ -94,11 +94,13 @@ class Daemon:
         if self.settings.service_local.enable:
             self.http.start()
 
-        log.info('Starting adapter for port %s', self.cfg.printer.port)
+        # Log daemon stuff as printer_adapter
+        adapter_logger = logging.getLogger(
+            prusa.link.printer_adapter.prusa_link.__name__)
         try:
             self.prusa_link = PrusaLink(self.cfg, self.settings)
         except Exception:  # pylint: disable=broad-except
-            log.exception("Adapter was not start")
+            adapter_logger.exception("Adapter was not start")
             self.http.raise_exception(KeyboardInterrupt)
             self.http.join()
             return 1
@@ -107,14 +109,14 @@ class Daemon:
             self.prusa_link.stopped_event.wait()
             return 0
         except KeyboardInterrupt:
-            log.info('Keyboard interrupt')
-            log.info("Shutdown adapter")
+            adapter_logger.info('Keyboard interrupt')
+            adapter_logger.info("Shutdown adapter")
             self.prusa_link.stop()
             self.http.raise_exception(KeyboardInterrupt)
             self.http.join()
             return 0
         except Exception:   # pylint: disable=broad-except
-            log.exception("Unknown Exception")
+            adapter_logger.exception("Unknown Exception")
             self.http.raise_exception(KeyboardInterrupt)
             return 1
 
