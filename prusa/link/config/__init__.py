@@ -1,6 +1,6 @@
 """Config class definition."""
 import logging
-from logging import getLogger, Formatter, StreamHandler
+from logging import Formatter, StreamHandler
 from logging.handlers import SysLogHandler
 from os import getuid
 from os.path import abspath, join
@@ -102,19 +102,16 @@ class Config(Get):
                                             self.daemon.pid_file))
 
         # [logging]
-        logging.root.setLevel(log_level)
-
-        workaround_log_settings = Model(self.get_section(
-            "log",
-            (
-                ("levels", tuple, tuple(), ";"),
-            )
-
-        ))
+        self.set_global_log_level(args)
 
         # Let's combine the config log setting and cmd args
         # with cmd args overriding config values
-        self.log_settings = get_log_level_dict(workaround_log_settings.levels)
+        self.log_settings = {}
+        if "log" in self:
+            for module_name, log_level in self["log"].items():
+                check_log_level(log_level)
+                self.log_settings[module_name] = log_level
+
         if args.module_log_level is not None:
             override_log_settings = get_log_level_dict(args.module_log_level)
             self.log_settings.update(override_log_settings)
@@ -159,6 +156,18 @@ class Config(Get):
             for item in self.printer.directories)
 
         Config.instance = self
+
+    def set_global_log_level(self, args):
+        if args.debug:
+            log_level = "DEBUG"
+        elif args.info:
+            log_level = "INFO"
+        else:
+            log_level = logging.root.level
+
+        logging.root.setLevel(log_level)
+        logging.getLogger("urllib3").setLevel(log_level)
+        logging.getLogger("connect-printer").setLevel(log_level)  # FIXME
 
     def get_log_handler(self, args):
         """Logger setting are more complex."""
