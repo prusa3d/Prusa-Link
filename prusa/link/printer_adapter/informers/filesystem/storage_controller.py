@@ -13,6 +13,7 @@ from prusa.link.printer_adapter.input_output.serial.serial_queue import \
     SerialQueue
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
+from prusa.link.printer_adapter.model import Model
 from prusa.link.sdk_augmentation.file import SDFile
 
 MOUNT = get_settings().MOUNT
@@ -24,8 +25,8 @@ class StorageController:
 
     def __init__(self, cfg, serial_queue: SerialQueue,
                  serial_reader: SerialReader,
-                 state_manager: StateManager):
-        self.updated_signal = Signal()  # kwargs: tree: FileTree
+                 state_manager: StateManager,
+                 model: Model):
         self.dir_mounted_signal = Signal()
         self.dir_unmounted_signal = Signal()
         self.sd_mounted_signal = Signal()
@@ -34,15 +35,16 @@ class StorageController:
         self.serial_reader = serial_reader
         self.serial_queue: SerialQueue = serial_queue
         self.state_manager = state_manager
+        self.model = model
 
         self.sd_card = SDCard(self.serial_queue, self.serial_reader,
-                              self.state_manager)
+                              self.state_manager, self.model)
         self.sd_card.tree_updated_signal.connect(self.sd_tree_updated)
         self.sd_card.sd_mounted_signal.connect(self.sd_mounted)
         self.sd_card.sd_unmounted_signal.connect(self.sd_unmounted)
 
-        self.fs_mounts = FSMounts()
-        self.dir_mounts = DirMounts(cfg)
+        self.fs_mounts = FSMounts(self.model.fs_mounts)
+        self.dir_mounts = DirMounts(cfg, self.model.dir_mounts)
         self.fs_mounts.mounted_signal.connect(self.dir_mounted)
         self.fs_mounts.unmounted_signal.connect(self.dir_unmounted)
         self.dir_mounts.mounted_signal.connect(self.dir_mounted)

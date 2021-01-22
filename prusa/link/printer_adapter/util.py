@@ -2,7 +2,6 @@ import logging
 import os
 import socket
 import typing
-from logging.handlers import SysLogHandler
 from pathlib import Path
 from time import sleep, time
 from typing import Callable

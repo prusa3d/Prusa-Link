@@ -4,6 +4,7 @@ from typing import Any, Dict
 
 from prusa.connect.printer.const import Source
 from prusa.link.printer_adapter.file_printer import FilePrinter
+from prusa.link.printer_adapter.informers.job import Job
 from prusa.link.printer_adapter.informers.state_manager import StateManager
 from prusa.link.printer_adapter.input_output.serial.serial import Serial
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
@@ -28,13 +29,15 @@ class Command:
     command_name = "command"
 
     def __init__(self):
-        self.serial_queue = MonitoredSerialQueue.get_instance()
-        self.serial = Serial.get_instance()
-        self.serial_reader = SerialReader.get_instance()
-        self.model = Model.get_instance()
-        self.printer = MyPrinter.get_instance()
-        self.state_manager = StateManager.get_instance()
-        self.file_printer = FilePrinter.get_instance()
+        self.serial_queue: MonitoredSerialQueue = \
+            MonitoredSerialQueue.get_instance()
+        self.serial: Serial = Serial.get_instance()
+        self.serial_reader: SerialReader = SerialReader.get_instance()
+        self.model: Model = Model.get_instance()
+        self.printer: MyPrinter = MyPrinter.get_instance()
+        self.state_manager: StateManager = StateManager.get_instance()
+        self.file_printer: FilePrinter = FilePrinter.get_instance()
+        self.job: Job = Job.get_instance()
 
         self.running = True
 

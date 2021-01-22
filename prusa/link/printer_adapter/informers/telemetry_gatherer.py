@@ -78,11 +78,11 @@ class TelemetryGatherer(ThreadedUpdatable):
         super().__init__()
 
     def ask_for_print_info(self):
-        return self.model.state in PRINTING_STATES and \
+        return self.model.state_manager.current_state in PRINTING_STATES and\
                self.slow_ticker.output()
 
     def ask_for_positions(self):
-        return self.model.state not in PRINTING_STATES or \
+        return self.model.state_manager.current_state not in PRINTING_STATES or\
                self.slow_ticker.output()
 
     def update(self):

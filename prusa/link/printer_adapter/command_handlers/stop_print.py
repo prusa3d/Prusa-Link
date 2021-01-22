@@ -11,7 +11,7 @@ class StopPrint(TryUntilState):
     command_name = "stop print"
 
     def _run_command(self):
-        if self.file_printer.printing:
+        if self.model.file_printer.printing:
             self.file_printer.stop_print()
 
         self._try_until_state(gcode="M603", desired_state=State.READY)

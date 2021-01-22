@@ -6,10 +6,9 @@ from typing import Union, Dict
 from blinker import Signal
 
 from prusa.connect.printer.const import State, Source
-from prusa.link.printer_adapter.file_printer import FilePrinter
-from prusa.link.printer_adapter.informers.job import Job
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
+from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
@@ -72,34 +71,29 @@ def state_influencer(state_change: StateChange = None):
 
 class StateManager(metaclass=MCSingleton):
 
-    def __init__(self, serial_reader: SerialReader,
-                 file_printer: FilePrinter):
+    def __init__(self, serial_reader: SerialReader, model: Model):
 
-        self.file_printer = file_printer
         self.serial_reader: SerialReader = serial_reader
+        self.model: Model = model
 
-        self.state_changed_signal = Signal()  # kwargs: command_id: int,
+        self.pre_state_change_signal = Signal()  # kwargs: command_id: int
+        self.post_state_change_signal = Signal()
+        self.state_changed_signal = Signal()  # kwargs:
+        #                                           from_state: State
+        #                                           to_state: State
+        #                                           command_id: int,
+        #                                           source: Sources
 
-        self.job = Job(self.serial_reader)
-        #                                       source: Sources
-        # Pass job_id updates through
-        self.job_id_updated_signal = Signal()  # kwargs: job_id: int
-        self.job.job_id_updated_signal.connect(self.job_id_updated)
-
+        self.data = self.model.state_manager
 
         # The ACTUAL states considered when reporting
-        self.base_state: State = State.READY
-        self.printing_state: Union[None, State] = None
-        self.override_state: Union[None, State] = None
+        self.data.base_state = State.READY
+        self.data.printing_state = None
+        self.data.override_state = None
 
         # Reported state history
-        self.last_state = self.get_state()
-        self.current_state = self.get_state()
-
-        # Non ideal, we are expecting for someone to ask for progress or
-        # to tell us without us asking. Cannot take it from telemetry
-        # as it depends on us
-        self.progress = None
+        self.data.last_state = self.get_state()
+        self.data.current_state = self.get_state()
 
         # Prevent multiple threads changing the state at once
         self.state_lock = Lock()
@@ -129,15 +123,7 @@ class StateManager(metaclass=MCSingleton):
         for regex, handler in regex_handlers.items():
             self.serial_reader.add_handler(regex, handler)
 
-        self.file_printer.new_print_started_signal.connect(
-            lambda sender: self.file_printer_started_printing(), weak=False)
-        self.file_printer.print_ended_signal.connect(
-            lambda sender: self.file_printer_stopped_printing(), weak=False)
-
         super().__init__()
-
-    def job_id_updated(self, sender, job_id):
-        self.job_id_updated_signal.send(sender, job_id=job_id)
 
     # --- Printer output handlers ---
 
@@ -148,12 +134,12 @@ class StateManager(metaclass=MCSingleton):
 
     def print_info_handler(self, sender, match: re.Match):
         groups = match.groups()
-        self.progress = int(groups[0])
+        self.data.progress = int(groups[0])
 
     def sd_printing_handler(self, sender, match: re.Match):
         groups = match.groups()
-        printing = groups[0] is None or self.file_printer.printing
-        is_paused = self.printing_state == State.PAUSED
+        printing = groups[0] is None or self.model.file_printer.printing
+        is_paused = self.data.printing_state == State.PAUSED
         # FIXME: Do not go out of the printing state when paused,
         #  cannot be detected/maintained otherwise
         #                       | | | | |
@@ -165,26 +151,26 @@ class StateManager(metaclass=MCSingleton):
 
     # ---
 
-    def file_printer_started_printing(self):
-        if (self.file_printer.printing and
-                self.printing_state != State.PRINTING):
+    def file_printer_started_printing(self, sender):
+        if (self.model.file_printer.printing and
+                self.data.printing_state != State.PRINTING):
             self.expect_change(
                 StateChange(to_states={State.PRINTING: Source.CONNECT}))
             self.printing()
 
-    def file_printer_stopped_printing(self):
-        if self.progress == 100:
+    def file_printer_stopped_printing(self, sender):
+        if self.data.progress == 100:
             self.expect_change(
                 StateChange(to_states={State.FINISHED: Source.MARLIN}))
             self.finished()
 
     def get_state(self):
-        if self.override_state is not None:
-            return self.override_state
-        elif self.printing_state is not None:
-            return self.printing_state
+        if self.data.override_state is not None:
+            return self.data.override_state
+        elif self.data.printing_state is not None:
+            return self.data.printing_state
         else:
-            return self.base_state
+            return self.data.base_state
 
     def expect_change(self, change: StateChange):
         self.expected_state_change = change
@@ -196,8 +182,8 @@ class StateManager(metaclass=MCSingleton):
         state_change = self.expected_state_change
         expecting_change = state_change is not None
         if expecting_change:
-            expected_to = self.current_state in state_change.to_states
-            expected_from = self.last_state in state_change.from_states
+            expected_to = self.data.current_state in state_change.to_states
+            expected_from = self.data.last_state in state_change.from_states
             has_default_source = state_change.default_source is not None
             return expected_to or expected_from or has_default_source
         else:
@@ -213,10 +199,10 @@ class StateManager(metaclass=MCSingleton):
         # Get the expected sources
         source_from = None
         source_to = None
-        if self.last_state in state_change.from_states:
-            source_from = state_change.from_states[self.last_state]
-        if self.current_state in state_change.to_states:
-            source_to = state_change.to_states[self.current_state]
+        if self.data.last_state in state_change.from_states:
+            source_from = state_change.from_states[self.data.last_state]
+        if self.data.current_state in state_change.to_states:
+            source_to = state_change.to_states[self.data.current_state]
 
         # If there are conflicting sources, pick the one, paired with
         # from_state as this is useful for leaving states like
@@ -247,22 +233,22 @@ class StateManager(metaclass=MCSingleton):
     def state_may_have_changed(self):
         # Did our internal state change cause our reported state to change?
         # If yes, update state stuff
-        if self.get_state() != self.current_state:
-            self.last_state = self.current_state
-            self.current_state = self.get_state()
-            log.debug(f"Changing state from {self.last_state} to "
-                      f"{self.current_state}")
+        if self.get_state() != self.data.current_state:
+            self.data.last_state = self.data.current_state
+            self.data.current_state = self.get_state()
+            log.debug(f"Changing state from {self.data.last_state} to "
+                      f"{self.data.current_state}")
 
             # Now let's find out if the state change was expected
             # and what parameters can we deduce from that
             command_id = None
             source = None
 
-            if self.printing_state is not None:
-                log.debug(f"We are printing - {self.printing_state}")
+            if self.data.printing_state is not None:
+                log.debug(f"We are printing - {self.data.printing_state}")
 
-            if self.override_state is not None:
-                log.debug(f"State is overridden by {self.override_state}")
+            if self.data.override_state is not None:
+                log.debug(f"State is overridden by {self.data.override_state}")
 
             # If the state changed to something expected,
             # then send the information about it
@@ -274,51 +260,50 @@ class StateManager(metaclass=MCSingleton):
                 log.debug("Unexpected state change. This is weird")
             self.expected_state_change = None
 
-            self.job.state_changed(self.last_state, self.current_state,
-                                   command_id=command_id)
-            self.state_changed_signal.send(self, command_id=command_id,
-                                           source=source)
-            self.job.tick()
-
-    def get_job_id(self):
-        return self.job.get_job_id()
+            self.pre_state_change_signal.send(self, command_id=command_id)
+            self.state_changed_signal.send(self,
+                from_state=self.data.last_state,
+                to_state=self.data.current_state,
+                command_id=command_id,
+                source=source)
+            self.post_state_change_signal.send(self)
 
     # --- State changing methods ---
 
     # This state change can change the state to "PRINTING"
     @state_influencer(StateChange(to_states={State.PRINTING: Source.USER}))
     def printing(self):
-        if self.printing_state is None:
-            self.printing_state = State.PRINTING
+        if self.data.printing_state is None:
+            self.data.printing_state = State.PRINTING
 
     @state_influencer(StateChange(from_states={State.PRINTING: Source.MARLIN,
                                                State.PAUSED: Source.MARLIN,
                                                State.FINISHED: Source.MARLIN
                                                }))
     def not_printing(self):
-        if self.printing_state is not None:
-            self.printing_state = None
+        if self.data.printing_state is not None:
+            self.data.printing_state = None
 
     @state_influencer(StateChange(to_states={State.FINISHED: Source.MARLIN}))
     def finished(self):
-        if self.printing_state == State.PRINTING:
-            self.printing_state = State.FINISHED
+        if self.data.printing_state == State.PRINTING:
+            self.data.printing_state = State.FINISHED
 
     @state_influencer(StateChange(to_states={State.BUSY: Source.MARLIN}))
     def busy(self):
-        if self.base_state == State.READY:
-            self.base_state = State.BUSY
+        if self.data.base_state == State.READY:
+            self.data.base_state = State.BUSY
 
     # Cannot distinguish pauses from the user and the gcode
     @state_influencer(StateChange(to_states={State.PAUSED: Source.USER}))
     def paused(self):
-        if self.printing_state == State.PRINTING:
-            self.printing_state = State.PAUSED
+        if self.data.printing_state == State.PRINTING:
+            self.data.printing_state = State.PAUSED
 
     @state_influencer(StateChange(to_states={State.PRINTING: Source.USER}))
     def resumed(self):
-        if self.printing_state == State.PAUSED:
-            self.printing_state = State.PRINTING
+        if self.data.printing_state == State.PAUSED:
+            self.data.printing_state = State.PRINTING
 
     @state_influencer(
         StateChange(to_states={State.READY: Source.MARLIN},
@@ -326,33 +311,33 @@ class StateManager(metaclass=MCSingleton):
                                  State.ERROR: Source.USER,
                                  State.BUSY: Source.HW}))
     def ok(self):
-        if self.base_state == State.BUSY:
-            self.base_state = State.READY
+        if self.data.base_state == State.BUSY:
+            self.data.base_state = State.READY
 
-        if self.printing_state == State.FINISHED:
-            self.printing_state = None
+        if self.data.printing_state == State.FINISHED:
+            self.data.printing_state = None
 
-        if self.override_state is not None:
-            log.debug(f"No longer having state {self.override_state}")
-            self.override_state = None
+        if self.data.override_state is not None:
+            log.debug(f"No longer having state {self.data.override_state}")
+            self.data.override_state = None
 
     @state_influencer(StateChange(to_states={State.ATTENTION: Source.USER}))
     def attention(self):
         log.debug(f"Overriding the state with ATTENTION")
-        self.override_state = State.ATTENTION
+        self.data.override_state = State.ATTENTION
 
     @state_influencer(StateChange(to_states={State.ERROR: Source.WUI}))
     def error(self):
         log.debug(f"Overriding the state with ERROR")
-        self.override_state = State.ERROR
+        self.data.override_state = State.ERROR
 
     @state_influencer(StateChange(to_states={State.ERROR: Source.SERIAL}))
     def serial_error(self):
         log.debug(f"Overriding the state with ERROR")
-        self.override_state = State.ERROR
+        self.data.override_state = State.ERROR
 
     @state_influencer(StateChange(to_states={State.READY: Source.SERIAL}))
     def serial_error_resolved(self):
-        if self.override_state == State.ERROR:
+        if self.data.override_state == State.ERROR:
             log.debug(f"Removing the ERROR state")
-            self.override_state = None
+            self.data.override_state = None

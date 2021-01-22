@@ -5,6 +5,7 @@ from typing import Set
 
 from blinker import Signal
 
+from prusa.link.config import Config
 from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.structures.constants import BLACKLISTED_PATHS, \
     BLACKLISTED_NAMES, BLACKLISTED_TYPES, QUIT_INTERVAL, DIR_RESCAN_INTERVAL
@@ -24,28 +25,30 @@ class Mounts(ThreadedUpdatable):
 
     paths_to_mount = []
 
-    def __init__(self):
+    def __init__(self, data):
         super().__init__()
+        
+        self.data = data
 
         self.mounted_signal = Signal()  # kwargs = path: str
         self.unmounted_signal = Signal()  # kwargs = path: str
 
-        self.blacklisted_paths = self._get_clean_paths(BLACKLISTED_PATHS)
-        self.blacklisted_names = BLACKLISTED_NAMES
+        self.data.blacklisted_paths = self._get_clean_paths(BLACKLISTED_PATHS)
+        self.data.blacklisted_names = BLACKLISTED_NAMES
 
         candidate_mountpoints = self._get_clean_paths(self.paths_to_mount)
 
         # Cannot start with blacklisted paths
         finalist_mountpoints = set(self.filter_blacklisted_paths(
-            candidate_mountpoints, self.blacklisted_paths))
+            candidate_mountpoints, self.data.blacklisted_paths))
 
         # Cannot have a blacklisted name
-        self.configured_mounts = set(self.filter_blacklisted_names(
-            finalist_mountpoints, self.blacklisted_names))
+        self.data.configured_mounts = set(self.filter_blacklisted_names(
+            finalist_mountpoints, self.data.blacklisted_names))
 
-        log.debug(f"Configured mounpoints: {self.configured_mounts}")
+        log.debug(f"Configured mounpoints: {self.data.configured_mounts}")
 
-        self.mounted_set = set()
+        self.data.mounted_set = set()
 
     def update(self):
         # Add non mount directories to the mounts
@@ -61,7 +64,7 @@ class Mounts(ThreadedUpdatable):
             log.info(f"Unmounted {path}")
             self.unmounted_signal.send(self, path=path)
 
-        self.mounted_set = new_mount_set
+        self.data.mounted_set = new_mount_set
 
     @staticmethod
     def filter_blacklisted_paths(candidate_list, black_list):
@@ -109,8 +112,8 @@ class Mounts(ThreadedUpdatable):
         return [get_clean_path(path) for path in dirty_paths]
 
     def get_differences(self, new_mount_set: Set[str]):
-        removed = self.mounted_set.difference(new_mount_set)
-        added = new_mount_set.difference(self.mounted_set)
+        removed = self.data.mounted_set.difference(new_mount_set)
+        added = new_mount_set.difference(self.data.mounted_set)
         return added, removed
 
     def get_mountpoints(self):
@@ -124,10 +127,10 @@ class FSMounts(Mounts):
 
     paths_to_mount = MOUNT.MOUNTPOINTS
     thread_name = "fs_mounts_thread"
-    update_interval = 0
+    update_interval = 0  # The waiting is done in epoll timeout instead of here
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, data):
+        super().__init__(data)
 
         # Force the update, even if no events are caught, we need to see
         # which things are mounted, before beginning to only observe changes
@@ -157,10 +160,10 @@ class FSMounts(Mounts):
             return new_mount_set
         else:
             # Otherwise, return the same dict
-            return self.mounted_set
+            return self.data.mounted_set
 
     def mount_belongs(self, path, fs_type):
-        is_wanted = str(path) in self.configured_mounts
+        is_wanted = str(path) in self.data.configured_mounts
         type_valid = is_wanted and fs_type not in BLACKLISTED_TYPES
         return is_wanted and type_valid
 
@@ -175,11 +178,11 @@ class DirMounts(Mounts):
     having the fs_type of "directory".
     """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg: Config, data):
         DirMounts.paths_to_mount = cfg.printer.directories
-        super().__init__()
+        super().__init__(data)
 
-        for directory in self.configured_mounts:
+        for directory in self.data.configured_mounts:
             ensure_directory(directory)
 
     thread_name = "dir_mounts_thread"
@@ -187,7 +190,7 @@ class DirMounts(Mounts):
 
     def get_mountpoints(self):
         new_directory_set: Set[str] = set()
-        for directory in self.configured_mounts:
+        for directory in self.data.configured_mounts:
 
             # try to create non-existing ones
             try:

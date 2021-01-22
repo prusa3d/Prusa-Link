@@ -81,3 +81,16 @@ class FileType(Enum):
     FILE = "FILE"
     DIR = "DIR"
     MOUNT = "MOUNT"
+
+
+class JobState(Enum):
+    IDLE = "IDLE"
+    IN_PROGRESS = "IN_PROGRESS"
+    ENDING = "ENDING"
+
+
+class SDState(Enum):
+    PRESENT = "PRESENT"
+    INITIALISING = "INITIALISING"
+    UNSURE = "UNSURE"
+    ABSENT = "ABSENT"

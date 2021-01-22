@@ -22,8 +22,8 @@ class ExecuteGcode(ResponseCommand):
         if force:
             log.debug(f"Force sending gcode: '{gcode}'")
 
-        is_printing = self.state_manager.printing_state == State.PRINTING
-        error_exists = self.state_manager.override_state == State.ERROR
+        is_printing = self.model.state_manager.printing_state == State.PRINTING
+        error_exists = self.model.state_manager.override_state == State.ERROR
         if (is_printing or error_exists) and not force:
             if is_printing:
                 self.failed("I'm sorry Dave but I'm afraid, "
