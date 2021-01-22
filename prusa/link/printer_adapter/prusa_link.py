@@ -10,6 +10,7 @@ from prusa.connect.printer import SDKServerError
 from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType
 from prusa.connect.printer.const import Source
+from prusa.link.config import Config, Settings
 from prusa.link.printer_adapter.command_handlers.execute_gcode import \
     ExecuteGcode
 from prusa.link.printer_adapter.command_handlers.job_info import JobInfoResponse
@@ -21,10 +22,11 @@ from prusa.link.printer_adapter.command_handlers.start_print import StartPrint
 from prusa.link.printer_adapter.command_handlers.stop_print import StopPrint
 from prusa.link.printer_adapter.crotitel_cronu import CrotitelCronu
 from prusa.link.printer_adapter.informers.filesystem.sd_card import SDState
+from prusa.link.printer_adapter.informers.job import Job
 from prusa.link.printer_adapter.sn_reader import SNReader
 from prusa.link.printer_adapter.file_printer import FilePrinter
 from prusa.link.printer_adapter.info_sender import InfoSender
-from prusa.link.printer_adapter.informers.ip_updater import IPUpdater, NO_IP
+from prusa.link.printer_adapter.informers.ip_updater import IPUpdater
 from prusa.link.printer_adapter.informers.state_manager import StateManager
 from prusa.link.printer_adapter.informers.filesystem.storage_controller import \
     StorageController
@@ -41,7 +43,7 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
 from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.model_classes import Telemetry
 from prusa.link.printer_adapter.structures.constants import PRINTING_STATES, \
-    TELEMETRY_IDLE_INTERVAL, TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL
+    TELEMETRY_IDLE_INTERVAL, TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, NO_IP
 from prusa.link.printer_adapter.structures.regular_expressions import \
     PRINTER_BOOT_REGEX
 from prusa.link.printer_adapter.temp_ensurer import TempEnsurer
@@ -53,9 +55,10 @@ log = logging.getLogger(__name__)
 
 class PrusaLink:
 
-    def __init__(self, cfg, settings):
-        self.cfg = cfg
-        self.settings = settings
+    def __init__(self, cfg: Config, settings):
+        self.cfg: Config = cfg
+        log.info('Starting adapter for port %s', self.cfg.printer.port)
+        self.settings: Settings = settings
         self.running = True
         self.stopped_event = threading.Event()
 
@@ -109,32 +112,42 @@ class PrusaLink:
         # before connect can ask stuff
         self.telemetry_gatherer.update()
 
-        self.file_printer = FilePrinter(self.serial_queue, self.serial_reader)
+        self.file_printer = FilePrinter(self.serial_queue, self.serial_reader,
+                                        self.model)
         self.file_printer.time_printing_signal.connect(
             self.time_printing_updated)
 
-        self.state_manager = StateManager(self.serial_reader, self.file_printer)
+        self.job = Job(self.serial_reader, self.model)
+
+        self.state_manager = StateManager(self.serial_reader, self.model)
+        self.file_printer.new_print_started_signal.connect(
+            self.state_manager.file_printer_started_printing, weak=False)
+        self.file_printer.print_ended_signal.connect(
+            self.state_manager.file_printer_stopped_printing, weak=False)
         self.state_manager.state_changed_signal.connect(self.state_changed)
-        self.state_manager.job_id_updated_signal.connect(self.job_id_updated)
+
+        self.state_manager.pre_state_change_signal.connect(
+            self.pre_state_change)
+        self.state_manager.post_state_change_signal.connect(
+            self.post_state_change)
+
+        self.job.job_id_updated_signal.connect(self.job_id_updated)
 
         # Connect serial to state manager
         self.serial.failed_signal.connect(self.serial_failed)
 
         self.serial.renewed_signal.connect(self.serial_renewed)
 
-        self.crotitel_cronu = CrotitelCronu(self.state_manager)
+        self.crotitel_cronu = CrotitelCronu()
 
         self.info_sender = InfoSender(self.serial_queue, self.serial_reader,
                                       self.printer, self.model,
                                       self.lcd_printer)
 
-        # Write the initial state to the model
-        self.model.state = self.state_manager.get_state()
-
         self.storage = StorageController(cfg, self.serial_queue,
                                          self.serial_reader,
-                                         self.state_manager)
-        self.storage.updated_signal.connect(self.storage_updated)
+                                         self.state_manager,
+                                         self.model)
 
         self.storage.dir_mounted_signal.connect(self.dir_mount)
         self.storage.dir_unmounted_signal.connect(self.dir_unmount)
@@ -148,7 +161,7 @@ class PrusaLink:
         self.lcd_printer.enqueue_greet()
 
         # Start the local_ip updater after we enqueued the greetings
-        self.ip_updater = IPUpdater()
+        self.ip_updater = IPUpdater(self.model)
         self.ip_updater.updated_signal.connect(self.ip_updated)
 
         # again, let's do the first one manually
@@ -249,22 +262,14 @@ class PrusaLink:
     def telemetry_gathered(self, sender, telemetry):
         self.model.set_telemetry(telemetry)
 
-    def ip_updated(self, sender, local_ip):
-        # If the value changed, update SDK
-        to_update_sdk = self.model.local_ip != local_ip and local_ip != NO_IP
-
-        self.model.local_ip = local_ip
-
-        if to_update_sdk:
+    def ip_updated(self, sender, old_ip, new_ip):
+        if old_ip != new_ip and new_ip != NO_IP:
             self.info_sender.try_sending_info()
 
-        if local_ip is not NO_IP:
-            self.lcd_printer.enqueue_message(f"{local_ip}", duration=5)
+        if new_ip is not NO_IP:
+            self.lcd_printer.enqueue_message(f"{new_ip}", duration=5)
         else:
             self.lcd_printer.enqueue_message(f"WiFi disconnected", duration=3)
-
-    def storage_updated(self, sender, tree):
-        self.model.file_tree = tree
 
     def dir_mount(self, sender, path):
         self.printer.mount(path, os.path.basename(path))
@@ -287,20 +292,24 @@ class PrusaLink:
     @property
     def sd_ready(self):
         """Returns if sd_state is PRESENT."""
-        return self.storage.sd_card.sd_state == SDState.PRESENT
+        return self.model.sd_card.sd_state == SDState.PRESENT
 
-    def state_changed(self, sender: StateManager, command_id=None,
-                      source=None):
+    def pre_state_change(self, sender: StateManager, command_id):
+        self.job.state_changed(command_id=command_id)
+
+    def post_state_change(self, sender: StateManager):
+        self.job.tick()
+
+    def state_changed(self, sender, from_state, to_state,
+                      command_id=None, source=None):
         if source is None:
             source = Source.WUI
             log.warning(f"State change had no source "
-                        f"{sender.current_state.value}")
-        state = sender.current_state
-        job_id = sender.get_job_id()
-        self.model.state = state
+                        f"{to_state.value}")
 
-        self.printer.set_state(state, command_id=command_id, source=source,
-                               job_id=job_id)
+        self.crotitel_cronu.state_changed(to_state)
+        self.printer.set_state(to_state, command_id=command_id, source=source,
+                               job_id=self.model.job.api_job_id)
 
     def job_id_updated(self, sender, job_id):
         self.model.job_id = job_id
@@ -321,7 +330,7 @@ class PrusaLink:
     # --- Telemetry sending ---
 
     def get_telemetry_interval(self):
-        if self.model.state in PRINTING_STATES:
+        if self.model.state_manager.current_state in PRINTING_STATES:
             return TELEMETRY_PRINTING_INTERVAL
         else:
             return TELEMETRY_IDLE_INTERVAL
@@ -346,7 +355,7 @@ class PrusaLink:
                 self.printer.loop()
             except RequestException:
                 self.lcd_printer.enqueue_connection_failed(
-                    self.ip_updater.local_ip == NO_IP)
+                    self.model.ip_updater.local_ip == NO_IP)
             except SDKServerError:
                 self.lcd_printer.enqueue_connection_failed(
-                    self.ip_updater.local_ip == NO_IP)
+                    self.model.ip_updater.local_ip == NO_IP)

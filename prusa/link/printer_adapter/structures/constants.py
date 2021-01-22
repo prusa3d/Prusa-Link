@@ -59,3 +59,5 @@ BLACKLISTED_PATHS = [
 BLACKLISTED_NAMES = [
     "SD Card"
 ]
+
+NO_IP = "NO_IP"

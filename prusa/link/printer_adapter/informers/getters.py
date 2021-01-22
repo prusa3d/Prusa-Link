@@ -1,7 +1,7 @@
 from getmac import get_mac_address
 
 from prusa.connect.printer.const import PrinterType
-from prusa.link.printer_adapter.informers.ip_updater import NO_IP
+from prusa.link.printer_adapter.structures.constants import NO_IP
 from prusa.link.printer_adapter.input_output.serial.instruction import \
     MatchableInstruction
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
@@ -78,8 +78,8 @@ def get_nozzle_diameter(serial_queue: SerialQueue, should_wait=lambda: True):
 def get_network_info(model: Model):
     network_info = NetworkInfo()
 
-    if model.local_ip != NO_IP:
-        network_info.wifi_ipv4 = model.local_ip
+    if model.ip_updater.local_ip != NO_IP:
+        network_info.wifi_ipv4 = model.ip_updater.local_ip
 
     network_info.wifi_mac = get_mac_address()
 
