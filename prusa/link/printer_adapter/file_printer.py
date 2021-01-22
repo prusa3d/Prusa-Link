@@ -16,6 +16,7 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_instruction, wait_for_instruction
+from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.print_stats import PrintStats
 from prusa.link.printer_adapter.structures.constants import STATS_EVERY, \
     PRINT_QUEUE_SIZE, TAIL_COMMANDS, QUIT_INTERVAL
@@ -32,19 +33,31 @@ log = logging.getLogger(__name__)
 
 class FilePrinter(metaclass=MCSingleton):
 
-    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader):
-        self.new_print_started_signal = Signal()
-        self.print_ended_signal = Signal()
-
-        self.time_printing_signal = Signal()
-
-        self.tmp_file_path = get_clean_path(PATH.TMP_FILE)
-        self.pp_file_path = get_clean_path(PATH.PP_FILE)
-        ensure_directory(os.path.dirname(self.tmp_file_path))
-
+    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
+                 model: Model):
         self.serial_queue = serial_queue
         self.serial_reader = serial_reader
+        self.model = model
+
         self.print_stats = PrintStats()
+
+        self.new_print_started_signal = Signal()
+        self.print_ended_signal = Signal()
+        self.time_printing_signal = Signal()
+
+        self.data = self.model.file_printer
+
+        self.data.tmp_file_path = get_clean_path(PATH.TMP_FILE)
+        self.data.pp_file_path = get_clean_path(PATH.PP_FILE)
+        ensure_directory(os.path.dirname(self.data.tmp_file_path))
+
+        self.data.printing = False
+        self.data.paused = False
+
+        self.data.line_number = 0
+        self.data.gcode_number = 0
+
+        self.data.enqueued = deque()
 
         self.serial_queue.serial_queue_failed.connect(
             lambda sender: self.stop_print())
@@ -56,13 +69,6 @@ class FilePrinter(metaclass=MCSingleton):
         self.serial_reader.add_handler(
             RESUMED_REGEX, lambda sender, match: self.resume())
 
-        self.printing = False
-        self.paused = False
-
-        self.line_number = 0
-
-        self.enqueued = deque()
-
         self.thread = None
 
     def start(self):
@@ -70,22 +76,22 @@ class FilePrinter(metaclass=MCSingleton):
 
     @property
     def pp_exists(self):
-        return os.path.exists(self.pp_file_path)
+        return os.path.exists(self.data.pp_file_path)
 
     @property
     def tmp_exists(self):
-        return os.path.exists(self.pp_file_path)
+        return os.path.exists(self.data.tmp_file_path)
 
     def check_failed_print(self):
         if self.tmp_exists and self.pp_exists:
             log.warning("There was a loss of power, let's try to recover")
 
-            with open(self.pp_file_path, "r") as pp_file:
+            with open(self.data.pp_file_path, "r") as pp_file:
                 content = pp_file.read()
                 line_number = int(content)
                 line_index = line_number - 1
             """
-            self.printing = True
+            self.data.printing = True
 
             prep_gcodes = ["G28 XY"]
 
@@ -101,97 +107,97 @@ class FilePrinter(metaclass=MCSingleton):
             for gcode in prep_gcodes:
                 instruction = enqueue_instruction(self.serial, gcode,
                                                  front=True)
-                wait_for_instruction(instruction, lambda: self.printing)
+                wait_for_instruction(instruction, lambda: self.data.printing)
 
             self.thread = Thread(target=self._print, name="file_print",
                                  args=(line_index,))
             self.thread.start()
 """
             if self.pp_exists:
-                os.remove(self.pp_file_path)
+                os.remove(self.data.pp_file_path)
 
     def print(self, os_path):
-        if self.printing:
+        if self.data.printing:
             raise RuntimeError("Cannot print two things at once")
 
-        shutil.copy(os_path, self.tmp_file_path)
+        shutil.copy(os_path, self.data.tmp_file_path)
 
         self.thread = Thread(target=self._print, name="file_print")
-        self.printing = True
+        self.data.printing = True
         self.print_stats.start_time_segment()
         self.new_print_started_signal.send(self)
         self.thread.start()
 
     def _print(self, from_line=0):
-        self.print_stats.track_new_print(self.tmp_file_path)
+        self.print_stats.track_new_print(self.data.tmp_file_path)
 
-        with open(self.tmp_file_path, "r") as tmp_file:
+        with open(self.data.tmp_file_path, "r") as tmp_file:
 
             # Reset the line counter, printing a new file
             self.serial_queue.reset_message_number()
 
-            self.gcode_number = 0
+            self.data.gcode_number = 0
             for line_index, line in enumerate(tmp_file):
                 if line_index < from_line:
                     continue
 
-                if self.paused:
+                if self.data.paused:
                     log.debug("Pausing USB print")
                     self.wait_for_unpause()
                     log.debug("Resuming USB print")
 
-                self.line_number = line_index + 1
+                self.data.line_number = line_index + 1
                 gcode = get_gcode(line)
                 if gcode:
                     self.print_gcode(gcode)
 
-                if not self.printing:
+                if not self.data.printing:
                     break
 
             log.debug(f"Print ended")
 
-            os.remove(self.tmp_file_path)
+            os.remove(self.data.tmp_file_path)
             if self.pp_exists:
-                os.remove(self.pp_file_path)
-            self.printing = False
+                os.remove(self.data.pp_file_path)
+            self.data.printing = False
             self.print_ended_signal.send(self)
 
     def print_gcode(self, gcode):
-        self.gcode_number += 1
+        self.data.gcode_number += 1
 
-        divisible = self.gcode_number % STATS_EVERY == 0
+        divisible = self.data.gcode_number % STATS_EVERY == 0
         if divisible:
             time_printing = self.print_stats.get_time_printing()
             self.time_printing_signal.send(time_printing=time_printing)
 
-        if self.to_print_stats(self.gcode_number):
+        if self.to_print_stats(self.data.gcode_number):
             self.send_print_stats()
 
         log.debug(f"USB enqueuing gcode: {gcode}")
         instruction = enqueue_instruction(self.serial_queue, gcode,
                                           to_front=True,
                                           to_checksum=True)
-        self.enqueued.append(instruction)
-        if len(self.enqueued) >= PRINT_QUEUE_SIZE:
-            wait_for: Instruction = self.enqueued.popleft()
-            wait_for_instruction(wait_for, lambda: self.printing)
+        self.data.enqueued.append(instruction)
+        if len(self.data.enqueued) >= PRINT_QUEUE_SIZE:
+            wait_for: Instruction = self.data.enqueued.popleft()
+            wait_for_instruction(wait_for, lambda: self.data.printing)
 
             log.debug(f"{wait_for.message} confirmed")
 
     def power_panic(self):
         # TODO: write print time
-        if self.printing:
+        if self.data.printing:
             self.pause()
             self.serial_queue.closed = True
             log.warning("POWER PANIC!")
-            with open(self.pp_file_path, "w") as pp_file:
-                pp_file.write(f"{self.line_number}")
+            with open(self.data.pp_file_path, "w") as pp_file:
+                pp_file.write(f"{self.data.line_number}")
                 pp_file.flush()
                 os.fsync(pp_file.fileno())
 
     def send_print_stats(self):
         percent_done, time_remaining = self.print_stats.get_stats(
-            self.gcode_number)
+            self.data.gcode_number)
 
         # TODO: Idk what to do here, idk what would have happened if we used
         #  the other mode, so let's report both modes the same
@@ -200,7 +206,7 @@ class FilePrinter(metaclass=MCSingleton):
         instruction = enqueue_instruction(self.serial_queue,
                                           stat_command,
                                           to_front=True)
-        wait_for_instruction(instruction, lambda: self.printing)
+        wait_for_instruction(instruction, lambda: self.data.printing)
 
     def to_print_stats(self, gcode_number):
         divisible = gcode_number % STATS_EVERY == 0
@@ -214,20 +220,20 @@ class FilePrinter(metaclass=MCSingleton):
         self.stop_print()
 
     def wait_for_unpause(self):
-        while self.printing and self.paused:
+        while self.data.printing and self.data.paused:
             sleep(QUIT_INTERVAL)
 
     def pause(self):
-        self.paused = True
+        self.data.paused = True
         self.print_stats.end_time_segment()
 
     def resume(self):
-        if self.printing:
-            self.paused = False
+        if self.data.printing:
+            self.data.paused = False
             self.print_stats.start_time_segment()
 
     def stop_print(self):
-        if self.printing:
-            self.printing = False
+        if self.data.printing:
+            self.data.printing = False
             self.thread.join()
-            self.paused = False
+            self.data.paused = False

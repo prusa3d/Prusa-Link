@@ -1,13 +1,13 @@
 from threading import Lock
 
-from typing import Optional
 
 from prusa.connect.printer.const import State
-from prusa.link.printer_adapter.informers.ip_updater import NO_IP
-from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
-from prusa.link.printer_adapter.structures.model_classes import Telemetry, \
-    PrinterInfo
 from prusa.link.printer_adapter.structures.constants import PRINTING_STATES
+from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
+from prusa.link.printer_adapter.structures.model_classes import Telemetry
+from prusa.link.printer_adapter.structures.module_data_classes import \
+    FilePrinterData, StateManagerData, JobData, IpUpdaterData, SDCardData, \
+    MountsData
 
 
 class Model(metaclass=MCSingleton):
@@ -25,23 +25,30 @@ class Model(metaclass=MCSingleton):
         # so it resets upon being read
         self._telemetry: Telemetry = Telemetry()
         self._last_telemetry: Telemetry = Telemetry()
-        self._state: Optional[State] = None
-        self._local_ip: Optional[str] = NO_IP
-        self._job_id: Optional[int] = None
-        self._printer_info: Optional[PrinterInfo] = None
+        
+        # Let's try and share inner module states for cooperation
+        # The idea is, every module will get the model.
+        # Every component HAS TO write its OWN INFO ONLY but can read everything
+        self.file_printer: FilePrinterData = FilePrinterData()
+        self.state_manager: StateManagerData = StateManagerData()
+        self.job: JobData = JobData()
+        self.ip_updater: IpUpdaterData = IpUpdaterData()
+        self.sd_card: SDCardData = SDCardData()
+        self.dir_mounts: MountsData = MountsData()
+        self.fs_mounts: MountsData = MountsData()
 
     def get_and_reset_telemetry(self):
         with self.lock:
-            self._telemetry.state = self._state
-            self._telemetry.job_id = self._job_id
+            self._telemetry.state = self.state_manager.current_state
+            self._telemetry.job_id = self.job.api_job_id
 
             # Make sure that even if the printer tells us print specific values,
             # nothing will be sent out while not printing
-            if self._state not in PRINTING_STATES:
+            if self.state_manager.current_state not in PRINTING_STATES:
                 self._telemetry.time_printing = None
                 self._telemetry.time_estimated = None
                 self._telemetry.progress = None
-            if self._state == State.PRINTING:
+            if self.state_manager.current_state == State.PRINTING:
                 self._telemetry.axis_x = None
                 self._telemetry.axis_y = None
 
@@ -64,42 +71,8 @@ class Model(metaclass=MCSingleton):
     def last_telemetry(self):
         """Returns telemetry values without resetting to None."""
         with self.lock:
+            self._last_telemetry.state = self.state_manager.current_state
+            self._last_telemetry.job_id = self.job.api_job_id
             return self._last_telemetry
-
-    @property
-    def state(self):
-        with self.lock:
-            return self._state
-
-    @state.setter
-    def state(self, new_state):
-        with self.lock:
-            self._state = new_state
-
-            if (new_state == State.PRINTING and
-                    self._state in {State.READY, State.BUSY}):
-                self._telemetry.progress = 0
-                self._telemetry.time_printing = 0
-
-    @property
-    def local_ip(self):
-        with self.lock:
-            return self._local_ip
-
-    @local_ip.setter
-    def local_ip(self, new_ip):
-        with self.lock:
-            self._local_ip = new_ip
-
-    @property
-    def job_id(self):
-        with self.lock:
-            return self._job_id
-
-    @job_id.setter
-    def job_id(self, new_job_id):
-        with self.lock:
-            self._job_id = new_job_id
-
 
 

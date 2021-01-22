@@ -14,7 +14,7 @@ class PausePrint(TryUntilState):
         if self.state_manager.get_state() != State.PRINTING:
             self.failed("Cannot pause when not printing.")
 
-        if self.file_printer.printing:
+        if self.model.file_printer.printing:
             self.file_printer.pause()
 
         self._try_until_state(gcode="M601", desired_state=State.PAUSED)

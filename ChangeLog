@@ -14,6 +14,7 @@
     * Fixed printer resetting multiple times when it gets reset mid-print
     * Fixed accidentally hogging CPU when displaying LCD messages
     * Set log levels by module name in config or as command arguments
+    * Report whether the current job is from the SD or not
 
 0.2.0 (2020-12-14)
 

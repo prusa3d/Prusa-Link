@@ -17,15 +17,14 @@ class StartPrint(ResponseCommand):
     def _run_command(self):
         # No new print jobs while already printing
         # or when there is an Error/Attention state
-        if self.state_manager.printing_state is not None:
+        if self.model.state_manager.printing_state is not None:
             self.failed("Already printing")
             return
 
-        if self.state_manager.override_state is not None:
+        if self.model.state_manager.override_state is not None:
             self.failed(f"Cannot print in "
                         f"{self.state_manager.get_state()} state.")
             return
-        # TODO: command_id retrieved in a really bad way
         self.state_manager.expect_change(
             StateChange(self.caller.command_id,
                         to_states={State.PRINTING: Source.CONNECT}))
@@ -42,7 +41,7 @@ class StartPrint(ResponseCommand):
         else:
             self._start_file_print(str(path))
 
-        self.state_manager.job.set_file_path(str(path), filename_only=False)
+        self.job.set_file_path(str(path), filename_only=False)
         self.state_manager.printing()
         self.state_manager.stop_expecting_change()
 

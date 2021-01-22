@@ -18,7 +18,6 @@ class TryUntilState(ResponseCommand):
         if self.state_manager.get_state() != desired_state:
             to_states = {desired_state: Source.CONNECT}
 
-            # TODO: command_id retrieved in a really bad way
             state_change = StateChange(self.caller.command_id,
                                        to_states=to_states)
             self.state_manager.expect_change(state_change)
@@ -27,16 +26,10 @@ class TryUntilState(ResponseCommand):
 
         self.do_instruction(gcode)
 
-        # Wait max n seconds for the new state
+        # Wait max n seconds for the desired state
         wait_until = time() + STATE_CHANGE_TIMEOUT
         while self.state_manager.get_state() != desired_state and\
                 self.running and time() - wait_until < 0:
-            # There is a race condition, we don't know if we are awoken
-            # before or after the state change
-            # TODO: wait for a state change in state_manager?
-            # Well now we get a confirmation BEFORE the serial output promoting
-            # the state change, so now it's needed even if we had no racing
-            # occurring.
             sleep(QUIT_INTERVAL)
 
         if self.state_manager.get_state() != desired_state:
