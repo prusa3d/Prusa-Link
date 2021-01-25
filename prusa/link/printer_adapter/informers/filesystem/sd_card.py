@@ -17,6 +17,7 @@ INITIALISING state
 
 import logging
 import re
+from pathlib import Path
 from time import time
 
 from blinker import Signal
@@ -32,9 +33,9 @@ from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.model_classes import SDState
 from prusa.link.printer_adapter.structures.regular_expressions import \
     SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX, \
-    SD_EJECTED_REGEX
+    SD_EJECTED_REGEX, LFN_CAPTURE
 from prusa.link.printer_adapter.structures.constants import PRINTING_STATES, \
-    SD_INTERVAL, SD_FILESCAN_INTERVAL
+    SD_INTERVAL, SD_FILESCAN_INTERVAL, USE_LFN
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 from prusa.link.sdk_augmentation.file import SDFile
 
@@ -69,6 +70,8 @@ class SDCard(ThreadedUpdatable):
         self.data.last_updated = time()
         self.data.sd_state = SDState.UNSURE
         self.data.files = None
+        self.data.lfn_to_sfn_paths = {}
+        self.data.sfn_to_lfn_paths = {}
 
         super().__init__()
 
@@ -86,7 +89,10 @@ class SDCard(ThreadedUpdatable):
         self.data.last_updated = time()
         self.data.invalidated = False
 
-        self.data.files = self.construct_file_tree()
+        if USE_LFN:
+            self.data.files = self.new_construct_file_tree()
+        else:
+            self.data.files = self.construct_file_tree()
 
         # If we do not know the sd state and no files were found,
         # check the SD presence
@@ -114,6 +120,51 @@ class SDCard(ThreadedUpdatable):
         for match in instruction.captured:
             tree.add_file_from_line(match.string.lower())
         return tree
+
+    def new_construct_file_tree(self):
+        if self.data.sd_state == SDState.ABSENT:
+            return None
+
+        tree = SDFile(name="SD Card", is_dir=True, ro=True)
+
+        instruction = enqueue_collecting(self.serial_queue, "M20 -L",
+                                         begin_regex=BEGIN_FILES_REGEX,
+                                         capture_regex=LFN_CAPTURE,
+                                         end_regex=END_FILES_REGEX)
+        wait_for_instruction(instruction, lambda: self.running)
+
+        # Captured can be three distinct lines. Dir entry, exit or a file
+        # listing. We need to maintain the info about which dir we are currently
+        # in, as that doesn't repeat in the file listing lines
+        current_dir = Path("/")
+        lfn_to_sfn_paths = {}
+        sfn_to_lfn_paths = {}
+        for match in instruction.captured:
+            groups = match.groups()
+            if groups[0] is not None:  # Dir entry
+                current_dir = current_dir.joinpath(groups[2])
+            elif groups[3] is not None:  # The list item
+                # Parse
+                short_path = groups[4]
+                long_file_name = groups[6]
+                long_path = str(current_dir.joinpath(long_file_name))
+                size = int(groups[7])
+
+                # Add translation between the two
+                log.debug(
+                    f"Adding translation between {long_path} and {short_path}")
+                lfn_to_sfn_paths[long_path] = short_path
+                sfn_to_lfn_paths[short_path] = long_path
+
+                tree.add_by_path(long_path, size)
+            elif groups[8] is not None:  # Dir exit
+                current_dir = current_dir.parent
+
+        # Try to be as atomic as possible
+        self.data.lfn_to_sfn_paths = lfn_to_sfn_paths
+        self.data.sfn_to_lfn_paths = sfn_to_lfn_paths
+        return tree
+
 
     def sd_inserted(self, sender, match: re.Match):
         """
