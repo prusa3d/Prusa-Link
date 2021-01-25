@@ -1,4 +1,4 @@
-from typing import Deque, Optional, Set, List, Any
+from typing import Deque, Optional, Set, List, Any, Dict
 
 from pydantic import BaseModel
 
@@ -56,6 +56,8 @@ class SDCardData(BaseModel):
     last_updated: Optional[float]
     sd_state: Optional[SDState]
     files: Optional[Any]  # We cannot type-check SDFile, only basic ones
+    sfn_to_lfn_paths: Optional[Dict[str, str]]
+    lfn_to_sfn_paths: Optional[Dict[str, str]]
 
 
 class MountsData(BaseModel):

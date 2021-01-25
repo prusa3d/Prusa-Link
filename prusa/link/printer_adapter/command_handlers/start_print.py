@@ -4,9 +4,9 @@ from pathlib import Path
 from prusa.connect.printer.const import State, Source
 from prusa.link.printer_adapter.command import ResponseCommand
 from prusa.link.printer_adapter.informers.state_manager import StateChange
+from prusa.link.printer_adapter.structures.constants import USE_LFN
 from prusa.link.printer_adapter.structures.regular_expressions import \
     OPEN_RESULT_REGEX
-
 
 log = logging.getLogger(__name__)
 
@@ -36,7 +36,12 @@ class StartPrint(ResponseCommand):
 
         if parts[1] == "SD Card":
             # Cut the first "/" and "SD Card" off
-            self._load_file(str(Path(*parts[2:])))
+            path = str(Path("/", *parts[2:]))
+            if USE_LFN:
+                short_path = self.model.sd_card.lfn_to_sfn_paths[path]
+            else:
+                short_path = path
+            self._load_file(short_path)
             self._start_print()
         else:
             self._start_file_print(str(path))
