@@ -15,6 +15,7 @@
     * Fixed accidentally hogging CPU when displaying LCD messages
     * Set log levels by module name in config or as command arguments
     * Report whether the current job is from the SD or not
+    * Support long file names in the upcoming 3.10 release (file explorer only)
 
 0.2.0 (2020-12-14)
 

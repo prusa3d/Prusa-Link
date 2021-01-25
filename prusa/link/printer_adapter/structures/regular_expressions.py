@@ -14,6 +14,10 @@ BEGIN_FILES_REGEX = re.compile(r"^Begin file list$")
 FILE_PATH_REGEX = re.compile(r"^(.*\.(GCO|G)) (\d+)$")
 END_FILES_REGEX = re.compile(r"^End file list$")
 
+LFN_CAPTURE = re.compile(r"(^DIR_ENTER: (/[^ ]*/) \"([^\"]*)\"$)|"
+                         r"(^(.*\.(GCO|G)) \"([^\"]*)\" (\d+)$)|"
+                         r"(^DIR_EXIT$)")
+
 SD_PRESENT_REGEX = re.compile(r"^(echo:SD card ok)|(echo:SD init fail)$")
 SD_EJECTED_REGEX = re.compile(r"^(echo:SD card released)$")
 
