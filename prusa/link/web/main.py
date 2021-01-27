@@ -14,6 +14,8 @@ from .lib.core import app
 from .lib.auth import check_api_key, check_config, REALM
 from .lib.view import generate_page
 
+from prusa.link.web.files import files_to_api
+
 log = logging.getLogger(__name__)
 
 
@@ -87,6 +89,20 @@ def api_printer(req):
             "sd": {
                 "ready": "%s" % app.daemon.prusa_link.sd_ready
             },
+        }
+    )
+
+
+@app.route('/api/files')
+@check_config
+def api_files(req):
+    """Returns info about all available print files"""
+    data = app.daemon.prusa_link.printer.get_info()["files"].copy()
+
+    return JSONResponse(
+        data=
+        {
+            "files": [files_to_api(data)]
         }
     )
 
