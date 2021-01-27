@@ -97,13 +97,10 @@ def api_printer(req):
 @check_config
 def api_files(req):
     """Returns info about all available print files"""
-    data = app.daemon.prusa_link.printer.get_info()["files"].copy()
+    data = app.daemon.prusa_link.printer.get_info()["files"]
 
     return JSONResponse(
-        data=
-        {
-            "files": [files_to_api(data)]
-        }
+        data = {"files": [files_to_api(data)]}
     )
 
 

@@ -2,73 +2,80 @@
 
 from datetime import datetime
 
-sd_card_name = "SD Card"
-sd_card_source = sd_card_name
-prusa_link_name = "Prusa Link gcodes"
-prusa_link_source = "local"
+# TODO: move to constant
+MOUNT_SD_NAME = "SD Card"
 
-# TODO - get values from SDK
-allowed_extensions = (".gcode", ".gco")
+# TODO: get values from SDK
+GCODE_EXTENSIONS = (".gcode", ".gco")
 
 
-def iterate_node(dict_input):
-    """Iterate through dictionary and check / modify it"""
-    # Rename keys, according OctoPrint standard
-    if "m_time" in dict_input:
-        dict_input["date"] = dict_input.pop("m_time")
+def files_to_api(node, origin='local'):
+    """Convert Prusa SDK Files tree for API.
 
-    # New value, according OctoPrint standard
-    if "typePath" not in dict_input:
-        dict_input["typePath"] = []
+    >>> files = {'type': 'DIR', 'name': '/', 'ro': True, 'children':[
+    ...     {'type': 'DIR', 'name': 'SD Card', 'children':[
+    ...         {'type': 'DIR', 'name': 'Examples', 'children':[
+    ...             {'type': 'FILE', 'name': '1.gcode'},
+    ...             {'type': 'FILE', 'name': 'b.gco'}]}]},
+    ...     {'type': 'DIR', 'name': 'Prusa Link gcodes', 'children':[
+    ...         {'type': 'DIR', 'name': 'Examples', 'children':[
+    ...             {'type': 'FILE', 'name': '1.gcode'},
+    ...             {'type': 'FILE', 'name': 'b.gco'}]}]},
+    ...     {'type': 'FILE', 'name': 'preview.png'}
+    ... ]}
+    >>> api_files = files_to_api(files)
+    >>> # /
+    >>> api_files['type']
+    'folder'
+    >>> # /SD Card
+    >>> api_files['children'][0]['type']
+    'folder'
+    >>> # /SD Card/Examples
+    >>> api_files['children'][0]['children'][0]['type']
+    'folder'
+    >>> # /SD Card/Examples/1.gcode
+    >>> api_files['children'][0]['children'][0]['children'][0]['type']
+    'machinecode'
+    >>> api_files['children'][0]['children'][0]['children'][0]['origin']
+    'sdcard'
+    >>> # /Prusa Link gcodes/Examples
+    >>> api_files['children'][1]['children'][0]['type']
+    'folder'
+    >>> # /Prusa Link gcodes/Examples/1.gcode
+    >>> api_files['children'][1]['children'][0]['children'][0]['type']
+    'machinecode'
+    >>> api_files['children'][1]['children'][0]['children'][0]['origin']
+    'local'
+    >>> len(api_files['children'])
+    2
+    """
+    name = node['name']
 
-    # New value, according OctoPrint standard
-    if "origin" not in dict_input:
-        dict_input["origin"] = None
+    result = {'name': name}
 
-    # Rename keys, add values, according OctoPrint standard
-    for key, value in dict_input.items():
-        if key == "type":
-            if dict_input["type"] == "DIR":
-                dict_input["type"] = "FOLDER"
-                dict_input["typePath"] = ["folder"]
+    if "m_time" in node:
+        result["date"] = int(datetime.timestamp(datetime(*node['m_time'])))
 
-            elif dict_input["type"] == "FILE" and dict_input["name"].endswith(allowed_extensions):
-                dict_input["type"] = "machinecode"
-                dict_input["typePath"] = ["machinecode", "gcode"]
+    if node['type'] == 'DIR':
+        if name == 'SD Card':
+            origin = 'sdcard'
 
-        if key == "date":
-            if type(dict_input[key]) is tuple or type(dict_input[key]) is list:
-                dict_input[key] = int(datetime.timestamp(datetime(*dict_input[key])))
+        result['type'] = 'folder'
+        result['typePath'] = ['folder']
+        result['origin'] = origin
 
-        if key == "children":
-            for i in dict_input[key]:
-                iterate_node(i)
+        children = list(
+                files_to_api(child, origin) for child in node['children'])
+        result['children'] = list(
+                child for child in children if child)
 
-        # Change origin name according parent
-        if key == "origin":
-            if dict_input["name"] == sd_card_source:
-                dict_input["origin"] = sd_card_source
+    elif name.endswith(GCODE_EXTENSIONS):
+        result['type'] = 'machinecode'
+        result['typePath'] = ['machinecode', 'gcode']
+        result['origin'] = origin
+        if 'size' in node:
+            result['size'] = node['size']
+    else:
+        return {}  # not folder or allowed extension
 
-            elif dict_input["name"] == prusa_link_name:
-                dict_input["origin"] = prusa_link_source
-
-            if dict_input["type"] == "FOLDER":
-                change_origin(dict_input, sd_card_source)
-                change_origin(dict_input, prusa_link_source)
-
-
-def change_origin(input_dictionary, parent_origin):
-    """Change the children origin name, according parent"""
-    if input_dictionary["origin"] == parent_origin:
-        for i in input_dictionary["children"]:
-            for k, v in i.items():
-                i["origin"] = parent_origin
-                if k == "children":
-                    for j in input_dictionary[k]:
-                        iterate_node(j)
-
-
-def files_to_api(input_data):
-    """Iterate through n-dictionaries with n-lists and return modified data"""
-    iterate_node(input_data)
-    return input_data
+    return result
