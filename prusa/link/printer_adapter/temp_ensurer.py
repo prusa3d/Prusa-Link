@@ -6,7 +6,7 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_instruction
-from prusa.link.printer_adapter.structures.constants import TEMP_TIMEOUT
+from prusa.link.printer_adapter.const import TEMP_TIMEOUT
 from prusa.link.printer_adapter.structures.regular_expressions import \
     TEMPERATURE_REGEX
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable

@@ -18,7 +18,7 @@ from prusa.link.printer_adapter.structures.regular_expressions import \
     TEMPERATURE_REGEX, POSITION_REGEX, PRINT_TIME_REGEX, PRINT_INFO_REGEX, \
     HEATING_REGEX, HEATING_HOTEND_REGEX, FAN_RPM_REGEX, PERCENT_REGEX
 from prusa.link.printer_adapter.structures.model_classes import Telemetry
-from prusa.link.printer_adapter.structures.constants import PRINTING_STATES, \
+from prusa.link.printer_adapter.const import PRINTING_STATES, \
     TELEMETRY_INTERVAL, SLOW_TELEMETRY
 from prusa.link.printer_adapter.structures.ticker import Ticker
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable

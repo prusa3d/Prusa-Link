@@ -52,6 +52,7 @@ TAIL_COMMANDS = 10  # how many commands after the last progress report
 PRINT_QUEUE_SIZE = 4
 
 # --- Mountpoints ---
+SD_MOUNT_NAME = "SD Card"
 BLACKLISTED_TYPES = [
 ]
 BLACKLISTED_PATHS = [
@@ -61,7 +62,8 @@ BLACKLISTED_PATHS = [
     "/tmp",
 ]
 BLACKLISTED_NAMES = [
-    "SD Card"
+    SD_MOUNT_NAME
 ]
 
 NO_IP = "NO_IP"
+

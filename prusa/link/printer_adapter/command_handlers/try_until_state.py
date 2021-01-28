@@ -4,7 +4,7 @@ from time import sleep, time
 from prusa.connect.printer.const import Source, State
 from prusa.link.printer_adapter.command import ResponseCommand
 from prusa.link.printer_adapter.informers.state_manager import StateChange
-from prusa.link.printer_adapter.structures.constants import \
+from prusa.link.printer_adapter.const import \
     STATE_CHANGE_TIMEOUT, QUIT_INTERVAL
 
 log = logging.getLogger(__name__)

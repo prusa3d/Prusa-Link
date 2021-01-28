@@ -34,8 +34,8 @@ from prusa.link.printer_adapter.structures.model_classes import SDState
 from prusa.link.printer_adapter.structures.regular_expressions import \
     SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX, \
     SD_EJECTED_REGEX, LFN_CAPTURE
-from prusa.link.printer_adapter.structures.constants import PRINTING_STATES, \
-    SD_INTERVAL, SD_FILESCAN_INTERVAL, USE_LFN
+from prusa.link.printer_adapter.const import PRINTING_STATES, \
+    SD_INTERVAL, SD_FILESCAN_INTERVAL, USE_LFN, SD_MOUNT_NAME
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 from prusa.link.sdk_augmentation.file import SDFile
 
@@ -111,7 +111,7 @@ class SDCard(ThreadedUpdatable):
         if self.data.sd_state == SDState.ABSENT:
             return None
 
-        tree = SDFile(name="SD Card", is_dir=True, ro=True)
+        tree = SDFile(name=SD_MOUNT_NAME, is_dir=True, ro=True)
         instruction = enqueue_collecting(self.serial_queue, "M20",
                                          begin_regex=BEGIN_FILES_REGEX,
                                          capture_regex=FILE_PATH_REGEX,
@@ -125,7 +125,7 @@ class SDCard(ThreadedUpdatable):
         if self.data.sd_state == SDState.ABSENT:
             return None
 
-        tree = SDFile(name="SD Card", is_dir=True, ro=True)
+        tree = SDFile(name=SD_MOUNT_NAME, is_dir=True, ro=True)
 
         instruction = enqueue_collecting(self.serial_queue, "M20 -L",
                                          begin_regex=BEGIN_FILES_REGEX,

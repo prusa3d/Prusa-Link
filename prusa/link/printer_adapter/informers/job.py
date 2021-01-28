@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import re
-from enum import Enum
 from typing import Any, Dict
 
 from blinker import Signal
@@ -11,7 +10,7 @@ from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.printer_adapter.model import Model
-from prusa.link.printer_adapter.structures.constants import PRINTING_STATES, \
+from prusa.link.printer_adapter.const import PRINTING_STATES, \
     JOB_ENDING_STATES, BASE_STATES, JOB_ONGOING_STATES
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.structures.model_classes import JobState
