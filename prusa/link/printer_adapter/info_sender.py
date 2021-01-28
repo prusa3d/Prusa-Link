@@ -2,7 +2,7 @@ import logging
 from threading import Thread
 from time import sleep
 
-from prusa.link.printer_adapter.structures.constants import SEND_INFO_RETRY, \
+from prusa.link.printer_adapter.const import SEND_INFO_RETRY, \
     PRINTER_BOOT_WAIT
 from prusa.link.sdk_augmentation.printer import MyPrinter
 from prusa.link.printer_adapter.informers.getters import get_network_info, \

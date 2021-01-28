@@ -8,7 +8,7 @@ from blinker import Signal
 
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
-from prusa.link.printer_adapter.structures.constants import PRINTER_BOOT_WAIT, \
+from prusa.link.printer_adapter.const import PRINTER_BOOT_WAIT, \
     SERIAL_REOPEN_TIMEOUT
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 

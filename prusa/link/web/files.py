@@ -2,9 +2,6 @@
 
 from datetime import datetime
 
-# TODO: move to constant
-MOUNT_SD_NAME = "SD Card"
-
 # TODO: get values from SDK
 GCODE_EXTENSIONS = (".gcode", ".gco")
 

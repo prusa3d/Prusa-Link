@@ -9,7 +9,7 @@ from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_instruction, wait_for_instruction
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
-from prusa.link.printer_adapter.structures.constants import LCD_QUEUE_SIZE, \
+from prusa.link.printer_adapter.const import LCD_QUEUE_SIZE, \
     FW_MESSAGE_TIMEOUT, QUIT_INTERVAL
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.structures.regular_expressions import \
