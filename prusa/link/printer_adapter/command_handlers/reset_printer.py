@@ -4,7 +4,7 @@ from time import sleep, time
 
 from prusa.link.printer_adapter.command import Command, ResponseCommand
 from prusa.link.printer_adapter.default_settings import get_settings
-from prusa.link.printer_adapter.structures.constants import \
+from prusa.link.printer_adapter.const import \
     SERIAL_QUEUE_TIMEOUT, QUIT_INTERVAL, PRINTER_BOOT_WAIT
 from prusa.link.printer_adapter.structures.regular_expressions import \
     PRINTER_BOOT_REGEX

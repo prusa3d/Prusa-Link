@@ -42,8 +42,9 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.model_classes import Telemetry
-from prusa.link.printer_adapter.structures.constants import PRINTING_STATES, \
-    TELEMETRY_IDLE_INTERVAL, TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, NO_IP
+from prusa.link.printer_adapter.const import PRINTING_STATES, \
+    TELEMETRY_IDLE_INTERVAL, TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, NO_IP, \
+    SD_MOUNT_NAME
 from prusa.link.printer_adapter.structures.regular_expressions import \
     PRINTER_BOOT_REGEX
 from prusa.link.printer_adapter.temp_ensurer import TempEnsurer
@@ -278,10 +279,10 @@ class PrusaLink:
         self.printer.unmount(os.path.basename(path))
 
     def sd_mount(self, sender, files: File):
-        self.printer.fs.mount("SD Card", files, "", use_inotify=False)
+        self.printer.fs.mount(SD_MOUNT_NAME, files, "", use_inotify=False)
 
     def sd_unmount(self, sender):
-        self.printer.fs.unmount("SD Card")
+        self.printer.fs.unmount(SD_MOUNT_NAME)
 
     def printer_reset(self, sender, match):
         was_printing = self.state_manager.get_state() in PRINTING_STATES

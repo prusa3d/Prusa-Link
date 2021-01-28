@@ -18,7 +18,7 @@ from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_instruction, wait_for_instruction
 from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.print_stats import PrintStats
-from prusa.link.printer_adapter.structures.constants import STATS_EVERY, \
+from prusa.link.printer_adapter.const import STATS_EVERY, \
     PRINT_QUEUE_SIZE, TAIL_COMMANDS, QUIT_INTERVAL
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.structures.regular_expressions import \

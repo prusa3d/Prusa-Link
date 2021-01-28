@@ -6,7 +6,7 @@ from prusa.link.printer_adapter.input_output.serial.instruction import \
     MatchableInstruction
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
     SerialQueue
-from prusa.link.printer_adapter.structures.constants import QUIT_INTERVAL
+from prusa.link.printer_adapter.const import QUIT_INTERVAL
 
 
 def wait_for_instruction(instruction,

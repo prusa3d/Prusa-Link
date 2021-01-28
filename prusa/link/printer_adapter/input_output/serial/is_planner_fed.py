@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Optional
 
 from prusa.link.printer_adapter.default_settings import get_settings
-from prusa.link.printer_adapter.structures.constants import QUEUE_SIZE, \
+from prusa.link.printer_adapter.const import QUEUE_SIZE, \
     DEFAULT_THRESHOLD, USE_DYNAMIC_THRESHOLD, IGNORE_ABOVE, HEAP_RATIO
 from prusa.link.printer_adapter.structures.heap import MinHeap, MaxHeap, \
     HeapItem

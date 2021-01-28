@@ -17,7 +17,7 @@ from .instruction import Instruction
 from .is_planner_fed import IsPlannerFed
 from .serial_reader import SerialReader
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
-from ...structures.constants import PRINTER_BOOT_WAIT, QUIT_INTERVAL, \
+from prusa.link.printer_adapter.const import PRINTER_BOOT_WAIT, QUIT_INTERVAL, \
     SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT, RX_SIZE, HISTORY_LENGTH
 
 log = logging.getLogger(__name__)

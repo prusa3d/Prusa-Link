@@ -1,9 +1,8 @@
 import os
 from pathlib import Path
 
-from prusa.link.config import Model
 from prusa.link.printer_adapter.default_settings import get_settings
-from prusa.link.printer_adapter.structures.constants import PRINTING_STATES
+from prusa.link.printer_adapter.const import PRINTING_STATES
 
 PATH = get_settings().PATH
 

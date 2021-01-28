@@ -5,7 +5,7 @@ from time import time
 from blinker import Signal
 
 from prusa.link.printer_adapter.model import Model
-from prusa.link.printer_adapter.structures.constants import IP_UPDATE_INTERVAL, \
+from prusa.link.printer_adapter.const import IP_UPDATE_INTERVAL, \
     SHOW_IP_INTERVAL, NO_IP
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 from prusa.link.printer_adapter.util import get_local_ip
