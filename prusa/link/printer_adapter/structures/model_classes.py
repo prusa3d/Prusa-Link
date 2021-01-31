@@ -18,6 +18,8 @@ class Telemetry(BaseModel):
     axis_z: Optional[float] = None
     fan_extruder: Optional[int] = None
     fan_print: Optional[int] = None
+    target_fan_extruder: Optional[int] = None
+    target_fan_print: Optional[int] = None
     progress: Optional[int] = None
     filament: Optional[str] = None
     flow: Optional[int] = None
