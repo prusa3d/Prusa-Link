@@ -16,10 +16,10 @@ from prusa.link.printer_adapter.input_output.serial.helpers import \
 from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.regular_expressions import \
     TEMPERATURE_REGEX, POSITION_REGEX, PRINT_TIME_REGEX, PRINT_INFO_REGEX, \
-    HEATING_REGEX, HEATING_HOTEND_REGEX, FAN_RPM_REGEX, PERCENT_REGEX
+    HEATING_REGEX, HEATING_HOTEND_REGEX, FAN_RPM_REGEX, PERCENT_REGEX, FAN_REGEX
 from prusa.link.printer_adapter.structures.model_classes import Telemetry
 from prusa.link.printer_adapter.const import PRINTING_STATES, \
-    TELEMETRY_INTERVAL, SLOW_TELEMETRY
+    TELEMETRY_INTERVAL, SLOW_TELEMETRY, USE_NEW_M155
 from prusa.link.printer_adapter.structures.ticker import Ticker
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 
@@ -43,13 +43,6 @@ class TelemetryGatherer(ThreadedUpdatable):
 
         # G-code, match regexp, handler, to_execute()
         self.telemetry_instructions = [
-            # ("M105", TEMPERATURE_REGEX, self.temperature_result, lambda: True)
-            ("PRUSA FAN", FAN_RPM_REGEX, self.fan_result, lambda: True),
-
-            # Sadly, we need Z height while printing
-            ("M114", POSITION_REGEX, self.position_result,
-             self.ask_for_positions),
-            
             # State_manager depends on this one for detecting printing when
             # we start after the print has been started.
             ("M27", PRINT_TIME_REGEX, self.print_time_result, lambda: True),
@@ -61,13 +54,24 @@ class TelemetryGatherer(ThreadedUpdatable):
 
             ("M73", PRINT_INFO_REGEX, self.print_info_result,
              self.ask_for_print_info),
-        ]
+            ]
+
+        if not USE_NEW_M155:
+            self.telemetry_instructions.extend([
+                ("PRUSA FAN", FAN_RPM_REGEX, self.fan_result, lambda: True),
+
+                # Sadly, we need Z height while printing
+                ("M114", POSITION_REGEX, self.position_result,
+                 self.ask_for_positions),
+            ])
 
         regex_handlers = {
             PRINT_INFO_REGEX: self.print_info_handler,
             HEATING_REGEX: self.heating_handler,
             HEATING_HOTEND_REGEX: self.heating_hotend_handler,
-            TEMPERATURE_REGEX: self.temperature_handler
+            TEMPERATURE_REGEX: self.temperature_handler,
+            POSITION_REGEX: self.position_handler,
+            FAN_REGEX: self.new_fan_handler
         }
 
         for regex, handler in regex_handlers.items():
@@ -117,6 +121,10 @@ class TelemetryGatherer(ThreadedUpdatable):
     def position_result(self, instruction: MandatoryMatchableInstruction):
         match = instruction.match()
         if match:
+            self.position_handler(None, match)
+
+    def position_handler(self, sender, match: re.Match):
+        if match:
             groups = match.groups()
             self.current_telemetry.axis_x = float(groups[4])
             self.current_telemetry.axis_y = float(groups[5])
@@ -124,8 +132,6 @@ class TelemetryGatherer(ThreadedUpdatable):
             self.telemetry_updated()
 
     def fan_result(self, instruction: MandatoryMatchableInstruction):
-        # Fans produce two matches, determine the information using groups
-
         for match in instruction.get_matches():
             extruder_fan_rpm, print_fan_rpm = match.groups()
             if extruder_fan_rpm:
@@ -133,6 +139,15 @@ class TelemetryGatherer(ThreadedUpdatable):
             if print_fan_rpm:
                 self.current_telemetry.fan_print = float(print_fan_rpm)
         self.telemetry_updated()
+
+    def new_fan_handler(self, sender, match: re.Match):
+        if match:
+            groups = match.groups()
+            self.current_telemetry.fan_extruder = int(groups[0])
+            self.current_telemetry.fan_print = int(groups[1])
+            self.current_telemetry.target_fan_extruder = int(groups[2])
+            self.current_telemetry.target_fan_print = int(groups[3])
+            self.telemetry_updated()
 
     def print_time_result(self, instruction: MandatoryMatchableInstruction):
         match = instruction.match()
