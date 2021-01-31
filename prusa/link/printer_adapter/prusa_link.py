@@ -47,7 +47,7 @@ from prusa.link.printer_adapter.const import PRINTING_STATES, \
     SD_MOUNT_NAME
 from prusa.link.printer_adapter.structures.regular_expressions import \
     PRINTER_BOOT_REGEX
-from prusa.link.printer_adapter.temp_ensurer import TempEnsurer
+from prusa.link.printer_adapter.reporting_ensurer import ReportingEnsurer
 from prusa.link.printer_adapter.util import run_slowly_die_fast
 from prusa.link.sdk_augmentation.printer import MyPrinter
 
@@ -181,7 +181,8 @@ class PrusaLink:
 
         self.last_sent_telemetry = time()
 
-        self.temp_ensurer = TempEnsurer(self.serial_reader, self.serial_queue)
+        self.temp_ensurer = ReportingEnsurer(self.serial_reader,
+                                             self.serial_queue)
         self.temp_ensurer.start()
 
         # Connect the printer reset handler later, so it cannot fail because of

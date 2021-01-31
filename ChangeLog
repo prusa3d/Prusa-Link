@@ -18,6 +18,7 @@
     * Support long file names in the upcoming 3.10 release (file explorer only)
     * Added new endpoint /api/files with JSON response
     * Added new endpoint /api/job with JSON response
+    * Added support for the new C parameter in M155
 
 0.2.0 (2020-12-14)
 
