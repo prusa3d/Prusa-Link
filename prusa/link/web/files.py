@@ -62,7 +62,7 @@ def files_to_api(node, origin='local'):
         result['origin'] = origin
 
         children = list(
-                files_to_api(child, origin) for child in node['children'])
+                files_to_api(child, origin) for child in node.get("children", []))
         result['children'] = list(
                 child for child in children if child)
 
