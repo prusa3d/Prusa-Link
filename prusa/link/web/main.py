@@ -20,6 +20,12 @@ from prusa.connect.printer.const import State
 
 log = logging.getLogger(__name__)
 
+PRINTER_STATES = {
+    State.READY: "Operational",
+    State.PRINTING: "Printing",
+    State.BUSY: "Busy"
+}
+
 
 @app.route('/')
 @check_config
@@ -47,26 +53,29 @@ def api_version(req):
 def api_connection(req):
     """Returns printer connection info"""
     cfg = app.daemon.cfg
-    printer = app.daemon.prusa_link.printer
-    return JSONResponse(
-        data=
-        {
-            "current":
-                {
-                    "state": "%s" % printer.state,
-                    "port": "%s" % cfg.printer.port,
-                    "baudrate": "%s" % cfg.printer.baudrate,
-                },
-            "options":
-                {
-                    "ports": [cfg.printer.port],
-                    "baudrates": [cfg.printer.baudrate],
-                    "portPreference": cfg.printer.port,
-                    "baudratePreference": cfg.printer.baudrate,
-                    "autoconnect": True
-                }
-        }
-    )
+    telemetry = app.daemon.prusa_link.model.last_telemetry
+
+    return JSONResponse(**{
+        "current":
+            {
+                "baudrate": "%s" % cfg.printer.baudrate,
+                "port": "%s" % cfg.printer.port,
+                "printerProfile": "_default",
+                "state": "%s" % PRINTER_STATES[telemetry.state],
+            },
+        "options":
+            {
+                "ports": [cfg.printer.port],
+                "baudrates": [cfg.printer.baudrate],
+                "printerProfiles": [
+                    {
+                        "id": "_default",
+                        "name": "Prusa MK3S"
+                    }
+                ]
+            }
+    }
+                        )
 
 
 @app.route('/api/printer')
@@ -75,24 +84,22 @@ def api_printer(req):
     """Returns printer telemetry info"""
     telemetry = app.daemon.prusa_link.model.last_telemetry
 
-    return JSONResponse(
-        data=
-        {
-            "temperature": {
-                "tool0": {
-                    "actual": "%.2f" % telemetry.temp_nozzle,
-                    "target": "%.2f" % telemetry.target_nozzle,
-                },
-                "bed": {
-                    "actual": "%.2f" % telemetry.temp_bed,
-                    "target": "%.2f" % telemetry.target_bed,
-                },
+    return JSONResponse(**{
+        "temperature": {
+            "tool0": {
+                "actual": "%.2f" % telemetry.temp_nozzle,
+                "target": "%.2f" % telemetry.target_nozzle,
             },
-            "sd": {
-                "ready": "%s" % app.daemon.prusa_link.sd_ready
+            "bed": {
+                "actual": "%.2f" % telemetry.temp_bed,
+                "target": "%.2f" % telemetry.target_bed,
             },
-        }
-    )
+        },
+        "sd": {
+            "ready": "%s" % app.daemon.prusa_link.sd_ready
+        },
+    }
+                        )
 
 
 @app.route('/api/files')
@@ -101,9 +108,9 @@ def api_files(req):
     """Returns info about all available print files"""
     data = app.daemon.prusa_link.printer.get_info()["files"]
 
-    return JSONResponse(
-        data = {"files": [files_to_api(data)]}
-    )
+    return JSONResponse(**{
+        "files": [files_to_api(data)]}
+                        )
 
 
 @app.route('/api/job')
@@ -115,26 +122,24 @@ def api_job(req):
     job_state = job.get("state")
     is_printing = True if job_state == State.PRINTING else False
 
-    return JSONResponse(
-        data=
-        {
-            "job": {
-                "file": {
-                    "name": job.get("file_path"),
-                    "origin": "sdcard" if job.get("from_sd") else "local",
-                    "size": job.get("size"),
-                    "date": job.get("m_time"),
-                },
-                "estimatedPrintTime": int(telemetry.time_estimated + telemetry.time_printing) if is_printing else None,
+    return JSONResponse(**{
+        "job": {
+            "file": {
+                "name": job.get("file_path"),
+                "origin": "sdcard" if job.get("from_sd") else "local",
+                "size": job.get("size"),
+                "date": job.get("m_time"),
             },
-            "progress": {
-                "completion": "%f" % telemetry.progress if is_printing else None,
-                "printTime": "%i" % telemetry.time_printing if is_printing else None,
-                "printTimeLeft": "%i" % telemetry.time_estimated if is_printing else None
-            },
-            "state": job_state
-        }
-    )
+            "estimatedPrintTime": int(telemetry.time_estimated + telemetry.time_printing) if is_printing else None,
+        },
+        "progress": {
+            "completion": "%f" % telemetry.progress if is_printing else None,
+            "printTime": "%i" % telemetry.time_printing if is_printing else None,
+            "printTimeLeft": "%i" % telemetry.time_estimated if is_printing else None
+        },
+        "state": job_state
+    }
+                        )
 
 
 @app.route('/api/files/<location>', state.METHOD_POST)
@@ -169,7 +174,7 @@ def api_upload(req, location):
     log.debug('select=%s, print=%s', select, _print)
 
     if foldername.startswith('/'):
-        foldername = '.'+foldername
+        foldername = '.' + foldername
     foldername = abspath(join(app.cfg.printer.directories[0], foldername))
     filename = join(foldername, req.form['file'].filename)
     log.info("Store file to %s::%s", location, filename)
