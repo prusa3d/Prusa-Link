@@ -17,6 +17,7 @@
     * Report whether the current job is from the SD or not
     * Support long file names in the upcoming 3.10 release (file explorer only)
     * Added new endpoint /api/files with JSON response
+    * Added new endpoint /api/job with JSON response
 
 0.2.0 (2020-12-14)
 

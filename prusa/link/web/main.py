@@ -15,6 +15,8 @@ from .lib.auth import check_api_key, check_config, REALM
 from .lib.view import generate_page
 
 from prusa.link.web.files import files_to_api
+from prusa.link.printer_adapter.command_handlers.job_info import JobInfo
+from prusa.connect.printer.const import State
 
 log = logging.getLogger(__name__)
 
@@ -101,6 +103,37 @@ def api_files(req):
 
     return JSONResponse(
         data = {"files": [files_to_api(data)]}
+    )
+
+
+@app.route('/api/job')
+@check_config
+def api_job(req):
+    """Returns info about actual printing job"""
+    job = JobInfo().run_command()
+    telemetry = app.daemon.prusa_link.model.last_telemetry
+    job_state = job.get("state")
+    is_printing = True if job_state == State.PRINTING else False
+
+    return JSONResponse(
+        data=
+        {
+            "job": {
+                "file": {
+                    "name": job.get("file_path"),
+                    "origin": "sdcard" if job.get("from_sd") else "local",
+                    "size": job.get("size"),
+                    "date": job.get("m_time"),
+                },
+                "estimatedPrintTime": int(telemetry.time_estimated + telemetry.time_printing) if is_printing else None,
+            },
+            "progress": {
+                "completion": "%f" % telemetry.progress if is_printing else None,
+                "printTime": "%i" % telemetry.time_printing if is_printing else None,
+                "printTimeLeft": "%i" % telemetry.time_estimated if is_printing else None
+            },
+            "state": job_state
+        }
     )
 
 
