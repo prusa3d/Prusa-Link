@@ -67,4 +67,4 @@ BLACKLISTED_NAMES = [
 ]
 
 NO_IP = "NO_IP"
-
+RESET_PIN = 22  # RPi gpio pin for resetting printer

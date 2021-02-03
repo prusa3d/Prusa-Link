@@ -83,6 +83,10 @@ class Config(Get):
             (
                 ("data_dir", str, ''),  # user home by default
                 ("pid_file", str, "./prusa-link.pid"),
+                ("current_file", str, "./currently_printing.gcode"),
+                ("power_panic_file", str, "./power_panic"),
+                ("job_file", str, "./job_data.json"),
+                ("threshold_file", str, "./threshold.data"),
                 ("user", str, "pi"),
                 ("group", str, "pi"),
             )))
@@ -98,8 +102,12 @@ class Config(Get):
 
         if args.pidfile:
             self.daemon.pid_file = abspath(args.pidfile)
-        self.daemon.pid_file = abspath(join(self.daemon.data_dir,
-                                            self.daemon.pid_file))
+
+        for file_ in ('pid_file', 'current_file', 'power_panic_file',
+                'job_file', 'threshold_file'):
+            setattr(self.daemon, file_,
+                    abspath(join(self.daemon.data_dir,
+                                 getattr(self.daemon, file_))))
 
         # [logging]
         self.set_global_log_level(args)
@@ -142,7 +150,7 @@ class Config(Get):
                 ("settings", str, "./prusa_printer_settings.ini"),
                 ("mountpoints", tuple, [], ':'),
                 # relative to HOME
-                ("directories", tuple, ("./Prusa Link gcodes",), ':')
+                ("directories", tuple, ("./Prusa Link gcodes",), ':'),
             )))
         if args.serial_port:
             self.printer.port = args.serial_port

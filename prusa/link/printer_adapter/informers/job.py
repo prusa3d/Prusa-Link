@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 from blinker import Signal
 
-from prusa.link.printer_adapter.default_settings import get_settings
+from prusa.link.config import Config
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.printer_adapter.model import Model
@@ -18,26 +18,23 @@ from prusa.link.printer_adapter.structures.regular_expressions import \
     FILE_OPEN_REGEX
 from prusa.link.printer_adapter.util import get_clean_path, ensure_directory
 
-PATH = get_settings().PATH
-
 log = logging.getLogger(__name__)
 
 
 class Job(metaclass=MCSingleton):
     """This is a subcomponent of the state manager"""
 
-    def __init__(self, serial_reader: SerialReader, model: Model):
+    def __init__(self, serial_reader: SerialReader, model: Model, cfg: Config):
         # Sent every time the job id should disappear, appear or update
         self.serial_reader = serial_reader
         self.serial_reader.add_handler(FILE_OPEN_REGEX, self.file_opened)
 
         self.model: Model = model
-        
         self.data = self.model.job
 
         self.job_id_updated_signal = Signal()  # kwargs: job_id: int
 
-        self.job_path = get_clean_path(PATH.JOB_FILE)
+        self.job_path = get_clean_path(cfg.daemon.job_file)
         ensure_directory(os.path.dirname(self.job_path))
 
         loaded_data: Dict[Any] = dict()
