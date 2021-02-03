@@ -8,8 +8,8 @@ JOB_ONGOING_STATES = {State.PRINTING, State.PAUSED}
 JOB_ENDING_STATES = BASE_STATES.union({State.FINISHED, State.ERROR})
 
 # --- DEV Flags ---
-USE_LFN = False
-USE_NEW_M155 = False
+USE_LFN = True
+USE_NEW_M155 = True
 
 # --- Intervals ---
 # Values are in seconds
