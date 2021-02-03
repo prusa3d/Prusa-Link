@@ -1,4 +1,4 @@
-git+ssh://git@dream.webjet.cz/Prusa-Connect-SDK-Printer.git@0.2.0#egg=prusa.connect.sdk.printer
+git+ssh://git@dream.webjet.cz/Prusa-Connect-SDK-Printer.git@master#egg=prusa.connect.sdk.printer
 appdirs
 blinker
 extendparser
