@@ -6,13 +6,10 @@ from typing import Set
 from blinker import Signal
 
 from prusa.link.config import Config
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.const import BLACKLISTED_PATHS, \
     BLACKLISTED_NAMES, BLACKLISTED_TYPES, QUIT_INTERVAL, DIR_RESCAN_INTERVAL
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 from prusa.link.printer_adapter.util import get_clean_path, ensure_directory
-
-MOUNT = get_settings().MOUNT
 
 log = logging.getLogger(__name__)
 
@@ -27,7 +24,7 @@ class Mounts(ThreadedUpdatable):
 
     def __init__(self, data):
         super().__init__()
-        
+
         self.data = data
 
         self.mounted_signal = Signal()  # kwargs = path: str
@@ -125,11 +122,12 @@ class FSMounts(Mounts):
     Responsible for reporting which valid linux mountpoints were attached
     """
 
-    paths_to_mount = MOUNT.MOUNTPOINTS
     thread_name = "fs_mounts_thread"
     update_interval = 0  # The waiting is done in epoll timeout instead of here
 
-    def __init__(self, data):
+    def __init__(self, data, mountpoints=None):
+        if mountpoints:
+            FSMounts.paths_to_mount = mountpoints
         super().__init__(data)
 
         # Force the update, even if no events are caught, we need to see

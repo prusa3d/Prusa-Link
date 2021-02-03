@@ -4,7 +4,6 @@ from typing import Optional
 from blinker import Signal
 
 from prusa.connect.printer.files import File
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.informers.filesystem.mounts import FSMounts, \
     DirMounts
 from prusa.link.printer_adapter.informers.filesystem.sd_card import SDCard
@@ -15,8 +14,6 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.printer_adapter.model import Model
 from prusa.link.sdk_augmentation.file import SDFile
-
-MOUNT = get_settings().MOUNT
 
 log = logging.getLogger(__name__)
 

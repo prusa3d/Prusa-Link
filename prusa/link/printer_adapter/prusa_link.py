@@ -20,7 +20,6 @@ from prusa.link.printer_adapter.command_handlers.reset_printer import \
 from prusa.link.printer_adapter.command_handlers.resume_print import ResumePrint
 from prusa.link.printer_adapter.command_handlers.start_print import StartPrint
 from prusa.link.printer_adapter.command_handlers.stop_print import StopPrint
-from prusa.link.printer_adapter.crotitel_cronu import CrotitelCronu
 from prusa.link.printer_adapter.informers.filesystem.sd_card import SDState
 from prusa.link.printer_adapter.informers.job import Job
 from prusa.link.printer_adapter.sn_reader import SNReader
@@ -71,7 +70,8 @@ class PrusaLink:
                              baudrate=cfg.printer.baudrate)
 
         self.serial_queue = MonitoredSerialQueue(self.serial,
-                                                 self.serial_reader)
+                                                 self.serial_reader,
+                                                 self.cfg)
         MonitoredSerialQueue.get_instance().serial_queue_failed.connect(
             self.serial_queue_failed)
 
@@ -114,11 +114,11 @@ class PrusaLink:
         self.telemetry_gatherer.update()
 
         self.file_printer = FilePrinter(self.serial_queue, self.serial_reader,
-                                        self.model)
+                                        self.model, self.cfg)
         self.file_printer.time_printing_signal.connect(
             self.time_printing_updated)
 
-        self.job = Job(self.serial_reader, self.model)
+        self.job = Job(self.serial_reader, self.model, self.cfg)
 
         self.state_manager = StateManager(self.serial_reader, self.model)
         self.file_printer.new_print_started_signal.connect(
@@ -138,8 +138,6 @@ class PrusaLink:
         self.serial.failed_signal.connect(self.serial_failed)
 
         self.serial.renewed_signal.connect(self.serial_renewed)
-
-        self.crotitel_cronu = CrotitelCronu()
 
         self.info_sender = InfoSender(self.serial_queue, self.serial_reader,
                                       self.printer, self.model,
@@ -309,7 +307,6 @@ class PrusaLink:
             log.warning(f"State change had no source "
                         f"{to_state.value}")
 
-        self.crotitel_cronu.state_changed(to_state)
         self.printer.set_state(to_state, command_id=command_id, source=source,
                                job_id=self.model.job.api_job_id)
 

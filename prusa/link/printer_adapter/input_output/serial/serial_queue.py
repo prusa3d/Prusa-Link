@@ -7,6 +7,7 @@ from typing import List, Optional
 
 from blinker import Signal
 
+from prusa.link.config import Config
 from prusa.link.printer_adapter.input_output.serial.serial import Serial
 from prusa.link.printer_adapter.structures.regular_expressions import \
     CONFIRMATION_REGEX, RESEND_REGEX, TEMPERATURE_REGEX, \
@@ -30,7 +31,7 @@ class BadChecksumUseError(Exception):
 class SerialQueue(metaclass=MCSingleton):
 
     def __init__(self, serial: Serial, serial_reader: SerialReader,
-                 rx_size=RX_SIZE):
+            cfg: Config, rx_size=RX_SIZE):
         self.serial = serial
         self.serial_reader = serial_reader
 
@@ -83,7 +84,7 @@ class SerialQueue(metaclass=MCSingleton):
         self.serial_reader.add_handler(
             RESEND_REGEX, self._resend_handler)
 
-        self.is_planner_fed = IsPlannerFed()
+        self.is_planner_fed = IsPlannerFed(cfg)
 
     def peek_next(self):
         """Look, what the next instruction is going to be"""
@@ -443,8 +444,8 @@ class SerialQueue(metaclass=MCSingleton):
 class MonitoredSerialQueue(SerialQueue):
 
     def __init__(self, serial: Serial, serial_reader: SerialReader,
-                 rx_size=128):
-        super().__init__(serial, serial_reader, rx_size)
+                 cfg: Config, rx_size=128):
+        super().__init__(serial, serial_reader, cfg, rx_size)
 
         self.serial_reader.add_handler(BUSY_REGEX,
                                        self._renew_timeout)
