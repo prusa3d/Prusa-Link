@@ -48,10 +48,13 @@ def files_to_api(node, origin='local'):
     """
     name = node['name']
 
-    result = {'name': name}
+    result = {'name': name, 'path': None, 'display': None}
 
     if "m_time" in node:
         result["date"] = int(datetime.timestamp(datetime(*node['m_time'])))
+
+    if 'size' in node:
+        result['size'] = node['size']
 
     if node['type'] == 'DIR':
         if name == 'SD Card':
@@ -60,18 +63,33 @@ def files_to_api(node, origin='local'):
         result['type'] = 'folder'
         result['typePath'] = ['folder']
         result['origin'] = origin
+        result['refs'] = {
+            "resource": None
+        }
 
         children = list(
-                files_to_api(child, origin) for child in node.get("children", []))
+            files_to_api(child, origin) for child in node.get("children", []))
         result['children'] = list(
-                child for child in children if child)
+            child for child in children if child)
 
     elif name.endswith(GCODE_EXTENSIONS):
+        result['origin'] = origin
         result['type'] = 'machinecode'
         result['typePath'] = ['machinecode', 'gcode']
-        result['origin'] = origin
-        if 'size' in node:
-            result['size'] = node['size']
+        result['date'] = None
+        result['hash'] = None
+        result['refs'] = {
+            'resource': None,
+            'download': None,
+            'thumbnailSmall': None,
+            'thumbnailBig': None
+        }
+        result['gcodeAnalysis'] = {
+            'estimatedPrintTime': None,
+            'material': None,
+            'layerHeight': None
+        }
+
     else:
         return {}  # not folder or allowed extension
 

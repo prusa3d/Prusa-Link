@@ -19,6 +19,7 @@
     * Added new endpoint /api/files with JSON response
     * Added new endpoint /api/job with JSON response
     * Added support for the new C parameter in M155
+    * Modification of /api/connection, files, printer and job endpoints
 
 0.2.0 (2020-12-14)
 
