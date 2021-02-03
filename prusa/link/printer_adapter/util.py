@@ -6,6 +6,8 @@ from pathlib import Path
 from time import sleep, time
 from typing import Callable
 
+from prusa.link.printer_adapter.const import SD_MOUNT_NAME
+
 log = logging.getLogger(__name__)
 
 
@@ -85,3 +87,7 @@ def persist_file(file: typing.TextIO):
 
 def get_gcode(line):
     return line.split(";", 1)[0].strip()
+
+
+def file_is_on_sd(path_parts):
+    return path_parts[1] == SD_MOUNT_NAME
