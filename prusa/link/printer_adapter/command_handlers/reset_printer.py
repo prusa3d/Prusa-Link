@@ -2,14 +2,13 @@ import logging
 from threading import Event
 from time import sleep, time
 
+from prusa.link.printer_adapter.const import RESET_PIN
+
 from prusa.link.printer_adapter.command import Command, ResponseCommand
-from prusa.link.printer_adapter.default_settings import get_settings
 from prusa.link.printer_adapter.const import \
     SERIAL_QUEUE_TIMEOUT, QUIT_INTERVAL, PRINTER_BOOT_WAIT
 from prusa.link.printer_adapter.structures.regular_expressions import \
     PRINTER_BOOT_REGEX
-
-PI = get_settings().PI
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ class ResetPrinter(Command):
                            "needs to boot.")
 
     def _run_command(self):
-        if PI.RESET_PIN == 23:
+        if RESET_PIN == 23:
             self.failed("Pin BCM_23 is by default connected straight to "
                         "ground. This would destroy your pin.")
 
@@ -48,11 +47,11 @@ class ResetPrinter(Command):
         except:
             self.serial.blip_dtr()
         else:
-            wiringpi.pinMode(PI.RESET_PIN, wiringpi.OUTPUT)
-            wiringpi.digitalWrite(PI.RESET_PIN, wiringpi.HIGH)
-            wiringpi.digitalWrite(PI.RESET_PIN, wiringpi.LOW)
+            wiringpi.pinMode(RESET_PIN, wiringpi.OUTPUT)
+            wiringpi.digitalWrite(RESET_PIN, wiringpi.HIGH)
+            wiringpi.digitalWrite(RESET_PIN, wiringpi.LOW)
             sleep(0.1)
-            wiringpi.digitalWrite(PI.RESET_PIN, wiringpi.LOW)
+            wiringpi.digitalWrite(RESET_PIN, wiringpi.LOW)
 
         while self.running and time() < times_out_at:
             if event.wait(QUIT_INTERVAL):

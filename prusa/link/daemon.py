@@ -5,11 +5,11 @@ from threading import Thread
 
 import ctypes
 
-from ..config import Config, Settings
-from ..printer_adapter.prusa_link import PrusaLink
-from ..web import run_http
 import prusa.link.printer_adapter.prusa_link
 
+from .config import Config, Settings
+from .printer_adapter.prusa_link import PrusaLink
+from .web import run_http
 
 log = logging.getLogger(__name__)
 

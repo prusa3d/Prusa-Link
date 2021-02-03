@@ -4,14 +4,12 @@ from collections import deque
 from enum import Enum
 from typing import Optional
 
-from prusa.link.printer_adapter.default_settings import get_settings
+from prusa.link.config import Config
 from prusa.link.printer_adapter.const import QUEUE_SIZE, \
     DEFAULT_THRESHOLD, USE_DYNAMIC_THRESHOLD, IGNORE_ABOVE, HEAP_RATIO
 from prusa.link.printer_adapter.structures.heap import MinHeap, MaxHeap, \
     HeapItem
 from prusa.link.printer_adapter.util import ensure_directory, get_clean_path
-
-PATH = get_settings().PATH
 
 log = logging.getLogger(__name__)
 
@@ -55,10 +53,10 @@ class IsPlannerFed:
     until the values accumulate.
     """
 
-    def __init__(self):
+    def __init__(self, cfg: Config):
         self.times_queue = deque(maxlen=QUEUE_SIZE)
 
-        self.threshold_path = get_clean_path(PATH.THRESHOLD_FILE)
+        self.threshold_path = get_clean_path(cfg.daemon.threshold_file)
         ensure_directory(os.path.dirname(self.threshold_path))
 
         if not USE_DYNAMIC_THRESHOLD:

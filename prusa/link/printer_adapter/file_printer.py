@@ -7,7 +7,7 @@ from time import sleep
 
 from blinker import Signal
 
-from prusa.link.printer_adapter.default_settings import get_settings
+from prusa.link.config import Config
 from prusa.link.printer_adapter.input_output.serial.instruction import \
     Instruction
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
@@ -26,15 +26,13 @@ from prusa.link.printer_adapter.structures.regular_expressions import \
 from prusa.link.printer_adapter.util import get_clean_path, ensure_directory, \
     get_gcode
 
-PATH = get_settings().PATH
-
 log = logging.getLogger(__name__)
 
 
 class FilePrinter(metaclass=MCSingleton):
 
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
-                 model: Model):
+                 model: Model, cfg: Config):
         self.serial_queue = serial_queue
         self.serial_reader = serial_reader
         self.model = model
@@ -47,8 +45,8 @@ class FilePrinter(metaclass=MCSingleton):
 
         self.data = self.model.file_printer
 
-        self.data.tmp_file_path = get_clean_path(PATH.TMP_FILE)
-        self.data.pp_file_path = get_clean_path(PATH.PP_FILE)
+        self.data.tmp_file_path = get_clean_path(cfg.daemon.current_file)
+        self.data.pp_file_path = get_clean_path(cfg.daemon.power_panic_file)
         ensure_directory(os.path.dirname(self.data.tmp_file_path))
 
         self.data.printing = False
