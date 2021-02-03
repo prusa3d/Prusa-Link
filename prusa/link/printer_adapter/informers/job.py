@@ -11,7 +11,7 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.const import PRINTING_STATES, \
-    JOB_ENDING_STATES, BASE_STATES, JOB_ONGOING_STATES
+    JOB_ENDING_STATES, BASE_STATES, JOB_ONGOING_STATES, SD_MOUNT_NAME
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.structures.model_classes import JobState
 from prusa.link.printer_adapter.structures.regular_expressions import \
@@ -72,7 +72,9 @@ class Job(metaclass=MCSingleton):
         if self.data.printing_file_path is not None:
             return
         if match is not None and match.groups()[0] != "":
-            self.set_file_path(match.groups()[0], filename_only=True)
+            # TODO: fix when the fw support for full paths arrives
+            pseudo_path = os.path.join(SD_MOUNT_NAME, match.groups()[0])
+            self.set_file_path(pseudo_path, filename_only=True)
 
     def job_started(self, command_id=None):
         self.data.from_sd = not self.model.file_printer.printing

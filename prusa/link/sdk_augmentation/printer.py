@@ -1,11 +1,19 @@
 from logging import getLogger
+from pathlib import Path
 from typing import Dict, Any
 
-from prusa.connect.printer import Printer as SDKPrinter
+from prusa.connect.printer.const import Source
 
+from prusa.connect.printer.metadata import FDMMetaData
+from prusa.connect.printer.files import File
+
+from prusa.connect.printer import Printer as SDKPrinter, const
+
+from prusa.connect.printer import Command
 from prusa.link.printer_adapter.input_output.lcd_printer import LCDPrinter
 from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
+from prusa.link.printer_adapter.util import file_is_on_sd
 from prusa.link.sdk_augmentation.command_handler import CommandHandler
 
 log = getLogger("connect-printer")
@@ -55,3 +63,39 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
                                              settings.service_connect.tls,
                                              settings.service_connect.port)
         self.token = settings.service_connect.token
+
+    def get_file_info(self, caller: Command) -> Dict[str, Any]:
+        """Return file info for a given file, if it exists."""
+        # pylint: disable=unused-argument
+        if not caller.args:
+            raise ValueError("SEND_FILE_INFO requires args")
+
+        file_path_string = caller.args[0]
+        path: Path = Path(file_path_string)
+        log.warning(f"FILE_INFO for: {path}")
+        parts = path.parts
+
+        if file_is_on_sd(parts):
+            data = self.from_path(path)
+        else:
+            data = super().get_file_info(caller)
+        log.warning(f"FILE_INFO: {data}")
+        return data
+
+    def from_path(self, path: Path):
+        string_path = str(path)
+        file: File = self.fs.get(string_path)
+
+        meta = FDMMetaData(string_path)
+        meta.load_from_path(string_path)
+        log.warning(meta.data)
+
+        data = dict(
+            source=Source.CONNECT,
+            event=const.Event.FILE_INFO,
+            path=string_path)
+
+        data.update(file.attrs)
+        data.update(meta.data)
+
+        return data
