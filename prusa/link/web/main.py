@@ -53,7 +53,7 @@ def api_version(req):
 def api_connection(req):
     """Returns printer connection info"""
     cfg = app.daemon.cfg
-    telemetry = app.daemon.prusa_link.model.last_telemetry
+    tel = app.daemon.prusa_link.model.last_telemetry
 
     return JSONResponse(**{
         "current":
@@ -61,7 +61,7 @@ def api_connection(req):
                 "baudrate": "%s" % cfg.printer.baudrate,
                 "port": "%s" % cfg.printer.port,
                 "printerProfile": "_default",
-                "state": "%s" % PRINTER_STATES[telemetry.state],
+                "state": "%s" % PRINTER_STATES[tel.state],
             },
         "options":
             {
@@ -82,22 +82,42 @@ def api_connection(req):
 @check_config
 def api_printer(req):
     """Returns printer telemetry info"""
-    telemetry = app.daemon.prusa_link.model.last_telemetry
+    tel = app.daemon.prusa_link.model.last_telemetry
+    sd_ready = app.daemon.prusa_link.sd_ready
 
     return JSONResponse(**{
         "temperature": {
             "tool0": {
-                "actual": "%.2f" % telemetry.temp_nozzle,
-                "target": "%.2f" % telemetry.target_nozzle,
+                "actual": "%.2f" % tel.temp_nozzle,
+                "target": "%.2f" % tel.target_nozzle,
             },
             "bed": {
-                "actual": "%.2f" % telemetry.temp_bed,
-                "target": "%.2f" % telemetry.target_bed,
+                "actual": "%.2f" % tel.temp_bed,
+                "target": "%.2f" % tel.target_bed,
             },
         },
         "sd": {
-            "ready": "%s" % app.daemon.prusa_link.sd_ready
+            "ready": "%s" % sd_ready
         },
+        "state": {
+            "text": PRINTER_STATES[tel.state],
+            "flags": {
+                "operational": True if tel.state == State.READY else False,
+                "paused": True if tel.state == State.PAUSED else False,
+                "printing": True if tel.state == State.PRINTING else False,
+                "cancelling": False,
+                "pausing": True if tel.state == State.PAUSED else False,
+                "sdReady": True if sd_ready else False,
+                "error": True if tel.state == State.ERROR else False,
+                "ready": True if tel.state == State.READY else False,
+                "closedOrError": False
+            }
+        },
+        "tel": {
+            "temp_bed": tel.temp_bed,
+            "temp_nozzle": tel.temp_nozzle,
+            "material": "string"
+        }
     }
                         )
 
@@ -109,7 +129,10 @@ def api_files(req):
     data = app.daemon.prusa_link.printer.get_info()["files"]
 
     return JSONResponse(**{
-        "files": [files_to_api(data)]}
+        "files": [files_to_api(data)],
+        "free": 0,
+        "total": 0
+    }
                         )
 
 
@@ -118,24 +141,28 @@ def api_files(req):
 def api_job(req):
     """Returns info about actual printing job"""
     job = JobInfo().run_command()
-    telemetry = app.daemon.prusa_link.model.last_telemetry
+    tel = app.daemon.prusa_link.model.last_telemetry
     job_state = job.get("state")
-    is_printing = True if job_state == State.PRINTING else False
+    is_printing = job_state == "PRINTING"
+    estimated = tel.time_estimated + tel.time_printing if is_printing else None
 
     return JSONResponse(**{
         "job": {
+            "estimatedPrintTime": int(estimated),
             "file": {
                 "name": job.get("file_path"),
-                "origin": "sdcard" if job.get("from_sd") else "local",
-                "size": job.get("size"),
                 "date": job.get("m_time"),
+                "size": job.get("size"),
+                "origin": "sdcard" if job.get("from_sd") else "local",
             },
-            "estimatedPrintTime": int(telemetry.time_estimated + telemetry.time_printing) if is_printing else None,
         },
         "progress": {
-            "completion": "%f" % telemetry.progress if is_printing else None,
-            "printTime": "%i" % telemetry.time_printing if is_printing else None,
-            "printTimeLeft": "%i" % telemetry.time_estimated if is_printing else None
+            "completion": "%f" % tel.progress if is_printing else None,
+            "printTime": "%i" % tel.time_printing if is_printing else None,
+            "printTimeLeft": "%i" % tel.time_estimated if is_printing else None,
+            "pos_z_mm": "%i" % tel.axis_z,
+            "printSpeed": tel.speed,
+            "flow_factor": tel.flow,
         },
         "state": job_state
     }
