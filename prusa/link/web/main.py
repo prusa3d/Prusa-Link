@@ -144,6 +144,7 @@ def api_job(req):
     tel = app.daemon.prusa_link.model.last_telemetry
     job_state = job.get("state")
     is_printing = job_state == "PRINTING"
+    date = job.get("m_time") if "m_time" in job else None
     estimated = tel.time_estimated + tel.time_printing if is_printing else None
 
     return JSONResponse(**{
@@ -151,7 +152,7 @@ def api_job(req):
             "estimatedPrintTime": int(estimated),
             "file": {
                 "name": job.get("file_path"),
-                "date": job.get("m_time"),
+                "date": date,
                 "size": job.get("size"),
                 "origin": "sdcard" if job.get("from_sd") else "local",
             },
