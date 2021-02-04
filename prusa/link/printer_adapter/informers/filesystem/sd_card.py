@@ -36,7 +36,7 @@ from prusa.link.printer_adapter.structures.regular_expressions import \
     SD_EJECTED_REGEX, LFN_CAPTURE
 from prusa.link.printer_adapter.const import PRINTING_STATES, \
     SD_INTERVAL, SD_FILESCAN_INTERVAL, SD_MOUNT_NAME, \
-    SFN_TO_LFN_EXTENSIONS
+    SFN_TO_LFN_EXTENSIONS, MAX_FILENAME_LENGTH
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 from prusa.link.sdk_augmentation.file import SDFile
 
@@ -126,33 +126,59 @@ class SDCard(ThreadedUpdatable):
         for match in instruction.captured:
             groups = match.groups()
             if groups[0] is not None:  # Dir entry
-                current_dir = current_dir.joinpath(groups[2])
+                # Parse the dir info
+                long_dir_name = groups[2]
                 short_dir_name = Path(groups[1]).name
-                current_dir = self.ensure_uniqueness(current_dir,
-                                                     short_dir_name, tree)
+
+                # Sanitize the dir name
+                filename_too_long = len(long_dir_name) >= MAX_FILENAME_LENGTH
+                if filename_too_long:
+                    new_name = self.alternative_filename(long_dir_name,
+                                                         short_dir_name)
+                    current_dir = current_dir.joinpath(new_name)
+                else:
+                    current_dir = current_dir.joinpath(long_dir_name)
+
+                self.check_uniqueness(current_dir, tree)
+                # Add the dir to the tree
+                try:
+                    tree.add_directory(current_dir.parent, current_dir.name,
+                                       filename_too_long=filename_too_long)
+                except FileNotFoundError as e:
+                    log.exception(e)
+
             elif groups[3] is not None:  # The list item
-                # Parse
+                # Parse the file listing
                 short_path_string = groups[4]
-                short_name = Path(short_path_string).name
+                short_filename = Path(short_path_string).name
                 short_extension = groups[5]
                 long_extension = SFN_TO_LFN_EXTENSIONS[short_extension]
-                raw_long_file_name = groups[6]
-                long_file_name = self.ensure_extension(raw_long_file_name,
-                                                       short_extension,
-                                                       long_extension)
+                raw_long_filename: str = groups[6]
+                size = int(groups[7])
+
+                # Sanitize the file name
+                long_file_name = self.sanitize_filename(raw_long_filename,
+                                                        short_filename,
+                                                        long_extension,
+                                                        short_extension)
+                filename_too_long = raw_long_filename != long_file_name
 
                 long_path = current_dir.joinpath(long_file_name)
-                long_path = self.ensure_uniqueness(long_path, short_name, tree)
+                self.check_uniqueness(long_path, tree)
                 long_path_string = str(long_path)
-
-                size = int(groups[7])
 
                 # Add translation between the two
                 log.debug(f"Adding translation between {long_path_string} "
                           f"and {short_path_string}")
                 lfn_to_sfn_paths[long_path_string] = short_path_string
                 sfn_to_lfn_paths[short_path_string] = long_path_string
-                tree.add_by_path(long_path, size)
+
+                # Add the file to the tree
+                try:
+                    tree.add_file(current_dir, long_file_name, size=size,
+                                  filename_too_long=filename_too_long)
+                except FileNotFoundError as e:
+                    log.exception(e)
             elif groups[8] is not None:  # Dir exit
                 current_dir = current_dir.parent
 
@@ -161,37 +187,40 @@ class SDCard(ThreadedUpdatable):
         self.data.sfn_to_lfn_paths = sfn_to_lfn_paths
         return tree
 
-    def ensure_uniqueness(self, path: Path, short_name, tree):
-        log.debug(f"Ensuring uniqueness of {path}. Got {tree.get(path.parts)} "
-                  f"from the already constructed part of the file tree.")
+    def alternative_filename(self, long_filename: str, short_filename: str):
+        new_filename = f"{short_filename} - {long_filename}"
+        log.warning(f"Filename {long_filename} too long, using an alternative: "
+                    f"{new_filename}")
+        return new_filename
+
+    def check_uniqueness(self, path: Path, tree):
+        # Ignores the first "/"
         if tree.get(path.parts[1:]) is not None:
-            unique_name = f"{short_name} - {Path(path).name}"
-            path = path.parent.joinpath(unique_name)
-            log.warning(f"Name conflict! Using a fallback path {path}.")
+            log.error(f"Despite our efforts, there is a name conflict "
+                      f"for {path}")
 
-            # Verify, it's really unique
-            if tree.get(path.parts[1:]) is not None:
-                log.error(
-                    "Can't resolve the name conflict!")
-        return path
-
-    def ensure_extension(self, filename: str, short_extension: str,
-                         long_extension: str):
-        if not filename.endswith(short_extension) and \
-                not filename.endswith(long_extension):
-            original_extension = filename.split(".")[-1]
+    def sanitize_filename(self, long_filename: str, short_filename: str,
+                          long_extension: str, short_extension: str):
+        has_full_extension = (long_filename.endswith(short_extension) or
+                              long_filename.endswith(long_extension))
+        if not has_full_extension:
+            original_extension = long_filename.split(".")[-1]
             # The filenames can end in parts of short or long versions of
             # their extensions. If that extension is incomplete,
             # let's use the long one, cause it's shorter to write
-            if original_extension in long_extension or \
-                    original_extension in short_extension:
-                filename = filename[:-len(original_extension)]
-                filename += long_extension
+            has_incomplete_extension = (original_extension in long_extension or
+                                        original_extension in short_extension)
+            if has_incomplete_extension:
+                long_filename = long_filename[:-len(original_extension)]
             else:
-                if not filename.endswith("."):
-                    filename += "."
-                filename += long_extension
-        return filename
+                if not long_filename.endswith("."):
+                    long_filename += "."
+            long_filename += long_extension
+            # Either way, who knows if that was a coincidence, or the remainder
+            # of the original extension, the filename was too long regardless
+            long_filename = self.alternative_filename(long_filename,
+                                                      short_filename)
+        return long_filename
 
     def sd_inserted(self, sender, match: re.Match):
         """
