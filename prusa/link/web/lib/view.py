@@ -1,19 +1,15 @@
 """Response generate module."""
-from os.path import join, pardir, dirname, abspath
-
+from importlib_resources import files  # 3.9 has native resources
 from jinja2 import Environment, FileSystemLoader
-from jinja2_template_info import TemplateInfoExtension, __file__ as info_file
+from jinja2_template_info import TemplateInfoExtension
 
 from prusa.connect.printer.const import PrinterType
 
-from . core import app, TEMPL_DIR
+from . core import app
 
-PKG_DIR = abspath(join(dirname(info_file)))
-TEMPLATE_INFO_DIR = abspath(
-        join(PKG_DIR, pardir, pardir, pardir,
-             'share', 'jinja2_template_info', 'templates'))
-
-TEMPL_PATH = (TEMPLATE_INFO_DIR, TEMPL_DIR)
+TEMPL_PATH = (
+    files('jinja2_template_info'),
+    files('prusa.link'))
 
 
 def printer_type(type_):
