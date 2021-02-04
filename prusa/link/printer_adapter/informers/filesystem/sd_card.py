@@ -32,10 +32,11 @@ from prusa.link.printer_adapter.input_output.serial.helpers import \
 from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.model_classes import SDState
 from prusa.link.printer_adapter.structures.regular_expressions import \
-    SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, FILE_PATH_REGEX, \
+    SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, \
     SD_EJECTED_REGEX, LFN_CAPTURE
 from prusa.link.printer_adapter.const import PRINTING_STATES, \
-    SD_INTERVAL, SD_FILESCAN_INTERVAL, USE_LFN, SD_MOUNT_NAME
+    SD_INTERVAL, SD_FILESCAN_INTERVAL, SD_MOUNT_NAME, \
+    SFN_TO_LFN_EXTENSIONS
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 from prusa.link.sdk_augmentation.file import SDFile
 
@@ -89,10 +90,7 @@ class SDCard(ThreadedUpdatable):
         self.data.last_updated = time()
         self.data.invalidated = False
 
-        if USE_LFN:
-            self.data.files = self.new_construct_file_tree()
-        else:
-            self.data.files = self.construct_file_tree()
+        self.data.files = self.construct_file_tree()
 
         # If we do not know the sd state and no files were found,
         # check the SD presence
@@ -108,20 +106,6 @@ class SDCard(ThreadedUpdatable):
         self.tree_updated_signal.send(self, tree=self.data.files)
 
     def construct_file_tree(self):
-        if self.data.sd_state == SDState.ABSENT:
-            return None
-
-        tree = SDFile(name=SD_MOUNT_NAME, is_dir=True, ro=True)
-        instruction = enqueue_collecting(self.serial_queue, "M20",
-                                         begin_regex=BEGIN_FILES_REGEX,
-                                         capture_regex=FILE_PATH_REGEX,
-                                         end_regex=END_FILES_REGEX)
-        wait_for_instruction(instruction, lambda: self.running)
-        for match in instruction.captured:
-            tree.add_file_from_line(match.string.lower())
-        return tree
-
-    def new_construct_file_tree(self):
         if self.data.sd_state == SDState.ABSENT:
             return None
 
@@ -143,19 +127,31 @@ class SDCard(ThreadedUpdatable):
             groups = match.groups()
             if groups[0] is not None:  # Dir entry
                 current_dir = current_dir.joinpath(groups[2])
+                short_dir_name = Path(groups[1]).name
+                current_dir = self.ensure_uniqueness(current_dir,
+                                                     short_dir_name, tree)
             elif groups[3] is not None:  # The list item
                 # Parse
-                short_path = groups[4]
-                long_file_name = groups[6]
-                long_path = str(current_dir.joinpath(long_file_name))
+                short_path_string = groups[4]
+                short_name = Path(short_path_string).name
+                short_extension = groups[5]
+                long_extension = SFN_TO_LFN_EXTENSIONS[short_extension]
+                raw_long_file_name = groups[6]
+                long_file_name = self.ensure_extension(raw_long_file_name,
+                                                       short_extension,
+                                                       long_extension)
+
+                long_path = current_dir.joinpath(long_file_name)
+                long_path = self.ensure_uniqueness(long_path, short_name, tree)
+                long_path_string = str(long_path)
+
                 size = int(groups[7])
 
                 # Add translation between the two
-                log.debug(
-                    f"Adding translation between {long_path} and {short_path}")
-                lfn_to_sfn_paths[long_path] = short_path
-                sfn_to_lfn_paths[short_path] = long_path
-
+                log.debug(f"Adding translation between {long_path_string} "
+                          f"and {short_path_string}")
+                lfn_to_sfn_paths[long_path_string] = short_path_string
+                sfn_to_lfn_paths[short_path_string] = long_path_string
                 tree.add_by_path(long_path, size)
             elif groups[8] is not None:  # Dir exit
                 current_dir = current_dir.parent
@@ -165,6 +161,37 @@ class SDCard(ThreadedUpdatable):
         self.data.sfn_to_lfn_paths = sfn_to_lfn_paths
         return tree
 
+    def ensure_uniqueness(self, path: Path, short_name, tree):
+        log.debug(f"Ensuring uniqueness of {path}. Got {tree.get(path.parts)} "
+                  f"from the already constructed part of the file tree.")
+        if tree.get(path.parts[1:]) is not None:
+            unique_name = f"{short_name} - {Path(path).name}"
+            path = path.parent.joinpath(unique_name)
+            log.warning(f"Name conflict! Using a fallback path {path}.")
+
+            # Verify, it's really unique
+            if tree.get(path.parts[1:]) is not None:
+                log.error(
+                    "Can't resolve the name conflict!")
+        return path
+
+    def ensure_extension(self, filename: str, short_extension: str,
+                         long_extension: str):
+        if not filename.endswith(short_extension) and \
+                not filename.endswith(long_extension):
+            original_extension = filename.split(".")[-1]
+            # The filenames can end in parts of short or long versions of
+            # their extensions. If that extension is incomplete,
+            # let's use the long one, cause it's shorter to write
+            if original_extension in long_extension or \
+                    original_extension in short_extension:
+                filename = filename[:-len(original_extension)]
+                filename += long_extension
+            else:
+                if not filename.endswith("."):
+                    filename += "."
+                filename += long_extension
+        return filename
 
     def sd_inserted(self, sender, match: re.Match):
         """

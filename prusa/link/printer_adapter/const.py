@@ -7,10 +7,6 @@ PRINTING_STATES = {State.PRINTING, State.PAUSED, State.FINISHED}
 JOB_ONGOING_STATES = {State.PRINTING, State.PAUSED}
 JOB_ENDING_STATES = BASE_STATES.union({State.FINISHED, State.ERROR})
 
-# --- DEV Flags ---
-USE_LFN = True
-USE_NEW_M155 = True
-
 # --- Intervals ---
 # Values are in seconds
 
@@ -65,6 +61,7 @@ BLACKLISTED_PATHS = [
 BLACKLISTED_NAMES = [
     SD_MOUNT_NAME
 ]
+SFN_TO_LFN_EXTENSIONS = {"GCO": "gcode", "G": "g"}
 
 NO_IP = "NO_IP"
 RESET_PIN = 22  # RPi gpio pin for resetting printer

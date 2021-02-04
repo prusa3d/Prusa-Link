@@ -6,7 +6,7 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_instruction
-from prusa.link.printer_adapter.const import REPORTING_TIMEOUT, USE_NEW_M155
+from prusa.link.printer_adapter.const import REPORTING_TIMEOUT
 from prusa.link.printer_adapter.structures.regular_expressions import \
     TEMPERATURE_REGEX, POSITION_REGEX, FAN_REGEX
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
@@ -47,20 +47,16 @@ class ReportingEnsurer(ThreadedUpdatable):
         since_last_positions = time() - self.last_seen_positions
         since_last_fans = time() - self.last_seen_fans
 
-        if USE_NEW_M155:
-            if since_last_positions > REPORTING_TIMEOUT:
-                self.turn_reporting_on()
-            if since_last_fans > REPORTING_TIMEOUT:
-                self.turn_reporting_on()
+        if since_last_positions > REPORTING_TIMEOUT:
+            self.turn_reporting_on()
+        if since_last_fans > REPORTING_TIMEOUT:
+            self.turn_reporting_on()
 
         if since_last_temps > REPORTING_TIMEOUT:
             self.turn_reporting_on()
 
     def turn_reporting_on(self):
-        if USE_NEW_M155:
-            enqueue_instruction(self.serial_queue, "M155 S2 C7")
-        else:
-            enqueue_instruction(self.serial_queue, "M155 S1")
+        enqueue_instruction(self.serial_queue, "M155 S2 C7")
         self.temps_recorded()
         self.positions_recorded()
         self.fans_recorded()
