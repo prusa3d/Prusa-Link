@@ -1,0 +1,7 @@
+include *.py
+include MANIFEST.in
+graft prusa/link/templates
+graft prusa/link/static
+global-exclude *~
+global-exclude *.swp
+prune venv

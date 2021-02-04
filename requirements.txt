@@ -3,6 +3,7 @@ appdirs
 blinker
 extendparser
 getmac
+importlib_resources
 jinja2-template-info
 lockfile
 PoorWSGI>=2.3.0
