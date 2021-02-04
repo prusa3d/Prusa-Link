@@ -7,7 +7,6 @@ from setuptools import setup, find_namespace_packages
 
 from prusa.link import __version__, __doc__
 
-STATIC_FILES = 'share/prusa-link'
 RPI_MODEL_PATH = "/sys/firmware/devicetree/base/model"
 RE_GIT = re.compile(r'(-e )?git\+|:')
 RE_EGG = re.compile(r'#egg=(.*)$')
@@ -76,9 +75,9 @@ setup(
     maintainer_email="tomas.jozifek@prusa3d.cz",
     url="https://github.com/prusa3d/Prusa-Link",
     packages=find_namespace_packages(include=['prusa.*']),
-    data_files=[(STATIC_FILES, ['README.md', 'ChangeLog'])]
-        + find_data_files('static', STATIC_FILES+'/static')
-        + find_data_files('templates', STATIC_FILES+'/templates'),
+    include_package_data=True,
+    data_files=[('share/prusa-link',
+                 ['README.md', 'ChangeLog', 'CONTRIBUTION.md'])],
     long_description=doc(),
     long_description_content_type="text/markdown",
     classifiers=[
