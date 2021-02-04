@@ -20,6 +20,7 @@ from .serial_reader import SerialReader
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.const import PRINTER_BOOT_WAIT, QUIT_INTERVAL, \
     SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT, RX_SIZE, HISTORY_LENGTH
+from prusa.link import errors
 
 log = logging.getLogger(__name__)
 
@@ -403,6 +404,7 @@ class SerialQueue(metaclass=MCSingleton):
         """
         self.has_failed = True
         log.error("Communication failed. Aborting...")
+        errors.RPI_ENABLED.ok = False
         self.serial_queue_failed.send()
 
     def printer_reset(self, was_printing):
@@ -438,7 +440,6 @@ class SerialQueue(metaclass=MCSingleton):
                 if final_instruction.wait_for_confirmation(
                         timeout=QUIT_INTERVAL):
                     break
-
 
 
 class MonitoredSerialQueue(SerialQueue):

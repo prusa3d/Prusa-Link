@@ -22,6 +22,7 @@
     * Modification of /api/connection, files, printer and job endpoints
     * All files in data_dir (user's home by default)
     * Parse print info from the file name (for SD files)
+    * Introduce ErrorState(s) from SDK
 
 0.2.0 (2020-12-14)
 

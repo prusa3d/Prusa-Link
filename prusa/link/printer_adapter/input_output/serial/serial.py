@@ -11,6 +11,7 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
 from prusa.link.printer_adapter.const import PRINTER_BOOT_WAIT, \
     SERIAL_REOPEN_TIMEOUT
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
+from prusa.link import errors
 
 log = logging.getLogger(__name__)
 
@@ -79,7 +80,9 @@ class Serial(metaclass=MCSingleton):
         while self.running:
             try:
                 self._reopen()
+                errors.SERIAL.ok = True
             except (serial.SerialException, FileNotFoundError):
+                errors.SERIAL.ok = False
                 log.warning(f"Opening of the serial port {self.port} failed. "
                             f"Retrying...")
                 sleep(SERIAL_REOPEN_TIMEOUT)
