@@ -49,6 +49,7 @@ from prusa.link.printer_adapter.structures.regular_expressions import \
 from prusa.link.printer_adapter.reporting_ensurer import ReportingEnsurer
 from prusa.link.printer_adapter.util import run_slowly_die_fast
 from prusa.link.sdk_augmentation.printer import MyPrinter
+from prusa.link import errors
 
 log = logging.getLogger(__name__)
 
@@ -267,8 +268,10 @@ class PrusaLink:
             self.info_sender.try_sending_info()
 
         if new_ip is not NO_IP:
+            errors.LAN.ok = True
             self.lcd_printer.enqueue_message(f"{new_ip}", duration=5)
         else:
+            errors.PHY.ok = False
             self.lcd_printer.enqueue_message(f"WiFi disconnected", duration=3)
 
     def dir_mount(self, sender, path):
@@ -353,8 +356,10 @@ class PrusaLink:
             try:
                 self.printer.loop()
             except RequestException:
+                errors.INTERNET.ok = False
                 self.lcd_printer.enqueue_connection_failed(
                     self.model.ip_updater.local_ip == NO_IP)
             except SDKServerError:
+                errors.INTERNET.ok = False
                 self.lcd_printer.enqueue_connection_failed(
                     self.model.ip_updater.local_ip == NO_IP)

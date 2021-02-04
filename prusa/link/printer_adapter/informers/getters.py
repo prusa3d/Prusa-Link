@@ -12,6 +12,7 @@ from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.model_classes import NetworkInfo
 from prusa.link.printer_adapter.structures.regular_expressions import \
     SN_REGEX, PRINTER_TYPE_REGEX, FW_REGEX, NOZZLE_REGEX
+from prusa.link import errors
 
 PRINTER_TYPES = {
     300: PrinterType.I3MK3,
@@ -30,6 +31,7 @@ def get_serial_number(serial_queue: SerialQueue, should_wait=lambda: True):
     serial_queue.enqueue_one(instruction, to_front=True)
     wait_for_instruction(instruction, should_wait)
     match = instruction.match()
+    errors.SN.ok = match is not None
     if match is None:
         raise NoSNError("Cannot get the printer serial number.")
     return match.groups()[0]
@@ -41,13 +43,16 @@ def get_printer_type(serial_queue: SerialQueue, should_wait=lambda: True):
     wait_for_instruction(instruction, should_wait)
     match = instruction.match()
     if match is None:
+        errors.ID.ok = False
         raise RuntimeError("Printer responded with something unexpected")
 
     code = int(match.groups()[0])
 
     try:
+        errors.ID.ok = True
         return PRINTER_TYPES[code]
     except KeyError:
+        errors.ID.ok = False
         enqueue_instruction(serial_queue, "M117 Unsupported printer",
                             to_front=True)
         raise RuntimeError(f"Unsupported printer model '{code}'")
@@ -58,6 +63,7 @@ def get_firmware_version(serial_queue: SerialQueue, should_wait=lambda: True):
                                     FW_REGEX, to_front=True)
     wait_for_instruction(instruction, should_wait)
     match = instruction.match()
+    errors.FW.ok = match is not None
     if match is None:
         raise RuntimeError("Printer responded with something unexpected")
 

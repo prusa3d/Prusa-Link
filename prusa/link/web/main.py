@@ -17,6 +17,7 @@ from .lib.view import generate_page
 from prusa.link.web.files import files_to_api
 from prusa.link.printer_adapter.command_handlers.job_info import JobInfo
 from prusa.connect.printer.const import State
+from prusa.link import errors
 
 log = logging.getLogger(__name__)
 
@@ -32,7 +33,8 @@ PRINTER_STATES = {
 @check_digest(REALM)
 def index(req):
     """Return status page"""
-    return generate_page(req, "index.html", api_key=app.api_key)
+    return generate_page(req, "index.html", api_key=app.api_key,
+                         errors=errors.status())
 
 
 @app.route('/api/version')
