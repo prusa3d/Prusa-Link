@@ -19,7 +19,7 @@ from prusa.link.printer_adapter.structures.regular_expressions import \
     HEATING_REGEX, HEATING_HOTEND_REGEX, FAN_RPM_REGEX, PERCENT_REGEX, FAN_REGEX
 from prusa.link.printer_adapter.structures.model_classes import Telemetry
 from prusa.link.printer_adapter.const import PRINTING_STATES, \
-    TELEMETRY_INTERVAL, SLOW_TELEMETRY, USE_NEW_M155
+    TELEMETRY_INTERVAL, SLOW_TELEMETRY
 from prusa.link.printer_adapter.structures.ticker import Ticker
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 
@@ -55,15 +55,6 @@ class TelemetryGatherer(ThreadedUpdatable):
             ("M73", PRINT_INFO_REGEX, self.print_info_result,
              self.ask_for_print_info),
             ]
-
-        if not USE_NEW_M155:
-            self.telemetry_instructions.extend([
-                ("PRUSA FAN", FAN_RPM_REGEX, self.fan_result, lambda: True),
-
-                # Sadly, we need Z height while printing
-                ("M114", POSITION_REGEX, self.position_result,
-                 self.ask_for_positions),
-            ])
 
         regex_handlers = {
             PRINT_INFO_REGEX: self.print_info_handler,
