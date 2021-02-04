@@ -91,7 +91,8 @@ class Serial(metaclass=MCSingleton):
         """Ran in a thread, reads stuff over an over"""
         while self.running:
             try:
-                line = self.serial.readline().decode("ASCII").strip()
+                raw_line = self.serial.readline()
+                line = raw_line.decode("ASCII").strip()
             except serial.SerialException:
                 log.error("Failed when reading from the printer. "
                           "Trying to re-open")
@@ -100,7 +101,7 @@ class Serial(metaclass=MCSingleton):
                     # if the serial is broken
                     self._renew_serial_connection()
             except UnicodeDecodeError:
-                log.error("Failed decoding a message")
+                log.error(f"Failed decoding a message {raw_line}")
             else:
                 if line != "":
                     # with self.write_read_lock:
