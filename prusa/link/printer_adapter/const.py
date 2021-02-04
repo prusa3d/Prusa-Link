@@ -49,6 +49,7 @@ TAIL_COMMANDS = 10  # how many commands after the last progress report
 PRINT_QUEUE_SIZE = 4
 
 # --- Mountpoints ---
+MAX_FILENAME_LENGTH = 52
 SD_MOUNT_NAME = "SD Card"
 BLACKLISTED_TYPES = [
 ]
