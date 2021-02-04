@@ -9,6 +9,7 @@ from prusa.link.printer_adapter.const import IP_UPDATE_INTERVAL, \
     SHOW_IP_INTERVAL, NO_IP
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 from prusa.link.printer_adapter.util import get_local_ip
+from prusa.link import errors
 
 
 log = logging.getLogger(__name__)
@@ -32,10 +33,12 @@ class IPUpdater(ThreadedUpdatable):
     def update(self):
         try:
             local_ip = get_local_ip()
+            errors.LAN.ok = True
         except socket.error:
             log.error("Failed getting the local IP, are we connected to LAN?")
             self.data.local_ip = NO_IP
             self.update_ip(NO_IP)
+            errors.PHY.ok = False
         else:
             # Show the IP at least once every minute,
             # so any errors printed won't stay forever displayed

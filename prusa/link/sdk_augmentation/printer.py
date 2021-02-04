@@ -15,6 +15,7 @@ from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.util import file_is_on_sd
 from prusa.link.sdk_augmentation.command_handler import CommandHandler
+from prusa.link import errors
 
 log = getLogger("connect-printer")
 
@@ -37,6 +38,9 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         will set command object.
         """
 
+        if 500 > res.status_code >= 400:
+            errors.API.ok = False
+
         if res.status_code == 400:
             self.lcd_printer.enqueue_400()
         elif res.status_code == 401:
@@ -44,9 +48,12 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         elif res.status_code == 403:
             self.lcd_printer.enqueue_403()
         elif res.status_code == 503:
+            errors.HTTP.ok = False
             self.lcd_printer.enqueue_503()
 
         res = super().parse_command(res)
+        errors.API.ok = True   # already done in SDK but lets be double sure
+        errors.VALID_SN.ok = True    # XXX really?
 
         return res
 

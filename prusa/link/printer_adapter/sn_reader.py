@@ -3,6 +3,7 @@
 from blinker import Signal
 
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
+from prusa.link import errors
 
 
 class SNReader(ThreadedUpdatable):
@@ -16,7 +17,7 @@ class SNReader(ThreadedUpdatable):
         super().__init__()
 
     def update(self):
-        """Try to read searial_file with serial number."""
+        """Try to read serial_file with serial number."""
         if not self.serial_number:
             try:
                 with open(self.serial_file, 'r') as snfile:
@@ -27,3 +28,6 @@ class SNReader(ThreadedUpdatable):
         if self.serial_number:
             self.updated_signal.send(self.serial_number)
             self.running = False
+            errors.SN.ok = True
+        else:
+            errors.SN.ok = False
