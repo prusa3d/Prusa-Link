@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from prusa.connect.printer.files import File
+from prusa.link.printer_adapter.const import MAX_FILENAME_LENGTH
 
 
 class SDFile(File):
@@ -12,14 +13,18 @@ class SDFile(File):
 
         self.add_by_path(path=path, size=size)
 
-    def add_by_path(self, path, size):
+    def add_node(self, is_dir, path: Path, name, **attrs):
         parts = Path(path).parts
+        # Ignores the first "/"
+        node: SDFile = self.get(parts[1:])
+        if node is None:
+            raise FileNotFoundError(f"Can't find the node at {path} to add"
+                                    f" the child named {name} to.")
+        else:
+            node.add(is_dir=is_dir, name=name, ro=True, **attrs)
 
-        node: SDFile = self
-        for part in parts[1:-1]:
-            if part not in node.children:
-                node.add(is_dir=True, name=part, ro=True)
+    def add_directory(self, path: Path, name, **attrs):
+        self.add_node(True, path, name, **attrs)
 
-            node = node.get([part])
-
-        node.add(is_dir=False, name=parts[-1], size=size, ro=True)
+    def add_file(self, path, name, **attrs):
+        self.add_node(False, path, name, **attrs)
