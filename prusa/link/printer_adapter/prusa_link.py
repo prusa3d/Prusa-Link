@@ -6,7 +6,6 @@ from hashlib import sha256
 
 from requests import RequestException
 
-from prusa.connect.printer import SDKServerError
 from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType
 from prusa.connect.printer.const import Source
@@ -356,10 +355,6 @@ class PrusaLink:
             try:
                 self.printer.loop()
             except RequestException:
-                errors.INTERNET.ok = False
-                self.lcd_printer.enqueue_connection_failed(
-                    self.model.ip_updater.local_ip == NO_IP)
-            except SDKServerError:
                 errors.INTERNET.ok = False
                 self.lcd_printer.enqueue_connection_failed(
                     self.model.ip_updater.local_ip == NO_IP)
