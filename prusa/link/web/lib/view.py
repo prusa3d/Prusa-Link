@@ -1,4 +1,5 @@
 """Response generate module."""
+from os.path import join
 from importlib_resources import files  # 3.9 has native resources
 from jinja2 import Environment, FileSystemLoader
 from jinja2_template_info import TemplateInfoExtension
@@ -9,7 +10,7 @@ from . core import app
 
 TEMPL_PATH = (
     files('jinja2_template_info'),
-    files('prusa.link'))
+    join(files('prusa.link'), 'templates'))
 
 
 def printer_type(type_):
