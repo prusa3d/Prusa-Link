@@ -51,10 +51,7 @@ class InfoSender:
             except:
                 log.exception("Sending initial info failed, Prusa-Link cannot"
                               "start. Retrying")
-                self.lcd_printer.enqueue_message("Failed starting up")
-                self.lcd_printer.enqueue_message("handshake failed")
                 sleep(SEND_INFO_RETRY)
-                self.lcd_printer.enqueue_message("Retrying...")
             else:
                 break
 
