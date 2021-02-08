@@ -40,16 +40,8 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
 
         if 500 > res.status_code >= 400:
             errors.API.ok = False
-
-        if res.status_code == 400:
-            self.lcd_printer.enqueue_400()
-        elif res.status_code == 401:
-            self.lcd_printer.enqueue_401()
-        elif res.status_code == 403:
-            self.lcd_printer.enqueue_403()
         elif res.status_code == 503:
             errors.HTTP.ok = False
-            self.lcd_printer.enqueue_503()
 
         res = super().parse_command(res)
         errors.API.ok = True   # already done in SDK but lets be double sure
