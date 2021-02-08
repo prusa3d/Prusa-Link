@@ -85,7 +85,6 @@ class PrusaLink:
             serial_number = get_serial_number(self.serial_queue)
             fingerprint = sha256(serial_number.encode()).hexdigest()
         except NoSNError:
-            self.lcd_printer.enqueue_no_sn()
             self.sn_reader = SNReader(cfg)
             self.sn_reader.updated_signal.connect(self.sn_read)
         printer_type = get_printer_type(self.serial_queue)
@@ -155,9 +154,6 @@ class PrusaLink:
 
         # after connecting all the signals, do the first update manually
         self.storage.update()
-
-        # Greet the user
-        self.lcd_printer.enqueue_greet()
 
         # Start the local_ip updater after we enqueued the greetings
         self.ip_updater = IPUpdater(self.model)
@@ -268,10 +264,9 @@ class PrusaLink:
 
         if new_ip is not NO_IP:
             errors.LAN.ok = True
-            self.lcd_printer.enqueue_message(f"{new_ip}", duration=5)
+            self.lcd_printer.ip = new_ip
         else:
             errors.PHY.ok = False
-            self.lcd_printer.enqueue_message(f"WiFi disconnected", duration=3)
 
     def dir_mount(self, sender, path):
         self.printer.mount(path, os.path.basename(path))
@@ -356,5 +351,3 @@ class PrusaLink:
                 self.printer.loop()
             except RequestException:
                 errors.INTERNET.ok = False
-                self.lcd_printer.enqueue_connection_failed(
-                    self.model.ip_updater.local_ip == NO_IP)
