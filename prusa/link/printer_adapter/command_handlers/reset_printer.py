@@ -4,9 +4,10 @@ from time import sleep, time
 
 from prusa.link.printer_adapter.const import RESET_PIN
 
-from prusa.link.printer_adapter.command import Command, ResponseCommand
+from prusa.link.printer_adapter.command import Command
 from prusa.link.printer_adapter.const import \
     SERIAL_QUEUE_TIMEOUT, QUIT_INTERVAL, PRINTER_BOOT_WAIT
+from prusa.link.printer_adapter.informers.state_manager import StateChange
 from prusa.link.printer_adapter.structures.regular_expressions import \
     PRINTER_BOOT_REGEX
 
@@ -37,10 +38,14 @@ class ResetPrinter(Command):
         event = Event()
 
         def waiter(sender, match):
+            self.state_manager.reset()
             event.set()
 
         self.serial_reader.add_handler(PRINTER_BOOT_REGEX, waiter)
 
+        self.state_manager.expect_change(
+            StateChange(default_source=self.source,
+                        command_id=self.command_id))
         try:
             import wiringpi
             wiringpi.wiringPiSetupGpio()
@@ -63,7 +68,3 @@ class ResetPrinter(Command):
             self.failed("Your printer has ignored the reset signal, your RPi "
                         "is broken or you have configured a wrong pin,"
                         "or our serial reading component broke..")
-
-
-class ResetPrinterResponse(ResponseCommand, ResetPrinter):
-    ...

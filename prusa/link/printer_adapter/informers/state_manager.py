@@ -11,8 +11,8 @@ from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
-    START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, CONFIRMATION_REGEX
-
+    START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, CONFIRMATION_REGEX, \
+    PRINTER_BOOT_REGEX
 
 log = logging.getLogger(__name__)
 
@@ -239,6 +239,10 @@ class StateManager(metaclass=MCSingleton):
             self.post_state_change_signal.send(self)
 
     # --- State changing methods ---
+
+    def reset(self):
+        self.busy()
+        self.not_printing()
 
     # This state change can change the state to "PRINTING"
     @state_influencer(StateChange(to_states={State.PRINTING: Source.USER}))
