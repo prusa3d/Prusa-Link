@@ -15,8 +15,8 @@ from prusa.link.printer_adapter.input_output.serial.helpers import \
     wait_for_instruction, enqueue_matchable
 from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.regular_expressions import \
-    TEMPERATURE_REGEX, POSITION_REGEX, PRINT_TIME_REGEX, PRINT_INFO_REGEX, \
-    HEATING_REGEX, HEATING_HOTEND_REGEX, FAN_RPM_REGEX, PERCENT_REGEX, FAN_REGEX
+    TEMPERATURE_REGEX, POSITION_REGEX, M27_OUTPUT_REGEX, PRINT_INFO_REGEX, \
+    HEATING_REGEX, HEATING_HOTEND_REGEX, PERCENT_REGEX, FAN_REGEX
 from prusa.link.printer_adapter.structures.model_classes import Telemetry
 from prusa.link.printer_adapter.const import PRINTING_STATES, \
     TELEMETRY_INTERVAL, SLOW_TELEMETRY
@@ -35,6 +35,17 @@ class TelemetryGatherer(ThreadedUpdatable):
 
         self.updated_signal = Signal()  # kwargs: telemetry: Telemetry
 
+        # The telemetry module has some extra data about the printers state
+        # let's use them
+        self.printing_signal = Signal()
+        self.paused_serial_signal = Signal()
+        self.paused_sd_signal = Signal()
+        self.not_printing_signal = Signal()
+
+        # Additionally, two for the job module
+        self.progress_broken_signal = Signal()  # kwargs: progress_broken: bool
+        self.file_path_signal = Signal()  # kwargs: path: str
+
         self.model = model
         self.serial_reader = serial_reader
         self.serial_queue = serial_queue
@@ -45,7 +56,7 @@ class TelemetryGatherer(ThreadedUpdatable):
         self.telemetry_instructions = [
             # State_manager depends on this one for detecting printing when
             # we start after the print has been started.
-            ("M27", PRINT_TIME_REGEX, self.print_time_result, lambda: True),
+            ("M27 P", M27_OUTPUT_REGEX, self.m27_result, lambda: True),
 
             ("M221", PERCENT_REGEX, self.flow_rate_result,
              self.slow_ticker.output),
@@ -140,17 +151,56 @@ class TelemetryGatherer(ThreadedUpdatable):
             self.current_telemetry.target_fan_print = int(groups[3])
             self.telemetry_updated()
 
-    def print_time_result(self, instruction: MandatoryMatchableInstruction):
-        match = instruction.match()
-        if match and match.groups()[1]:
-            groups = match.groups()
-            printing_time_hours = int(groups[2])
-            printing_time_mins = int(groups[3])
-            hours_in_sec = printing_time_hours * 60 * 60
-            mins_in_sec = printing_time_mins * 60
-            printing_time_sec = mins_in_sec + hours_in_sec
-            self.current_telemetry.time_printing = printing_time_sec
-            self.telemetry_updated()
+    def m27_result(self, instruction: MandatoryMatchableInstruction):
+        file_or_status_match = instruction.match()
+
+        # Are we printing?
+        if file_or_status_match and file_or_status_match.groups()[0]:
+            log.warning(instruction.match().groups())
+            log.warning(instruction.match(1).groups())
+            log.warning(instruction.match(2).groups())
+
+            # if we're SD printing and there is no reporting, let's get it here
+            if self.model.job.from_sd and not self.model.job.inbuilt_reporting:
+                byte_position_match: re.Match = instruction.match(1)
+                if byte_position_match:
+                    current_byte = int(byte_position_match.groups()[6])
+                    bytes_in_total = int(byte_position_match.groups()[7])
+                    progress = int((current_byte / bytes_in_total) * 100)
+                    log.debug(f"SD print has no inbuilt percentage tracking, "
+                              f"falling back to getting progress from byte "
+                              f"position in the file. Progress: {progress}% "
+                              f"Byte {current_byte}/{bytes_in_total}")
+                    self.current_telemetry.progress = progress
+                    self.telemetry_updated()
+
+            print_timer_match: re.Match = instruction.match(2)
+            if print_timer_match:
+                groups = print_timer_match.groups()
+                hours = int(groups[9])
+                mins = int(groups[10])
+                hours_in_sec = hours * 60 * 60
+                mins_in_sec = mins * 60
+                printing_time_sec = mins_in_sec + hours_in_sec
+                self.current_telemetry.time_printing = printing_time_sec
+                self.telemetry_updated()
+
+            short_path = file_or_status_match.groups()[0]
+            try:
+                long_path = self.model.sd_card.sfn_to_lfn_paths[short_path]
+                self.file_path_signal.send(path=long_path)
+            except:
+                pass
+            self.printing_signal.send(self)
+
+        elif file_or_status_match and file_or_status_match.groups()[2]:
+            self.not_printing_signal.send(self)
+
+        elif file_or_status_match and file_or_status_match.groups()[3]:
+            self.paused_serial_signal.send(self)
+
+        elif file_or_status_match and file_or_status_match.groups()[4]:
+            self.paused_sd_signal.send(self)
 
     def flow_rate_result(self, instruction: MandatoryMatchableInstruction):
         match = instruction.match()
@@ -193,9 +243,14 @@ class TelemetryGatherer(ThreadedUpdatable):
                       f"{speed_agnostic_mins_remaining}, mins otherwise "
                       f"{mins_remaining}")
             secs_remaining = mins_remaining * 60
-            if 0 <= progress <= 100:
+            progress_broken = not (0 <= progress <= 100)
+            if not progress_broken:
                 self.current_telemetry.progress = progress
                 self.telemetry_updated()
+
+            self.progress_broken_signal.send(
+                self, progress_broken=progress_broken)
+
             if mins_remaining >= 0:
                 self.current_telemetry.time_estimated = secs_remaining
                 self.telemetry_updated()
@@ -211,4 +266,9 @@ class TelemetryGatherer(ThreadedUpdatable):
         groups = match.groups()
 
         self.current_telemetry.temp_nozzle = float(groups[0])
+        self.telemetry_updated()
+
+    def new_print(self):
+        self.current_telemetry.progress = 0
+        self.current_telemetry.time_printing = 0
         self.telemetry_updated()
