@@ -72,3 +72,5 @@ PRINTER_BOOT_REGEX = re.compile(r"^start$")
 POWER_PANIC_REGEX = re.compile(r"^INT4$")
 LCD_UPDATE_REGEX = re.compile(r"^LCD status changed$")
 M110_REGEXP = re.compile(r"^(N\d+)? *M110 N(-?\d*)$")
+FAN_ERROR_REGEX = re.compile(r"^(Extruder|Print) fan speed is lower than "
+                             r"expected$")

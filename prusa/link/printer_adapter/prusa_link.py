@@ -6,7 +6,6 @@ from hashlib import sha256
 
 from requests import RequestException
 
-from prusa.connect.printer import SDKServerError
 from prusa.connect.printer import Command as SDKCommand
 from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType, State
@@ -148,6 +147,8 @@ class PrusaLink:
             self.file_printer_started_printing)
         self.file_printer.print_ended_signal.connect(
             self.file_printer_stopped_printing)
+        self.serial_queue.instruction_confirmed_signal.connect(
+            self.instruction_confirmed)
         self.state_manager.state_changed_signal.connect(self.state_changed)
 
         self.state_manager.pre_state_change_signal.connect(
@@ -242,7 +243,6 @@ class PrusaLink:
                 if result:
                     print(result)
 
-
     def stop(self):
         self.running = False
         self.telemetry_thread.join()
@@ -253,6 +253,7 @@ class PrusaLink:
         self.temp_ensurer.stop()
         self.serial_queue.stop()
         self.serial.stop()
+        self.printer.stop()
 
         log.debug("Remaining threads, that could prevent us from quitting:")
         for thread in threading.enumerate():
@@ -377,10 +378,16 @@ class PrusaLink:
     def sd_unmount(self, sender):
         self.printer.fs.unmount(SD_MOUNT_NAME)
 
+    def instruction_confirmed(self, sender):
+        self.state_manager.instruction_confirmed()
+
     def printer_reset(self, sender, match):
         was_printing = self.state_manager.get_state() in PRINTING_STATES
         self.file_printer.stop_print()
         self.serial_queue.printer_reset(was_printing)
+
+        # file printer stop print needs to happen before this
+        self.state_manager.reset()
         self.info_sender.try_sending_info()
 
     @property
@@ -395,14 +402,19 @@ class PrusaLink:
         self.job.tick()
 
     def state_changed(self, sender, from_state, to_state,
-                      command_id=None, source=None):
+                      command_id=None, source=None, reason=None):
         if source is None:
             source = Source.WUI
             log.warning(f"State change had no source "
                         f"{to_state.value}")
 
+        extra_data = dict()
+        if reason is not None:
+            extra_data["reason"] = reason
+
         self.printer.set_state(to_state, command_id=command_id, source=source,
-                               job_id=self.model.job.api_job_id)
+                               job_id=self.model.job.api_job_id,
+                               **extra_data)
 
     def job_id_updated(self, sender, job_id):
         self.model.job_id = job_id
