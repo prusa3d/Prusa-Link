@@ -15,7 +15,6 @@ from prusa.link.printer_adapter.input_output.serial.helpers import \
     wait_for_instruction, enqueue_matchable, enqueue_instruction
 from prusa.link.printer_adapter.model import Model
 from prusa.link.sdk_augmentation.printer import MyPrinter
-from prusa.connect.printer.command import Command as SDKCommand
 
 
 log = logging.getLogger(__name__)
@@ -28,7 +27,7 @@ class CommandFailed(Exception):
 class Command:
     command_name = "command"
 
-    def __init__(self):
+    def __init__(self, command_id=None, source=Source.CONNECT, **kwargs):
         self.serial_queue: MonitoredSerialQueue = \
             MonitoredSerialQueue.get_instance()
         self.serial: Serial = Serial.get_instance()
@@ -38,6 +37,9 @@ class Command:
         self.state_manager: StateManager = StateManager.get_instance()
         self.file_printer: FilePrinter = FilePrinter.get_instance()
         self.job: Job = Job.get_instance()
+
+        self.command_id = command_id
+        self.source = source
 
         self.running = True
 
@@ -80,10 +82,3 @@ class Command:
 
     def stop(self):
         self.running = False
-
-
-class ResponseCommand(Command):
-
-    def __init__(self, caller: SDKCommand):
-        self.caller = caller
-        super().__init__()

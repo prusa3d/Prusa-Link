@@ -1,8 +1,8 @@
 import logging
 from pathlib import Path
 
-from prusa.connect.printer.const import State, Source
-from prusa.link.printer_adapter.command import ResponseCommand
+from prusa.connect.printer.const import State
+from prusa.link.printer_adapter.command import Command
 from prusa.link.printer_adapter.informers.state_manager import StateChange
 from prusa.link.printer_adapter.structures.regular_expressions import \
     OPEN_RESULT_REGEX
@@ -11,8 +11,12 @@ from prusa.link.printer_adapter.util import file_is_on_sd
 log = logging.getLogger(__name__)
 
 
-class StartPrint(ResponseCommand):
+class StartPrint(Command):
     command_name = "start print"
+
+    def __init__(self, filename, **kwargs):
+        super().__init__(**kwargs)
+        self.filename = filename
 
     def _run_command(self):
         # No new print jobs while already printing
@@ -26,17 +30,22 @@ class StartPrint(ResponseCommand):
                         f"{self.state_manager.get_state()} state.")
             return
         self.state_manager.expect_change(
-            StateChange(self.caller.command_id,
-                        to_states={State.PRINTING: Source.CONNECT}))
+            StateChange(to_states={State.PRINTING: self.source},
+                        command_id=self.command_id))
 
-        file_path_string = self.caller.args[0]
+        file_path_string = self.filename
         path = Path(file_path_string)
         parts = path.parts
 
         if file_is_on_sd(parts):
             # Cut the first "/" and "SD Card" off
             sd_path = str(Path("/", *parts[2:]))
-            short_path = self.model.sd_card.lfn_to_sfn_paths[sd_path]
+            try:
+                short_path = self.model.sd_card.lfn_to_sfn_paths[sd_path]
+            except KeyError:
+                # If this failed, try to use the supplied path as is
+                # in hopes it was the short path.
+                short_path = sd_path
 
             self._load_file(short_path)
             self._start_print()
@@ -46,6 +55,9 @@ class StartPrint(ResponseCommand):
         self.job.set_file_path(str(path), filename_only=False)
         self.state_manager.printing()
         self.state_manager.stop_expecting_change()
+
+    def _get_state_change(self, to_states):
+        return StateChange(to_states=to_states)
 
     def _start_file_print(self, path):
         os_path = self.printer.fs.get_os_path(path)
@@ -62,4 +74,3 @@ class StartPrint(ResponseCommand):
 
     def _start_print(self):
         self.do_instruction("M24")
-

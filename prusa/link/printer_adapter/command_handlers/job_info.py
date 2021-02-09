@@ -1,7 +1,7 @@
 import logging
 
 from prusa.connect.printer.const import Source, Event
-from prusa.link.printer_adapter.command import ResponseCommand, Command
+from prusa.link.printer_adapter.command import Command
 from prusa.link.printer_adapter.informers.job import JobState
 
 
@@ -29,16 +29,9 @@ class JobInfo(Command):
                     data['size'] = file_obj.attrs['size']
 
         data.update(job_id=self.model.job.api_job_id,
-                    state=self.model.state_manager.current_state.value)
+                    state=self.model.state_manager.current_state.value,
+                    event=Event.JOB_INFO,
+                    source=Source.CONNECT)
 
         log.debug(f"Job Info retrieved: {data}")
         return data
-
-
-class JobInfoResponse(ResponseCommand, JobInfo):
-
-    def _run_command(self):
-        data = super()._run_command()
-        return dict(event=Event.JOB_INFO,
-                    source=Source.CONNECT,
-                    **data)

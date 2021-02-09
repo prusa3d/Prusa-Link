@@ -6,23 +6,24 @@ from hashlib import sha256
 
 from requests import RequestException
 
+from prusa.connect.printer import SDKServerError
+from prusa.connect.printer import Command as SDKCommand
 from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType, State
 from prusa.connect.printer.const import Source
 from prusa.link.config import Config, Settings
 from prusa.link.printer_adapter.command_handlers.execute_gcode import \
     ExecuteGcode
-from prusa.link.printer_adapter.command_handlers.job_info import JobInfoResponse
+from prusa.link.printer_adapter.command_handlers.job_info import JobInfo
 from prusa.link.printer_adapter.command_handlers.pause_print import PausePrint
 from prusa.link.printer_adapter.command_handlers.reset_printer import \
-    ResetPrinter, ResetPrinterResponse
-from prusa.link.printer_adapter.command_handlers.resume_print import ResumePrint
+    ResetPrinter
+from prusa.link.printer_adapter.command_handlers.resume_print import \
+    ResumePrint
 from prusa.link.printer_adapter.command_handlers.start_print import StartPrint
 from prusa.link.printer_adapter.command_handlers.stop_print import StopPrint
 from prusa.link.printer_adapter.informers.filesystem.sd_card import SDState
 from prusa.link.printer_adapter.informers.job import Job
-from prusa.link.printer_adapter.input_output.serial.helpers import \
-    enqueue_instruction
 from prusa.link.printer_adapter.print_stats import PrintStats
 from prusa.link.printer_adapter.sn_reader import SNReader
 from prusa.link.printer_adapter.file_printer import FilePrinter
@@ -260,26 +261,35 @@ class PrusaLink:
 
     # --- Command handlers ---
 
-    def execute_gcode(self, caller):
-        return ExecuteGcode(caller).run_command()
+    def execute_gcode(self, caller: SDKCommand):
+        command = ExecuteGcode(gcode=caller.args[0],
+                               command_id=caller.command_id)
+        return command.run_command()
 
-    def pause_print(self, caller):
-        return PausePrint(caller).run_command()
+    def start_print(self, caller: SDKCommand):
+        command = StartPrint(filename=caller.args[0],
+                             command_id=caller.command_id)
+        return command.run_command()
 
-    def reset_printer(self, caller):
-        return ResetPrinterResponse(caller).run_command()
+    def pause_print(self, caller: SDKCommand):
+        command = PausePrint(command_id=caller.command_id)
+        return command.run_command()
 
-    def resume_print(self, caller):
-        return ResumePrint(caller).run_command()
+    def resume_print(self, caller: SDKCommand):
+        command = ResumePrint(command_id=caller.command_id)
+        return command.run_command()
 
-    def start_print(self, caller):
-        return StartPrint(caller).run_command()
+    def stop_print(self, caller: SDKCommand):
+        command = StopPrint(command_id=caller.command_id)
+        return command.run_command()
 
-    def stop_print(self, caller):
-        return StopPrint(caller).run_command()
+    def reset_printer(self, caller: SDKCommand):
+        command = ResetPrinter(command_id=caller.command_id)
+        return command.run_command()
 
-    def job_info(self, caller):
-        return JobInfoResponse(caller).run_command()
+    def job_info(self, caller: SDKCommand):
+        command = JobInfo(command_id=caller.command_id)
+        return command.run_command()
 
     # --- Signal handlers ---
 
