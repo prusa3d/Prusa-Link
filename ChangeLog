@@ -24,6 +24,10 @@
     * Parse print info from the file name (for SD files)
     * Introduce ErrorState(s) from SDK
     * Modify `LCDPrinter` to show IP and status based on SDK error states
+    * Support the nem M27 P
+    * Fix not being able to print from root of SD when in a folder in LCD menu
+    * Send 0% when a new print start is observed
+    * Fix no progress being sent when SD print has no stats in its gcode
 
 0.2.0 (2020-12-14)
 

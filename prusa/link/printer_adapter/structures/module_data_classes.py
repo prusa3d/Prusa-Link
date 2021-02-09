@@ -27,17 +27,13 @@ class StateManagerData(BaseModel):
     last_state: Optional[State]
     current_state: Optional[State]
 
-    # Non ideal, we are expecting for someone to ask for progress or
-    # to tell us without us asking. Cannot take it from telemetry
-    # as it depends on us
-    progress: Optional[int]
-
 
 class JobData(BaseModel):
     job_start_cmd_id: Optional[int]
     printing_file_path: Optional[str]
     filename_only: Optional[bool]
     from_sd: Optional[bool]
+    inbuilt_reporting: Optional[bool]
 
     job_id: Optional[int]
     api_job_id: Optional[int]
@@ -65,3 +61,10 @@ class MountsData(BaseModel):
     blacklisted_names: Optional[List[str]]
     configured_mounts: Optional[Set[str]]
     mounted_set: Optional[Set[str]]
+
+
+class PrintStatsData(BaseModel):
+    print_time: Optional[float]
+    segment_start: Optional[float]
+    has_inbuilt_stats: Optional[bool]
+    total_gcode_count: Optional[int]

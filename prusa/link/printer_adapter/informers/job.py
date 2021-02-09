@@ -48,6 +48,7 @@ class Job(metaclass=MCSingleton):
         self.data.printing_file_path = None
         self.data.filename_only = None
         self.data.from_sd = None
+        self.data.inbuilt_reporting = None
 
         self.data.job_id = int(loaded_data.get("job_id", 0))
         self.data.job_state = JobState(loaded_data.get("job_state", "IDLE"))
@@ -69,6 +70,7 @@ class Job(metaclass=MCSingleton):
         # the printer responds the same way as if user started it from the
         # screen. We rely on file_name being populated sooner when Connect
         # starts the print. A flag would be arguably more obvious
+        # oh, we don't rely on that, I do :D TODO: stop doing that
         if self.data.printing_file_path is not None:
             return
         if match is not None and match.groups()[0] != "":
@@ -81,6 +83,11 @@ class Job(metaclass=MCSingleton):
         self.data.job_id += 1
         self.data.api_job_id = self.data.job_id
         self.data.job_start_cmd_id = command_id
+        # If we don't print from sd, we know this immediately
+        # If not, let's leave it None, it will get filled later
+        if not self.data.from_sd:
+            self.data.inbuilt_reporting = \
+                self.model.print_stats.has_inbuilt_stats
         self.change_state(JobState.IN_PROGRESS)
         self.write()
         log.debug(f"New job started, id = {self.data.job_id}")
@@ -92,6 +99,7 @@ class Job(metaclass=MCSingleton):
         self.data.filename_only = None
         self.data.api_job_id = None
         self.data.from_sd = None
+        self.data.inbuilt_reporting = None
         self.change_state(JobState.IDLE)
         log.debug(f"Job ended")
         self.job_id_updated_signal.send(self, job_id=self.data.api_job_id)
@@ -163,3 +171,10 @@ class Job(metaclass=MCSingleton):
             data["from_sd"] = self.data.from_sd
 
         return data
+
+    def progress_broken(self, progress_broken):
+        if self.data.from_sd:
+            if self.data.inbuilt_reporting is None and progress_broken:
+                self.data.inbuilt_reporting = False
+            elif not progress_broken:
+                self.data.inbuilt_reporting = True

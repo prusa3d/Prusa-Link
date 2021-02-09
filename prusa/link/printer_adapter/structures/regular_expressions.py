@@ -52,7 +52,16 @@ POSITION_REGEX = re.compile(
     r"Z:(-?\d+\.\d+) E:(-?\d+\.\d+)$")
 FAN_REGEX = re.compile(r"E0:(\d+) RPM PRN1:(\d+) RPM E0@:(\d+) PRN1@:(\d+)")
 FAN_RPM_REGEX = re.compile(r"^(?:E0:(\d+) ?RPM)|(?:PRN0:(\d+) ?RPM)$")
-PRINT_TIME_REGEX = re.compile(r"^(Not SD printing)|((\d+):(\d{2}))$")
+# This one takes some explaining
+# I cannot assign multiple regular expressions to a single instruction
+# The `M27 P` has more lines, the first one containing a status report or
+# a file path. The optional second line contains info about
+# which byte is being printed and the last one contains the print timer
+# Expressions below shall be in the order they appear in the output
+M27_OUTPUT_REGEX = re.compile(r"^(/.*\.(GCO|G))|(Not SD printing)|(Print saved)|"
+                              r"(SD print paused)|"
+                              r"(SD printing byte (\d+)/(\d+))|"
+                              r"((\d+):(\d{2}))$")
 PRINT_INFO_REGEX = re.compile(r"^SILENT MODE: Percent done: (\d+); "
                               r"print time remaining in mins: (-?\d+) ?$")
 HEATING_REGEX = re.compile(r"^T:(\d+\.\d+) E:\d+ B:(\d+\.\d+)$")

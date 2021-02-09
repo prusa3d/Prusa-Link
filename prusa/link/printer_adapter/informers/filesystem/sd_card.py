@@ -111,7 +111,7 @@ class SDCard(ThreadedUpdatable):
 
         tree = SDFile(name=SD_MOUNT_NAME, is_dir=True, ro=True)
 
-        instruction = enqueue_collecting(self.serial_queue, "M20 -L",
+        instruction = enqueue_collecting(self.serial_queue, "M20 L",
                                          begin_regex=BEGIN_FILES_REGEX,
                                          capture_regex=LFN_CAPTURE,
                                          end_regex=END_FILES_REGEX)
@@ -150,6 +150,8 @@ class SDCard(ThreadedUpdatable):
             elif groups[3] is not None:  # The list item
                 # Parse the file listing
                 short_path_string = groups[4]
+                if short_path_string[0] != "/":
+                    short_path_string = "/" + short_path_string
                 short_filename = Path(short_path_string).name
                 short_extension = groups[5]
                 long_extension = SFN_TO_LFN_EXTENSIONS[short_extension]
