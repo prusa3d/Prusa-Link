@@ -1,4 +1,6 @@
-from prusa.connect.printer.errors import ErrorState, INTERNET, HTTP, API
+from prusa.connect.printer.errors import ErrorState, API, TOKEN, INTERNET
+
+TOKEN = TOKEN        # don't complain about imports not being used
 
 DEVICE = ErrorState("Device", "Ethernet or WIFI device does not exist")
 PHY = ErrorState("Phy", "Eth|Wifi device is not connect", prev=DEVICE)

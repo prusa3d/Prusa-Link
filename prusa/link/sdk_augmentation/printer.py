@@ -62,6 +62,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
                                              settings.service_connect.tls,
                                              settings.service_connect.port)
         self.token = settings.service_connect.token
+        errors.TOKEN.ok = True
 
     def get_file_info(self, caller: Command) -> Dict[str, Any]:
         """Return file info for a given file, if it exists."""
