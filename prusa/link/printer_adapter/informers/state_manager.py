@@ -1,6 +1,7 @@
 import logging
+import re
 from threading import Lock
-from typing import Union, Dict
+from typing import Union, Dict, Callable, Optional
 
 from blinker import Signal
 
@@ -11,8 +12,7 @@ from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
-    START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, CONFIRMATION_REGEX, \
-    PRINTER_BOOT_REGEX
+    START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, FAN_ERROR_REGEX
 
 log = logging.getLogger(__name__)
 
@@ -22,8 +22,10 @@ class StateChange:
     def __init__(self, command_id=None,
                  to_states: Dict[State, Union[Source, None]] = None,
                  from_states: Dict[State, Union[Source, None]] = None,
-                 default_source: Source = None):
+                 default_source: Source = None,
+                 reason: str = None):
 
+        self.reason = reason
         self.to_states: Dict[State, Union[Source, None]] = {}
         self.from_states: Dict[State, Union[Source, None]] = {}
 
@@ -81,6 +83,7 @@ class StateManager(metaclass=MCSingleton):
         #                                           to_state: State
         #                                           command_id: int,
         #                                           source: Sources
+        #                                           reason: str
 
         self.data = self.model.state_manager
 
@@ -104,8 +107,13 @@ class StateManager(metaclass=MCSingleton):
         # caused the state change
         self.expected_state_change: Union[None, StateChange] = None
 
+        # The fan error doesn't fit into this mechanism
+        # When this value isn't none, a fan error has been observed
+        # but not yet reported, the value shall be the name of the fan which
+        # caused the error
+        self.fan_error_name = None
+
         regex_handlers = {
-            CONFIRMATION_REGEX: lambda sender, match: self.ok(),
             BUSY_REGEX: lambda sender, match: self.busy(),
             ATTENTION_REGEX: lambda sender, match: self.attention(),
             PAUSED_REGEX: lambda sender, match: self.paused(),
@@ -113,7 +121,8 @@ class StateManager(metaclass=MCSingleton):
             CANCEL_REGEX: lambda sender, match: self.not_printing(),
             START_PRINT_REGEX: lambda sender, match: self.printing(),
             PRINT_DONE_REGEX: lambda sender, match: self.finished(),
-            ERROR_REGEX: lambda sender, match: self.error()
+            ERROR_REGEX: lambda sender, match: self.error(),
+            FAN_ERROR_REGEX: self.fan_error
         }
 
         for regex, handler in regex_handlers.items():
@@ -213,6 +222,7 @@ class StateManager(metaclass=MCSingleton):
             # and what parameters can we deduce from that
             command_id = None
             source = None
+            reason = None
 
             if self.data.printing_state is not None:
                 log.debug(f"We are printing - {self.data.printing_state}")
@@ -226,17 +236,29 @@ class StateManager(metaclass=MCSingleton):
                 if self.expected_state_change.command_id is not None:
                     command_id = self.expected_state_change.command_id
                 source = self.get_expected_source()
+                reason = self.expected_state_change.reason
+                if reason is not None:
+                    log.debug(f"Reason for {self.get_state()}: {reason}")
             else:
                 log.debug("Unexpected state change. This is weird")
             self.expected_state_change = None
 
             self.pre_state_change_signal.send(self, command_id=command_id)
+
             self.state_changed_signal.send(self,
                 from_state=self.data.last_state,
                 to_state=self.data.current_state,
                 command_id=command_id,
-                source=source)
+                source=source,
+                reason=reason)
             self.post_state_change_signal.send(self)
+
+    def fan_error(self, sender, match: re.Match):
+        """
+        Even though using these two callables is more complicated,
+        I think the majority of the implementation got condensed into here
+        """
+        self.fan_error_name = match.groups()[0]
 
     # --- State changing methods ---
 
@@ -290,7 +312,7 @@ class StateManager(metaclass=MCSingleton):
                     from_states={State.ATTENTION: Source.USER,
                                  State.ERROR: Source.USER,
                                  State.BUSY: Source.HW}))
-    def ok(self):
+    def instruction_confirmed(self):
         if self.data.base_state == State.BUSY:
             self.data.base_state = State.READY
 
@@ -303,6 +325,14 @@ class StateManager(metaclass=MCSingleton):
 
     @state_influencer(StateChange(to_states={State.ATTENTION: Source.USER}))
     def attention(self):
+        if self.fan_error_name is not None:
+            log.debug(f"{self.fan_error_name} fan error has been observed "
+                      f"before, reporting it now")
+            self.expect_change(
+                StateChange(to_states={State.ATTENTION: Source.FIRMWARE},
+                            reason=f"{self.fan_error_name} fan error"))
+            self.fan_error_name = None
+
         log.debug(f"Overriding the state with ATTENTION")
         self.data.override_state = State.ATTENTION
 

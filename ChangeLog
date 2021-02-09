@@ -28,6 +28,7 @@
     * Fix not being able to print from root of SD when in a folder in LCD menu
     * Send 0% when a new print start is observed
     * Fix no progress being sent when SD print has no stats in its gcode
+    * Support fan errors. Send reason for ATTENTION state in state change data
 
 0.2.0 (2020-12-14)
 

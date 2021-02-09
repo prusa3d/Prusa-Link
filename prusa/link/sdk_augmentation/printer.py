@@ -99,3 +99,6 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         data.update(meta.data)
 
         return data
+
+    def stop(self):
+        self.command_handler.stop()
