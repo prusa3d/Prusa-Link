@@ -93,6 +93,8 @@ class Serial(metaclass=MCSingleton):
     def _read_continually(self):
         """Ran in a thread, reads stuff over an over"""
         while self.running:
+            raw_line = "[No data] - This is a fallback value, " \
+                       "so stuff doesn't break"
             try:
                 raw_line = self.serial.readline()
                 line = raw_line.decode("ASCII").strip()
