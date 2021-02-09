@@ -32,12 +32,11 @@ log = logging.getLogger(__name__)
 class FilePrinter(metaclass=MCSingleton):
 
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
-                 model: Model, cfg: Config):
+                 model: Model, cfg: Config, print_stats: PrintStats):
         self.serial_queue = serial_queue
         self.serial_reader = serial_reader
+        self.print_stats = print_stats
         self.model = model
-
-        self.print_stats = PrintStats()
 
         self.new_print_started_signal = Signal()
         self.print_ended_signal = Signal()
@@ -123,14 +122,13 @@ class FilePrinter(metaclass=MCSingleton):
         self.thread = Thread(target=self._print, name="file_print")
         self.data.printing = True
         self.print_stats.start_time_segment()
+        self.print_stats.track_new_print(self.data.tmp_file_path)
         self.new_print_started_signal.send(self)
         self.thread.start()
 
     def _print(self, from_line=0):
-        self.print_stats.track_new_print(self.data.tmp_file_path)
 
         with open(self.data.tmp_file_path, "r") as tmp_file:
-
             # Reset the line counter, printing a new file
             self.serial_queue.reset_message_number()
 
@@ -208,9 +206,9 @@ class FilePrinter(metaclass=MCSingleton):
 
     def to_print_stats(self, gcode_number):
         divisible = gcode_number % STATS_EVERY == 0
-        do_stats = not self.print_stats.has_inbuilt_stats
+        do_stats = not self.model.print_stats.has_inbuilt_stats
         print_ending = (gcode_number ==
-                        self.print_stats.total_gcode_count - TAIL_COMMANDS)
+                        self.model.print_stats.total_gcode_count - TAIL_COMMANDS)
         return (do_stats and divisible) or print_ending
 
     def printer_error(self):

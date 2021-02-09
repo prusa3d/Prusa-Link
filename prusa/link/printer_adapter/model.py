@@ -7,7 +7,7 @@ from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.structures.model_classes import Telemetry
 from prusa.link.printer_adapter.structures.module_data_classes import \
     FilePrinterData, StateManagerData, JobData, IpUpdaterData, SDCardData, \
-    MountsData
+    MountsData, PrintStatsData
 
 
 class Model(metaclass=MCSingleton):
@@ -30,6 +30,7 @@ class Model(metaclass=MCSingleton):
         # The idea is, every module will get the model.
         # Every component HAS TO write its OWN INFO ONLY but can read everything
         self.file_printer: FilePrinterData = FilePrinterData()
+        self.print_stats: PrintStatsData = PrintStatsData()
         self.state_manager: StateManagerData = StateManagerData()
         self.job: JobData = JobData()
         self.ip_updater: IpUpdaterData = IpUpdaterData()

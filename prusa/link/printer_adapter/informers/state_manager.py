@@ -1,5 +1,4 @@
 import logging
-import re
 from threading import Lock
 from typing import Union, Dict
 
@@ -12,8 +11,7 @@ from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
-    START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, PRINT_INFO_REGEX, \
-    CONFIRMATION_REGEX, PRINT_TIME_REGEX
+    START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, CONFIRMATION_REGEX
 
 
 log = logging.getLogger(__name__)
@@ -115,9 +113,7 @@ class StateManager(metaclass=MCSingleton):
             CANCEL_REGEX: lambda sender, match: self.not_printing(),
             START_PRINT_REGEX: lambda sender, match: self.printing(),
             PRINT_DONE_REGEX: lambda sender, match: self.finished(),
-            ERROR_REGEX: lambda sender, match: self.error(),
-            PRINT_INFO_REGEX: self.print_info_handler,
-            PRINT_TIME_REGEX: self.sd_printing_handler
+            ERROR_REGEX: lambda sender, match: self.error()
         }
 
         for regex, handler in regex_handlers.items():
@@ -125,41 +121,15 @@ class StateManager(metaclass=MCSingleton):
 
         super().__init__()
 
-    # --- Printer output handlers ---
-
-    # These are expecting an output from a printer,
-    # which is routinely retrieved by telemetry
-    # This module does not ask for these things,
-    # we are expecting telemetry to be asking for them
-
-    def print_info_handler(self, sender, match: re.Match):
-        groups = match.groups()
-        self.data.progress = int(groups[0])
-
-    def sd_printing_handler(self, sender, match: re.Match):
-        groups = match.groups()
-        printing = groups[0] is None or self.model.file_printer.printing
-        is_paused = self.data.printing_state == State.PAUSED
-        # FIXME: Do not go out of the printing state when paused,
-        #  cannot be detected/maintained otherwise
-        #                       | | | | |
-        #                       V V V V V
-        if not printing and not is_paused:
-            self.not_printing()
-        else:  # Printing
-            self.printing()
-
-    # ---
-
-    def file_printer_started_printing(self, sender):
+    def file_printer_started_printing(self):
         if (self.model.file_printer.printing and
                 self.data.printing_state != State.PRINTING):
             self.expect_change(
                 StateChange(to_states={State.PRINTING: Source.CONNECT}))
             self.printing()
 
-    def file_printer_stopped_printing(self, sender):
-        if self.data.progress == 100:
+    def file_printer_stopped_printing(self):
+        if self.model.last_telemetry.progress == 100:
             self.expect_change(
                 StateChange(to_states={State.FINISHED: Source.MARLIN}))
             self.finished()
@@ -273,8 +243,13 @@ class StateManager(metaclass=MCSingleton):
     # This state change can change the state to "PRINTING"
     @state_influencer(StateChange(to_states={State.PRINTING: Source.USER}))
     def printing(self):
-        if self.data.printing_state is None:
+        log.debug("Should be PRINTING")
+        if self.data.printing_state is None or \
+                self.data.printing_state == State.PAUSED:
             self.data.printing_state = State.PRINTING
+        else:
+            log.debug(f"Ignoring switch to PRINTING "
+                      f"{(self.data.base_state, self.data.printing_state)}")
 
     @state_influencer(StateChange(from_states={State.PRINTING: Source.MARLIN,
                                                State.PAUSED: Source.MARLIN,
@@ -297,7 +272,8 @@ class StateManager(metaclass=MCSingleton):
     # Cannot distinguish pauses from the user and the gcode
     @state_influencer(StateChange(to_states={State.PAUSED: Source.USER}))
     def paused(self):
-        if self.data.printing_state == State.PRINTING:
+        if self.data.printing_state == State.PRINTING or \
+                self.data.base_state == State.READY:
             self.data.printing_state = State.PAUSED
 
     @state_influencer(StateChange(to_states={State.PRINTING: Source.USER}))
