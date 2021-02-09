@@ -38,7 +38,6 @@ class ResetPrinter(Command):
         event = Event()
 
         def waiter(sender, match):
-            self.state_manager.reset()
             event.set()
 
         self.serial_reader.add_handler(PRINTER_BOOT_REGEX, waiter)

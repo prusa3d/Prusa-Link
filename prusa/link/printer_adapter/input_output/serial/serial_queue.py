@@ -39,6 +39,7 @@ class SerialQueue(metaclass=MCSingleton):
         # When the serial_queue cannot re-establish communication with the
         # printer, let's signal this to other modules
         self.serial_queue_failed = Signal()
+        self.instruction_confirmed_signal = Signal()
 
         # A queue of instructions for the printer
         self.queue: deque[Instruction] = deque()
@@ -331,6 +332,7 @@ class SerialQueue(metaclass=MCSingleton):
                 not self.current_instruction.is_sent():
             log.error("Unexpected message confirmation. Ignoring")
         elif self.current_instruction.confirm(force=force):
+            self.instruction_confirmed_signal.send()
             with self.write_lock:
                 instruction = self.current_instruction
 
