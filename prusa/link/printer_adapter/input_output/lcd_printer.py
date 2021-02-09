@@ -41,9 +41,9 @@ class LCDPrinter(metaclass=MCSingleton):
         self.serial_reader.add_handler(LCD_UPDATE_REGEX, self.lcd_updated)
 
         self.running = True
-        self.errors_thread: Thread = Thread(target=self.process_errors,
-                                            name="LCDMessage")
-        self.errors_thread.start()
+        self.display_thread: Thread = Thread(target=self.show_status,
+                                             name="LCDMessage")
+        self.display_thread.start()
 
     def lcd_updated(self, sender, match):
         if self.ignore > 0:
@@ -51,7 +51,7 @@ class LCDPrinter(metaclass=MCSingleton):
         else:
             self.last_updated = time()
 
-    def process_errors(self):
+    def show_status(self):
         while self.running:
             # Wait until it's been X seconds since FW updated the LCD
             fw_msg_grace_end = self.last_updated + FW_MESSAGE_TIMEOUT
@@ -59,10 +59,14 @@ class LCDPrinter(metaclass=MCSingleton):
             self.wait_until(fw_msg_grace_end)
 
             all_ok = all(errors.TAILS)
+            # XXX implement a way how to display both the IP and the error
+            #  state name. Maybe as carousel?
             if all_ok:
                 msg = "OK: " + self.ip
+            elif errors.VALID_SN and \
+                    errors.TOKEN.prev.ok and not errors.TOKEN.ok:
+                msg = "GO: " + self.ip
             else:
-                msg = "ERR: " + self.ip
                 # show what went wrong in the logs
                 for chain in errors.HEADS:
                     node = chain
@@ -70,10 +74,15 @@ class LCDPrinter(metaclass=MCSingleton):
                         log.debug(node.long_msg)
                         break
                     node = node.next
+                if self.ip == NO_IP:
+                    what = node.short_msg
+                else:
+                    what = self.ip
+                msg = "ERR: " + what
 
             log.debug(f"Print {msg}")
             self.ignore += 1
-            self._print_text(msg)
+            self.__print_text(msg)
             # Wait until it's time to print another one or quit
             message_grace_end = time() + self.MESSAGE_DURATION
             log.debug("Wait for message")
@@ -88,12 +97,11 @@ class LCDPrinter(metaclass=MCSingleton):
             to_sleep = min(QUIT_INTERVAL, instant - time())
             sleep(max(0.0, to_sleep))
 
-    def _print_text(self, text: str):
+    def __print_text(self, text: str):
         instruction = enqueue_instruction(self.serial_queue, f"M117 {text}")
         wait_for_instruction(instruction, lambda: self.running)
         log.debug(f"Printed: '{text}' on the LCD.")
 
     def stop(self):
         self.running = False
-        self.errors_thread.join()
-
+        self.display_thread.join()
