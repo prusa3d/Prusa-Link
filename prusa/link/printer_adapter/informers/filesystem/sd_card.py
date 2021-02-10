@@ -158,6 +158,10 @@ class SDCard(ThreadedUpdatable):
                 raw_long_filename: str = groups[6]
                 size = int(groups[7])
 
+                if len(raw_long_filename) >= MAX_FILENAME_LENGTH:
+                    raw_long_filename = self.alternative_filename(
+                        raw_long_filename, short_filename)
+
                 # Sanitize the file name
                 long_file_name = self.sanitize_filename(raw_long_filename,
                                                         short_filename,
@@ -218,10 +222,6 @@ class SDCard(ThreadedUpdatable):
                 if not long_filename.endswith("."):
                     long_filename += "."
             long_filename += long_extension
-            # Either way, who knows if that was a coincidence, or the remainder
-            # of the original extension, the filename was too long regardless
-            long_filename = self.alternative_filename(long_filename,
-                                                      short_filename)
         return long_filename
 
     def sd_inserted(self, sender, match: re.Match):
