@@ -23,6 +23,8 @@ from prusa.link.printer_adapter.command_handlers.start_print import StartPrint
 from prusa.link.printer_adapter.command_handlers.stop_print import StopPrint
 from prusa.link.printer_adapter.informers.filesystem.sd_card import SDState
 from prusa.link.printer_adapter.informers.job import Job
+from prusa.link.printer_adapter.input_output.serial.helpers import \
+    enqueue_instruction
 from prusa.link.printer_adapter.print_stats import PrintStats
 from prusa.link.printer_adapter.sn_reader import SNReader
 from prusa.link.printer_adapter.file_printer import FilePrinter
@@ -181,7 +183,7 @@ class PrusaLink:
         self.storage.update()
 
         # Start the local_ip updater after we enqueued the greetings
-        self.ip_updater = IPUpdater(self.model)
+        self.ip_updater = IPUpdater(self.model, self.serial_queue)
         self.ip_updater.updated_signal.connect(self.ip_updated)
 
         # again, let's do the first one manually
@@ -245,6 +247,7 @@ class PrusaLink:
 
     def stop(self):
         self.running = False
+        self.printer.stop()
         self.telemetry_thread.join()
         self.storage.stop()
         self.lcd_printer.stop()
@@ -253,7 +256,6 @@ class PrusaLink:
         self.temp_ensurer.stop()
         self.serial_queue.stop()
         self.serial.stop()
-        self.printer.stop()
 
         log.debug("Remaining threads, that could prevent us from quitting:")
         for thread in threading.enumerate():
@@ -357,7 +359,8 @@ class PrusaLink:
             self.settings.write(ini)
 
     def ip_updated(self, sender, old_ip, new_ip):
-        if old_ip != new_ip and new_ip != NO_IP:
+        # Don't send info again on init, because one is going to get sent anyway
+        if old_ip != new_ip and new_ip != NO_IP and old_ip is not None:
             self.info_sender.try_sending_info()
 
         if new_ip is not NO_IP:
