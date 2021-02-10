@@ -29,6 +29,7 @@
     * Send 0% when a new print start is observed
     * Fix no progress being sent when SD print has no stats in its gcode
     * Support fan errors. Send reason for ATTENTION state in state change data
+    * Support showing the IP address in the support menu using "M552 P<IP>"
 
 0.2.0 (2020-12-14)
 
