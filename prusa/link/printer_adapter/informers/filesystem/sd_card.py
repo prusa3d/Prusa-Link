@@ -73,6 +73,7 @@ class SDCard(ThreadedUpdatable):
         self.data.files = None
         self.data.lfn_to_sfn_paths = {}
         self.data.sfn_to_lfn_paths = {}
+        self.data.mixed_to_lfn_paths = {}
 
         super().__init__()
 
@@ -123,6 +124,7 @@ class SDCard(ThreadedUpdatable):
         current_dir = Path("/")
         lfn_to_sfn_paths = {}
         sfn_to_lfn_paths = {}
+        mixed_to_lfn_paths = {}
         for match in instruction.captured:
             groups = match.groups()
             if groups[0] is not None:  # Dir entry
@@ -131,8 +133,8 @@ class SDCard(ThreadedUpdatable):
                 short_dir_name = Path(groups[1]).name
 
                 # Sanitize the dir name
-                filename_too_long = len(long_dir_name) >= MAX_FILENAME_LENGTH
-                if filename_too_long:
+                too_long = len(long_dir_name) >= MAX_FILENAME_LENGTH
+                if too_long:
                     new_name = self.alternative_filename(long_dir_name,
                                                          short_dir_name)
                     current_dir = current_dir.joinpath(new_name)
@@ -143,7 +145,7 @@ class SDCard(ThreadedUpdatable):
                 # Add the dir to the tree
                 try:
                     tree.add_directory(current_dir.parent, current_dir.name,
-                                       filename_too_long=filename_too_long)
+                                       filename_too_long=too_long)
                 except FileNotFoundError as e:
                     log.exception(e)
 
@@ -153,36 +155,44 @@ class SDCard(ThreadedUpdatable):
                 if short_path_string[0] != "/":
                     short_path_string = "/" + short_path_string
                 short_filename = Path(short_path_string).name
+                short_dir_path = Path(short_path_string).parent
                 short_extension = groups[5]
                 long_extension = SFN_TO_LFN_EXTENSIONS[short_extension]
                 raw_long_filename: str = groups[6]
                 size = int(groups[7])
 
-                if len(raw_long_filename) >= MAX_FILENAME_LENGTH:
-                    raw_long_filename = self.alternative_filename(
-                        raw_long_filename, short_filename)
+                too_long = (len(raw_long_filename) >= MAX_FILENAME_LENGTH)
 
-                # Sanitize the file name
-                long_file_name = self.sanitize_filename(raw_long_filename,
-                                                        short_filename,
-                                                        long_extension,
-                                                        short_extension)
-                filename_too_long = raw_long_filename != long_file_name
+                if too_long:
+                    len_checked_long_filename = self.alternative_filename(
+                        raw_long_filename, short_filename)
+                else:
+                    len_checked_long_filename = raw_long_filename
+
+                long_file_name = self.ensure_extension(
+                    len_checked_long_filename,
+                    long_extension,
+                    short_extension)
 
                 long_path = current_dir.joinpath(long_file_name)
                 self.check_uniqueness(long_path, tree)
                 long_path_string = str(long_path)
 
+                mixed_path = short_dir_path.joinpath(long_file_name)
+
                 # Add translation between the two
                 log.debug(f"Adding translation between {long_path_string} "
                           f"and {short_path_string}")
+                log.debug(f"Adding translation from {mixed_path} "
+                          f"to {long_path_string}")
                 lfn_to_sfn_paths[long_path_string] = short_path_string
                 sfn_to_lfn_paths[short_path_string] = long_path_string
+                mixed_to_lfn_paths[mixed_path] = long_path_string
 
                 # Add the file to the tree
                 try:
                     tree.add_file(current_dir, long_file_name, size=size,
-                                  filename_too_long=filename_too_long)
+                                  filename_too_long=too_long)
                 except FileNotFoundError as e:
                     log.exception(e)
             elif groups[8] is not None:  # Dir exit
@@ -191,6 +201,8 @@ class SDCard(ThreadedUpdatable):
         # Try to be as atomic as possible
         self.data.lfn_to_sfn_paths = lfn_to_sfn_paths
         self.data.sfn_to_lfn_paths = sfn_to_lfn_paths
+        # 8.3/8.3/LFN format to LFN/LFN/LFN
+        self.data.mixed_to_lfn_paths = mixed_to_lfn_paths
         return tree
 
     def alternative_filename(self, long_filename: str, short_filename: str):
@@ -205,8 +217,8 @@ class SDCard(ThreadedUpdatable):
             log.error(f"Despite our efforts, there is a name conflict "
                       f"for {path}")
 
-    def sanitize_filename(self, long_filename: str, short_filename: str,
-                          long_extension: str, short_extension: str):
+    def ensure_extension(self, long_filename: str, long_extension: str,
+                         short_extension: str):
         has_full_extension = (long_filename.endswith(short_extension) or
                               long_filename.endswith(long_extension))
         if not has_full_extension:
