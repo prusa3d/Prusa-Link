@@ -30,3 +30,4 @@ class ThreadedUpdatable():
 
     def update(self):
         """Put code for updating here."""
+        raise NotImplementedError

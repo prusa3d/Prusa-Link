@@ -30,6 +30,7 @@
     * Fix no progress being sent when SD print has no stats in its gcode
     * Support fan errors. Send reason for ATTENTION state in state change data
     * Support showing the IP address in the support menu using "M552 P<IP>"
+    * SN is obtained always through the FW and isn't stored in a file anymore
 
 0.2.0 (2020-12-14)
 
