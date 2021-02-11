@@ -54,6 +54,7 @@ class SDCardData(BaseModel):
     files: Optional[Any]  # We cannot type-check SDFile, only basic ones
     sfn_to_lfn_paths: Optional[Dict[str, str]]
     lfn_to_sfn_paths: Optional[Dict[str, str]]
+    mixed_to_lfn_paths: Optional[Dict[str, str]]
 
 
 class MountsData(BaseModel):
