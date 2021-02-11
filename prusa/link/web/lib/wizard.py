@@ -9,15 +9,6 @@ from prusa.connect.printer import Printer
 log = logging.getLogger(__name__)
 
 
-def is_valid_sn(serial):
-    """Check serial number format."""
-    return (len(serial) == 19 and serial.startswith('CZPX') and
-            serial[4:8].isdigit() and
-            serial[8] == 'X' and serial[9:12].isdigit() and
-            serial[12] == 'X' and serial[14:19].isdigit()
-            )
-
-
 class Wizard:
     """Configuration wizard singleton with validation methods."""
     # pylint: disable=too-many-instance-attributes
@@ -46,6 +37,7 @@ class Wizard:
         # printer
         self.printer_name = app.settings.printer.name
         self.printer_location = app.settings.printer.location
+        # TODO obtain serial number using serial line
         self.serial_number = None
 
         # connect
@@ -77,11 +69,8 @@ class Wizard:
         return not errors
 
     def check_printer(self):
-        """Check if serial number and printer are valid."""
+        """Check printer is valid."""
         errors = {}
-        # TODO: check printer connection
-        if not is_valid_sn(self.serial_number):
-            errors['serial_number'] = True
         if not self.printer_name:
             errors['name'] = True
         if not self.printer_location:
@@ -96,7 +85,8 @@ class Wizard:
             gethostbyname(self.connect_hostname)
         except Exception:  # pylint: disable=broad-except
             errors['hostname'] = True
-        url = Printer.connect_url(self.connect_hostname, bool(self.connect_tls),
+        url = Printer.connect_url(self.connect_hostname,
+                                  bool(self.connect_tls),
                                   self.connect_port)
         try:
             urlopen(f'{url}/info')
@@ -127,9 +117,3 @@ class Wizard:
         settings.update()
         with open(self.cfg.printer.settings, 'w') as ini:
             settings.write(ini)
-
-    def write_serial_number(self):
-        """Write serial_number to file."""
-        log.info("Writing SN to %s", self.cfg.printer.serial_file)
-        with open(self.cfg.printer.serial_file, 'w') as snfile:
-            snfile.write(self.serial_number)

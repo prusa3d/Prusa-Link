@@ -23,8 +23,6 @@ from prusa.link.printer_adapter.command_handlers.start_print import StartPrint
 from prusa.link.printer_adapter.command_handlers.stop_print import StopPrint
 from prusa.link.printer_adapter.informers.filesystem.sd_card import SDState
 from prusa.link.printer_adapter.informers.job import Job
-from prusa.link.printer_adapter.input_output.serial.helpers import \
-    enqueue_instruction
 from prusa.link.printer_adapter.print_stats import PrintStats
 from prusa.link.printer_adapter.sn_reader import SNReader
 from prusa.link.printer_adapter.file_printer import FilePrinter
@@ -32,12 +30,11 @@ from prusa.link.printer_adapter.info_sender import InfoSender
 from prusa.link.printer_adapter.informers.ip_updater import IPUpdater
 from prusa.link.printer_adapter.informers.state_manager import StateManager, \
     StateChange
-from prusa.link.printer_adapter.informers.filesystem.storage_controller import \
+from prusa.link.printer_adapter.informers.filesystem.storage_controller import\
     StorageController
 from prusa.link.printer_adapter.informers.telemetry_gatherer import \
     TelemetryGatherer
-from prusa.link.printer_adapter.informers.getters import get_serial_number, \
-    get_printer_type, NoSNError
+from prusa.link.printer_adapter.informers.getters import get_printer_type
 from prusa.link.printer_adapter.input_output.lcd_printer import LCDPrinter
 from prusa.link.printer_adapter.input_output.serial.serial_queue \
     import MonitoredSerialQueue
@@ -47,8 +44,8 @@ from prusa.link.printer_adapter.input_output.serial.serial_reader import \
 from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.model_classes import Telemetry
 from prusa.link.printer_adapter.const import PRINTING_STATES, \
-    TELEMETRY_IDLE_INTERVAL, TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, NO_IP, \
-    SD_MOUNT_NAME
+    TELEMETRY_IDLE_INTERVAL, TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, \
+    NO_IP, SD_MOUNT_NAME
 from prusa.link.printer_adapter.structures.regular_expressions import \
     PRINTER_BOOT_REGEX, START_PRINT_REGEX
 from prusa.link.printer_adapter.reporting_ensurer import ReportingEnsurer
@@ -83,23 +80,13 @@ class PrusaLink:
 
         self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_reader)
 
-        # TODO: get rid of this after it's fixed
-        serial_number = None
-        fingerprint = None
-        self.sn_reader = None
-        try:
-            serial_number = get_serial_number(self.serial_queue)
-            fingerprint = sha256(serial_number.encode()).hexdigest()
-        except NoSNError:
-            self.sn_reader = SNReader(cfg)
-            self.sn_reader.updated_signal.connect(self.sn_read)
-        printer_type = get_printer_type(self.serial_queue)
+        sn_reader = SNReader(self.serial_queue, self.set_sn)
 
-        self.printer = MyPrinter(printer_type, serial_number, fingerprint)
+        printer_type = get_printer_type(self.serial_queue)
+        self.printer = MyPrinter(printer_type)
         self.printer.register_handler = self.printer_registered
         self.printer.set_connect(settings)
-        if self.sn_reader:
-            self.sn_reader.start()  # event need self.printer
+        sn_reader.start()  # may be called only after MyPrinter creation
 
         # Bind command handlers
         self.printer.set_handler(CommandType.GCODE, self.execute_gcode)
@@ -346,8 +333,8 @@ class PrusaLink:
     def serial_renewed(self, sender):
         self.state_manager.serial_error_resolved()
 
-    def sn_read(self, serial_number):
-        """Update SN when it was set by the user using the wizard."""
+    def set_sn(self, serial_number):
+        """Set serial number and fingerprint"""
         self.printer.sn = serial_number
         self.printer.fingerprint = sha256(serial_number.encode()).hexdigest()
 
@@ -359,7 +346,8 @@ class PrusaLink:
             self.settings.write(ini)
 
     def ip_updated(self, sender, old_ip, new_ip):
-        # Don't send info again on init, because one is going to get sent anyway
+        # Don't send info again on init, because one is going to
+        #  get sent anyway
         if old_ip != new_ip and new_ip != NO_IP and old_ip is not None:
             self.info_sender.try_sending_info()
 
@@ -431,7 +419,7 @@ class PrusaLink:
         self.state_manager.serial_error()
         try:
             reset_command.run_command()
-        except:
+        except Exception:
             log.exception("Failed to reset the printer. Oh my god... "
                           "my attempt at safely failing has failed.")
 

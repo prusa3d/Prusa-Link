@@ -37,7 +37,11 @@
             <li>Type: <span class="white">{{ printer.type | printer_type }}</span></li>
             <li>Port: <span class="white">{{ cfg.printer.port }}</span></li>
             <li>Baudrate: <span class="white">{{ cfg.printer.baudrate }}</span></li>
-            <li>SN: <span class="white">{{ wizard.serial_number }}</span></li>
+              {% if wizard.serial_number %}
+                <li>SN: <span class="white">{{ wizard.serial_number }}</span></li>
+              {% else %}
+                <li>SN could not be obtained from the FW!</li>
+              {% endif %}
             <li>Firmware: <span class="white">{{ printer.firmware }}</span></li>
           </ul>
 

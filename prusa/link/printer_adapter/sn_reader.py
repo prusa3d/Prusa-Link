@@ -1,33 +1,34 @@
 """Try read SN from file."""
 
+import logging
+
 from blinker import Signal
 
-from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 from prusa.link import errors
+from prusa.link.printer_adapter.informers.getters import get_serial_number, \
+    NoSNError
+from prusa.link.printer_adapter.updatable import ThreadedUpdatable
+
+log = logging.getLogger(__name__)
 
 
 class SNReader(ThreadedUpdatable):
-    """Try read SN from file."""
+    """Obtain the SN using the FW"""
     thread_name = "sn_updater"
 
-    def __init__(self, cfg):
+    def __init__(self, serial_queue, handler):
         self.updated_signal = Signal()
-        self.serial_number = None
-        self.serial_file = cfg.printer.serial_file
+        self.updated_signal.connect(handler)
+        self.serial_queue = serial_queue
         super().__init__()
 
     def update(self):
-        """Try to read serial_file with serial number."""
-        if not self.serial_number:
-            try:
-                with open(self.serial_file, 'r') as snfile:
-                    self.serial_number = snfile.read().strip()
-            except IOError:
-                pass
-
-        if self.serial_number:
-            self.updated_signal.send(self.serial_number)
+        try:
+            serial_number = get_serial_number(self.serial_queue)
+            log.debug("Got serial %s", serial_number)
+            self.updated_signal.send(serial_number)
             self.running = False
             errors.SN.ok = True
-        else:
+        except NoSNError:
+            log.debug("Got no serial")
             errors.SN.ok = False
