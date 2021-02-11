@@ -5,7 +5,7 @@ from prusa.link.printer_adapter.input_output.serial.serial_queue import \
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
     SerialReader
 from prusa.link.printer_adapter.input_output.serial.helpers import \
-    enqueue_instruction
+    enqueue_instruction, wait_for_instruction
 from prusa.link.printer_adapter.const import REPORTING_TIMEOUT
 from prusa.link.printer_adapter.structures.regular_expressions import \
     TEMPERATURE_REGEX, POSITION_REGEX, FAN_REGEX
@@ -26,8 +26,6 @@ class ReportingEnsurer(ThreadedUpdatable):
         self.last_seen_temps = time()
         self.last_seen_positions = time()
         self.last_seen_fans = time()
-
-        self.timeout_counter = 0
 
         self.turn_reporting_on()
 
@@ -56,7 +54,8 @@ class ReportingEnsurer(ThreadedUpdatable):
             self.turn_reporting_on()
 
     def turn_reporting_on(self):
-        enqueue_instruction(self.serial_queue, "M155 S2 C7")
+        instruction = enqueue_instruction(self.serial_queue, "M155 S2 C7")
+        wait_for_instruction(instruction, lambda: self.running)
         self.temps_recorded()
         self.positions_recorded()
         self.fans_recorded()
