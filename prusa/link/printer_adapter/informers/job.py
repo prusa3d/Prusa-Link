@@ -52,9 +52,6 @@ class Job(metaclass=MCSingleton):
 
         self.data.job_id = int(loaded_data.get("job_id", 0))
         self.data.job_state = JobState(loaded_data.get("job_state", "IDLE"))
-        self.data.api_job_id = None
-        if self.data.job_state != JobState.IDLE:
-            self.data.api_job_id = self.data.job_id
         self.data.filename_only = bool(loaded_data.get("filename_only", False))
         if "job_start_cmd_id" in loaded_data:
             job_start_cmd_id = loaded_data.get("job_start_cmd_id")
@@ -63,7 +60,7 @@ class Job(metaclass=MCSingleton):
         if "printing_file_path" in loaded_data:
             self.data.printing_file_path = loaded_data.get("job_start_cmd_id")
 
-        self.job_id_updated_signal.send(self, job_id=self.data.api_job_id)
+        self.job_id_updated_signal.send(self, job_id=self.data.get_job_id_for_api())
 
     def file_opened(self, sender, match: re.Match):
         # This solves the issue, where the print is started from Connect, but
@@ -81,7 +78,6 @@ class Job(metaclass=MCSingleton):
     def job_started(self, command_id=None):
         self.data.from_sd = not self.model.file_printer.printing
         self.data.job_id += 1
-        self.data.api_job_id = self.data.job_id
         self.data.job_start_cmd_id = command_id
         # If we don't print from sd, we know this immediately
         # If not, let's leave it None, it will get filled later
@@ -91,18 +87,19 @@ class Job(metaclass=MCSingleton):
         self.change_state(JobState.IN_PROGRESS)
         self.write()
         log.debug(f"New job started, id = {self.data.job_id}")
-        self.job_id_updated_signal.send(self, job_id=self.data.api_job_id)
+        self.job_id_updated_signal.send(
+            self, job_id=self.data.get_job_id_for_api())
 
     def job_ended(self):
         self.data.job_start_cmd_id = None
         self.data.printing_file_path = None
         self.data.filename_only = None
-        self.data.api_job_id = None
         self.data.from_sd = None
         self.data.inbuilt_reporting = None
         self.change_state(JobState.IDLE)
         log.debug(f"Job ended")
-        self.job_id_updated_signal.send(self, job_id=self.data.api_job_id)
+        self.job_id_updated_signal.send(
+            self, job_id=self.data.get_job_id_for_api())
 
     def state_changed(self, command_id=None):
         """Called before anything regarding state is sent"""

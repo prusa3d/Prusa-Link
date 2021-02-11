@@ -28,7 +28,7 @@ class JobInfo(Command):
                 if 'size' in file_obj.attrs:
                     data['size'] = file_obj.attrs['size']
 
-        data.update(job_id=self.model.job.api_job_id,
+        data.update(job_id=self.model.job.get_job_id_for_api(),
                     state=self.model.state_manager.current_state.value,
                     event=Event.JOB_INFO,
                     source=Source.CONNECT)

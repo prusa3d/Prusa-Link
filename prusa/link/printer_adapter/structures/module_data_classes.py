@@ -36,9 +36,14 @@ class JobData(BaseModel):
     inbuilt_reporting: Optional[bool]
 
     job_id: Optional[int]
-    api_job_id: Optional[int]
     job_state: Optional[JobState]
     filename_only: Optional[bool]
+
+    def get_job_id_for_api(self):
+        if self.job_state == JobState.IDLE:
+            return None
+        else:
+            return self.job_id
 
 
 class IpUpdaterData(BaseModel):

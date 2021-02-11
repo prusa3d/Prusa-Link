@@ -407,7 +407,7 @@ class PrusaLink:
             extra_data["reason"] = reason
 
         self.printer.set_state(to_state, command_id=command_id, source=source,
-                               job_id=self.model.job.api_job_id,
+                               job_id=self.model.job.get_job_id_for_api(),
                                **extra_data)
 
     def job_id_updated(self, sender, job_id):
