@@ -31,6 +31,7 @@
     * Support fan errors. Send reason for ATTENTION state in state change data
     * Support showing the IP address in the support menu using "M552 P<IP>"
     * /link-info debug page
+    * SN is obtained always through the FW and isn't stored in a file anymore
 
 0.2.0 (2020-12-14)
 

@@ -1,5 +1,4 @@
 """Wizard endpoints"""
-import logging
 import time
 from functools import wraps
 
@@ -68,9 +67,6 @@ def wizard_auth_post(req):
 @check_step('auth')
 def wizard_printer(req):
     """Printer configuration."""
-    if app.wizard.serial_number is None:
-        app.wizard.serial_number = app.wizard.daemon.prusa_link.printer.sn
-        pass
     return generate_page(req, "wizard_printer.html", wizard=app.wizard)
 
 
@@ -110,7 +106,10 @@ def wizard_connect_post(req):
 def wizard_finish(req):
     """Show wizard status and link to homepage."""
     wizard = app.wizard
-    url = Printer.connect_url(wizard.connect_hostname, bool(wizard.connect_tls),
+    if not wizard.serial_number:
+        wizard.serial_number = wizard.daemon.prusa_link.printer.sn
+    url = Printer.connect_url(wizard.connect_hostname,
+                              bool(wizard.connect_tls),
                               wizard.connect_port)
     return generate_page(req, "wizard_finish.html",
                          wizard=app.wizard, connect_url=url)
@@ -121,7 +120,6 @@ def wizard_finish(req):
 def wizard_finish_post(req):
     """Show wizard status and link to homepage."""
     wizard = app.wizard
-    wizard.write_serial_number()
     wizard.write_settings(app.settings)
 
     # set authorization

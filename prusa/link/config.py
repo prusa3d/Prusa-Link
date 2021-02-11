@@ -33,6 +33,7 @@ def get_log_level_dict(log_levels: Iterable[str]):
         log_level_dict[name] = loglevel
     return log_level_dict
 
+
 def check_log_level(value):
     """Check valid log level."""
     if value not in ("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"):
@@ -104,7 +105,7 @@ class Config(Get):
             self.daemon.pid_file = abspath(args.pidfile)
 
         for file_ in ('pid_file', 'current_file', 'power_panic_file',
-                'job_file', 'threshold_file'):
+                      'job_file', 'threshold_file'):
             setattr(self.daemon, file_,
                     abspath(join(self.daemon.data_dir,
                                  getattr(self.daemon, file_))))
@@ -149,7 +150,6 @@ class Config(Get):
             (
                 ("port", str, "/dev/ttyAMA0"),
                 ("baudrate", int, 115200),
-                ("serial_file", str, "./serial_file"),
                 ("settings", str, "./prusa_printer_settings.ini"),
                 ("mountpoints", tuple, [], ':'),
                 # relative to HOME
@@ -158,8 +158,6 @@ class Config(Get):
         if args.serial_port:
             self.printer.port = args.serial_port
 
-        self.printer.serial_file = abspath(join(self.daemon.data_dir,
-                                                self.printer.serial_file))
         self.printer.settings = abspath(join(self.daemon.data_dir,
                                              self.printer.settings))
         self.printer.directories = tuple(
