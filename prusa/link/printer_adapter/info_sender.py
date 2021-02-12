@@ -41,13 +41,24 @@ class InfoSender:
         self.printer.firmware = get_firmware_version(
             self.serial_queue, lambda: self.running)
 
-    def insist_on_sending_info(self):
-        # Every command there was, came from the connect API and we handled it
-        # the same way. Now there needs to be an unprovoked command sending
-        # so let's try and do it
+    def fill_missing_info(self):
+        self.printer.network_info = get_network_info(
+            self.model).dict(exclude_none=True)
+        if self.printer.firmware is None:
+            self.printer.firmware = get_firmware_version(
+                self.serial_queue, lambda: self.running)
+        if self.printer.nozzle_diameter is None:
+            self.printer.nozzle_diameter = get_nozzle_diameter(
+                self.serial_queue, lambda: self.running)
+        if self.printer.firmware is None:
+            self.printer.firmware = get_firmware_version(
+                self.serial_queue, lambda: self.running)
+
+    def initial_info(self):
+        # Let's get only the stuff we don't have yet
         while self.running:
             try:
-                self.update_info()
+                self.fill_missing_info()
             except:
                 log.exception("Sending initial info failed, Prusa-Link cannot"
                               "start. Retrying")

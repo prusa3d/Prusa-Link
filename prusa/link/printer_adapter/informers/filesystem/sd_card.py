@@ -22,6 +22,7 @@ from time import time
 
 from blinker import Signal
 
+from prusa.connect.printer.const import State
 from prusa.link.printer_adapter.informers.state_manager import StateManager
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
     SerialQueue
@@ -33,10 +34,10 @@ from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.model_classes import SDState
 from prusa.link.printer_adapter.structures.regular_expressions import \
     SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, \
-    SD_EJECTED_REGEX, LFN_CAPTURE
-from prusa.link.printer_adapter.const import PRINTING_STATES, \
-    SD_INTERVAL, SD_FILESCAN_INTERVAL, SD_MOUNT_NAME, \
-    SFN_TO_LFN_EXTENSIONS, MAX_FILENAME_LENGTH
+    SD_EJECTED_REGEX, LFN_CAPTURE, D3_C1_OUTPUT_REGEX
+from prusa.link.printer_adapter.const import SD_INTERVAL, \
+    SD_FILESCAN_INTERVAL, SD_MOUNT_NAME, SFN_TO_LFN_EXTENSIONS, \
+    MAX_FILENAME_LENGTH, FLASH_AIR_INTERVAL
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 from prusa.link.sdk_augmentation.file import SDFile
 
@@ -69,23 +70,31 @@ class SDCard(ThreadedUpdatable):
         self.data.expecting_insertion = False
         self.data.invalidated = True
         self.data.last_updated = time()
+        self.data.last_checked_flash_air = time()
         self.data.sd_state = SDState.UNSURE
         self.data.files = None
         self.data.lfn_to_sfn_paths = {}
         self.data.sfn_to_lfn_paths = {}
         self.data.mixed_to_lfn_paths = {}
+        self.data.is_flash_air = False
 
         super().__init__()
 
     def update(self):
-        # Do not update while printing
-        if self.state_manager.get_state() in PRINTING_STATES:
+        # Update only if READY
+        if self.state_manager.get_state() != State.READY:
             return
 
-        # Do not update, when the interval didn't pass and the tree wasn't
-        # invalidated
-        if not self.data.invalidated and \
-                time() - self.data.last_updated < SD_FILESCAN_INTERVAL:
+        due_for_update = time() - self.data.last_updated > SD_FILESCAN_INTERVAL
+        if time() - self.data.last_checked_flash_air > FLASH_AIR_INTERVAL:
+            self.determine_flash_air()
+            self.data.last_checked_flash_air = time()
+
+        # Do not update, if the tree wasn't invalidated.
+        # Also, if there is no flash air, or if there is, but it wasn't long
+        # enough from the last update
+        if not (self.data.invalidated or
+                (due_for_update and self.data.is_flash_air)):
             return
 
         self.data.last_updated = time()
@@ -105,6 +114,15 @@ class SDCard(ThreadedUpdatable):
             self.sd_state_changed(SDState.PRESENT)
 
         self.tree_updated_signal.send(self, tree=self.data.files)
+
+    def determine_flash_air(self):
+        instruction = enqueue_matchable(self.serial_queue,
+                                        "D3 Ax0fbb C1",
+                                        D3_C1_OUTPUT_REGEX)
+        wait_for_instruction(instruction, lambda: self.running)
+        match = instruction.match()
+        if match:
+            self.data.is_flash_air = match.groups()[0] == "01"
 
     def construct_file_tree(self):
         if self.data.sd_state == SDState.ABSENT:
