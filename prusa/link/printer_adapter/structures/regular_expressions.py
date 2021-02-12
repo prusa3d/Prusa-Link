@@ -58,7 +58,7 @@ FAN_RPM_REGEX = re.compile(r"^(?:E0:(\d+) ?RPM)|(?:PRN0:(\d+) ?RPM)$")
 # a file path. The optional second line contains info about
 # which byte is being printed and the last one contains the print timer
 # Expressions below shall be in the order they appear in the output
-M27_OUTPUT_REGEX = re.compile(r"^(/.*\.(GCO|G))|(Not SD printing)|(Print saved)|"
+M27_OUTPUT_REGEX = re.compile(r"^(/.*\..*)|(Not SD printing)|(Print saved)|"
                               r"(SD print paused)|"
                               r"(SD printing byte (\d+)/(\d+))|"
                               r"((\d+):(\d{2}))$")
@@ -71,6 +71,7 @@ RESEND_REGEX = re.compile(r"^Resend: ?(\d+)$")
 PRINTER_BOOT_REGEX = re.compile(r"^start$")
 POWER_PANIC_REGEX = re.compile(r"^INT4$")
 LCD_UPDATE_REGEX = re.compile(r"^LCD status changed$")
-M110_REGEXP = re.compile(r"^(N\d+)? *M110 N(-?\d*)$")
+M110_REGEX = re.compile(r"^(N\d+)? *M110 N(-?\d*)$")
 FAN_ERROR_REGEX = re.compile(r"^(Extruder|Print) fan speed is lower than "
                              r"expected$")
+D3_C1_OUTPUT_REGEX = re.compile(r"^\w{4} {2}(\w{2})$")

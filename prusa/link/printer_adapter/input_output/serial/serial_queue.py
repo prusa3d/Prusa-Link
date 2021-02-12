@@ -12,7 +12,7 @@ from prusa.link.printer_adapter.input_output.serial.serial import Serial
 from prusa.link.printer_adapter.structures.regular_expressions import \
     CONFIRMATION_REGEX, RESEND_REGEX, TEMPERATURE_REGEX, \
     BUSY_REGEX, ATTENTION_REGEX, HEATING_HOTEND_REGEX, HEATING_REGEX, \
-    M110_REGEXP
+    M110_REGEX
 from prusa.link.printer_adapter.util import run_slowly_die_fast
 from .instruction import Instruction
 from .is_planner_fed import IsPlannerFed
@@ -185,7 +185,7 @@ class SerialQueue(metaclass=MCSingleton):
         :return:
         """
         next_instruction = self.peek_next()
-        if M110_REGEXP.match(next_instruction.message) and \
+        if M110_REGEX.match(next_instruction.message) and \
                 not self.worked_around_m110:
             self.m110_workaround_slot = Instruction("G4 S0.001")
             self.worked_around_m110 = True
@@ -203,7 +203,7 @@ class SerialQueue(metaclass=MCSingleton):
             instruction.data = self.get_data(instruction)
 
         # If the instruction is M110 read the value it'll set and save it
-        m110_match = M110_REGEXP.match(instruction.message)
+        m110_match = M110_REGEX.match(instruction.message)
         if m110_match:
             self.worked_around_m110 = False
             self.send_history.clear()

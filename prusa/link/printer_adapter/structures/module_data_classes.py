@@ -31,6 +31,8 @@ class StateManagerData(BaseModel):
 class JobData(BaseModel):
     job_start_cmd_id: Optional[int]
     printing_file_path: Optional[str]
+    printing_file_m_time: Optional[str]
+    printing_file_size: Optional[str]
     filename_only: Optional[bool]
     from_sd: Optional[bool]
     inbuilt_reporting: Optional[bool]
@@ -54,7 +56,9 @@ class IpUpdaterData(BaseModel):
 class SDCardData(BaseModel):
     expecting_insertion: Optional[bool]
     invalidated: Optional[bool]
+    is_flash_air: Optional[bool]
     last_updated: Optional[float]
+    last_checked_flash_air: Optional[float]
     sd_state: Optional[SDState]
     files: Optional[Any]  # We cannot type-check SDFile, only basic ones
     sfn_to_lfn_paths: Optional[Dict[str, str]]

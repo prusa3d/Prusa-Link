@@ -1,7 +1,7 @@
 import logging
 import re
 from threading import Lock
-from typing import Union, Dict, Callable, Optional
+from typing import Union, Dict
 
 from blinker import Signal
 
@@ -88,7 +88,7 @@ class StateManager(metaclass=MCSingleton):
         self.data = self.model.state_manager
 
         # The ACTUAL states considered when reporting
-        self.data.base_state = State.READY
+        self.data.base_state = State.BUSY
         self.data.printing_state = None
         self.data.override_state = None
 
@@ -112,6 +112,10 @@ class StateManager(metaclass=MCSingleton):
         # but not yet reported, the value shall be the name of the fan which
         # caused the error
         self.fan_error_name = None
+
+        # At startup, we must avoid going to the READY state, until
+        # we are sure about not printing
+        self.unsure_whether_printing = True
 
         regex_handlers = {
             BUSY_REGEX: lambda sender, match: self.busy(),
@@ -272,6 +276,7 @@ class StateManager(metaclass=MCSingleton):
         log.debug("Should be PRINTING")
         if self.data.printing_state is None or \
                 self.data.printing_state == State.PAUSED:
+            self.unsure_whether_printing = False
             self.data.printing_state = State.PRINTING
         else:
             log.debug(f"Ignoring switch to PRINTING "
@@ -282,6 +287,7 @@ class StateManager(metaclass=MCSingleton):
                                                State.FINISHED: Source.MARLIN
                                                }))
     def not_printing(self):
+        self.unsure_whether_printing = False
         if self.data.printing_state is not None:
             self.data.printing_state = None
 
@@ -300,11 +306,13 @@ class StateManager(metaclass=MCSingleton):
     def paused(self):
         if self.data.printing_state == State.PRINTING or \
                 self.data.base_state == State.READY:
+            self.unsure_whether_printing = False
             self.data.printing_state = State.PAUSED
 
     @state_influencer(StateChange(to_states={State.PRINTING: Source.USER}))
     def resumed(self):
         if self.data.printing_state == State.PAUSED:
+            self.unsure_whether_printing = False
             self.data.printing_state = State.PRINTING
 
     @state_influencer(
@@ -313,6 +321,9 @@ class StateManager(metaclass=MCSingleton):
                                  State.ERROR: Source.USER,
                                  State.BUSY: Source.HW}))
     def instruction_confirmed(self):
+        if self.unsure_whether_printing:
+            return
+
         if self.data.base_state == State.BUSY:
             self.data.base_state = State.READY
 
