@@ -31,6 +31,8 @@
     * Support fan errors. Send reason for ATTENTION state in state change data
     * Support showing the IP address in the support menu using "M552 P<IP>"
     * SN is obtained always through the FW and isn't stored in a file anymore
+    * Ensure M20 won't be sent during print. Ever
+    * Start faster when already printing from SD
 
 0.2.0 (2020-12-14)
 
