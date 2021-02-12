@@ -52,7 +52,8 @@ class StartPrint(Command):
         else:
             self._start_file_print(str(path))
 
-        self.job.set_file_path(str(path), filename_only=False)
+        self.job.set_file_path(str(path), filename_only=False,
+                               prepend_sd_mountpoint=False)
         self.state_manager.printing()
         self.state_manager.stop_expecting_change()
 

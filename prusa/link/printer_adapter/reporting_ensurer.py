@@ -17,6 +17,7 @@ class ReportingEnsurer(ThreadedUpdatable):
     update_interval = 10
 
     def __init__(self, serial_reader: SerialReader, serial_queue: SerialQueue):
+        super().__init__()
         self.serial_reader = serial_reader
         self.serial_queue = serial_queue
         self.serial_reader.add_handler(TEMPERATURE_REGEX, self.temps_recorded)
@@ -29,7 +30,6 @@ class ReportingEnsurer(ThreadedUpdatable):
 
         self.turn_reporting_on()
 
-        super().__init__()
 
     def temps_recorded(self, sender=None, match=None):
         self.last_seen_temps = time()

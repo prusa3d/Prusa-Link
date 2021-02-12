@@ -2,6 +2,7 @@
 
 import logging
 import re
+from pathlib import Path
 
 from blinker import Signal
 
@@ -44,7 +45,8 @@ class TelemetryGatherer(ThreadedUpdatable):
 
         # Additionally, two for the job module
         self.progress_broken_signal = Signal()  # kwargs: progress_broken: bool
-        self.file_path_signal = Signal()  # kwargs: path: str
+        self.file_path_signal = Signal()  # kwargs: path: str,
+        #                                           filename_only: bool
 
         self.model = model
         self.serial_reader = serial_reader
@@ -156,16 +158,13 @@ class TelemetryGatherer(ThreadedUpdatable):
 
         # Are we printing?
         if file_or_status_match and file_or_status_match.groups()[0]:
-            log.warning(instruction.match().groups())
-            log.warning(instruction.match(1).groups())
-            log.warning(instruction.match(2).groups())
 
             # if we're SD printing and there is no reporting, let's get it here
             if self.model.job.from_sd and not self.model.job.inbuilt_reporting:
                 byte_position_match: re.Match = instruction.match(1)
                 if byte_position_match:
-                    current_byte = int(byte_position_match.groups()[6])
-                    bytes_in_total = int(byte_position_match.groups()[7])
+                    current_byte = int(byte_position_match.groups()[5])
+                    bytes_in_total = int(byte_position_match.groups()[6])
                     progress = int((current_byte / bytes_in_total) * 100)
                     log.debug(f"SD print has no inbuilt percentage tracking, "
                               f"falling back to getting progress from byte "
@@ -177,29 +176,30 @@ class TelemetryGatherer(ThreadedUpdatable):
             print_timer_match: re.Match = instruction.match(2)
             if print_timer_match:
                 groups = print_timer_match.groups()
-                hours = int(groups[9])
-                mins = int(groups[10])
+                hours = int(groups[8])
+                mins = int(groups[9])
                 hours_in_sec = hours * 60 * 60
                 mins_in_sec = mins * 60
                 printing_time_sec = mins_in_sec + hours_in_sec
                 self.current_telemetry.time_printing = printing_time_sec
                 self.telemetry_updated()
 
-            short_path = file_or_status_match.groups()[0]
+            mixed_path = file_or_status_match.groups()[0]
             try:
-                long_path = self.model.sd_card.sfn_to_lfn_paths[short_path]
-                self.file_path_signal.send(path=long_path)
-            except:
-                pass
+                long_path = self.model.sd_card.mixed_to_lfn_paths[mixed_path]
+                self.file_path_signal.send(path=long_path, filename_only=False)
+            except KeyError:
+                filename = Path(mixed_path).name
+                self.file_path_signal.send(path=filename, filename_only=True)
             self.printing_signal.send(self)
 
-        elif file_or_status_match and file_or_status_match.groups()[2]:
+        elif file_or_status_match and file_or_status_match.groups()[1]:
             self.not_printing_signal.send(self)
 
-        elif file_or_status_match and file_or_status_match.groups()[3]:
+        elif file_or_status_match and file_or_status_match.groups()[2]:
             self.paused_serial_signal.send(self)
 
-        elif file_or_status_match and file_or_status_match.groups()[4]:
+        elif file_or_status_match and file_or_status_match.groups()[3]:
             self.paused_sd_signal.send(self)
 
     def flow_rate_result(self, instruction: MandatoryMatchableInstruction):

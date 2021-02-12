@@ -8,7 +8,6 @@ from prusa.link.printer_adapter.informers.job import JobState
 log = logging.getLogger(__name__)
 
 
-# FIXME: This is ugly, ideally, the info would be written into the model
 class JobInfo(Command):
     command_name = "job_info"
 
@@ -19,19 +18,13 @@ class JobInfo(Command):
 
         data = self.job.get_job_info_data()
 
-        # add other attributes required to compute a file hash
-        if not "filename_only" in data and "file_path" in data:
-            file_obj = self.printer.fs.get(data['file_path'])
-            if file_obj:
-                if "m_time" in file_obj.attrs:
-                    data['m_time'] = file_obj.attrs['m_time']
-                if 'size' in file_obj.attrs:
-                    data['size'] = file_obj.attrs['size']
+        response = dict(
+            job_id=self.model.job.get_job_id_for_api(),
+            state=self.model.state_manager.current_state,
+            event=Event.JOB_INFO,
+            source=Source.CONNECT,
+            **data
+        )
 
-        data.update(job_id=self.model.job.get_job_id_for_api(),
-                    state=self.model.state_manager.current_state.value,
-                    event=Event.JOB_INFO,
-                    source=Source.CONNECT)
-
-        log.debug(f"Job Info retrieved: {data}")
-        return data
+        log.debug(f"Job Info retrieved: {response}")
+        return response

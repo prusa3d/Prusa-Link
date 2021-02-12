@@ -2,9 +2,11 @@ import json
 import logging
 import os
 import re
+from pathlib import Path
 from typing import Any, Dict
 
 from blinker import Signal
+from prusa.connect.printer import Printer
 
 from prusa.link.config import Config
 from prusa.link.printer_adapter.input_output.serial.serial_reader import \
@@ -24,8 +26,10 @@ log = logging.getLogger(__name__)
 class Job(metaclass=MCSingleton):
     """This is a subcomponent of the state manager"""
 
-    def __init__(self, serial_reader: SerialReader, model: Model, cfg: Config):
+    def __init__(self, serial_reader: SerialReader, model: Model, cfg: Config,
+                 printer: Printer):
         # Sent every time the job id should disappear, appear or update
+        self.printer = printer
         self.serial_reader = serial_reader
         self.serial_reader.add_handler(FILE_OPEN_REGEX, self.file_opened)
 
@@ -46,19 +50,15 @@ class Job(metaclass=MCSingleton):
 
         self.data.job_start_cmd_id = None
         self.data.printing_file_path = None
+        self.data.printing_file_m_time = None
+        self.data.printing_file_size = None
+
         self.data.filename_only = None
         self.data.from_sd = None
         self.data.inbuilt_reporting = None
 
         self.data.job_id = int(loaded_data.get("job_id", 0))
-        self.data.job_state = JobState(loaded_data.get("job_state", "IDLE"))
-        self.data.filename_only = bool(loaded_data.get("filename_only", False))
-        if "job_start_cmd_id" in loaded_data:
-            job_start_cmd_id = loaded_data.get("job_start_cmd_id")
-            if job_start_cmd_id is not None:
-                self.data.job_start_cmd_id = int(job_start_cmd_id)
-        if "printing_file_path" in loaded_data:
-            self.data.printing_file_path = loaded_data.get("job_start_cmd_id")
+        self.data.job_state = JobState.IDLE
 
         self.job_id_updated_signal.send(self, job_id=self.data.get_job_id_for_api())
 
@@ -72,8 +72,9 @@ class Job(metaclass=MCSingleton):
             return
         if match is not None and match.groups()[0] != "":
             # TODO: fix when the fw support for full paths arrives
-            pseudo_path = os.path.join(SD_MOUNT_NAME, match.groups()[0])
-            self.set_file_path(pseudo_path, filename_only=True)
+            filename = match.groups()[0]
+            self.set_file_path(filename, filename_only=True,
+                               prepend_sd_mountpoint=True)
 
     def job_started(self, command_id=None):
         self.data.from_sd = not self.model.file_printer.printing
@@ -123,11 +124,7 @@ class Job(metaclass=MCSingleton):
         self.write()
 
     def write(self):
-        data = dict(job_id=self.data.job_id,
-                    job_state=self.data.job_state.value,
-                    filename_only=self.data.filename_only,
-                    job_start_cmd_id=self.data.job_start_cmd_id,
-                    printing_file_path=self.data.printing_file_path)
+        data = dict(job_id=self.data.job_id)
 
         with open(self.job_path, "w") as job_file:
             job_file.write(json.dumps(data))
@@ -140,14 +137,26 @@ class Job(metaclass=MCSingleton):
         if self.data.job_state != JobState.IDLE:
             return self.data.job_id
 
-    def set_file_path(self, path, filename_only):
+    def set_file_path(self, path, filename_only, prepend_sd_mountpoint):
         # If we have a full path, don't overwrite it with just a filename
         if (not filename_only and not self.data.filename_only) \
                 or self.data.printing_file_path is None:
+            # If asked to, prepend SD mount name
+            if prepend_sd_mountpoint:
+                path = str(Path(f"/{SD_MOUNT_NAME}").joinpath(path))
+
             log.debug(f"Overwriting file {'name' if filename_only else 'path'} "
                       f"with {path}")
             self.data.printing_file_path = path
             self.data.filename_only = filename_only
+
+        if not filename_only:
+            file_obj = self.printer.fs.get(self.data.printing_file_path)
+            if file_obj:
+                if "m_time" in file_obj.attrs:
+                    self.data.printing_file_m_time = file_obj.attrs["m_time"]
+                if 'size' in file_obj.attrs:
+                    self.data.printing_file_size = file_obj.attrs["size"]
 
     def get_state(self):
         return self.data.job_state
@@ -157,13 +166,14 @@ class Job(metaclass=MCSingleton):
 
         if self.data.filename_only:
             data["filename_only"] = self.data.filename_only
-
         if self.data.job_start_cmd_id is not None:
             data["start_cmd_id"] = self.data.job_start_cmd_id
-
         if self.data.printing_file_path is not None:
             data["file_path"] = self.data.printing_file_path
-
+        if self.data.printing_file_m_time is not None:
+            data["m_time"] = self.data.printing_file_m_time
+        if self.data.printing_file_size is not None:
+            data["size"] = self.data.printing_file_size
         if self.data.from_sd is not None:
             data["from_sd"] = self.data.from_sd
 
