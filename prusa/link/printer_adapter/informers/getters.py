@@ -2,8 +2,6 @@ from getmac import get_mac_address
 
 from prusa.connect.printer.const import PrinterType
 from prusa.link.printer_adapter.const import NO_IP
-from prusa.link.printer_adapter.input_output.serial.instruction import \
-    MatchableInstruction
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
     SerialQueue
 from prusa.link.printer_adapter.input_output.serial.helpers import \
@@ -11,7 +9,7 @@ from prusa.link.printer_adapter.input_output.serial.helpers import \
 from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.model_classes import NetworkInfo
 from prusa.link.printer_adapter.structures.regular_expressions import \
-    SN_REGEX, PRINTER_TYPE_REGEX, FW_REGEX, NOZZLE_REGEX
+    PRINTER_TYPE_REGEX, FW_REGEX, NOZZLE_REGEX
 from prusa.link import errors
 
 PRINTER_TYPES = {
@@ -20,21 +18,6 @@ PRINTER_TYPES = {
     302: PrinterType.I3MK3S,
     20302: PrinterType.I3MK3S,
 }
-
-
-class NoSNError(Exception):
-    ...
-
-
-def get_serial_number(serial_queue: SerialQueue, should_wait=lambda: True):
-    instruction = MatchableInstruction("PRUSA SN", capture_matching=SN_REGEX)
-    serial_queue.enqueue_one(instruction, to_front=True)
-    wait_for_instruction(instruction, should_wait)
-    match = instruction.match()
-    errors.SN.ok = match is not None
-    if match is None:
-        raise NoSNError("Cannot get the printer serial number.")
-    return match.groups()[0]
 
 
 def get_printer_type(serial_queue: SerialQueue, should_wait=lambda: True):

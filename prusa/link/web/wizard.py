@@ -76,7 +76,6 @@ def wizard_printer_post(req):
     """Check and store values from wizard_printer page."""
     app.wizard.printer_name = req.form.get('name', '').strip()
     app.wizard.printer_location = req.form.get('location', '').strip()
-    app.wizard.serial_number = req.form.get('serial_number', '').strip()
     if not app.wizard.check_printer():
         redirect('/wizard/printer')
     redirect('/wizard/connect')
@@ -106,8 +105,6 @@ def wizard_connect_post(req):
 def wizard_finish(req):
     """Show wizard status and link to homepage."""
     wizard = app.wizard
-    if not wizard.serial_number:
-        wizard.serial_number = wizard.daemon.prusa_link.printer.sn
     url = Printer.connect_url(wizard.connect_hostname,
                               bool(wizard.connect_tls),
                               wizard.connect_port)

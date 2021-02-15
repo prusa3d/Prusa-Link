@@ -5,9 +5,13 @@ import logging
 from blinker import Signal
 
 from prusa.link import errors
-from prusa.link.printer_adapter.informers.getters import get_serial_number, \
-    NoSNError
 from prusa.link.printer_adapter.updatable import ThreadedUpdatable
+from prusa.link.printer_adapter.input_output.serial.instruction import \
+    MatchableInstruction
+from prusa.link.printer_adapter.structures.regular_expressions import \
+    SN_REGEX
+from prusa.link.printer_adapter.input_output.serial.helpers import \
+    wait_for_instruction
 
 log = logging.getLogger(__name__)
 
@@ -17,18 +21,27 @@ class SNReader(ThreadedUpdatable):
     thread_name = "sn_updater"
 
     def __init__(self, serial_queue, handler):
+        super().__init__()
         self.updated_signal = Signal()
         self.updated_signal.connect(handler)
         self.serial_queue = serial_queue
-        super().__init__()
 
-    def update(self):
-        try:
-            serial_number = get_serial_number(self.serial_queue)
-            log.debug("Got serial %s", serial_number)
-            self.updated_signal.send(serial_number)
+    def read(self, should_wait=lambda: True):
+        """Read SN from serial line and set `prusa.link.errors.SN`"""
+        instruction = MatchableInstruction("PRUSA SN",
+                                           capture_matching=SN_REGEX)
+        self.serial_queue.enqueue_one(instruction, to_front=True)
+        wait_for_instruction(instruction, should_wait)
+        match = instruction.match()
+        errors.SN.ok = match is not None
+        if match:
+            result = match.groups()[0]
+            log.debug("Got serial %s", result)
+            return result
+
+    def update(self, should_wait=lambda: True):
+        """Read the serial number and stop running  based its value"""
+        sn = self.read(should_wait=should_wait)
+        if sn is not None:
             self.running = False
-            errors.SN.ok = True
-        except NoSNError:
-            log.debug("Got no serial")
-            errors.SN.ok = False
+            self.updated_signal.send(sn)

@@ -37,8 +37,6 @@ class Wizard:
         # printer
         self.printer_name = app.settings.printer.name
         self.printer_location = app.settings.printer.location
-        # TODO obtain serial number using serial line
-        self.serial_number = None
 
         # connect
         self.connect_hostname = app.settings.service_connect.hostname
@@ -53,6 +51,10 @@ class Wizard:
 
         self.errors = {}
         Wizard.instance = self
+
+    @property
+    def serial_number(self):
+        return self.daemon.prusa_link.printer.sn
 
     def check_auth(self):
         """Check if auth values are valid."""
