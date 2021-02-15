@@ -19,15 +19,18 @@ log = logging.getLogger(__name__)
 # pylint: disable=too-many-statements
 CONFIG_FILE = '/etc/Prusa-Link/prusa-link.ini'
 
-def set_log_levels(config: Config):
-    for module, log_level in config.log_settings.items():
-        logging.getLogger(module).setLevel(log_level)
 
-def log_level(log_level):
-    if len(log_level.split("=")) != 2:
+def set_log_levels(config: Config):
+    for module, level in config.log_settings.items():
+        logging.getLogger(module).setLevel(level)
+
+
+def log_level(level):
+    if len(level.split("=")) != 2:
         raise ArgumentTypeError("log level needs to be specified in format"
                                 "<module_path>=<log_level>")
-    return log_level
+    return level
+
 
 def check_process(pid):
     """Check if process with pid is alive."""
@@ -37,8 +40,10 @@ def check_process(pid):
     except OSError:
         return False
 
+
 def main():
     """Standard main function."""
+    # pylint: disable=too-many-branches
     parser = ArgumentParser(
         prog="prusa-link",
         description="Prusa Link daemon.")
@@ -61,6 +66,9 @@ def main():
     parser.add_argument(
         "-t", "--tcp-port", type=int,
         help="TCP/IP listening port", metavar="<PORT>")
+    parser.add_argument(
+        "-I", "--link-info", action="store_true",
+        help="/link-info debug page")
     parser.add_argument(
         "-s", "--serial-port", type=str,
         help="Serial (printer's) port", metavar="<PORT>")
