@@ -2,6 +2,7 @@ import logging
 import os
 import socket
 import typing
+from hashlib import sha256
 from pathlib import Path
 from time import sleep, time
 from typing import Callable
@@ -91,3 +92,7 @@ def get_gcode(line):
 
 def file_is_on_sd(path_parts):
     return path_parts[1] == SD_MOUNT_NAME
+
+
+def make_fingerprint(sn):
+    return sha256(sn.encode()).hexdigest()

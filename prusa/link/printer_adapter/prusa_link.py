@@ -2,7 +2,6 @@ import logging
 import os
 import threading
 from time import time
-from hashlib import sha256
 
 from requests import RequestException
 
@@ -49,16 +48,12 @@ from prusa.link.printer_adapter.const import PRINTING_STATES, \
 from prusa.link.printer_adapter.structures.regular_expressions import \
     PRINTER_BOOT_REGEX, START_PRINT_REGEX
 from prusa.link.printer_adapter.reporting_ensurer import ReportingEnsurer
-from prusa.link.printer_adapter.util import run_slowly_die_fast
+from prusa.link.printer_adapter.util import run_slowly_die_fast, \
+    make_fingerprint
 from prusa.link.sdk_augmentation.printer import MyPrinter
 from prusa.link import errors
 
 log = logging.getLogger(__name__)
-
-
-# TODO put to some utils/helpers/common module
-def make_fingerprint(sn):
-    return sha256(sn.encode()).hexdigest()
 
 
 class PrusaLink:
