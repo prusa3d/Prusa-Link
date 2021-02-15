@@ -56,6 +56,11 @@ from prusa.link import errors
 log = logging.getLogger(__name__)
 
 
+# TODO put to some utils/helpers/common module
+def make_fingerprint(sn):
+    return sha256(sn.encode()).hexdigest()
+
+
 class PrusaLink:
 
     def __init__(self, cfg: Config, settings):
@@ -80,13 +85,16 @@ class PrusaLink:
 
         self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_reader)
 
-        sn_reader = SNReader(self.serial_queue, self.set_sn)
-
         printer_type = get_printer_type(self.serial_queue)
-        self.printer = MyPrinter(printer_type)
+        sn_reader = SNReader(self.serial_queue, self.set_sn)
+        sn = sn_reader.read()
+        if sn:
+            self.printer = MyPrinter(printer_type, sn, make_fingerprint(sn))
+        else:
+            self.printer = MyPrinter(printer_type)
+            sn_reader.start()
         self.printer.register_handler = self.printer_registered
         self.printer.set_connect(settings)
-        sn_reader.start()  # may be called only after MyPrinter creation
 
         # Bind command handlers
         self.printer.set_handler(CommandType.GCODE, self.execute_gcode)
@@ -336,7 +344,7 @@ class PrusaLink:
     def set_sn(self, serial_number):
         """Set serial number and fingerprint"""
         self.printer.sn = serial_number
-        self.printer.fingerprint = sha256(serial_number.encode()).hexdigest()
+        self.printer.fingerprint = make_fingerprint(serial_number)
 
     def printer_registered(self, token):
         """Store settings with updated token when printer was registered."""
