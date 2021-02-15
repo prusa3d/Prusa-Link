@@ -1,0 +1,70 @@
+{# vim:set softtabstop=2: -#}
+{% set title = 'Home' -%}
+{#% set refresh = 15 %#}
+{% include "_header.html" %}
+
+    <div class="container">
+        <h1 class="align-center">Prusa Link Debug Info Page</h1>
+
+        <h2 class="align-center">Printer</h2>
+        <ul>
+            <li>Name: <span class="white">{{ app.settings.printer.name }}</span></li>
+            <li>Location: <span class="white">{{ app.settings.printer.location }}</span></li>
+            <li>Type: <span class="white">{{ printer.type | printer_type }}</span></li>
+            <li>Port: <span class="white">{{ app.cfg.printer.port }}</span></li>
+            <li>Baudrate: <span class="white">{{ app.cfg.printer.baudrate }}</span></li>
+            <li>SN: <span class="white">{{ printer.sn }}</span></li>
+            <li>Firmware: <span class="white">{{ printer.firmware }}</span></li>
+            <li>Nozzle: <span class="white">{{ printer.nozzle_diameter }}</span></li>
+            <li>SD Ready: <span class="white">{{ prusa_link.sd_ready }}</span></li>
+        </ul>
+
+        <h2 class="align-center">Prusa Link</h2>
+        <ul>
+            <li>Running: <span class="white">{{ prusa_link.running }}</span></li>
+            <li>SDK State: <span class="white">{{ printer.state }}</span></li>
+            <li>Errors state:</li>
+            <ul>
+        {%- for error in errors %}
+        {%- for key, (state, msg) in error.items() %}
+            <li>{{ key }}: <span class="white">{{ state or msg }}</span></li>
+        {%- endfor %}
+            <br>
+        {%- endfor %}
+            </ul>
+        </ul>
+
+        <h2 class="align-center">Network</h2>
+        <ul>
+        {%- for key, val in printer.network_info.items() %}
+            <li>{{ key }}: <span class="white">{{ val }}</span></li>
+        {%- endfor %}
+            <li>Api-Key: <span class="white">{{ printer.api_key }}</span></li>
+
+        </ul>
+
+        <h2 class="align-center">Connect</h2>
+        <ul>
+            <li>Server: <span class="white">{{ printer.server }}</span></li>
+            <li>Fingerprint: <span class="white">{{ printer.fingerprint }}</span></li>
+            <li>Token: <span class="white">{{ printer.token }}</span></li>
+            <li>Last Telemetry: <span class="white">{{ prusa_link.last_sent_telemetry }}</span></li>
+            <ul>
+            {%- for key, val in prusa_link.model.last_telemetry %}
+                <li>{{ key }}: <span class="white">{{ val }}</span></li>
+            {%- endfor %}
+            </ul>
+        </ul>
+
+        <h2 class="align-center">Files</h2>
+        <pre>
+            {{ prusa_link.printer.get_info()["files"]|pprint }}
+        </pre>
+    </div>
+
+  </div>
+
+  <footer class="footer mt-auto py-3">
+      <div class="container">
+
+{% include "_footer.html" %}

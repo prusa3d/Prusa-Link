@@ -20,6 +20,7 @@ app.document_root = STATIC_DIR
 # will be set later
 app.cfg = None
 app.settings = None
+app.daemon = None
 app.wizard = None
 app.api_key = None
 

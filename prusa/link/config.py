@@ -133,12 +133,15 @@ class Config(Get):
             (
                 ("address", str, "0.0.0.0"),
                 ("port", int, 8080),
+                ("link_info", bool, False),
             )))
 
         if args.address:
             self.http.address = args.address
         if args.tcp_port:
             self.http.port = args.tcp_port
+        if args.link_info:
+            self.http.link_info = args.link_info
 
         # [printer]
         self.printer = Model(self.get_section(
