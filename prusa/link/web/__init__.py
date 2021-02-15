@@ -9,6 +9,7 @@ from .lib.core import app
 from .lib.auth import REALM
 from .lib.classes import ThreadingServer
 from .lib.wizard import Wizard
+from .link_info import link_info
 
 log = logging.getLogger(__name__)
 
@@ -44,6 +45,10 @@ def init(daemon):
         log.info("No Api-Key was set.")
 
     app.wizard = Wizard(app)
+
+    if app.cfg.http.link_info:
+        log.warning('Page /link-info is enabled!')
+        app.set_route('/link-info', link_info)
 
 
 def run_http(daemon, foreground=False):
