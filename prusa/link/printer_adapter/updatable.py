@@ -5,7 +5,7 @@ from prusa.link.printer_adapter.const import QUIT_INTERVAL
 from prusa.link.printer_adapter.util import run_slowly_die_fast
 
 
-class ThreadedUpdatable():
+class ThreadedUpdatable:
     """Thread for parallel update operation."""
     thread_name = "updater_thread"
     update_interval = 1
@@ -14,6 +14,7 @@ class ThreadedUpdatable():
         self.running = True
         self.thread = Thread(target=self.__keep_updating,
                              name=self.thread_name)
+        # XXX introduce a `signal` instance attr here?
 
     def start(self):
         """Start thread."""
