@@ -45,7 +45,7 @@ from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.model_classes import Telemetry
 from prusa.link.printer_adapter.const import PRINTING_STATES, \
     TELEMETRY_IDLE_INTERVAL, TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, \
-    NO_IP, SD_MOUNT_NAME
+    NO_IP, SD_MOUNT_NAME, SN_INITIAL_TIMEOUT
 from prusa.link.printer_adapter.structures.regular_expressions import \
     PRINTER_BOOT_REGEX, START_PRINT_REGEX
 from prusa.link.printer_adapter.reporting_ensurer import ReportingEnsurer
@@ -87,7 +87,7 @@ class PrusaLink:
 
         printer_type = get_printer_type(self.serial_queue)
         sn_reader = SNReader(self.serial_queue, self.set_sn)
-        sn = sn_reader.read()
+        sn = sn_reader.read_sn(timeout=SN_INITIAL_TIMEOUT)
         if sn:
             self.printer = MyPrinter(printer_type, sn, make_fingerprint(sn))
         else:
