@@ -1,6 +1,8 @@
 """Try read SN from file."""
 
 import logging
+import math
+from time import time
 
 from blinker import Signal
 
@@ -26,8 +28,12 @@ class SNReader(ThreadedUpdatable):
         self.updated_signal.connect(handler)
         self.serial_queue = serial_queue
 
-    def read(self, should_wait=lambda: True):
+    def read_sn(self, timeout=math.inf):
         """Read SN from serial line and set `prusa.link.errors.SN`"""
+
+        def should_wait():
+            return self.running and time() < timeout
+
         instruction = MatchableInstruction("PRUSA SN",
                                            capture_matching=SN_REGEX)
         self.serial_queue.enqueue_one(instruction, to_front=True)
@@ -39,9 +45,9 @@ class SNReader(ThreadedUpdatable):
             log.debug("Got serial %s", result)
             return result
 
-    def update(self, should_wait=lambda: True):
+    def update(self):
         """Read the serial number and stop running  based its value"""
-        sn = self.read(should_wait=should_wait)
+        sn = self.read_sn()
         if sn is not None:
             self.running = False
             self.updated_signal.send(sn)
