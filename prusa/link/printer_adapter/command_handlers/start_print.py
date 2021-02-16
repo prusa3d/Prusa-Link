@@ -52,7 +52,8 @@ class StartPrint(Command):
         else:
             self._start_file_print(str(path))
 
-        self.job.set_file_path(str(path), filename_only=False,
+        self.job.set_file_path(str(path),
+                               filename_only=False,
                                prepend_sd_mountpoint=False)
         self.state_manager.printing()
         self.state_manager.stop_expecting_change()
@@ -71,7 +72,8 @@ class StartPrint(Command):
         match = instruction.match()
 
         if not match or match.groups()[0] is None:  # Opening failed
-            self.failed(f"Wrong file name, or bad file. File name: {file_name}")
+            self.failed(
+                f"Wrong file name, or bad file. File name: {file_name}")
 
     def _start_print(self):
         self.do_instruction("M24")

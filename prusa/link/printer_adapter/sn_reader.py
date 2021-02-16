@@ -30,7 +30,6 @@ class SNReader(ThreadedUpdatable):
 
     def read_sn(self, timeout=math.inf):
         """Read SN from serial line and set `prusa.link.errors.SN`"""
-
         def should_wait():
             return self.running and time() < timeout
 

@@ -4,7 +4,6 @@ from prusa.connect.printer.const import Source, Event
 from prusa.link.printer_adapter.command import Command
 from prusa.link.printer_adapter.informers.job import JobState
 
-
 log = logging.getLogger(__name__)
 
 
@@ -18,13 +17,11 @@ class JobInfo(Command):
 
         data = self.job.get_job_info_data()
 
-        response = dict(
-            job_id=self.model.job.get_job_id_for_api(),
-            state=self.model.state_manager.current_state,
-            event=Event.JOB_INFO,
-            source=Source.CONNECT,
-            **data
-        )
+        response = dict(job_id=self.model.job.get_job_id_for_api(),
+                        state=self.model.state_manager.current_state,
+                        event=Event.JOB_INFO,
+                        source=Source.CONNECT,
+                        **data)
 
         log.debug(f"Job Info retrieved: {response}")
         return response

@@ -13,7 +13,6 @@ from .link_info import link_info
 
 log = logging.getLogger(__name__)
 
-
 __import__('errors', globals=globals(), level=1)
 __import__('main', globals=globals(), level=1)
 __import__('wizard', globals=globals(), level=1)
@@ -53,24 +52,25 @@ def init(daemon):
 
 def run_http(daemon, foreground=False):
     """Run http thread"""
-    log.info('Starting server for http://%s:%d',
-             daemon.cfg.http.address, daemon.cfg.http.port)
+    log.info('Starting server for http://%s:%d', daemon.cfg.http.address,
+             daemon.cfg.http.port)
 
     init(daemon)
     while True:
         try:
-            httpd = make_server(daemon.cfg.http.address,
-                                daemon.cfg.http.port,
-                                app,
-                                server_class=ThreadingServer,
-                                )
+            httpd = make_server(
+                daemon.cfg.http.address,
+                daemon.cfg.http.port,
+                app,
+                server_class=ThreadingServer,
+            )
 
             httpd.timeout = 0.5
             httpd.serve_forever()
         except KeyboardInterrupt:
             log.info("Shutdown http")
             return 0
-        except Exception:   # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             log.exception("Exception")
             if foreground:
                 log.info("Shutdown http")

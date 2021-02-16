@@ -37,13 +37,13 @@ class Telemetry(BaseModel):
 
 class NetworkInfo(BaseModel):
 
-    lan_ipv4: Optional[str] = None    # not implemented yet
-    lan_ipv6: Optional[str] = None    # not implemented yet
-    lan_mac: Optional[str] = None     # not implemented yet
+    lan_ipv4: Optional[str] = None  # not implemented yet
+    lan_ipv6: Optional[str] = None  # not implemented yet
+    lan_mac: Optional[str] = None  # not implemented yet
     wifi_ipv4: Optional[str] = None
-    wifi_ipv6: Optional[str] = None   # not implemented yet
+    wifi_ipv6: Optional[str] = None  # not implemented yet
     wifi_mac: str = None
-    wifi_ssid: Optional[str] = None   # not implemented yet
+    wifi_ssid: Optional[str] = None  # not implemented yet
 
 
 class FileTree(BaseModel):

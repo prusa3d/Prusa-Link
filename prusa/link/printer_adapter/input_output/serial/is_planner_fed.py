@@ -49,10 +49,9 @@ class IsPlannerFed:
     and other shapes with homogeneously long segments.
 
     To get rid of the inaccuracies caused by an initially low number of
-    measured values, let's use a threshold from a previous run, or a default one
-    until the values accumulate.
+    measured values, let's use a threshold from a previous run, or a default
+    one until the values accumulate.
     """
-
     def __init__(self, cfg: Config):
         self.times_queue = deque(maxlen=QUEUE_SIZE)
 
@@ -171,4 +170,3 @@ class IsPlannerFed:
         if self.item_count >= self.times_queue.maxlen:
             with open(self.threshold_path, "w") as threshold_file:
                 threshold_file.write(str(self.get_dynamic_threshold()))
-

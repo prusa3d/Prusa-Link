@@ -2,13 +2,11 @@ import re
 
 OPEN_RESULT_REGEX = re.compile(r"^(File opened).*|^(open failed).*")
 
-
 PRINTER_TYPE_REGEX = re.compile(r"^(\d{3,5})$")
 FW_REGEX = re.compile(r"^FIRMWARE_NAME:Prusa-Firmware ?((\d+\.)*\d).*$")
 SN_REGEX = re.compile(r"^(CZP.*)(CZP.*)?$")
 NOZZLE_REGEX = re.compile(r"^(\d\.\d+)$")
 PERCENT_REGEX = re.compile(r"^(\d{0,3})%$")
-
 
 BEGIN_FILES_REGEX = re.compile(r"^Begin file list$")
 FILE_PATH_REGEX = re.compile(r"^(.*\.(GCO|G)) (\d+)$")
@@ -21,7 +19,6 @@ LFN_CAPTURE = re.compile(r"(^DIR_ENTER: (/[^ ]*/) \"([^\"]*)\"$)|"
 SD_PRESENT_REGEX = re.compile(r"^(echo:SD card ok)|(echo:SD init fail)$")
 SD_EJECTED_REGEX = re.compile(r"^(echo:SD card released)$")
 
-
 ANY_REGEX = re.compile(r".*")
 CONFIRMATION_REGEX = re.compile(r"^ok\s?(.*)$")  # highest priority
 FILE_OPEN_REGEX = re.compile(r"^echo:enqueing \"M23 ([^\"]+)\"$")
@@ -29,7 +26,6 @@ PAUSED_REGEX = re.compile(r"^// action:paused$")
 
 REJECTION_REGEX = re.compile(r"^(echo:Unknown command: (\"[^\"]*\"))|"
                              r"(Unknown \S code: .*)$")
-
 
 BUSY_REGEX = re.compile("^echo:busy: processing$")
 ATTENTION_REGEX = re.compile("^echo:busy: paused for user$")
@@ -40,7 +36,6 @@ PRINT_DONE_REGEX = re.compile(r"^Done printing file$")
 ERROR_REGEX = re.compile(
     r"^Error:Printer stopped due to errors. Fix the error "
     r"and use M999 to restart.*")
-
 
 TEMPERATURE_REGEX = re.compile(
     r"^T:(-?\d+\.\d+) /(-?\d+\.\d+) B:(-?\d+\.\d+) /(-?\d+\.\d+) "

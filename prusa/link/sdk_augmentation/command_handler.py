@@ -6,14 +6,14 @@ from prusa.link.printer_adapter.const import QUIT_INTERVAL
 
 
 class CommandHandler:
-
     def __init__(self, sdk_command: Command):
         self.sdk_command = sdk_command
 
         # Can't start a new thread for every command.
         # So let's recycle one in here
         self.command_thread = Thread(target=self.handle_commands,
-                                     name="command_runner", daemon=True)
+                                     name="command_runner",
+                                     daemon=True)
         self.running = True
         self.command_thread.start()
 

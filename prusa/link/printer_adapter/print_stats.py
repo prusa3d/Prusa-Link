@@ -9,7 +9,6 @@ log = logging.getLogger(__name__)
 
 
 class PrintStats:
-
     def __init__(self, model: Model):
         self.model = model
 
@@ -34,10 +33,11 @@ class PrintStats:
                 if "M73" in gcode:
                     self.data.has_inbuilt_stats = True
 
-        log.info(f"New file analyzed, contains {self.data.total_gcode_count} "
-                 f"gcode commands and "
-                 f"{'has' if self.data.has_inbuilt_stats else 'does not have'} "
-                 f"inbuilt percent and time reporting.")
+        log.info(
+            f"New file analyzed, contains {self.data.total_gcode_count} "
+            f"gcode commands and "
+            f"{'has' if self.data.has_inbuilt_stats else 'does not have'} "
+            f"inbuilt percent and time reporting.")
 
     def end_time_segment(self):
         self.data.print_time += time() - self.data.segment_start
@@ -67,4 +67,3 @@ class PrintStats:
 
     def get_time_printing(self):
         return self.data.print_time + (time() - self.data.segment_start)
-

@@ -79,18 +79,19 @@ class Config(Get):
         self.debug = args.debug
 
         # [daemon]
-        self.daemon = Model(self.get_section(
-            "daemon",
-            (
-                ("data_dir", str, ''),  # user home by default
-                ("pid_file", str, "./prusa-link.pid"),
-                ("current_file", str, "./currently_printing.gcode"),
-                ("power_panic_file", str, "./power_panic"),
-                ("job_file", str, "./job_data.json"),
-                ("threshold_file", str, "./threshold.data"),
-                ("user", str, "pi"),
-                ("group", str, "pi"),
-            )))
+        self.daemon = Model(
+            self.get_section(
+                "daemon",
+                (
+                    ("data_dir", str, ''),  # user home by default
+                    ("pid_file", str, "./prusa-link.pid"),
+                    ("current_file", str, "./currently_printing.gcode"),
+                    ("power_panic_file", str, "./power_panic"),
+                    ("job_file", str, "./job_data.json"),
+                    ("threshold_file", str, "./threshold.data"),
+                    ("user", str, "pi"),
+                    ("group", str, "pi"),
+                )))
         if args.foreground or getuid() != 0:
             pwd = getpwuid(getuid())
             self.daemon.user = pwd.pw_name
@@ -106,9 +107,10 @@ class Config(Get):
 
         for file_ in ('pid_file', 'current_file', 'power_panic_file',
                       'job_file', 'threshold_file'):
-            setattr(self.daemon, file_,
-                    abspath(join(self.daemon.data_dir,
-                                 getattr(self.daemon, file_))))
+            setattr(
+                self.daemon, file_,
+                abspath(join(self.daemon.data_dir, getattr(self.daemon,
+                                                           file_))))
 
         # [logging]
         self.set_global_log_level(args)
@@ -129,9 +131,8 @@ class Config(Get):
         self.configured_handler = self.get_log_handler(args)
 
         # [http]
-        self.http = Model(self.get_section(
-            "http",
-            (
+        self.http = Model(
+            self.get_section("http", (
                 ("address", str, "0.0.0.0"),
                 ("port", int, 8080),
                 ("link_info", bool, False),
@@ -145,21 +146,22 @@ class Config(Get):
             self.http.link_info = args.link_info
 
         # [printer]
-        self.printer = Model(self.get_section(
-            "printer",
-            (
-                ("port", str, "/dev/ttyAMA0"),
-                ("baudrate", int, 115200),
-                ("settings", str, "./prusa_printer_settings.ini"),
-                ("mountpoints", tuple, [], ':'),
-                # relative to HOME
-                ("directories", tuple, ("./Prusa Link gcodes",), ':'),
-            )))
+        self.printer = Model(
+            self.get_section(
+                "printer",
+                (
+                    ("port", str, "/dev/ttyAMA0"),
+                    ("baudrate", int, 115200),
+                    ("settings", str, "./prusa_printer_settings.ini"),
+                    ("mountpoints", tuple, [], ':'),
+                    # relative to HOME
+                    ("directories", tuple, ("./Prusa Link gcodes", ), ':'),
+                )))
         if args.serial_port:
             self.printer.port = args.serial_port
 
-        self.printer.settings = abspath(join(self.daemon.data_dir,
-                                             self.printer.settings))
+        self.printer.settings = abspath(
+            join(self.daemon.data_dir, self.printer.settings))
         self.printer.directories = tuple(
             abspath(join(self.daemon.data_dir, item))
             for item in self.printer.directories)
@@ -217,42 +219,33 @@ class Settings(Get):
         self.read(settings_file)
 
         # [printer]
-        self.printer = Model(self.get_section(
-            'printer',
-            (
-                ('type', str, 'MK3'),
-                ('name', str, ''),
-                ('location', str, '')
-            )))
+        self.printer = Model(
+            self.get_section('printer',
+                             (('type', str, 'MK3'), ('name', str, ''),
+                              ('location', str, ''))))
         if self.printer.type != 'MK3':
             raise ValueError("Settings file for different printer!")
 
         # [network]
-        self.network = Model(self.get_section(
-            'network',
-            (
-                ('hostname', str, ''),
-            )))
+        self.network = Model(
+            self.get_section('network', (('hostname', str, ''), )))
 
         # [service::connect]
-        self.service_connect = Model(self.get_section(
-            'service::connect',
-            (
-                ('hostname', str, CONNECT),
-                ('tls', int, 1),
-                ('port', int, 0),  # 0 means 443 with tls, or 80 without tls
-                ('token', str, '')
-            )))
+        self.service_connect = Model(
+            self.get_section(
+                'service::connect',
+                (
+                    ('hostname', str, CONNECT),
+                    ('tls', int, 1),
+                    ('port', int,
+                     0),  # 0 means 443 with tls, or 80 without tls
+                    ('token', str, ''))))
 
         # [service::local]
-        self.service_local = Model(self.get_section(
-            'service::local',
-            (
-                ('enable', int, 1),
-                ('username', str, ''),
-                ('password', str, ''),
-                ('api_key', str, '')
-            )))
+        self.service_local = Model(
+            self.get_section('service::local',
+                             (('enable', int, 1), ('username', str, ''),
+                              ('password', str, ''), ('api_key', str, ''))))
 
         Settings.instance = self
 

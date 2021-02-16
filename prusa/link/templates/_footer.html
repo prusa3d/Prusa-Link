@@ -1,6 +1,6 @@
 
         <div class="text-muted align-center">Copyright &copy; 2020 Prusa Research a.s. All rights reserved.</div>
-        {%- if template_info is defined %} 
+        {%- if template_info is defined %}
         {%- from 'template_info.html' import render_info %}
         <pre class="template-info">
             {{ render_info(template_info.context().get_exported()) }}

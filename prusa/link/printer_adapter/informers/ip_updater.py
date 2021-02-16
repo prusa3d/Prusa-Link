@@ -15,7 +15,6 @@ from prusa.link.printer_adapter.updatable import ThreadedUpdatable
 from prusa.link.printer_adapter.util import get_local_ip
 from prusa.link import errors
 
-
 log = logging.getLogger(__name__)
 log.setLevel("INFO")
 
@@ -68,10 +67,9 @@ class IPUpdater(ThreadedUpdatable):
             instruction = enqueue_instruction(self.serial_queue,
                                               "M552 P0.0.0.0")
         else:
-            instruction = enqueue_instruction(self.serial_queue,
-                                              f"M552 P{ip}")
-        wait_for_instruction(
-            instruction, lambda: self.running and time() < timeout_at)
+            instruction = enqueue_instruction(self.serial_queue, f"M552 P{ip}")
+        wait_for_instruction(instruction,
+                             lambda: self.running and time() < timeout_at)
 
     def stop(self):
         self.send_ip_to_printer(NO_IP)

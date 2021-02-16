@@ -10,7 +10,7 @@ from blinker import Signal
 from prusa.link.config import Config
 from prusa.link.printer_adapter.input_output.serial.serial import Serial
 from prusa.link.printer_adapter.structures.regular_expressions import \
-    CONFIRMATION_REGEX, RESEND_REGEX, TEMPERATURE_REGEX, \
+    CONFIRMATION_REGEX, RESEND_REGEX, TEMPERATURE_REGEX as TEMP_REGEX, \
     BUSY_REGEX, ATTENTION_REGEX, HEATING_HOTEND_REGEX, HEATING_REGEX, \
     M110_REGEX
 from prusa.link.printer_adapter.util import run_slowly_die_fast
@@ -18,8 +18,9 @@ from .instruction import Instruction
 from .is_planner_fed import IsPlannerFed
 from .serial_reader import SerialReader
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
-from prusa.link.printer_adapter.const import PRINTER_BOOT_WAIT, QUIT_INTERVAL, \
-    SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT, RX_SIZE, HISTORY_LENGTH
+from prusa.link.printer_adapter.const import PRINTER_BOOT_WAIT, \
+    QUIT_INTERVAL, SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT, \
+    RX_SIZE, HISTORY_LENGTH
 from prusa.link import errors
 
 log = logging.getLogger(__name__)
@@ -30,9 +31,11 @@ class BadChecksumUseError(Exception):
 
 
 class SerialQueue(metaclass=MCSingleton):
-
-    def __init__(self, serial: Serial, serial_reader: SerialReader,
-            cfg: Config, rx_size=RX_SIZE):
+    def __init__(self,
+                 serial: Serial,
+                 serial_reader: SerialReader,
+                 cfg: Config,
+                 rx_size=RX_SIZE):
         self.serial = serial
         self.serial_reader = serial_reader
 
@@ -80,11 +83,10 @@ class SerialQueue(metaclass=MCSingleton):
         self.m110_workaround_slot = None
         self.worked_around_m110 = False
 
-        self.serial_reader.add_handler(
-            CONFIRMATION_REGEX, self._confirmation_handler,
-            priority=float("inf"))
-        self.serial_reader.add_handler(
-            RESEND_REGEX, self._resend_handler)
+        self.serial_reader.add_handler(CONFIRMATION_REGEX,
+                                       self._confirmation_handler,
+                                       priority=float("inf"))
+        self.serial_reader.add_handler(RESEND_REGEX, self._resend_handler)
 
         self.is_planner_fed = IsPlannerFed(cfg)
 
@@ -169,14 +171,12 @@ class SerialQueue(metaclass=MCSingleton):
             self.serial_reader.add_handler(
                 regexp,
                 self.current_instruction.output_captured,
-                priority=time()
-            )
+                priority=time())
 
     def _teardown_output_capture(self):
         for regexp in self.current_instruction.capturing_regexps:
             self.serial_reader.remove_handler(
-                regexp, self.current_instruction.output_captured
-            )
+                regexp, self.current_instruction.output_captured)
 
     def _send(self):
         """
@@ -274,8 +274,8 @@ class SerialQueue(metaclass=MCSingleton):
         # and capture them if we are expecting them
         additional_output = match.groups()[0]
         if additional_output and \
-                TEMPERATURE_REGEX in self.current_instruction.capturing_regexps:
-            temperature_match = TEMPERATURE_REGEX.match(additional_output)
+                TEMP_REGEX in self.current_instruction.capturing_regexps:
+            temperature_match = TEMP_REGEX.match(additional_output)
             if temperature_match:
                 self.current_instruction.output_captured(
                     None, match=temperature_match)
@@ -292,11 +292,11 @@ class SerialQueue(metaclass=MCSingleton):
         log.info(f"Resend of {number} requested. Current is "
                  f"{self.message_number}")
         if self.message_number >= number:
-            if (self.current_instruction is None or
-                    not self.current_instruction.to_checksum):
+            if (self.current_instruction is None
+                    or not self.current_instruction.to_checksum):
                 log.warning("Re-send requested for on a non-numbered message")
-                # If that happened, the non-numbered message got yeeted from the
-                # buffer, so let's solve that first
+                # If that happened, the non-numbered message got yeeted from
+                # the buffer, so let's solve that first
                 self._rx_got_yeeted()
             self._resend((self.message_number - number) + 1)
         else:
@@ -317,9 +317,10 @@ class SerialQueue(metaclass=MCSingleton):
 
                 self.recovery_list.clear()
                 for instruction_from_history in history[:count]:
-                    instruction = Instruction(instruction_from_history.message,
-                                              to_checksum=True,
-                                              data=instruction_from_history.data)
+                    instruction = Instruction(
+                        instruction_from_history.message,
+                        to_checksum=True,
+                        data=instruction_from_history.data)
                     self.recovery_list.append(instruction)
 
     def _confirmed(self, force=False):
@@ -359,7 +360,7 @@ class SerialQueue(metaclass=MCSingleton):
         Something caused the RX buffer to get thrown out, let's re-send
         everything supposed to be in it.
         """
-        log.debug(f"Think that RX Buffer got yeeted, sending instruction again")
+        log.debug("Think that RX Buffer got yeeted, sending instruction again")
         # Let's bypass the check and write if we can.
         if self.current_instruction is not None:
             instruction = self.current_instruction
@@ -374,7 +375,8 @@ class SerialQueue(metaclass=MCSingleton):
     def reset_message_number(self):
         """
         Does not wait for the result, everything that gets enqueued after this
-        will be executed after this. If this is no longer true, stuff will break
+        will be executed after this. If this is no longer true, stuff will
+        break
         """
         with self.write_lock:
             self._reset_message_number()
@@ -410,7 +412,8 @@ class SerialQueue(metaclass=MCSingleton):
         self.serial_queue_failed.send()
 
     def printer_reset(self, was_printing):
-        Thread(target=self._printer_reset, args=(was_printing, ),
+        Thread(target=self._printer_reset,
+               args=(was_printing, ),
                name="serial_queue_reset_thread").start()
 
     def _printer_reset(self, was_printing):
@@ -445,23 +448,22 @@ class SerialQueue(metaclass=MCSingleton):
 
 
 class MonitoredSerialQueue(SerialQueue):
-
-    def __init__(self, serial: Serial, serial_reader: SerialReader,
-                 cfg: Config, rx_size=128):
+    def __init__(self,
+                 serial: Serial,
+                 serial_reader: SerialReader,
+                 cfg: Config,
+                 rx_size=128):
         super().__init__(serial, serial_reader, cfg, rx_size)
 
-        self.serial_reader.add_handler(BUSY_REGEX,
-                                       self._renew_timeout)
-        self.serial_reader.add_handler(ATTENTION_REGEX,
-                                       self._renew_timeout)
-        self.serial_reader.add_handler(HEATING_REGEX,
-                                       self._renew_timeout)
+        self.serial_reader.add_handler(BUSY_REGEX, self._renew_timeout)
+        self.serial_reader.add_handler(ATTENTION_REGEX, self._renew_timeout)
+        self.serial_reader.add_handler(HEATING_REGEX, self._renew_timeout)
         self.serial_reader.add_handler(HEATING_HOTEND_REGEX,
                                        self._renew_timeout)
 
         # Remember when the last write or confirmation happened
-        # If we want to time out, the communication has to be dead for some time
-        # Useful only with unbuffered messages
+        # If we want to time out, the communication has to be dead for some
+        # time Useful only with unbuffered messages
         self.running = True
         self.last_event_on = time()
         self.monitoring_thread = Thread(target=self.keep_monitoring,

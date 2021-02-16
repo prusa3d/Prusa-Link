@@ -1,11 +1,9 @@
 from pathlib import Path
 
 from prusa.connect.printer.files import File
-from prusa.link.printer_adapter.const import MAX_FILENAME_LENGTH
 
 
 class SDFile(File):
-
     def add_file_from_line(self, line: str):
 
         path, str_size = line.rsplit(" ", 1)

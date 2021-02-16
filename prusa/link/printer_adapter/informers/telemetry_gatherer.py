@@ -59,15 +59,13 @@ class TelemetryGatherer(ThreadedUpdatable):
             # State_manager depends on this one for detecting printing when
             # we start after the print has been started.
             ("M27 P", M27_OUTPUT_REGEX, self.m27_result, lambda: True),
-
             ("M221", PERCENT_REGEX, self.flow_rate_result,
              self.slow_ticker.output),
             ("M220", PERCENT_REGEX, self.speed_multiplier_result,
              self.slow_ticker.output),
-
             ("M73", PRINT_INFO_REGEX, self.print_info_result,
              self.ask_for_print_info),
-            ]
+        ]
 
         regex_handlers = {
             PRINT_INFO_REGEX: self.print_info_handler,
@@ -86,12 +84,12 @@ class TelemetryGatherer(ThreadedUpdatable):
         super().__init__()
 
     def ask_for_print_info(self):
-        return self.model.state_manager.current_state in PRINTING_STATES and\
-               self.slow_ticker.output()
+        return self.model.state_manager.current_state in PRINTING_STATES \
+                and self.slow_ticker.output()
 
     def ask_for_positions(self):
-        return self.model.state_manager.current_state not in PRINTING_STATES or\
-               self.slow_ticker.output()
+        return self.model.state_manager.current_state not in PRINTING_STATES \
+                or self.slow_ticker.output()
 
     def update(self):
         for gcode, regexp, result_handler, to_execute \
@@ -211,7 +209,8 @@ class TelemetryGatherer(ThreadedUpdatable):
                 self.current_telemetry.flow = flow
                 self.telemetry_updated()
 
-    def speed_multiplier_result(self, instruction: MandatoryMatchableInstruction):
+    def speed_multiplier_result(self,
+                                instruction: MandatoryMatchableInstruction):
         match = instruction.match()
         if match:
             groups = match.groups()
@@ -235,7 +234,7 @@ class TelemetryGatherer(ThreadedUpdatable):
                 speed_multiplier = self.model.last_telemetry.speed / 100
             else:
                 speed_multiplier = 1
-            inverse_speed_multiplier = speed_multiplier ** -1
+            inverse_speed_multiplier = speed_multiplier**-1
 
             mins_remaining = int(speed_agnostic_mins_remaining *
                                  inverse_speed_multiplier)
@@ -248,8 +247,8 @@ class TelemetryGatherer(ThreadedUpdatable):
                 self.current_telemetry.progress = progress
                 self.telemetry_updated()
 
-            self.progress_broken_signal.send(
-                self, progress_broken=progress_broken)
+            self.progress_broken_signal.send(self,
+                                             progress_broken=progress_broken)
 
             if mins_remaining >= 0:
                 self.current_telemetry.time_estimated = secs_remaining

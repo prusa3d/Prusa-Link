@@ -16,7 +16,6 @@ from prusa.link.printer_adapter.input_output.serial.helpers import \
 from prusa.link.printer_adapter.model import Model
 from prusa.link.sdk_augmentation.printer import MyPrinter
 
-
 log = logging.getLogger(__name__)
 
 
@@ -51,14 +50,17 @@ class Command:
         wait_for_instruction(instruction, lambda: self.running)
 
     def do_instruction(self, message):
-        instruction = enqueue_instruction(self.serial_queue, message,
+        instruction = enqueue_instruction(self.serial_queue,
+                                          message,
                                           to_front=True)
         self.wait_for_instruction(instruction)
         return instruction
 
     def do_matchable(self, message, regexp: re.Pattern):
         """Enqueues everything to front as commands have a higher priority"""
-        instruction = enqueue_matchable(self.serial_queue, message, regexp,
+        instruction = enqueue_matchable(self.serial_queue,
+                                        message,
+                                        regexp,
                                         to_front=True)
         self.wait_for_instruction(instruction)
         return instruction
@@ -67,7 +69,7 @@ class Command:
         self.wait_while_running(instruction)
 
         if not instruction.is_confirmed():
-            self.failed(f"Command interrupted")
+            self.failed("Command interrupted")
 
     def run_command(self) -> Dict[str, Any]:
         data = self._run_command()

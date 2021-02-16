@@ -14,7 +14,6 @@ from .daemon import Daemon
 
 log = logging.getLogger(__name__)
 
-
 # pylint: disable=too-many-return-statements
 # pylint: disable=too-many-statements
 CONFIG_FILE = '/etc/Prusa-Link/prusa-link.ini'
@@ -44,45 +43,62 @@ def check_process(pid):
 def main():
     """Standard main function."""
     # pylint: disable=too-many-branches
-    parser = ArgumentParser(
-        prog="prusa-link",
-        description="Prusa Link daemon.")
+    parser = ArgumentParser(prog="prusa-link",
+                            description="Prusa Link daemon.")
     parser.add_argument(
-        "command", nargs='?', default="start", type=str,
+        "command",
+        nargs='?',
+        default="start",
+        type=str,
         help="daemon action (start|stop|restart|status) (default: start)")
-    parser.add_argument(
-        "-f", "--foreground", action="store_true",
-        help="run as script on foreground")
-    parser.add_argument(
-        "-c", "--config", default=CONFIG_FILE, type=str,
-        help="path to config file (default: %s)" % CONFIG_FILE,
-        metavar="<file>")
-    parser.add_argument(
-        "-p", "--pidfile", type=str,
-        help="path to pid file", metavar="<FILE>")
-    parser.add_argument(
-        "-a", "--address", type=str,
-        help="IP listening address (host or IP)", metavar="<ADDRESS>")
-    parser.add_argument(
-        "-t", "--tcp-port", type=int,
-        help="TCP/IP listening port", metavar="<PORT>")
-    parser.add_argument(
-        "-I", "--link-info", action="store_true",
-        help="/link-info debug page")
-    parser.add_argument(
-        "-s", "--serial-port", type=str,
-        help="Serial (printer's) port", metavar="<PORT>")
-    parser.add_argument(
-        "-i", "--info", action="store_true",
-        help="more verbose logging level INFO is set")
-    parser.add_argument(
-        "-d", "--debug", action="store_true",
-        help="DEBUG logging level is set")
-    parser.add_argument(
-        "-l", "--module-log-level", action="append",
-        help="sets the log level of any submodule(s). "
-             "use <module_path>=<log_level>",
-        type=log_level)
+    parser.add_argument("-f",
+                        "--foreground",
+                        action="store_true",
+                        help="run as script on foreground")
+    parser.add_argument("-c",
+                        "--config",
+                        default=CONFIG_FILE,
+                        type=str,
+                        help="path to config file (default: %s)" % CONFIG_FILE,
+                        metavar="<file>")
+    parser.add_argument("-p",
+                        "--pidfile",
+                        type=str,
+                        help="path to pid file",
+                        metavar="<FILE>")
+    parser.add_argument("-a",
+                        "--address",
+                        type=str,
+                        help="IP listening address (host or IP)",
+                        metavar="<ADDRESS>")
+    parser.add_argument("-t",
+                        "--tcp-port",
+                        type=int,
+                        help="TCP/IP listening port",
+                        metavar="<PORT>")
+    parser.add_argument("-I",
+                        "--link-info",
+                        action="store_true",
+                        help="/link-info debug page")
+    parser.add_argument("-s",
+                        "--serial-port",
+                        type=str,
+                        help="Serial (printer's) port",
+                        metavar="<PORT>")
+    parser.add_argument("-i",
+                        "--info",
+                        action="store_true",
+                        help="more verbose logging level INFO is set")
+    parser.add_argument("-d",
+                        "--debug",
+                        action="store_true",
+                        help="DEBUG logging level is set")
+    parser.add_argument("-l",
+                        "--module-log-level",
+                        action="append",
+                        help="sets the log level of any submodule(s). "
+                        "use <module_path>=<log_level>",
+                        type=log_level)
 
     args = parser.parse_args()
     try:
@@ -130,11 +146,10 @@ def main():
                 print("Service is already running")
                 return 1
 
-        context = DaemonContext(
-            pidfile=pid_file,
-            stdout=daemon.stdout,
-            stderr=daemon.stderr,
-            signal_map={SIGTERM: daemon.sigterm})
+        context = DaemonContext(pidfile=pid_file,
+                                stdout=daemon.stdout,
+                                stderr=daemon.stderr,
+                                signal_map={SIGTERM: daemon.sigterm})
 
         pid_dir = path.dirname(config.daemon.pid_file)
         if pid_dir == '/var/run/prusa-link' and not path.exists(pid_dir):
@@ -147,8 +162,7 @@ def main():
             context.gid = getgrnam(config.daemon.group).gr_gid
 
         with context:
-            log.info(
-                "Starting service with pid %d", pid_file.read_pid())
+            log.info("Starting service with pid %d", pid_file.read_pid())
             retval = daemon.run()
             log.info("Shutdown")
             return retval

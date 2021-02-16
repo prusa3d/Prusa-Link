@@ -19,10 +19,8 @@ log = logging.getLogger(__name__)
 
 
 class StorageController:
-
     def __init__(self, cfg, serial_queue: SerialQueue,
-                 serial_reader: SerialReader,
-                 state_manager: StateManager,
+                 serial_reader: SerialReader, state_manager: StateManager,
                  model: Model):
         self.dir_mounted_signal = Signal()
         self.dir_unmounted_signal = Signal()
@@ -79,4 +77,3 @@ class StorageController:
         self.sd_card.stop()
         self.fs_mounts.stop()
         self.dir_mounts.stop()
-

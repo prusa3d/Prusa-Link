@@ -63,14 +63,11 @@ def files_to_api(node, origin='local'):
         result['type'] = 'folder'
         result['typePath'] = ['folder']
         result['origin'] = origin
-        result['refs'] = {
-            "resource": None
-        }
+        result['refs'] = {"resource": None}
 
         children = list(
             files_to_api(child, origin) for child in node.get("children", []))
-        result['children'] = list(
-            child for child in children if child)
+        result['children'] = list(child for child in children if child)
 
     elif name.endswith(GCODE_EXTENSIONS):
         result['origin'] = origin

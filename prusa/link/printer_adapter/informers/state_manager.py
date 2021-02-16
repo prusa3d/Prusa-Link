@@ -18,8 +18,8 @@ log = logging.getLogger(__name__)
 
 
 class StateChange:
-
-    def __init__(self, command_id=None,
+    def __init__(self,
+                 command_id=None,
                  to_states: Dict[State, Union[Source, None]] = None,
                  from_states: Dict[State, Union[Source, None]] = None,
                  default_source: Source = None,
@@ -45,7 +45,6 @@ def state_influencer(state_change: StateChange = None):
     This can be overridden by notifying the state manager about an
     oncoming state change through expect_change
     """
-
     def inner(func):
         def wrapper(self, *args, **kwargs):
             with self.state_lock:
@@ -56,7 +55,7 @@ def state_influencer(state_change: StateChange = None):
                     self.expect_change(state_change)
 
                 else:
-                    log.debug(f"Default expected state change is overridden")
+                    log.debug("Default expected state change is overridden")
 
                 func(self, *args, **kwargs)
                 self.state_may_have_changed()
@@ -70,7 +69,6 @@ def state_influencer(state_change: StateChange = None):
 
 
 class StateManager(metaclass=MCSingleton):
-
     def __init__(self, serial_reader: SerialReader, model: Model):
 
         self.serial_reader: SerialReader = serial_reader
@@ -135,8 +133,8 @@ class StateManager(metaclass=MCSingleton):
         super().__init__()
 
     def file_printer_started_printing(self):
-        if (self.model.file_printer.printing and
-                self.data.printing_state != State.PRINTING):
+        if (self.model.file_printer.printing
+                and self.data.printing_state != State.PRINTING):
             self.expect_change(
                 StateChange(to_states={State.PRINTING: Source.CONNECT}))
             self.printing()
@@ -199,8 +197,8 @@ class StateManager(metaclass=MCSingleton):
             try:
                 # make a list throwing out Nones and get the next item
                 # (the first one)
-                source = next(item for item in [source_from, source_to] if
-                              item is not None)
+                source = next(item for item in [source_from, source_to]
+                              if item is not None)
             except StopIteration:  # tried to get next from an empty list
                 source = None
 
@@ -250,11 +248,11 @@ class StateManager(metaclass=MCSingleton):
             self.pre_state_change_signal.send(self, command_id=command_id)
 
             self.state_changed_signal.send(self,
-                from_state=self.data.last_state,
-                to_state=self.data.current_state,
-                command_id=command_id,
-                source=source,
-                reason=reason)
+                                           from_state=self.data.last_state,
+                                           to_state=self.data.current_state,
+                                           command_id=command_id,
+                                           source=source,
+                                           reason=reason)
             self.post_state_change_signal.send(self)
 
     def fan_error(self, sender, match: re.Match):
@@ -282,10 +280,13 @@ class StateManager(metaclass=MCSingleton):
             log.debug(f"Ignoring switch to PRINTING "
                       f"{(self.data.base_state, self.data.printing_state)}")
 
-    @state_influencer(StateChange(from_states={State.PRINTING: Source.MARLIN,
-                                               State.PAUSED: Source.MARLIN,
-                                               State.FINISHED: Source.MARLIN
-                                               }))
+    @state_influencer(
+        StateChange(
+            from_states={
+                State.PRINTING: Source.MARLIN,
+                State.PAUSED: Source.MARLIN,
+                State.FINISHED: Source.MARLIN
+            }))
     def not_printing(self):
         self.unsure_whether_printing = False
         if self.data.printing_state is not None:
@@ -317,9 +318,11 @@ class StateManager(metaclass=MCSingleton):
 
     @state_influencer(
         StateChange(to_states={State.READY: Source.MARLIN},
-                    from_states={State.ATTENTION: Source.USER,
-                                 State.ERROR: Source.USER,
-                                 State.BUSY: Source.HW}))
+                    from_states={
+                        State.ATTENTION: Source.USER,
+                        State.ERROR: Source.USER,
+                        State.BUSY: Source.HW
+                    }))
     def instruction_confirmed(self):
         if self.unsure_whether_printing:
             return
@@ -344,21 +347,21 @@ class StateManager(metaclass=MCSingleton):
                             reason=f"{self.fan_error_name} fan error"))
             self.fan_error_name = None
 
-        log.debug(f"Overriding the state with ATTENTION")
+        log.debug("Overriding the state with ATTENTION")
         self.data.override_state = State.ATTENTION
 
     @state_influencer(StateChange(to_states={State.ERROR: Source.WUI}))
     def error(self):
-        log.debug(f"Overriding the state with ERROR")
+        log.debug("Overriding the state with ERROR")
         self.data.override_state = State.ERROR
 
     @state_influencer(StateChange(to_states={State.ERROR: Source.SERIAL}))
     def serial_error(self):
-        log.debug(f"Overriding the state with ERROR")
+        log.debug("Overriding the state with ERROR")
         self.data.override_state = State.ERROR
 
     @state_influencer(StateChange(to_states={State.READY: Source.SERIAL}))
     def serial_error_resolved(self):
         if self.data.override_state == State.ERROR:
-            log.debug(f"Removing the ERROR state")
+            log.debug("Removing the ERROR state")
             self.data.override_state = None

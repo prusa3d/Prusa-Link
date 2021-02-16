@@ -13,8 +13,8 @@ log = logging.getLogger(__name__)
 
 
 def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,
-                        run_every_sec: Callable[[], float],
-                        to_run, *arg_getters, **kwarg_getters):
+                        run_every_sec: Callable[[], float], to_run,
+                        *arg_getters, **kwarg_getters):
     """
     Lets say you run something every minute,
     but you want to quit your program faster
@@ -47,8 +47,8 @@ def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,
         # or it's time to run the func again
         # wait at least 0s, don't wait negative amounts
         run_again_in = max(0.0, (last_called + run_every_sec()) - time())
-        check_exit_in = max(
-            0.0, (last_checked_exit + check_exit_every_sec) - time())
+        check_exit_in = max(0.0, (last_checked_exit + check_exit_every_sec) -
+                            time())
         sleep(min(check_exit_in, run_again_in))
 
 

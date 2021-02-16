@@ -19,7 +19,6 @@ log = logging.getLogger(__name__)
 
 
 class LCDMessage:
-
     def __init__(self, text: str, duration: float = 2):
         self.duration = duration
         self.text: str = text

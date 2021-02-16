@@ -36,12 +36,14 @@ class Mounts(ThreadedUpdatable):
         candidate_mountpoints = self._get_clean_paths(self.paths_to_mount)
 
         # Cannot start with blacklisted paths
-        finalist_mountpoints = set(self.filter_blacklisted_paths(
-            candidate_mountpoints, self.data.blacklisted_paths))
+        finalist_mountpoints = set(
+            self.filter_blacklisted_paths(candidate_mountpoints,
+                                          self.data.blacklisted_paths))
 
         # Cannot have a blacklisted name
-        self.data.configured_mounts = set(self.filter_blacklisted_names(
-            finalist_mountpoints, self.data.blacklisted_names))
+        self.data.configured_mounts = set(
+            self.filter_blacklisted_names(finalist_mountpoints,
+                                          self.data.blacklisted_names))
 
         log.debug(f"Configured mounpoints: {self.data.configured_mounts}")
 
@@ -85,7 +87,8 @@ class Mounts(ThreadedUpdatable):
 
     @staticmethod
     def is_path_blacklisted(candidate, black_list):
-        """Returns the blacklist item that caused tha candidate to be flagged"""
+        """Returns the blacklist item that caused tha candidate to be flagged
+        """
         for blacklisted in black_list:
             if candidate.startswith(blacklisted):
                 log.warning(f"Ignoring {candidate} because it's "
@@ -95,7 +98,8 @@ class Mounts(ThreadedUpdatable):
 
     @staticmethod
     def is_name_blacklisted(candidate, black_list):
-        """Returns the blacklist item that caused tha candidate to be flagged"""
+        """Returns the blacklist item that caused tha candidate to be flagged
+        """
         clean_candidate = candidate.strip("/").split("/")[-1]
         for blacklisted in black_list:
             if clean_candidate == blacklisted:
@@ -114,7 +118,8 @@ class Mounts(ThreadedUpdatable):
         return added, removed
 
     def get_mountpoints(self):
-        raise NotImplemented("This is just a base class, don't instantiate")
+        raise NotImplementedError(
+            "This is just a base class, don't instantiate")
 
 
 class FSMounts(Mounts):
@@ -175,7 +180,6 @@ class DirMounts(Mounts):
     Configured directories are reported as mountpoints too,
     having the fs_type of "directory".
     """
-
     def __init__(self, cfg: Config, data):
         DirMounts.paths_to_mount = cfg.printer.directories
         super().__init__(data)

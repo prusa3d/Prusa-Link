@@ -17,10 +17,13 @@ log = logging.getLogger(__name__)
 
 
 class Serial(metaclass=MCSingleton):
-
-    def __init__(self, serial_reader: SerialReader,
-                 port="/dev/ttyAMA0", baudrate=115200, timeout=1,
-                 write_timeout=0, connection_write_delay=10):
+    def __init__(self,
+                 serial_reader: SerialReader,
+                 port="/dev/ttyAMA0",
+                 baudrate=115200,
+                 timeout=1,
+                 write_timeout=0,
+                 connection_write_delay=10):
 
         self.connection_write_delay = connection_write_delay
         self.port = port
@@ -59,7 +62,8 @@ class Serial(metaclass=MCSingleton):
         termios.tcsetattr(f, termios.TCSAFLUSH, attrs)
         f.close()
 
-        self.serial = serial.Serial(port=self.port, baudrate=self.baudrate,
+        self.serial = serial.Serial(port=self.port,
+                                    baudrate=self.baudrate,
                                     timeout=self.timeout,
                                     write_timeout=self.write_timeout)
 
@@ -102,7 +106,7 @@ class Serial(metaclass=MCSingleton):
                 log.error("Failed when reading from the printer. "
                           "Trying to re-open")
 
-                with self.write_lock: # Let's lock the writing
+                with self.write_lock:  # Let's lock the writing
                     # if the serial is broken
                     self._renew_serial_connection()
             except UnicodeDecodeError:
@@ -132,9 +136,11 @@ class Serial(metaclass=MCSingleton):
                     self.serial.write(message)
                 except serial.SerialException:
                     log.error(
-                        f"Serial error when sending '{message}' to the printer")
+                        f"Serial error when sending '{message}' to the printer"
+                    )
                     self._renew_serial_connection()
-                else: sent = True
+                else:
+                    sent = True
 
     def blip_dtr(self):
         with self.write_lock:

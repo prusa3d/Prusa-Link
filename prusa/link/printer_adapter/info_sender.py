@@ -18,7 +18,6 @@ log = logging.getLogger(__name__)
 
 
 class InfoSender:
-
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
                  printer: MyPrinter, model: Model, lcd_printer: LCDPrinter):
         self.printer = printer
@@ -34,12 +33,12 @@ class InfoSender:
     def update_info(self):
         self.printer.network_info = get_network_info(
             self.model).dict(exclude_none=True)
-        self.printer.firmware = get_firmware_version(
-            self.serial_queue, lambda: self.running)
+        self.printer.firmware = get_firmware_version(self.serial_queue,
+                                                     lambda: self.running)
         self.printer.nozzle_diameter = get_nozzle_diameter(
             self.serial_queue, lambda: self.running)
-        self.printer.firmware = get_firmware_version(
-            self.serial_queue, lambda: self.running)
+        self.printer.firmware = get_firmware_version(self.serial_queue,
+                                                     lambda: self.running)
 
     def fill_missing_info(self):
         self.printer.network_info = get_network_info(
@@ -59,7 +58,7 @@ class InfoSender:
         while self.running:
             try:
                 self.fill_missing_info()
-            except:
+            except Exception:  # pylint: disable=broad-except
                 log.exception("Sending initial info failed, Prusa-Link cannot"
                               "start. Retrying")
                 sleep(SEND_INFO_RETRY)
@@ -79,7 +78,7 @@ class InfoSender:
         try:
             self.update_info()
             self.printer.event_cb(**self.printer.get_info())
-        except:
+        except Exception:  # pylint: disable=broad-except
             log.exception("Failed to update info")
         finally:
             self.info_updating_thread = None

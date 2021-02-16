@@ -21,8 +21,10 @@ PRINTER_TYPES = {
 
 
 def get_printer_type(serial_queue: SerialQueue, should_wait=lambda: True):
-    instruction = enqueue_matchable(serial_queue, "M862.2 Q",
-                                    PRINTER_TYPE_REGEX, to_front=True)
+    instruction = enqueue_matchable(serial_queue,
+                                    "M862.2 Q",
+                                    PRINTER_TYPE_REGEX,
+                                    to_front=True)
     wait_for_instruction(instruction, should_wait)
     match = instruction.match()
     if match is None:
@@ -36,14 +38,17 @@ def get_printer_type(serial_queue: SerialQueue, should_wait=lambda: True):
         return PRINTER_TYPES[code]
     except KeyError:
         errors.ID.ok = False
-        enqueue_instruction(serial_queue, "M117 Unsupported printer",
+        enqueue_instruction(serial_queue,
+                            "M117 Unsupported printer",
                             to_front=True)
         raise RuntimeError(f"Unsupported printer model '{code}'")
 
 
 def get_firmware_version(serial_queue: SerialQueue, should_wait=lambda: True):
-    instruction = enqueue_matchable(serial_queue, "M115",
-                                    FW_REGEX, to_front=True)
+    instruction = enqueue_matchable(serial_queue,
+                                    "M115",
+                                    FW_REGEX,
+                                    to_front=True)
     wait_for_instruction(instruction, should_wait)
     match = instruction.match()
     errors.FW.ok = match is not None
@@ -54,8 +59,10 @@ def get_firmware_version(serial_queue: SerialQueue, should_wait=lambda: True):
 
 
 def get_nozzle_diameter(serial_queue: SerialQueue, should_wait=lambda: True):
-    instruction = enqueue_matchable(serial_queue, "M862.1 Q",
-                                    NOZZLE_REGEX, to_front=True)
+    instruction = enqueue_matchable(serial_queue,
+                                    "M862.1 Q",
+                                    NOZZLE_REGEX,
+                                    to_front=True)
     wait_for_instruction(instruction, should_wait)
     match = instruction.match()
     if match is None:

@@ -33,7 +33,9 @@ PRINTER_STATES = {
 @check_digest(REALM)
 def index(req):
     """Return status page"""
-    return generate_page(req, "index.html", api_key=app.api_key,
+    return generate_page(req,
+                         "index.html",
+                         api_key=app.api_key,
                          errors=errors.status())
 
 
@@ -42,12 +44,10 @@ def index(req):
 def api_version(req):
     """Return api version"""
     log.debug(req.headers)
-    return JSONResponse(
-        api="0.1",
-        server=__version__,
-        original="PrusaLink %s" % __version__,
-        text="OctoPrint 1.1.0"
-    )
+    return JSONResponse(api="0.1",
+                        server=__version__,
+                        original="PrusaLink %s" % __version__,
+                        text="OctoPrint 1.1.0")
 
 
 @app.route('/api/connection')
@@ -57,27 +57,23 @@ def api_connection(req):
     cfg = app.daemon.cfg
     tel = app.daemon.prusa_link.model.last_telemetry
 
-    return JSONResponse(**{
-        "current":
-            {
+    return JSONResponse(
+        **{
+            "current": {
                 "baudrate": "%s" % cfg.printer.baudrate,
                 "port": "%s" % cfg.printer.port,
                 "printerProfile": "_default",
                 "state": "%s" % PRINTER_STATES[tel.state],
             },
-        "options":
-            {
+            "options": {
                 "ports": [cfg.printer.port],
                 "baudrates": [cfg.printer.baudrate],
-                "printerProfiles": [
-                    {
-                        "id": "_default",
-                        "name": "Prusa MK3S"
-                    }
-                ]
+                "printerProfiles": [{
+                    "id": "_default",
+                    "name": "Prusa MK3S"
+                }]
             }
-    }
-                        )
+        })
 
 
 @app.route('/api/printer')
@@ -87,41 +83,41 @@ def api_printer(req):
     tel = app.daemon.prusa_link.model.last_telemetry
     sd_ready = app.daemon.prusa_link.sd_ready
 
-    return JSONResponse(**{
-        "temperature": {
-            "tool0": {
-                "actual": "%.2f" % tel.temp_nozzle,
-                "target": "%.2f" % tel.target_nozzle,
+    return JSONResponse(
+        **{
+            "temperature": {
+                "tool0": {
+                    "actual": "%.2f" % tel.temp_nozzle,
+                    "target": "%.2f" % tel.target_nozzle,
+                },
+                "bed": {
+                    "actual": "%.2f" % tel.temp_bed,
+                    "target": "%.2f" % tel.target_bed,
+                },
             },
-            "bed": {
-                "actual": "%.2f" % tel.temp_bed,
-                "target": "%.2f" % tel.target_bed,
+            "sd": {
+                "ready": "%s" % sd_ready
             },
-        },
-        "sd": {
-            "ready": "%s" % sd_ready
-        },
-        "state": {
-            "text": PRINTER_STATES[tel.state],
-            "flags": {
-                "operational": True if tel.state == State.READY else False,
-                "paused": True if tel.state == State.PAUSED else False,
-                "printing": True if tel.state == State.PRINTING else False,
-                "cancelling": False,
-                "pausing": True if tel.state == State.PAUSED else False,
-                "sdReady": True if sd_ready else False,
-                "error": True if tel.state == State.ERROR else False,
-                "ready": True if tel.state == State.READY else False,
-                "closedOrError": False
+            "state": {
+                "text": PRINTER_STATES[tel.state],
+                "flags": {
+                    "operational": True if tel.state == State.READY else False,
+                    "paused": True if tel.state == State.PAUSED else False,
+                    "printing": True if tel.state == State.PRINTING else False,
+                    "cancelling": False,
+                    "pausing": True if tel.state == State.PAUSED else False,
+                    "sdReady": True if sd_ready else False,
+                    "error": True if tel.state == State.ERROR else False,
+                    "ready": True if tel.state == State.READY else False,
+                    "closedOrError": False
+                }
+            },
+            "tel": {
+                "temp_bed": tel.temp_bed,
+                "temp_nozzle": tel.temp_nozzle,
+                "material": "string"
             }
-        },
-        "tel": {
-            "temp_bed": tel.temp_bed,
-            "temp_nozzle": tel.temp_nozzle,
-            "material": "string"
-        }
-    }
-                        )
+        })
 
 
 @app.route('/api/files')
@@ -134,8 +130,7 @@ def api_files(req):
         "files": [files_to_api(data)],
         "free": 0,
         "total": 0
-    }
-                        )
+    })
 
 
 @app.route('/api/job')
@@ -148,27 +143,28 @@ def api_job(req):
     is_printing = job_state == "PRINTING"
     estimated = tel.time_estimated + tel.time_printing if is_printing else None
 
-    return JSONResponse(**{
-        "job": {
-            "estimatedPrintTime": int(estimated),
-            "file": {
-                "name": job.get("file_path"),
-                "date": job.get("m_time"),
-                "size": job.get("size"),
-                "origin": "sdcard" if job.get("from_sd") else "local",
+    return JSONResponse(
+        **{
+            "job": {
+                "estimatedPrintTime": int(estimated),
+                "file": {
+                    "name": job.get("file_path"),
+                    "date": job.get("m_time"),
+                    "size": job.get("size"),
+                    "origin": "sdcard" if job.get("from_sd") else "local",
+                },
             },
-        },
-        "progress": {
-            "completion": "%f" % tel.progress if is_printing else None,
-            "printTime": "%i" % tel.time_printing if is_printing else None,
-            "printTimeLeft": "%i" % tel.time_estimated if is_printing else None,
-            "pos_z_mm": "%i" % tel.axis_z,
-            "printSpeed": tel.speed,
-            "flow_factor": tel.flow,
-        },
-        "state": job_state
-    }
-                        )
+            "progress": {
+                "completion": "%f" % tel.progress if is_printing else None,
+                "printTime": "%i" % tel.time_printing if is_printing else None,
+                "printTimeLeft": "%i" %
+                tel.time_estimated if is_printing else None,
+                "pos_z_mm": "%i" % tel.axis_z,
+                "printSpeed": tel.speed,
+                "flow_factor": tel.flow,
+            },
+            "state": job_state
+        })
 
 
 @app.route('/api/files/<location>', state.METHOD_POST)
