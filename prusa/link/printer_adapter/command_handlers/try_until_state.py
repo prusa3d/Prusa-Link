@@ -1,7 +1,7 @@
 import logging
 from time import sleep, time
 
-from prusa.connect.printer.const import Source, State
+from prusa.connect.printer.const import State
 from prusa.link.printer_adapter.command import Command
 from prusa.link.printer_adapter.informers.state_manager import StateChange
 from prusa.link.printer_adapter.const import \
@@ -16,9 +16,9 @@ class TryUntilState(Command):
     def _try_until_state(self, gcode: str, desired_state: State):
 
         if self.state_manager.get_state() != desired_state:
-            self.state_manager.expect_change(StateChange(
-                command_id=self.command_id,
-                to_states={desired_state: self.source}))
+            self.state_manager.expect_change(
+                StateChange(command_id=self.command_id,
+                            to_states={desired_state: self.source}))
 
         log.debug(f"Trying to get to the {desired_state.name} state.")
 

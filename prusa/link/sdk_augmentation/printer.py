@@ -23,7 +23,6 @@ log = getLogger("connect-printer")
 # TODO: rename, it is using the same name just because double underscores
 #  break otherwise
 class MyPrinter(SDKPrinter, metaclass=MCSingleton):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.lcd_printer = LCDPrinter.get_instance()
@@ -44,8 +43,8 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
             errors.HTTP.ok = False
 
         res = super().parse_command(res)
-        errors.API.ok = True   # already done in SDK but lets be double sure
-        errors.VALID_SN.ok = True    # XXX really?
+        errors.API.ok = True  # already done in SDK but lets be double sure
+        errors.VALID_SN.ok = True  # XXX really?
 
         return res
 
@@ -90,10 +89,9 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         meta.load_from_path(string_path)
         log.warning(meta.data)
 
-        data = dict(
-            source=Source.CONNECT,
-            event=const.Event.FILE_INFO,
-            path=string_path)
+        data = dict(source=Source.CONNECT,
+                    event=const.Event.FILE_INFO,
+                    path=string_path)
 
         data.update(file.attrs)
         data.update(meta.data)

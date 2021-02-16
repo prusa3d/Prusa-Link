@@ -1,6 +1,5 @@
 from threading import Lock
 
-
 from prusa.connect.printer.const import State
 from prusa.link.printer_adapter.const import PRINTING_STATES
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
@@ -15,7 +14,6 @@ class Model(metaclass=MCSingleton):
     This class should collect every bit of info from all the informer classes
     Some values are reset upon reading, other, more state oriented should stay
     """
-
     def __init__(self):
         # Make only one thread be able to write or read our variables
         self.lock = Lock()
@@ -25,10 +23,11 @@ class Model(metaclass=MCSingleton):
         # so it resets upon being read
         self._telemetry: Telemetry = Telemetry()
         self._last_telemetry: Telemetry = Telemetry()
-        
+
         # Let's try and share inner module states for cooperation
         # The idea is, every module will get the model.
-        # Every component HAS TO write its OWN INFO ONLY but can read everything
+        # Every component HAS TO write its OWN INFO ONLY but can read
+        # everything
         self.file_printer: FilePrinterData = FilePrinterData()
         self.print_stats: PrintStatsData = PrintStatsData()
         self.state_manager: StateManagerData = StateManagerData()
@@ -43,8 +42,8 @@ class Model(metaclass=MCSingleton):
             self._telemetry.state = self.state_manager.current_state
             self._telemetry.job_id = self.job.get_job_id_for_api()
 
-            # Make sure that even if the printer tells us print specific values,
-            # nothing will be sent out while not printing
+            # Make sure that even if the printer tells us print specific
+            # values, nothing will be sent out while not printing
             if self.state_manager.current_state not in PRINTING_STATES:
                 self._telemetry.time_printing = None
                 self._telemetry.time_estimated = None
@@ -75,5 +74,3 @@ class Model(metaclass=MCSingleton):
             self._last_telemetry.state = self.state_manager.current_state
             self._last_telemetry.job_id = self.job.get_job_id_for_api()
             return self._last_telemetry
-
-

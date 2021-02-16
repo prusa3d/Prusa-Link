@@ -24,7 +24,6 @@ class HeapItem:
 
 
 class MinHeap:
-
     def __init__(self):
         self.heap: List[HeapItem] = []
 
@@ -98,8 +97,8 @@ class MinHeap:
 
     def sift_down(self, startpos, pos):
         newitem = self.heap[pos]
-        # Follow the path to the root, moving parents down until finding a place
-        # newitem fits.
+        # Follow the path to the root, moving parents down until finding
+        # a place newitem fits.
         while pos > startpos:
             parentpos = (pos - 1) >> 1
             parent = self.heap[parentpos]
@@ -114,7 +113,6 @@ class MinHeap:
 
 
 class MaxHeap(MinHeap):
-
     def push(self, item: HeapItem):
         item.heap_value = -item.value
         self._push(item)

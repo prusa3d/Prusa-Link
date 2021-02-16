@@ -57,7 +57,6 @@ log = logging.getLogger(__name__)
 
 
 class PrusaLink:
-
     def __init__(self, cfg: Config, settings):
         self.cfg: Config = cfg
         log.info('Starting adapter for port %s', self.cfg.printer.port)
@@ -73,8 +72,7 @@ class PrusaLink:
                              baudrate=cfg.printer.baudrate)
 
         self.serial_queue = MonitoredSerialQueue(self.serial,
-                                                 self.serial_reader,
-                                                 self.cfg)
+                                                 self.serial_reader, self.cfg)
         MonitoredSerialQueue.get_instance().serial_queue_failed.connect(
             self.serial_queue_failed)
 
@@ -113,8 +111,7 @@ class PrusaLink:
                                       self.lcd_printer)
         self.storage = StorageController(cfg, self.serial_queue,
                                          self.serial_reader,
-                                         self.state_manager,
-                                         self.model)
+                                         self.state_manager, self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
 
         # Bind signals
@@ -172,8 +169,9 @@ class PrusaLink:
         self.telemetry_thread = threading.Thread(
             target=self.keep_sending_telemetry, name="telemetry_passer")
         self.telemetry_thread.start()
-        self.sdk_loop_thread = threading.Thread(
-            target=self.sdk_loop, name="sdk_loop", daemon=True)
+        self.sdk_loop_thread = threading.Thread(target=self.sdk_loop,
+                                                name="sdk_loop",
+                                                daemon=True)
         self.sdk_loop_thread.start()
 
         # Start this last, as it might start printing right away
@@ -197,11 +195,9 @@ class PrusaLink:
             elif command == "stop":
                 result = StopPrint().run_command()
             elif command.startswith("gcode"):
-                result = ExecuteGcode(
-                    command.split(" ", 1)[1]).run_command()
+                result = ExecuteGcode(command.split(" ", 1)[1]).run_command()
             elif command.startswith("print"):
-                result = StartPrint(
-                    command.split(" ", 1)[1]).run_command()
+                result = StartPrint(command.split(" ", 1)[1]).run_command()
 
             if result:
                 print(result)
@@ -288,9 +284,12 @@ class PrusaLink:
     def progress_broken(self, sender, progress_broken):
         self.job.progress_broken(progress_broken)
 
-    def file_path_observed(self, sender, path: str,
+    def file_path_observed(self,
+                           sender,
+                           path: str,
                            filename_only: bool = False):
-        self.job.set_file_path(path, filename_only=filename_only,
+        self.job.set_file_path(path,
+                               filename_only=filename_only,
                                prepend_sd_mountpoint=True)
 
     def sd_print_start_observed(self, sender, match):
@@ -368,18 +367,24 @@ class PrusaLink:
     def post_state_change(self, sender: StateManager):
         self.job.tick()
 
-    def state_changed(self, sender, from_state, to_state,
-                      command_id=None, source=None, reason=None):
+    def state_changed(self,
+                      sender,
+                      from_state,
+                      to_state,
+                      command_id=None,
+                      source=None,
+                      reason=None):
         if source is None:
             source = Source.WUI
-            log.warning(f"State change had no source "
-                        f"{to_state.value}")
+            log.warning(f"State change had no source " f"{to_state.value}")
 
         extra_data = dict()
         if reason is not None:
             extra_data["reason"] = reason
 
-        self.printer.set_state(to_state, command_id=command_id, source=source,
+        self.printer.set_state(to_state,
+                               command_id=command_id,
+                               source=source,
                                job_id=self.model.job.get_job_id_for_api(),
                                **extra_data)
 
@@ -387,8 +392,8 @@ class PrusaLink:
         """Nothing to do, the writing to model is done inside the module"""
 
     def time_printing_updated(self, sender, time_printing):
-        self.model.set_telemetry(
-            new_telemetry=Telemetry(time_printing=time_printing))
+        self.model.set_telemetry(new_telemetry=Telemetry(
+            time_printing=time_printing))
 
     def serial_queue_failed(self, sender):
         reset_command = ResetPrinter()

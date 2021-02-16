@@ -6,11 +6,10 @@ from jinja2_template_info import TemplateInfoExtension
 
 from prusa.connect.printer.const import PrinterType
 
-from . core import app
+from .core import app
 
-TEMPL_PATH = (
-    files('jinja2_template_info'),
-    join(files('prusa.link'), 'templates'))
+TEMPL_PATH = (files('jinja2_template_info'),
+              join(files('prusa.link'), 'templates'))
 
 
 def printer_type(type_):
@@ -29,8 +28,10 @@ def generate_page(request, template, **kwargs):
     """Return generated ouptut fromjinja template."""
 
     env = Environment(loader=FileSystemLoader(TEMPL_PATH),
-                      extensions=['jinja2.ext.i18n', 'jinja2.ext.do',
-                                  'jinja2.ext.loopcontrols'])
+                      extensions=[
+                          'jinja2.ext.i18n', 'jinja2.ext.do',
+                          'jinja2.ext.loopcontrols'
+                      ])
 
     env.filters['printer_type'] = printer_type
 

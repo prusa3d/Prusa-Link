@@ -25,7 +25,6 @@ log = logging.getLogger(__name__)
 
 class Job(metaclass=MCSingleton):
     """This is a subcomponent of the state manager"""
-
     def __init__(self, serial_reader: SerialReader, model: Model, cfg: Config,
                  printer: Printer):
         # Sent every time the job id should disappear, appear or update
@@ -60,7 +59,8 @@ class Job(metaclass=MCSingleton):
         self.data.job_id = int(loaded_data.get("job_id", 0))
         self.data.job_state = JobState.IDLE
 
-        self.job_id_updated_signal.send(self, job_id=self.data.get_job_id_for_api())
+        self.job_id_updated_signal.send(self,
+                                        job_id=self.data.get_job_id_for_api())
 
     def file_opened(self, sender, match: re.Match):
         # This solves the issue, where the print is started from Connect, but
@@ -73,7 +73,8 @@ class Job(metaclass=MCSingleton):
         if match is not None and match.groups()[0] != "":
             # TODO: fix when the fw support for full paths arrives
             filename = match.groups()[0]
-            self.set_file_path(filename, filename_only=True,
+            self.set_file_path(filename,
+                               filename_only=True,
                                prepend_sd_mountpoint=True)
 
     def job_started(self, command_id=None):
@@ -88,8 +89,8 @@ class Job(metaclass=MCSingleton):
         self.change_state(JobState.IN_PROGRESS)
         self.write()
         log.debug(f"New job started, id = {self.data.job_id}")
-        self.job_id_updated_signal.send(
-            self, job_id=self.data.get_job_id_for_api())
+        self.job_id_updated_signal.send(self,
+                                        job_id=self.data.get_job_id_for_api())
 
     def job_ended(self):
         self.data.job_start_cmd_id = None
@@ -98,9 +99,9 @@ class Job(metaclass=MCSingleton):
         self.data.from_sd = None
         self.data.inbuilt_reporting = None
         self.change_state(JobState.IDLE)
-        log.debug(f"Job ended")
-        self.job_id_updated_signal.send(
-            self, job_id=self.data.get_job_id_for_api())
+        log.debug("Job ended")
+        self.job_id_updated_signal.send(self,
+                                        job_id=self.data.get_job_id_for_api())
 
     def state_changed(self, command_id=None):
         """Called before anything regarding state is sent"""
@@ -145,8 +146,9 @@ class Job(metaclass=MCSingleton):
             if prepend_sd_mountpoint:
                 path = str(Path(f"/{SD_MOUNT_NAME}").joinpath(path))
 
-            log.debug(f"Overwriting file {'name' if filename_only else 'path'} "
-                      f"with {path}")
+            log.debug(
+                f"Overwriting file {'name' if filename_only else 'path'} "
+                f"with {path}")
             self.data.printing_file_path = path
             self.data.filename_only = filename_only
 

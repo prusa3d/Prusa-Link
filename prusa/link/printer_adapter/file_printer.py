@@ -30,7 +30,6 @@ log = logging.getLogger(__name__)
 
 
 class FilePrinter(metaclass=MCSingleton):
-
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
                  model: Model, cfg: Config, print_stats: PrintStats):
         self.serial_queue = serial_queue
@@ -63,8 +62,8 @@ class FilePrinter(metaclass=MCSingleton):
             POWER_PANIC_REGEX, lambda sender, match: self.power_panic())
         self.serial_reader.add_handler(
             ERROR_REGEX, lambda sender, match: self.printer_error())
-        self.serial_reader.add_handler(
-            RESUMED_REGEX, lambda sender, match: self.resume())
+        self.serial_reader.add_handler(RESUMED_REGEX,
+                                       lambda sender, match: self.resume())
 
         self.thread = None
 
@@ -82,12 +81,11 @@ class FilePrinter(metaclass=MCSingleton):
     def check_failed_print(self):
         if self.tmp_exists and self.pp_exists:
             log.warning("There was a loss of power, let's try to recover")
-
+            """
             with open(self.data.pp_file_path, "r") as pp_file:
                 content = pp_file.read()
                 line_number = int(content)
                 line_index = line_number - 1
-            """
             self.data.printing = True
 
             prep_gcodes = ["G28 XY"]
@@ -109,7 +107,7 @@ class FilePrinter(metaclass=MCSingleton):
             self.thread = Thread(target=self._print, name="file_print",
                                  args=(line_index,))
             self.thread.start()
-"""
+            """
             if self.pp_exists:
                 os.remove(self.data.pp_file_path)
 
@@ -150,7 +148,7 @@ class FilePrinter(metaclass=MCSingleton):
                 if not self.data.printing:
                     break
 
-            log.debug(f"Print ended")
+            log.debug("Print ended")
 
             os.remove(self.data.tmp_file_path)
             if self.pp_exists:
@@ -170,7 +168,8 @@ class FilePrinter(metaclass=MCSingleton):
             self.send_print_stats()
 
         log.debug(f"USB enqueuing gcode: {gcode}")
-        instruction = enqueue_instruction(self.serial_queue, gcode,
+        instruction = enqueue_instruction(self.serial_queue,
+                                          gcode,
                                           to_front=True,
                                           to_checksum=True)
         self.data.enqueued.append(instruction)
@@ -207,8 +206,9 @@ class FilePrinter(metaclass=MCSingleton):
     def to_print_stats(self, gcode_number):
         divisible = gcode_number % STATS_EVERY == 0
         do_stats = not self.model.print_stats.has_inbuilt_stats
-        print_ending = (gcode_number ==
-                        self.model.print_stats.total_gcode_count - TAIL_COMMANDS)
+        print_ending = (
+            gcode_number == self.model.print_stats.total_gcode_count -
+            TAIL_COMMANDS)
         return (do_stats and divisible) or print_ending
 
     def printer_error(self):

@@ -4,14 +4,14 @@ from enum import Enum
 from threading import Event
 from time import time
 
-
 log = logging.getLogger(__name__)
 
 
 class Instruction:
     """Basic instruction which can be enqueued into SerialQueue"""
-
-    def __init__(self, message: str, to_checksum: bool = False,
+    def __init__(self,
+                 message: str,
+                 to_checksum: bool = False,
                  data: bytes = None):
         if message.count("\n") != 0:
             raise RuntimeError("Instructions cannot contain newlines.")
@@ -80,8 +80,9 @@ class MatchableInstruction(Instruction):
     """
     Matches using captures_matching.
     """
-
-    def __init__(self, *args, capture_matching: re.Pattern = re.compile(r".*"),
+    def __init__(self,
+                 *args,
+                 capture_matching: re.Pattern = re.compile(r".*"),
                  **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -107,7 +108,6 @@ class MandatoryMatchableInstruction(MatchableInstruction):
     HAS TO MATCH, otherwise refuses confirmation!
     This should fix a communication error we're having.
     """
-
     def confirm(self, force=False) -> bool:
         # Yes, matchables HAVE TO match now!
         if not self.captured and not force:
@@ -127,16 +127,13 @@ class CollectingInstruction(Instruction):
 
     Also refuses confirmation if nothing gets matched.
     """
-
     class States(Enum):
         NOT_CAPTURING_YET = 0
         CAPTURING = 1
         ENDED = 2
 
-    def __init__(self, begin_regex: re.Pattern,
-                 capture_regex: re.Pattern,
-                 end_regex: re.Pattern,
-                 *args, **kwargs):
+    def __init__(self, begin_regex: re.Pattern, capture_regex: re.Pattern,
+                 end_regex: re.Pattern, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Output captured between begin and end regex,
@@ -147,8 +144,9 @@ class CollectingInstruction(Instruction):
         self.captured = []
         self.state = self.States.NOT_CAPTURING_YET
 
-        self.capturing_regexps = [self.begin_regex, self.capture_regex,
-                                  self.end_regex]
+        self.capturing_regexps = [
+            self.begin_regex, self.capture_regex, self.end_regex
+        ]
 
     def output_captured(self, sender, match: re.Match):
         # The order of these blocks is important, it prevents the

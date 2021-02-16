@@ -1,0 +1,19 @@
+---
+language: python
+
+python:
+ - "3.7"
+ - "3.8"
+ - "3.9"
+
+install:
+ - pip3 install -U -r requirements.txt
+ - pip3 install -U pytest pytest-pylint pytest-doctestplus requests
+   requests_mock pytest-mypy inotify_simple func-timeout
+
+script:
+ - pytest -v --mypy --pylint --doctest-plus --doctest-rst
+
+before_deploy:
+ - python3 setup.py sdist
+ - python3 setup.py bdist_wheel

@@ -21,6 +21,7 @@ def check_printer(fun):
         if not daemon.prusa_link or not daemon.prusa_link.printer:
             redirect('/wizard')
         return fun(req)
+
     return handler
 
 
@@ -33,7 +34,9 @@ def check_step(step):
             if app.wizard.errors.get(step, True):
                 redirect(f'/wizard/{step}')
             return fun(req)
+
         return handler
+
     return wrapper
 
 
@@ -106,10 +109,11 @@ def wizard_finish(req):
     """Show wizard status and link to homepage."""
     wizard = app.wizard
     url = Printer.connect_url(wizard.connect_hostname,
-                              bool(wizard.connect_tls),
-                              wizard.connect_port)
-    return generate_page(req, "wizard_finish.html",
-                         wizard=app.wizard, connect_url=url)
+                              bool(wizard.connect_tls), wizard.connect_port)
+    return generate_page(req,
+                         "wizard_finish.html",
+                         wizard=app.wizard,
+                         connect_url=url)
 
 
 @app.route('/wizard/finish-register', method=state.METHOD_POST)
@@ -153,7 +157,7 @@ def wizard_finish_post(req):
 # @app.before_request()
 def check_wizard_access(req):
     if req.path.startwith('/wizard') and app.auth_map:
-        redirect('/')   # auth map is configured, wizard is denied
+        redirect('/')  # auth map is configured, wizard is denied
 
     if not req.path.startwith('/wizard') and not app.auth_map:
         redirect('/wizard')

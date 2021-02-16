@@ -44,7 +44,8 @@ class ExecuteGcode(Command):
         # try running every line
         # Do this manually as it's the only place where a list
         # has to be enqueued
-        instruction_list = enqueue_list_from_str(self.serial_queue, line_list,
+        instruction_list = enqueue_list_from_str(self.serial_queue,
+                                                 line_list,
                                                  REJECTION_REGEX,
                                                  front=True)
 
@@ -52,7 +53,7 @@ class ExecuteGcode(Command):
             self.wait_while_running(instruction)
 
             if not instruction.is_confirmed():
-                self.failed(f"Command interrupted")
+                self.failed("Command interrupted")
             if instruction.match():
                 self.failed(f"Unknown command '{self.gcode}')")
 

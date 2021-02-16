@@ -30,7 +30,6 @@ class ReportingEnsurer(ThreadedUpdatable):
 
         self.turn_reporting_on()
 
-
     def temps_recorded(self, sender=None, match=None):
         self.last_seen_temps = time()
 

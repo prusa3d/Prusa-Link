@@ -19,7 +19,6 @@ class DaemonLogger:
     Adapt a syslog handled logger into a python file-like object
     for use with DaemonContext as stdout and stderr args
     """
-
     def __init__(self, config: Config):
         self.config = config
 
@@ -33,13 +32,11 @@ class DaemonLogger:
 
 
 class STDOutLogger(DaemonLogger):
-
     def write(self, message):
         logging.root.info(message)
 
 
 class STDErrLogger(DaemonLogger):
-
     def write(self, message):
         logging.root.error(message)
 
@@ -53,14 +50,13 @@ class ExThread(Thread):
             return
 
         res = ctypes.pythonapi.PyThreadState_SetAsyncExc(
-            ctypes.c_long(self.ident),
-            ctypes.py_object(exc))
+            ctypes.c_long(self.ident), ctypes.py_object(exc))
         if res == 0:
             log.error("Invalid thread id for %s", self.name)
             raise ValueError("Invalid thread id")
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(self.ident, 0)
-            log.error("Exception raise failure for %s",  self.name)
+            log.error("Exception raise failure for %s", self.name)
             raise RuntimeError('Exception raise failure')
 
 
@@ -88,7 +84,8 @@ class Daemon:
         """Run daemon."""
 
         self.settings = Settings(self.cfg.printer.settings)
-        self.http = ExThread(target=run_http, args=(self, not daemon),
+        self.http = ExThread(target=run_http,
+                             args=(self, not daemon),
                              name="http")
 
         if self.settings.service_local.enable:
@@ -115,7 +112,7 @@ class Daemon:
             self.http.raise_exception(KeyboardInterrupt)
             self.http.join()
             return 0
-        except Exception:   # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             adapter_logger.exception("Unknown Exception")
             self.http.raise_exception(KeyboardInterrupt)
             return 1

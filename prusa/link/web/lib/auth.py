@@ -19,6 +19,7 @@ def check_api_key(func):
                            status_code=state.HTTP_FORBIDDEN)
             raise HTTPException(res)
         return func(req, *args, **kwargs)
+
     return handler
 
 
@@ -29,4 +30,5 @@ def check_config(func):
         if not app.auth_map:
             redirect('/wizard')
         return func(req, *args, **kwargs)
+
     return handler

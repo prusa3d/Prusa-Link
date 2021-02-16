@@ -1,5 +1,6 @@
 """Login endpoints"""
 
+
 def login_form(req):
     """First info page with login."""
     return "please loged in."

@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 @app.http_state(500)
 def internal_server_error(req):
     """Obsluha chyby 500 Internal Server Error."""
-    type_, error, traceback = exc_info()    # pylint: disable=unused-variable
+    type_, error, traceback = exc_info()  # pylint: disable=unused-variable
     traceback = format_tb(traceback)
     log.error('\n%s%s', ''.join(traceback), repr(error))
     try:
@@ -23,8 +23,10 @@ def internal_server_error(req):
         if app.debug:
             kwargs["traceback"] = traceback
 
-        return make_response(generate_page(req, "error500.html",
-                                           error=repr(error), **kwargs),
+        return make_response(generate_page(req,
+                                           "error500.html",
+                                           error=repr(error),
+                                           **kwargs),
                              status_code=500)
     except Exception:  # pylint: disable=broad-except
         traceback = format_exc()

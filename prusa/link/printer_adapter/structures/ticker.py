@@ -2,7 +2,6 @@ from time import time
 
 
 class Ticker:
-
     def __init__(self, interval):
         self.interval = interval
         self.last_tick = 0

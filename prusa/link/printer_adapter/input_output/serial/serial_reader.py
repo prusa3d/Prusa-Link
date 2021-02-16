@@ -9,12 +9,10 @@ from sortedcontainers import SortedKeyList
 
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 
-
 log = logging.getLogger(__name__)
 
 
 class RegexPairing:
-
     def __init__(self, regexp, priority=0, stops_matching=True):
         self.regexp: re.Pattern = regexp
         self.signal: Signal = Signal()
@@ -33,21 +31,20 @@ class RegexPairing:
 
 
 class SerialReader(metaclass=MCSingleton):
-
     def __init__(self):
         self.lock = Lock()
         self.pattern_list = SortedKeyList(key=lambda item: -item.priority)
-        self.pairing_dict: Dict[List[Callable[[(Match,)], None]]] = {}
+        self.pairing_dict: Dict[List[Callable[[(Match, )], None]]] = {}
 
     def decide(self, line):
         signal_list = []
-        
+
         with self.lock:
             for pairing in self.pattern_list:
                 log.debug(f"Trying {pairing.regexp.pattern} on {line}")
                 match = pairing.regexp.match(line)
                 if match:
-                    log.debug(f"Success")
+                    log.debug("Success")
                     signal_list.append(pairing.signal)
                     if pairing.stops_matching:
                         break

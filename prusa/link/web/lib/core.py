@@ -10,8 +10,7 @@ from poorwsgi import Application
 from poorwsgi.digest import PasswordMap
 
 STATIC_DIR = abspath(
-        os.environ.get('PRUSA_LINK_STATIC',
-                       join(files('prusa.link'), 'static')))
+    os.environ.get('PRUSA_LINK_STATIC', join(files('prusa.link'), 'static')))
 
 app = application = Application(__package__)
 app.keep_blank_values = 1

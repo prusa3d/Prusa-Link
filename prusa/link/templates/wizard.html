@@ -19,16 +19,16 @@
 
             <a href="/wizard" class="btn btn-outline-light align-center" style="width: 200px;margin: 2em auto;display: block;">Refresh</a>
             {# TODO: do some javascript call to check the printer, and then refresh is automaticaly #}
-            
+
             {% else %}
-            
+
             {% set printer = wizard.daemon.prusa_link.printer %}
 
             <p class="align-center">Prusa Link detected</p>
             <div class="img-center">
                 <img src="img/printers/{{ printer.type }}.svg" height="200" width="200" />
             </div>
-            
+
             <h2 class="align-center">{{ printer.type | printer_type }}</h2>
 
             <div class="container navigation">

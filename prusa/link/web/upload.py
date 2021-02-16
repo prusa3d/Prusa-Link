@@ -1,4 +1,1 @@
-
-
-from .lib.core import app
-
+# from .lib.core import app

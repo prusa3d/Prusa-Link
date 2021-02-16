@@ -64,7 +64,7 @@ class SDCard(ThreadedUpdatable):
         self.serial_queue: SerialQueue = serial_queue
         self.state_manager = state_manager
         self.model = model
-        
+
         self.data = self.model.sd_card
 
         self.data.expecting_insertion = False
@@ -116,8 +116,7 @@ class SDCard(ThreadedUpdatable):
         self.tree_updated_signal.send(self, tree=self.data.files)
 
     def determine_flash_air(self):
-        instruction = enqueue_matchable(self.serial_queue,
-                                        "D3 Ax0fbb C1",
+        instruction = enqueue_matchable(self.serial_queue, "D3 Ax0fbb C1",
                                         D3_C1_OUTPUT_REGEX)
         wait_for_instruction(instruction, lambda: self.running)
         match = instruction.match()
@@ -130,15 +129,16 @@ class SDCard(ThreadedUpdatable):
 
         tree = SDFile(name=SD_MOUNT_NAME, is_dir=True, ro=True)
 
-        instruction = enqueue_collecting(self.serial_queue, "M20 L",
+        instruction = enqueue_collecting(self.serial_queue,
+                                         "M20 L",
                                          begin_regex=BEGIN_FILES_REGEX,
                                          capture_regex=LFN_CAPTURE,
                                          end_regex=END_FILES_REGEX)
         wait_for_instruction(instruction, lambda: self.running)
 
         # Captured can be three distinct lines. Dir entry, exit or a file
-        # listing. We need to maintain the info about which dir we are currently
-        # in, as that doesn't repeat in the file listing lines
+        # listing. We need to maintain the info about which dir we are
+        # currently in, as that doesn't repeat in the file listing lines
         current_dir = Path("/")
         lfn_to_sfn_paths = {}
         sfn_to_lfn_paths = {}
@@ -153,8 +153,8 @@ class SDCard(ThreadedUpdatable):
                 # Sanitize the dir name
                 too_long = len(long_dir_name) >= MAX_FILENAME_LENGTH
                 if too_long:
-                    new_name = self.alternative_filename(long_dir_name,
-                                                         short_dir_name)
+                    new_name = self.alternative_filename(
+                        long_dir_name, short_dir_name)
                     current_dir = current_dir.joinpath(new_name)
                 else:
                     current_dir = current_dir.joinpath(long_dir_name)
@@ -162,7 +162,8 @@ class SDCard(ThreadedUpdatable):
                 self.check_uniqueness(current_dir, tree)
                 # Add the dir to the tree
                 try:
-                    tree.add_directory(current_dir.parent, current_dir.name,
+                    tree.add_directory(current_dir.parent,
+                                       current_dir.name,
                                        filename_too_long=too_long)
                 except FileNotFoundError as e:
                     log.exception(e)
@@ -188,9 +189,7 @@ class SDCard(ThreadedUpdatable):
                     len_checked_long_filename = raw_long_filename
 
                 long_file_name = self.ensure_extension(
-                    len_checked_long_filename,
-                    long_extension,
-                    short_extension)
+                    len_checked_long_filename, long_extension, short_extension)
 
                 long_path = current_dir.joinpath(long_file_name)
                 self.check_uniqueness(long_path, tree)
@@ -209,7 +208,9 @@ class SDCard(ThreadedUpdatable):
 
                 # Add the file to the tree
                 try:
-                    tree.add_file(current_dir, long_file_name, size=size,
+                    tree.add_file(current_dir,
+                                  long_file_name,
+                                  size=size,
                                   filename_too_long=too_long)
                 except FileNotFoundError as e:
                     log.exception(e)
@@ -225,8 +226,9 @@ class SDCard(ThreadedUpdatable):
 
     def alternative_filename(self, long_filename: str, short_filename: str):
         new_filename = f"{short_filename} - {long_filename}"
-        log.warning(f"Filename {long_filename} too long, using an alternative: "
-                    f"{new_filename}")
+        log.warning(
+            f"Filename {long_filename} too long, using an alternative: "
+            f"{new_filename}")
         return new_filename
 
     def check_uniqueness(self, path: Path, tree):
@@ -237,8 +239,8 @@ class SDCard(ThreadedUpdatable):
 
     def ensure_extension(self, long_filename: str, long_extension: str,
                          short_extension: str):
-        has_full_extension = (long_filename.endswith(short_extension) or
-                              long_filename.endswith(long_extension))
+        has_full_extension = (long_filename.endswith(short_extension)
+                              or long_filename.endswith(long_extension))
         if not has_full_extension:
             original_extension = long_filename.split(".")[-1]
             # The filenames can end in parts of short or long versions of

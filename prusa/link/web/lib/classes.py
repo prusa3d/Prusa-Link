@@ -25,6 +25,3 @@ class ForkingServer(ForkingMixIn, SingleServer):
 class ThreadingServer(ThreadingMixIn, SingleServer):
     """WSGIServer which run request in thread."""
     type = "Threading"
-
-
-

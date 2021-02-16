@@ -1,6 +1,5 @@
 from prusa.connect.printer.const import State
 
-
 BASE_STATES = {State.READY, State.BUSY}
 PRINTING_STATES = {State.PRINTING, State.PAUSED, State.FINISHED}
 
@@ -54,17 +53,14 @@ PRINT_QUEUE_SIZE = 4
 # --- Mountpoints ---
 MAX_FILENAME_LENGTH = 52
 SD_MOUNT_NAME = "SD Card"
-BLACKLISTED_TYPES = [
-]
+BLACKLISTED_TYPES = []
 BLACKLISTED_PATHS = [
     "/dev",
     "/sys",
     "/proc",
     "/tmp",
 ]
-BLACKLISTED_NAMES = [
-    SD_MOUNT_NAME
-]
+BLACKLISTED_NAMES = [SD_MOUNT_NAME]
 SFN_TO_LFN_EXTENSIONS = {"GCO": "gcode", "G": "g"}
 
 NO_IP = "NO_IP"
