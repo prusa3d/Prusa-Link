@@ -120,6 +120,7 @@ def wizard_finish(req):
 @check_step('printer')
 def wizard_finish_post(req):
     """Show wizard status and link to homepage."""
+    # pylint: disable=unused-argument
     wizard = app.wizard
     wizard.write_settings(app.settings)
 
@@ -134,7 +135,7 @@ def wizard_finish_post(req):
     printer.set_connect(app.settings)
 
     # wait up to one second for printer.sn to be set
-    for i in range(10):
+    for i in range(10):  # pylint: disable=unused-variable
         if printer.sn:
             break
         time.sleep(.1)

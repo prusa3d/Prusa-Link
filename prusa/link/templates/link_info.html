@@ -25,41 +25,47 @@
             <li>SDK State: <span class="white">{{ printer.state }}</span></li>
             <li>Errors state:</li>
             <ul>
-        {%- for error in errors %}
-        {%- for key, (state, msg) in error.items() %}
+            {%- for error in errors %}
+            {%- for key, (state, msg) in error.items() %}
             <li>{{ key }}: <span class="white">{{ state or msg }}</span></li>
-        {%- endfor %}
+            {%- endfor %}
             <br>
-        {%- endfor %}
+            {%- endfor %}
             </ul>
         </ul>
 
         <h2 class="align-center">Network</h2>
+        {% if printer %}
         <ul>
-        {%- for key, val in printer.network_info.items() %}
+            {%- for key, val in printer.network_info.items() %}
             <li>{{ key }}: <span class="white">{{ val }}</span></li>
-        {%- endfor %}
+            {%- endfor %}
             <li>Api-Key: <span class="white">{{ printer.api_key }}</span></li>
-
         </ul>
+        {% endif %}
+
 
         <h2 class="align-center">Connect</h2>
         <ul>
             <li>Server: <span class="white">{{ printer.server }}</span></li>
             <li>Fingerprint: <span class="white">{{ printer.fingerprint }}</span></li>
             <li>Token: <span class="white">{{ printer.token }}</span></li>
+        {% if prusa_link %}
             <li>Last Telemetry: <span class="white">{{ prusa_link.last_sent_telemetry }}</span></li>
             <ul>
-            {%- for key, val in prusa_link.model.last_telemetry %}
+                {%- for key, val in prusa_link.model.last_telemetry %}
                 <li>{{ key }}: <span class="white">{{ val }}</span></li>
-            {%- endfor %}
+                {%- endfor %}
             </ul>
+        {% endif %}
         </ul>
 
         <h2 class="align-center">Files</h2>
+        {% if printer %}
         <pre>
-            {{ prusa_link.printer.get_info()["files"]|pprint }}
+            {{ printer.get_info()["files"]|pprint }}
         </pre>
+        {% endif %}
     </div>
 
   </div>
