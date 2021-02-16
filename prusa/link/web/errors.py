@@ -4,7 +4,7 @@ from sys import exc_info
 
 from traceback import format_tb, format_exc
 
-from poorwsgi.response import make_response
+from poorwsgi.response import make_response, JSONResponse
 
 from .lib.view import generate_page
 from .lib.core import app
@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 @app.http_state(500)
 def internal_server_error(req):
-    """Obsluha chyby 500 Internal Server Error."""
+    """Error handler 500 Internal Server Error."""
     type_, error, traceback = exc_info()  # pylint: disable=unused-variable
     traceback = format_tb(traceback)
     log.error('\n%s%s', ''.join(traceback), repr(error))
@@ -36,13 +36,23 @@ def internal_server_error(req):
 
 @app.http_state(403)
 def forbidden(req):
-    """obsluha chyby 403 forbidden."""
+    """Error handler 403 forbidden."""
     return make_response(generate_page(req, "error403.html", error=exc_info()),
                          status_code=403)
 
 
 @app.http_state(404)
-def http_state(req):
-    """Obsluha chyby 404 Not Found."""
+def not_found(req):
+    """Error handler for 404 Not Found."""
     return make_response(generate_page(req, "error404.html", error=exc_info()),
                          status_code=404)
+
+
+@app.http_state(503)
+def service_unavailable(req):
+    """Error handler for 503 Service Unavailable."""
+    if req.accept_json:
+        return JSONResponse(message="Prusa Link not finished initializing. "
+                            "Please try again later")
+    return make_response(generate_page(req, "error503.html", error=exc_info()),
+                         status_code=503)

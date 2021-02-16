@@ -7,7 +7,7 @@ from .. import errors
 
 def link_info(req):
     """Return link-info page."""
-    prusa_link = app.daemon.prusa_link if app.daemon else None
+    prusa_link = app.daemon.prusa_link
     printer = prusa_link.printer if prusa_link else None
     return generate_page(req,
                          "link_info.html",

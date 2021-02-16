@@ -1,93 +1,72 @@
-"""Check and modify an input dictionary using recursion"""
+"""/api/files endpoint handlers"""
+from os import makedirs
+from os.path import abspath, join
 
-from datetime import datetime
+import logging
 
-# TODO: get values from SDK
-GCODE_EXTENSIONS = (".gcode", ".gco")
+from poorwsgi import state
+from poorwsgi.response import Response, JSONResponse, HTTPException, \
+        EmptyResponse
+
+from .lib.core import app
+from .lib.auth import check_api_key
+from .lib.files import files_to_api
+
+log = logging.getLogger(__name__)
 
 
-def files_to_api(node, origin='local'):
-    """Convert Prusa SDK Files tree for API.
+@app.route('/api/files')
+@check_api_key
+def api_files(req):
+    """Returns info about all available print files"""
+    # pylint: disable=unused-argument
+    data = app.daemon.prusa_link.printer.get_info()["files"]
 
-    >>> files = {'type': 'DIR', 'name': '/', 'ro': True, 'children':[
-    ...     {'type': 'DIR', 'name': 'SD Card', 'children':[
-    ...         {'type': 'DIR', 'name': 'Examples', 'children':[
-    ...             {'type': 'FILE', 'name': '1.gcode'},
-    ...             {'type': 'FILE', 'name': 'b.gco'}]}]},
-    ...     {'type': 'DIR', 'name': 'Prusa Link gcodes', 'children':[
-    ...         {'type': 'DIR', 'name': 'Examples', 'children':[
-    ...             {'type': 'FILE', 'name': '1.gcode'},
-    ...             {'type': 'FILE', 'name': 'b.gco'}]}]},
-    ...     {'type': 'FILE', 'name': 'preview.png'}
-    ... ]}
-    >>> api_files = files_to_api(files)
-    >>> # /
-    >>> api_files['type']
-    'folder'
-    >>> # /SD Card
-    >>> api_files['children'][0]['type']
-    'folder'
-    >>> # /SD Card/Examples
-    >>> api_files['children'][0]['children'][0]['type']
-    'folder'
-    >>> # /SD Card/Examples/1.gcode
-    >>> api_files['children'][0]['children'][0]['children'][0]['type']
-    'machinecode'
-    >>> api_files['children'][0]['children'][0]['children'][0]['origin']
-    'sdcard'
-    >>> # /Prusa Link gcodes/Examples
-    >>> api_files['children'][1]['children'][0]['type']
-    'folder'
-    >>> # /Prusa Link gcodes/Examples/1.gcode
-    >>> api_files['children'][1]['children'][0]['children'][0]['type']
-    'machinecode'
-    >>> api_files['children'][1]['children'][0]['children'][0]['origin']
-    'local'
-    >>> len(api_files['children'])
-    2
-    """
-    name = node['name']
+    return JSONResponse(**{
+        "files": [files_to_api(data)],
+        "free": 0,
+        "total": 0
+    })
 
-    result = {'name': name, 'path': None, 'display': None}
 
-    if "m_time" in node:
-        result["date"] = int(datetime.timestamp(datetime(*node['m_time'])))
+@app.route('/api/files/<location>', state.METHOD_POST)
+@check_api_key
+def api_upload(req, location):
+    """Function for uploading G-CODE."""
+    if location == 'sdcard':
+        res = Response('Location sdcard is not supported.',
+                       status_code=state.HTTP_NOT_FOUND)
+        raise HTTPException(res)
 
-    if 'size' in node:
-        result['size'] = node['size']
+    if location != 'local':
+        res = Response('Location `%s` not found.',
+                       status_code=state.HTTP_NOT_FOUND)
+        raise HTTPException(res)
 
-    if node['type'] == 'DIR':
-        if name == 'SD Card':
-            origin = 'sdcard'
+    if 'file' not in req.form or not req.form['file'].filename:
+        res = Response('No file or filename is set.',
+                       status_code=state.HTTP_BAD_REQUEST)
+        raise HTTPException(res)
 
-        result['type'] = 'folder'
-        result['typePath'] = ['folder']
-        result['origin'] = origin
-        result['refs'] = {"resource": None}
+    # TODO: HTTP_CONFLICT pokud tiskarna prave tiskne soubor
+    # se stejnym jmenem
 
-        children = list(
-            files_to_api(child, origin) for child in node.get("children", []))
-        result['children'] = list(child for child in children if child)
+    # TODO: HTTP_UNSUPPORTED_MEDIA_TYPE pokud to neni gcode
 
-    elif name.endswith(GCODE_EXTENSIONS):
-        result['origin'] = origin
-        result['type'] = 'machinecode'
-        result['typePath'] = ['machinecode', 'gcode']
-        result['date'] = None
-        result['hash'] = None
-        result['refs'] = {
-            'resource': None,
-            'download': None,
-            'thumbnailSmall': None,
-            'thumbnailBig': None
-        }
-        result['gcodeAnalysis'] = {
-            'estimatedPrintTime': None,
-            'material': None,
-            'layerHeight': None
-        }
+    # for key in req.form:
+    #     print('req.form[%s]' % key)
+    foldername = req.form.get('foldername', req.form.get('path', '/'))
+    select = req.form.getfirst('select') == 'true'
+    _print = req.form.getfirst('print') == 'true'
+    log.debug('select=%s, print=%s', select, _print)
 
-    else:
-        return {}  # not folder or allowed extension
+    if foldername.startswith('/'):
+        foldername = '.' + foldername
+    foldername = abspath(join(app.cfg.printer.directories[0], foldername))
+    filename = join(foldername, req.form['file'].filename)
+    log.info("Store file to %s::%s", location, filename)
+    makedirs(foldername, exist_ok=True)
+    with open(filename, 'w+b') as gcode:
+        gcode.write(req.form['file'].file.read())
 
-    return result
+    return EmptyResponse(status_code=state.HTTP_CREATED)
