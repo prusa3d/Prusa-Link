@@ -245,7 +245,7 @@ class Settings(Get):
         self.service_local = Model(
             self.get_section('service::local',
                              (('enable', int, 1), ('username', str, ''),
-                              ('password', str, ''), ('api_key', str, ''))))
+                              ('digest', str, ''), ('api_key', str, ''))))
 
         Settings.instance = self
 
