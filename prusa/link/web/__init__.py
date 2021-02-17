@@ -3,8 +3,6 @@ import logging
 from time import sleep
 from wsgiref.simple_server import make_server
 
-from poorwsgi.digest import hexdigest
-
 from .lib.core import app
 from .lib.auth import REALM
 from .lib.classes import ThreadingServer
@@ -30,10 +28,8 @@ def init(daemon):
     app.daemon = daemon
 
     service_local = app.settings.service_local
-    if service_local.username and service_local.password:
-        digest = hexdigest(service_local.username, REALM,
-                           service_local.password)
-        app.auth_map.set(REALM, service_local.username, digest)
+    if service_local.username and service_local.digest:
+        app.auth_map.set(REALM, service_local.username, service_local.digest)
         log.info("Authentication was set")
     else:
         log.info("No authentication was set")
