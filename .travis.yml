@@ -7,7 +7,7 @@ python:
  - "3.9"
 
 install:
- - pip3 install -U -r requirements.txt
+ - pip3 install -U -r requirements.txt --trusted-host dream.webjet.cz
  - pip3 install -U pytest pytest-pylint pytest-doctestplus requests
    requests_mock pytest-mypy inotify_simple func-timeout
 
