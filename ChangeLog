@@ -34,6 +34,7 @@
     * SN is obtained always through the FW and isn't stored in a file anymore
     * Ensure M20 won't be sent during print. Ever
     * Start faster when already printing from SD
+    * Don't store password in plaintext but use digest
 
 0.2.0 (2020-12-14)
 

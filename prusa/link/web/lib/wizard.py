@@ -3,7 +3,9 @@ import logging
 from secrets import token_urlsafe
 from socket import gethostbyname
 from urllib.request import urlopen
+from ..lib.auth import REALM
 
+from poorwsgi.digest import hexdigest
 from prusa.connect.printer import Printer
 
 log = logging.getLogger(__name__)
@@ -24,8 +26,8 @@ class Wizard:
 
         # auth
         self.username = app.settings.service_local.username
-        self.password = app.settings.service_local.password
-        self.repassword = self.password
+        self.password = None
+        self.repassword = None
         if app.api_key:
             self.api_key = app.api_key
         else:
@@ -99,9 +101,10 @@ class Wizard:
     def write_settings(self, settings):
         """Write settings configuration."""
         # auth
-        settings.service_local.username = self.username
-        settings.service_local.password = self.password
+        digest = hexdigest(self.username, REALM, self.password)
+        settings.service_local.digest = digest
         settings.service_local.api_key = self.api_key
+        settings.service_local.username = self.username
 
         # network
         settings.network.hostname = self.net_hostname
