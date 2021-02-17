@@ -6,11 +6,12 @@ from typing import Union, Dict
 from blinker import Signal
 
 from prusa.connect.printer.const import State, Source
-from prusa.link.printer_adapter.input_output.serial.serial_reader import \
+
+from ..input_output.serial.serial_reader import \
     SerialReader
-from prusa.link.printer_adapter.model import Model
-from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
-from prusa.link.printer_adapter.structures.regular_expressions import \
+from ..model import Model
+from ..structures.mc_singleton import MCSingleton
+from ..structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, FAN_ERROR_REGEX
 

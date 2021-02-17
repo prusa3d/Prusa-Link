@@ -1,10 +1,11 @@
 from threading import Lock
 
 from prusa.connect.printer.const import State
-from prusa.link.printer_adapter.const import PRINTING_STATES
-from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
-from prusa.link.printer_adapter.structures.model_classes import Telemetry
-from prusa.link.printer_adapter.structures.module_data_classes import \
+
+from .const import PRINTING_STATES
+from .structures.mc_singleton import MCSingleton
+from .structures.model_classes import Telemetry
+from .structures.module_data_classes import \
     FilePrinterData, StateManagerData, JobData, IpUpdaterData, SDCardData, \
     MountsData, PrintStatsData
 

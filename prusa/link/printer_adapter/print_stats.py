@@ -1,9 +1,9 @@
 import logging
 from time import time
 
-from prusa.link.printer_adapter.const import TAIL_COMMANDS
-from prusa.link.printer_adapter.model import Model
-from prusa.link.printer_adapter.util import get_gcode
+from .const import TAIL_COMMANDS
+from .model import Model
+from .util import get_gcode
 
 log = logging.getLogger(__name__)
 

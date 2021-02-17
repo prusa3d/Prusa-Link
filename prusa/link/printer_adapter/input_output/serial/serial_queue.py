@@ -7,21 +7,21 @@ from typing import List, Optional
 
 from blinker import Signal
 
-from prusa.link.config import Config
-from prusa.link.printer_adapter.input_output.serial.serial import Serial
-from prusa.link.printer_adapter.structures.regular_expressions import \
+from ....config import Config
+from .serial import Serial
+from ...structures.regular_expressions import \
     CONFIRMATION_REGEX, RESEND_REGEX, TEMPERATURE_REGEX as TEMP_REGEX, \
     BUSY_REGEX, ATTENTION_REGEX, HEATING_HOTEND_REGEX, HEATING_REGEX, \
     M110_REGEX
-from prusa.link.printer_adapter.util import run_slowly_die_fast
+from ...util import run_slowly_die_fast
 from .instruction import Instruction
 from .is_planner_fed import IsPlannerFed
 from .serial_reader import SerialReader
-from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
-from prusa.link.printer_adapter.const import PRINTER_BOOT_WAIT, \
+from ...structures.mc_singleton import MCSingleton
+from ...const import PRINTER_BOOT_WAIT, \
     QUIT_INTERVAL, SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT, \
     RX_SIZE, HISTORY_LENGTH
-from prusa.link import errors
+from .... import errors
 
 log = logging.getLogger(__name__)
 

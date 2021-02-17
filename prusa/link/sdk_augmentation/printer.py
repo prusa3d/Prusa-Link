@@ -3,14 +3,12 @@ from pathlib import Path
 from typing import Dict, Any
 
 from prusa.connect.printer.const import Source
-
 from prusa.connect.printer.metadata import FDMMetaData
 from prusa.connect.printer.files import File
-
 from prusa.connect.printer import Printer as SDKPrinter, const
-
 from prusa.connect.printer import Command
-from prusa.link.printer_adapter.input_output.lcd_printer import LCDPrinter
+
+from ..printer_adapter.input_output.lcd_printer import LCDPrinter
 from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
 from prusa.link.printer_adapter.util import file_is_on_sd
