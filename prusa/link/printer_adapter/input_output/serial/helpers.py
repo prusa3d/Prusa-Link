@@ -1,12 +1,12 @@
 import re
 from typing import List, Callable
 
-from prusa.link.printer_adapter.input_output.serial.instruction import \
+from ..serial.instruction import \
     Instruction, MandatoryMatchableInstruction, CollectingInstruction, \
     MatchableInstruction
-from prusa.link.printer_adapter.input_output.serial.serial_queue import \
+from .serial_queue import \
     SerialQueue
-from prusa.link.printer_adapter.const import QUIT_INTERVAL
+from ...const import QUIT_INTERVAL
 
 
 def wait_for_instruction(instruction,

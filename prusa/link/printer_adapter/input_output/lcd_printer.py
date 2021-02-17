@@ -2,9 +2,8 @@ import logging
 from threading import Thread
 from time import time, sleep
 
-from prusa.link import errors
-from prusa.link.printer_adapter.const import FW_MESSAGE_TIMEOUT, \
-    QUIT_INTERVAL, NO_IP
+from ... import errors
+from ..const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL, NO_IP
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_instruction, wait_for_instruction
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \

@@ -7,23 +7,23 @@ from time import sleep
 
 from blinker import Signal
 
-from prusa.link.config import Config
-from prusa.link.printer_adapter.input_output.serial.instruction import \
+from ..config import Config
+from .input_output.serial.instruction import \
     Instruction
-from prusa.link.printer_adapter.input_output.serial.serial_queue import \
+from .input_output.serial.serial_queue import \
     SerialQueue
-from prusa.link.printer_adapter.input_output.serial.serial_reader import \
+from .input_output.serial.serial_reader import \
     SerialReader
-from prusa.link.printer_adapter.input_output.serial.helpers import \
+from .input_output.serial.helpers import \
     enqueue_instruction, wait_for_instruction
-from prusa.link.printer_adapter.model import Model
-from prusa.link.printer_adapter.print_stats import PrintStats
-from prusa.link.printer_adapter.const import STATS_EVERY, \
+from .model import Model
+from .print_stats import PrintStats
+from .const import STATS_EVERY, \
     PRINT_QUEUE_SIZE, TAIL_COMMANDS, QUIT_INTERVAL
-from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
-from prusa.link.printer_adapter.structures.regular_expressions import \
+from .structures.mc_singleton import MCSingleton
+from .structures.regular_expressions import \
     POWER_PANIC_REGEX, ERROR_REGEX, RESUMED_REGEX
-from prusa.link.printer_adapter.util import get_clean_path, ensure_directory, \
+from .util import get_clean_path, ensure_directory, \
     get_gcode
 
 log = logging.getLogger(__name__)

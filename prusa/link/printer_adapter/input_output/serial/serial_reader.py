@@ -7,7 +7,7 @@ from typing import Dict, List, Callable
 from blinker import Signal
 from sortedcontainers import SortedKeyList
 
-from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
+from ...structures.mc_singleton import MCSingleton
 
 log = logging.getLogger(__name__)
 

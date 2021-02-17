@@ -7,7 +7,7 @@ from pathlib import Path
 from time import sleep, time
 from typing import Callable
 
-from prusa.link.printer_adapter.const import SD_MOUNT_NAME
+from .const import SD_MOUNT_NAME
 
 log = logging.getLogger(__name__)
 

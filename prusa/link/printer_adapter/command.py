@@ -3,18 +3,19 @@ import re
 from typing import Any, Dict
 
 from prusa.connect.printer.const import Source
-from prusa.link.printer_adapter.file_printer import FilePrinter
-from prusa.link.printer_adapter.informers.job import Job
-from prusa.link.printer_adapter.informers.state_manager import StateManager
-from prusa.link.printer_adapter.input_output.serial.serial import Serial
-from prusa.link.printer_adapter.input_output.serial.serial_queue import \
+
+from .file_printer import FilePrinter
+from .informers.job import Job
+from .informers.state_manager import StateManager
+from .input_output.serial.serial import Serial
+from .input_output.serial.serial_queue import \
     MonitoredSerialQueue
-from prusa.link.printer_adapter.input_output.serial.serial_reader import \
+from .input_output.serial.serial_reader import \
     SerialReader
-from prusa.link.printer_adapter.input_output.serial.helpers import \
+from .input_output.serial.helpers import \
     wait_for_instruction, enqueue_matchable, enqueue_instruction
-from prusa.link.printer_adapter.model import Model
-from prusa.link.sdk_augmentation.printer import MyPrinter
+from .model import Model
+from ..sdk_augmentation.printer import MyPrinter
 
 log = logging.getLogger(__name__)
 
