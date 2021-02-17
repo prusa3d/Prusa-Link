@@ -3,8 +3,8 @@ from typing import Deque, Optional, Set, List, Any, Dict
 from pydantic import BaseModel
 
 from prusa.connect.printer.const import State
-from prusa.link.printer_adapter.structures.model_classes import JobState, \
-    SDState
+
+from .model_classes import JobState, SDState
 
 
 class FilePrinterData(BaseModel):

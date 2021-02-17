@@ -6,12 +6,11 @@ from time import sleep
 import serial
 from blinker import Signal
 
-from prusa.link.printer_adapter.input_output.serial.serial_reader import \
-    SerialReader
-from prusa.link.printer_adapter.const import PRINTER_BOOT_WAIT, \
+from .serial_reader import SerialReader
+from ...const import PRINTER_BOOT_WAIT, \
     SERIAL_REOPEN_TIMEOUT
-from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
-from prusa.link import errors
+from ...structures.mc_singleton import MCSingleton
+from .... import errors
 
 log = logging.getLogger(__name__)
 

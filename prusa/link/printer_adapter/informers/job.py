@@ -8,17 +8,16 @@ from typing import Any, Dict
 from blinker import Signal
 from prusa.connect.printer import Printer
 
-from prusa.link.config import Config
-from prusa.link.printer_adapter.input_output.serial.serial_reader import \
-    SerialReader
-from prusa.link.printer_adapter.model import Model
-from prusa.link.printer_adapter.const import PRINTING_STATES, \
+from ...config import Config
+from ..input_output.serial.serial_reader import SerialReader
+from ..model import Model
+from ..const import PRINTING_STATES, \
     JOB_ENDING_STATES, BASE_STATES, JOB_ONGOING_STATES, SD_MOUNT_NAME
-from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
-from prusa.link.printer_adapter.structures.model_classes import JobState
-from prusa.link.printer_adapter.structures.regular_expressions import \
+from ..structures.mc_singleton import MCSingleton
+from ..structures.model_classes import JobState
+from ..structures.regular_expressions import \
     FILE_OPEN_REGEX
-from prusa.link.printer_adapter.util import get_clean_path, ensure_directory
+from ..util import get_clean_path, ensure_directory
 
 log = logging.getLogger(__name__)
 

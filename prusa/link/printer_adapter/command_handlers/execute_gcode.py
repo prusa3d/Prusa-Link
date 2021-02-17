@@ -1,7 +1,8 @@
 import logging
 
 from prusa.connect.printer.const import State
-from prusa.link.printer_adapter.command import Command
+
+from ..command import Command
 from prusa.link.printer_adapter.informers.state_manager import StateChange
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_list_from_str

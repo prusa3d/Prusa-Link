@@ -9,8 +9,9 @@ from prusa.connect.printer import Command as SDKCommand
 from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType, State
 from prusa.connect.printer.const import Source
-from prusa.link.config import Config, Settings
-from prusa.link.printer_adapter.command_handlers.execute_gcode import \
+
+from ..config import Config, Settings
+from .command_handlers.execute_gcode import \
     ExecuteGcode
 from prusa.link.printer_adapter.command_handlers.job_info import JobInfo
 from prusa.link.printer_adapter.command_handlers.pause_print import PausePrint

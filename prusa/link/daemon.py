@@ -5,9 +5,8 @@ from threading import Thread
 
 import ctypes
 
-import prusa.link.printer_adapter.prusa_link
-
 from .config import Config, Settings
+from .printer_adapter import prusa_link
 from .printer_adapter.prusa_link import PrusaLink
 from .web import run_http
 
@@ -92,8 +91,7 @@ class Daemon:
             self.http.start()
 
         # Log daemon stuff as printer_adapter
-        adapter_logger = logging.getLogger(
-            prusa.link.printer_adapter.prusa_link.__name__)
+        adapter_logger = logging.getLogger(prusa_link.__name__)
         try:
             self.prusa_link = PrusaLink(self.cfg, self.settings)
         except Exception:  # pylint: disable=broad-except
