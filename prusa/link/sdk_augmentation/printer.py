@@ -44,7 +44,6 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
 
         res = super().parse_command(res)
         errors.API.ok = True  # already done in SDK but lets be double sure
-        errors.VALID_SN.ok = True  # XXX really?
 
         return res
 
