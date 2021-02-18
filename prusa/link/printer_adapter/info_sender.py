@@ -2,17 +2,14 @@ import logging
 from threading import Thread
 from time import sleep
 
-from prusa.link.printer_adapter.const import SEND_INFO_RETRY, \
-    PRINTER_BOOT_WAIT
-from prusa.link.sdk_augmentation.printer import MyPrinter
-from prusa.link.printer_adapter.informers.getters import get_network_info, \
-    get_firmware_version, get_nozzle_diameter
-from prusa.link.printer_adapter.input_output.lcd_printer import LCDPrinter
-from prusa.link.printer_adapter.input_output.serial.serial_queue import \
-    SerialQueue
-from prusa.link.printer_adapter.input_output.serial.serial_reader import \
-    SerialReader
-from prusa.link.printer_adapter.model import Model
+from .const import SEND_INFO_RETRY, PRINTER_BOOT_WAIT
+from .model import Model
+from ..sdk_augmentation.printer import MyPrinter
+from .informers.getters import get_network_info, get_firmware_version, \
+    get_nozzle_diameter
+from .input_output.lcd_printer import LCDPrinter
+from .input_output.serial.serial_queue import SerialQueue
+from .input_output.serial.serial_reader import SerialReader
 
 log = logging.getLogger(__name__)
 

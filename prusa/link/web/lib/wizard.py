@@ -3,10 +3,11 @@ import logging
 from secrets import token_urlsafe
 from socket import gethostbyname
 from urllib.request import urlopen
-from ..lib.auth import REALM
 
 from poorwsgi.digest import hexdigest
 from prusa.connect.printer import Printer
+
+from ..lib.auth import REALM
 
 log = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ class Wizard:
 
     @property
     def serial_number(self):
+        """Proxy property for daemon.prusa_link.printer.sn."""
         return self.daemon.prusa_link.printer.sn
 
     def check_auth(self):

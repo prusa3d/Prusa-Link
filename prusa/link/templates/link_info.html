@@ -27,7 +27,7 @@
             <ul>
             {%- for error in errors %}
             {%- for key, (state, msg) in error.items() %}
-            <li>{{ key }}: <span class="white">{{ state or msg }}</span></li>
+            <li>{{ key }}: <span class="white">{{ msg if state == False else state }}</span></li>
             {%- endfor %}
             <br>
             {%- endfor %}

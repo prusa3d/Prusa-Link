@@ -1,16 +1,18 @@
+from distutils.version import StrictVersion
+
 from getmac import get_mac_address
 
 from prusa.connect.printer.const import PrinterType
-from prusa.link.printer_adapter.const import NO_IP
-from prusa.link.printer_adapter.input_output.serial.serial_queue import \
-    SerialQueue
-from prusa.link.printer_adapter.input_output.serial.helpers import \
-    enqueue_matchable, wait_for_instruction, enqueue_instruction
-from prusa.link.printer_adapter.model import Model
-from prusa.link.printer_adapter.structures.model_classes import NetworkInfo
-from prusa.link.printer_adapter.structures.regular_expressions import \
+
+from ... import errors
+from ..const import NO_IP, SUPPORTED_FIRMWARE
+from ..model import Model
+from ..input_output.serial.serial_queue import SerialQueue
+from ..input_output.serial.helpers import enqueue_matchable, \
+    wait_for_instruction, enqueue_instruction
+from ..structures.model_classes import NetworkInfo
+from ..structures.regular_expressions import \
     PRINTER_TYPE_REGEX, FW_REGEX, NOZZLE_REGEX
-from prusa.link import errors
 
 PRINTER_TYPES = {
     300: PrinterType.I3MK3,
@@ -18,6 +20,8 @@ PRINTER_TYPES = {
     302: PrinterType.I3MK3S,
     20302: PrinterType.I3MK3S,
 }
+
+MINIMAL_FIRMWARE = StrictVersion(SUPPORTED_FIRMWARE)  # TODO: Firmware release
 
 
 def get_printer_type(serial_queue: SerialQueue, should_wait=lambda: True):
@@ -45,17 +49,19 @@ def get_printer_type(serial_queue: SerialQueue, should_wait=lambda: True):
 
 
 def get_firmware_version(serial_queue: SerialQueue, should_wait=lambda: True):
+    """Try to get firmware version from printer."""
     instruction = enqueue_matchable(serial_queue,
                                     "M115",
                                     FW_REGEX,
                                     to_front=True)
     wait_for_instruction(instruction, should_wait)
     match = instruction.match()
-    errors.FW.ok = match is not None
     if match is None:
         raise RuntimeError("Printer responded with something unexpected")
+    firmware_version = match.groups()[0]
+    errors.FW.ok = StrictVersion(firmware_version) >= MINIMAL_FIRMWARE
 
-    return match.groups()[0]
+    return firmware_version
 
 
 def get_nozzle_diameter(serial_queue: SerialQueue, should_wait=lambda: True):

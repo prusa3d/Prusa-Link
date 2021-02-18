@@ -11,6 +11,8 @@ from .lib.auth import REALM
 from .lib.core import app
 from .lib.view import generate_page
 
+from .. import errors
+
 
 def check_printer(fun):
     """Check if printer is initialized."""
@@ -18,7 +20,9 @@ def check_printer(fun):
     def handler(req):
         # printer must be initialized for wizard/printer
         daemon = app.wizard.daemon
-        if not daemon.prusa_link or not daemon.prusa_link.printer:
+        if not daemon.prusa_link \
+                or not daemon.prusa_link.printer \
+                or not errors.SN.ok:
             redirect('/wizard')
         return fun(req)
 
@@ -43,7 +47,7 @@ def check_step(step):
 @app.route('/wizard')
 def wizard_root(req):
     """First wizard page."""
-    return generate_page(req, "wizard.html", wizard=app.wizard)
+    return generate_page(req, "wizard.html", wizard=app.wizard, errors=errors)
 
 
 @app.route('/wizard/auth')
