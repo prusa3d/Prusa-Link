@@ -62,11 +62,7 @@ class LCDPrinter(metaclass=MCSingleton):
             #  state name. Maybe as carousel?
             if all_ok:
                 msg = "OK: " + self.ip
-            elif errors.VALID_SN and \
-                    errors.TOKEN.prev.ok and not errors.TOKEN.ok:
-                msg = "GO: " + self.ip
             else:
-                # show what went wrong in the logs
                 for chain in errors.HEADS:
                     node = chain
                     if node is not None and not node.ok:

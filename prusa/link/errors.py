@@ -13,11 +13,10 @@ RPI_ENABLED = ErrorState("RPIenabled", "RPI port is not enabled", prev=SERIAL)
 ID = ErrorState("ID", "Not a Prusa printer", prev=RPI_ENABLED)
 FW = ErrorState("Firmware", "Firmware is not up-to-date", prev=ID)
 SN = ErrorState("SN", "Serial number can be read", prev=FW)
-VALID_SN = ErrorState("ValidSN", "Serial number is not valid", prev=SN)
 
 # first and last elements for all available error state chains
 HEADS = [SERIAL, DEVICE]
-TAILS = [VALID_SN, API]
+TAILS = [SN, API]
 
 
 def status():
