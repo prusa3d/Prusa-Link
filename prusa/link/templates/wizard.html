@@ -24,7 +24,6 @@
 
             {% set printer = wizard.daemon.prusa_link.printer %}
 
-            <p class="align-center">Prusa Link detected</p>
             <div class="img-center">
                 <img src="img/printers/{{ printer.type }}.svg" height="200" width="200" />
             </div>
@@ -33,10 +32,16 @@
 
             <div class="container navigation">
                 <div class="row">
+                {% if not errors.FW.ok %}
+                    <div class="col">Firmware is not up to date, please update it!</div>
+                {% elif not errors.SN.ok %}
+                    <div class="col">Can't get SN of your printer, please conntact our support.</div>
+                {% else %}
                     <div class="col"><b>Great!</b> You can continue to Authorization</div>
                     <div class="col-xs-auto">
                         <a href="/wizard/auth" class="btn btn-outline-light">Authorization | NEXT <img src="img/arrow-right.svg" height="16" /></a>
                     </div>
+                {% endif %}
                 </div>
             </div>
 
