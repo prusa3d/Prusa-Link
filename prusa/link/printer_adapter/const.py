@@ -1,7 +1,7 @@
 from prusa.connect.printer.const import State
 
 BASE_STATES = {State.READY, State.BUSY}
-PRINTING_STATES = {State.PRINTING, State.PAUSED, State.FINISHED}
+PRINTING_STATES = {State.PRINTING, State.PAUSED, State.FINISHED, State.STOPPED}
 
 JOB_ONGOING_STATES = {State.PRINTING, State.PAUSED}
 JOB_ENDING_STATES = BASE_STATES.union({State.FINISHED, State.ERROR})
@@ -66,3 +66,4 @@ SFN_TO_LFN_EXTENSIONS = {"GCO": "gcode", "G": "g"}
 NO_IP = "NO_IP"
 RESET_PIN = 22  # RPi gpio pin for resetting printer
 SUPPORTED_FIRMWARE = "3.9.3"
+MAX_INT = (2**31) - 1

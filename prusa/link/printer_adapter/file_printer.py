@@ -38,7 +38,8 @@ class FilePrinter(metaclass=MCSingleton):
         self.model = model
 
         self.new_print_started_signal = Signal()
-        self.print_ended_signal = Signal()
+        self.print_stopped_signal = Signal()
+        self.print_finished_signal = Signal()
         self.time_printing_signal = Signal()
 
         self.data = self.model.file_printer
@@ -119,6 +120,7 @@ class FilePrinter(metaclass=MCSingleton):
 
         self.thread = Thread(target=self._print, name="file_print")
         self.data.printing = True
+        self.data.stopped_forcefully = False
         self.print_stats.start_time_segment()
         self.print_stats.track_new_print(self.data.tmp_file_path)
         self.new_print_started_signal.send(self)
@@ -154,7 +156,11 @@ class FilePrinter(metaclass=MCSingleton):
             if self.pp_exists:
                 os.remove(self.data.pp_file_path)
             self.data.printing = False
-            self.print_ended_signal.send(self)
+
+            if self.data.stopped_forcefully:
+                self.print_stopped_signal.send(self)
+            else:
+                self.print_finished_signal.send(self)
 
     def print_gcode(self, gcode):
         self.data.gcode_number += 1
@@ -230,6 +236,7 @@ class FilePrinter(metaclass=MCSingleton):
 
     def stop_print(self):
         if self.data.printing:
+            self.data.stopped_forcefully = True
             self.data.printing = False
             self.thread.join()
             self.data.paused = False
