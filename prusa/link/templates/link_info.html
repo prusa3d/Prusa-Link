@@ -23,6 +23,13 @@
         <ul>
             <li>Running: <span class="white">{{ prusa_link.running }}</span></li>
             <li>SDK State: <span class="white">{{ printer.state }}</span></li>
+            <li>State history:</li>
+            <ul>
+            {%- for state in prusa_link.model.state_manager.state_history | reverse %}
+            <li><span class="white">{{ state }}</span></li>
+            {%- endfor %}
+            <br>
+            </ul>
             <li>Errors state:</li>
             <ul>
             {%- for error in errors %}
@@ -33,6 +40,34 @@
             {%- endfor %}
             </ul>
         </ul>
+
+        {% if prusa_link.model.job.job_state.name != "IDLE" %}
+        <h2 class="align-center">Job info</h2>
+            <li>Job ID:
+                <span class="white">{{ prusa_link.model.job.job_id }}</span>
+            </li>
+            <li>Job started by command with ID:
+                <span class="white">{{ prusa_link.model.job.job_start_cmd_id }}</span>
+            </li>
+            <li>Printing file:
+                <span class="white">{{ prusa_link.model.job.printing_file_path }}</span>
+            </li>
+            <li>Only file name shown:
+                <span class="white">{{ prusa_link.model.job.filename_only }}</span>
+            </li>
+            <li>Last modified at:
+                <span class="white">{{ prusa_link.model.job.printing_file_m_time }}</span>
+            </li>
+            <li>Size:
+                <span class="white">{{ prusa_link.model.job.printing_file_size }}</span>
+            </li>
+            <li>From SD card:
+                <span class="white">{{ prusa_link.model.job.from_sd }}</span>
+            </li>
+            <li>File contains inbuilt print stats:
+                <span class="white">{{ prusa_link.model.job.inbuilt_reporting }}</span>
+            </li>
+        {% endif %}
 
         <h2 class="align-center">Network</h2>
         {% if printer %}
