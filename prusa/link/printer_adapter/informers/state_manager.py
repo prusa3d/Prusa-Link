@@ -121,7 +121,7 @@ class StateManager(metaclass=MCSingleton):
             ATTENTION_REGEX: lambda sender, match: self.attention(),
             PAUSED_REGEX: lambda sender, match: self.paused(),
             RESUMED_REGEX: lambda sender, match: self.resumed(),
-            CANCEL_REGEX: lambda sender, match: self.not_printing(),
+            CANCEL_REGEX: lambda sender, match: self.stopped_or_not_printing(),
             START_PRINT_REGEX: lambda sender, match: self.printing(),
             PRINT_DONE_REGEX: lambda sender, match: self.finished(),
             ERROR_REGEX: lambda sender, match: self.error(),
@@ -136,15 +136,13 @@ class StateManager(metaclass=MCSingleton):
     def file_printer_started_printing(self):
         if (self.model.file_printer.printing
                 and self.data.printing_state != State.PRINTING):
-            self.expect_change(
-                StateChange(to_states={State.PRINTING: Source.CONNECT}))
             self.printing()
 
+    def file_printer_finished_printing(self):
+        self.finished()
+
     def file_printer_stopped_printing(self):
-        if self.model.last_telemetry.progress == 100:
-            self.expect_change(
-                StateChange(to_states={State.FINISHED: Source.MARLIN}))
-            self.finished()
+        self.stopped()
 
     def get_state(self):
         if self.data.override_state is not None:
@@ -265,9 +263,15 @@ class StateManager(metaclass=MCSingleton):
 
     # --- State changing methods ---
 
+    def stopped_or_not_printing(self):
+        if self.data.printing_state == State.PRINTING:
+            self.stopped()
+        else:
+            self.not_printing()
+
     def reset(self):
         self.busy()
-        self.not_printing()
+        self.stopped_or_not_printing()
 
     # This state change can change the state to "PRINTING"
     @state_influencer(StateChange(to_states={State.PRINTING: Source.USER}))
@@ -317,6 +321,12 @@ class StateManager(metaclass=MCSingleton):
             self.unsure_whether_printing = False
             self.data.printing_state = State.PRINTING
 
+    @state_influencer(StateChange(from_states={State.PRINTING: Source.USER}))
+    def stopped(self):
+        if self.data.printing_state in {State.PRINTING, State.PAUSED}:
+            self.unsure_whether_printing = False
+            self.data.printing_state = State.STOPPED
+
     @state_influencer(
         StateChange(to_states={State.READY: Source.MARLIN},
                     from_states={
@@ -331,7 +341,7 @@ class StateManager(metaclass=MCSingleton):
         if self.data.base_state == State.BUSY:
             self.data.base_state = State.READY
 
-        if self.data.printing_state == State.FINISHED:
+        if self.data.printing_state in {State.FINISHED, State.STOPPED}:
             self.data.printing_state = None
 
         if self.data.override_state is not None:

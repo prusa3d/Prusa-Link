@@ -20,8 +20,8 @@ from .serial_reader import SerialReader
 from ...structures.mc_singleton import MCSingleton
 from ...const import PRINTER_BOOT_WAIT, \
     QUIT_INTERVAL, SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT, \
-    RX_SIZE, HISTORY_LENGTH
-from .... import errors
+    RX_SIZE, HISTORY_LENGTH, MAX_INT
+from prusa.link import errors
 
 log = logging.getLogger(__name__)
 
@@ -108,7 +108,8 @@ class SerialQueue(metaclass=MCSingleton):
 
     def next_instruction(self):
         """
-        Get a fresh instruction into the self.current_instruction handling slot
+        Get a fresh instruction into the self.current_instruction handling
+        slot
         """
 
         if self.current_instruction is not None:
@@ -160,7 +161,8 @@ class SerialQueue(metaclass=MCSingleton):
         data += b"\n"
         return data
 
-    def get_checksum(self, data: bytes):
+    @staticmethod
+    def get_checksum(data: bytes):
         checksum = 0
         for byte in data:
             checksum ^= byte
@@ -185,6 +187,8 @@ class SerialQueue(metaclass=MCSingleton):
         :return:
         """
         next_instruction = self.peek_next()
+
+        # FIXME: Two consecutive M110s have the potential to break stuff
         if M110_REGEX.match(next_instruction.message) and \
                 not self.worked_around_m110:
             self.m110_workaround_slot = Instruction("G4 S0.001")
@@ -197,7 +201,7 @@ class SerialQueue(metaclass=MCSingleton):
             if instruction.to_checksum:
                 self.send_history.append(instruction)
                 self.message_number += 1
-                if self.message_number == 1000000000:
+                if self.message_number == MAX_INT:
                     self._reset_message_number()
 
             instruction.data = self.get_data(instruction)
@@ -272,19 +276,16 @@ class SerialQueue(metaclass=MCSingleton):
         # There is a special case, M105 prints "ok" on the same line as
         # output So if there is anything after ok, try if it isn't the temps
         # and capture them if we are expecting them
+        # Temps aren't being polled anymore, so this is not used
         additional_output = match.groups()[0]
-        if additional_output and \
-                TEMP_REGEX in self.current_instruction.capturing_regexps:
+        capturing_regexps = self.current_instruction.capturing_regexps
+
+        if additional_output and TEMP_REGEX in capturing_regexps:
             temperature_match = TEMP_REGEX.match(additional_output)
             if temperature_match:
                 self.current_instruction.output_captured(
                     None, match=temperature_match)
 
-        self._confirmed()
-
-    def _paused_handler(self, sender, match: re.Match):
-        # Another special case is when pausing. The "ok" is omitted
-        # Let's confirm it ourselves
         self._confirmed()
 
     def _resend_handler(self, sender, match: re.Match):
@@ -463,7 +464,8 @@ class MonitoredSerialQueue(SerialQueue):
 
         # Remember when the last write or confirmation happened
         # If we want to time out, the communication has to be dead for some
-        # time Useful only with unbuffered messages
+        # time
+        # Useful only with unbuffered messages
         self.running = True
         self.last_event_on = time()
         self.monitoring_thread = Thread(target=self.keep_monitoring,
