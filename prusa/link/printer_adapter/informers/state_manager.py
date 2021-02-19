@@ -1,11 +1,13 @@
 import logging
 import re
+from collections import deque
 from threading import Lock
 from typing import Union, Dict
 
 from blinker import Signal
 
 from prusa.connect.printer.const import State, Source
+from ..const import STATE_HISTORY_SIZE
 
 from ..input_output.serial.serial_reader import \
     SerialReader
@@ -99,6 +101,7 @@ class StateManager(metaclass=MCSingleton):
         self.data.override_state = None
 
         # Reported state history
+        self.data.state_history = deque(maxlen=STATE_HISTORY_SIZE)
         self.data.last_state = self.get_state()
         self.data.current_state = self.get_state()
 
@@ -255,6 +258,7 @@ class StateManager(metaclass=MCSingleton):
         if self.get_state() != self.data.current_state:
             self.data.last_state = self.data.current_state
             self.data.current_state = self.get_state()
+            self.data.state_history.append(self.data.current_state)
             log.debug(f"Changing state from {self.data.last_state} to "
                       f"{self.data.current_state}")
 

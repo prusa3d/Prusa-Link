@@ -68,3 +68,4 @@ NO_IP = "NO_IP"
 RESET_PIN = 22  # RPi gpio pin for resetting printer
 SUPPORTED_FIRMWARE = "3.9.3"
 MAX_INT = (2**31) - 1
+STATE_HISTORY_SIZE = 10
