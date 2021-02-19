@@ -27,6 +27,7 @@ class StateManagerData(BaseModel):
     # Reported state history
     last_state: Optional[State]
     current_state: Optional[State]
+    state_history: Optional[Deque[State]]
 
 
 class JobData(BaseModel):
@@ -40,7 +41,6 @@ class JobData(BaseModel):
 
     job_id: Optional[int]
     job_state: Optional[JobState]
-    filename_only: Optional[bool]
 
     def get_job_id_for_api(self):
         """
