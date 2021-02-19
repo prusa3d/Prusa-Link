@@ -14,4 +14,5 @@ class StopPrint(TryUntilState):
         if self.model.file_printer.printing:
             self.file_printer.stop_print()
 
+        # There might be an edge case with FINISHED, so let's wait for READY
         self._try_until_state(gcode="M603", desired_state=State.READY)

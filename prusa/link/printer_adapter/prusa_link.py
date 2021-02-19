@@ -146,8 +146,10 @@ class PrusaLink:
             self.time_printing_updated)
         self.file_printer.new_print_started_signal.connect(
             self.file_printer_started_printing)
-        self.file_printer.print_ended_signal.connect(
+        self.file_printer.print_stopped_signal.connect(
             self.file_printer_stopped_printing)
+        self.file_printer.print_finished_signal.connect(
+            self.file_printer_finished_printing)
         self.storage.dir_mounted_signal.connect(self.dir_mount)
         self.storage.dir_unmounted_signal.connect(self.dir_unmount)
         self.storage.sd_mounted_signal.connect(self.sd_mount)
@@ -276,7 +278,7 @@ class PrusaLink:
         if not self.model.file_printer.printing:
             self.state_manager.expect_change(
                 StateChange(from_states={State.PRINTING: Source.FIRMWARE}))
-            self.state_manager.not_printing()
+            self.state_manager.stopped_or_not_printing()
             self.state_manager.stop_expecting_change()
 
     def telemetry_gathered(self, sender, telemetry: Telemetry):
@@ -302,6 +304,9 @@ class PrusaLink:
 
     def file_printer_stopped_printing(self, sender):
         self.state_manager.file_printer_stopped_printing()
+
+    def file_printer_finished_printing(self, sender):
+        self.state_manager.file_printer_finished_printing()
 
     def serial_failed(self, sender):
         self.state_manager.serial_error()

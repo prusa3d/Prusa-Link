@@ -11,6 +11,7 @@ class FilePrinterData(BaseModel):
     tmp_file_path: Optional[str]
     pp_file_path: Optional[str]
     printing: Optional[bool]
+    stopped_forcefully: Optional[bool]
     paused: Optional[bool]
     line_number: Optional[int]
     enqueued: Optional[Deque]
