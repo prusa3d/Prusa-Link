@@ -95,7 +95,7 @@ class Daemon:
         try:
             self.prusa_link = PrusaLink(self.cfg, self.settings)
         except Exception:  # pylint: disable=broad-except
-            adapter_logger.exception("Adapter was not start")
+            adapter_logger.exception("Adapter could not start")
             self.http.raise_exception(KeyboardInterrupt)
             self.http.join()
             return 1

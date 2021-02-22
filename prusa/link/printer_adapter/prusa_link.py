@@ -1,7 +1,8 @@
 import logging
 import os
+import signal
 import threading
-from time import time
+from time import time, sleep
 
 from requests import RequestException
 
@@ -55,6 +56,17 @@ from prusa.link.sdk_augmentation.printer import MyPrinter
 from prusa.link import errors
 
 log = logging.getLogger(__name__)
+
+
+def suicide(args, timeout=5):
+    log.error(args.exc_value)
+    log.warning("Sending SIGTERM, waiting for %s sec before SIGTERM", timeout)
+    os.kill(os.getpid(), signal.SIGTERM)
+    sleep(timeout)
+    os.kill(os.getpid(), signal.SIGKILL)
+
+
+threading.excepthook = suicide
 
 
 class PrusaLink:
