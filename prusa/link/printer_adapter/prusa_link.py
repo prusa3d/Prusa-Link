@@ -58,15 +58,25 @@ from prusa.link import errors
 log = logging.getLogger(__name__)
 
 
-def suicide(args, timeout=5):
+def excepthook(args):
+    """Send SIGHUP to the daemon"""
     log.error(args.exc_value)
-    log.warning("Sending SIGTERM, waiting for %s sec before SIGTERM", timeout)
-    os.kill(os.getpid(), signal.SIGTERM)
+    pid = os.getpid()
+    log.warning("Caught unhandled exception, sending HUP to PID %s", pid)
+    os.kill(pid, signal.SIGHUP)
+
+
+threading.excepthook = excepthook
+
+
+def sighup_handler(signum, frame, timeout=10):
+    # pylint: disable=unused-argument
     sleep(timeout)
-    os.kill(os.getpid(), signal.SIGKILL)
+    log.info("Restarting Prusa Link")
+    os.system("prusa-link restart")
 
 
-threading.excepthook = suicide
+signal.signal(signal.SIGHUP, sighup_handler)
 
 
 class PrusaLink:
