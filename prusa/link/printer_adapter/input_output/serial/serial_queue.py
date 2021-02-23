@@ -136,21 +136,35 @@ class SerialQueue(metaclass=MCSingleton):
 
     # --- If statements in methods ---
     def can_write(self):
+        """Determines whether we're in a state suitable for writing"""
         return self.current_instruction is None and not self.is_empty() and \
-               not self.closed
+            not self.closed
 
     def is_empty(self):
+        """Determines whether all queues and slots for writing are empty"""
         return not self.queue and not self.priority_queue and \
-               not self.recovery_list and self.rx_yeet_slot is None
+            not self.recovery_list and self.rx_yeet_slot is None\
+            and self.m110_workaround_slot is None
 
     # --- Actual methods ---
 
     def _try_writing(self):
+        """
+        Checks it can get a lock and that the state is right for writing,
+        if yes, calls send to send an instruction to serial
+        """
         with self.write_lock:
             if self.can_write():
                 self._send()
 
     def get_data(self, instruction):
+        """
+        Puts together binary data to send as for the given instruction.
+        The specific data might contain a message number and a checksum.
+        Also a newline gets appended at the end
+        :param instruction: Instruction to get data for
+        :return: binary data to send
+        """
         data = instruction.message.encode("ASCII")
         if instruction.to_checksum:
             number_part = f"N{self.message_number} ".encode("ASCII")
@@ -163,12 +177,22 @@ class SerialQueue(metaclass=MCSingleton):
 
     @staticmethod
     def get_checksum(data: bytes):
+        """
+        Goes over the given bytes and returns a checksum, which is
+        constructed by XORing each byte of data to a zero
+        :param data: data to make a checksum out of
+        :return: the checksum which is a number
+        """
         checksum = 0
         for byte in data:
             checksum ^= byte
         return checksum
 
     def _hookup_output_capture(self):
+        """
+        Instructions can capture output, this will register the
+        handlers necessary
+        """
         for regexp in self.current_instruction.capturing_regexps:
             self.serial_reader.add_handler(
                 regexp,
@@ -176,6 +200,10 @@ class SerialQueue(metaclass=MCSingleton):
                 priority=time())
 
     def _teardown_output_capture(self):
+        """
+        Tears down the capturing handlers, so they're not slowing us down
+        and not preventing garbage collection
+        """
         for regexp in self.current_instruction.capturing_regexps:
             self.serial_reader.remove_handler(
                 regexp, self.current_instruction.output_captured)
@@ -184,7 +212,6 @@ class SerialQueue(metaclass=MCSingleton):
         """
         Gets a new instruction and depending on what appears
         in the handling slot. Tries its best to send it
-        :return:
         """
         next_instruction = self.peek_next()
 
@@ -232,6 +259,7 @@ class SerialQueue(metaclass=MCSingleton):
         self.serial.write(self.current_instruction.data)
 
     def _enqueue(self, instruction: Instruction, to_front=False):
+        """Internal method for enqueuing when already locked"""
         if to_front:
             self.priority_queue.appendleft(instruction)
         else:
@@ -273,10 +301,13 @@ class SerialQueue(metaclass=MCSingleton):
     # --- Static capture handlers ---
 
     def _confirmation_handler(self, sender, match: re.Match):
-        # There is a special case, M105 prints "ok" on the same line as
-        # output So if there is anything after ok, try if it isn't the temps
-        # and capture them if we are expecting them
-        # Temps aren't being polled anymore, so this is not used
+        """
+        There is a special case, M105 prints "ok" on the same line as
+        output So if there is anything after ok, try if it isn't the temps
+        and capture them if we are expecting them
+        Temps aren't being polled anymore, so this is not used
+        So other than that it just calls confirm()
+        # """
         additional_output = match.groups()[0]
         capturing_regexps = self.current_instruction.capturing_regexps
 
@@ -289,13 +320,18 @@ class SerialQueue(metaclass=MCSingleton):
         self._confirmed()
 
     def _resend_handler(self, sender, match: re.Match):
+        """
+        The printer can ask for re-sends of past numbered instructions.
+        This method just parses the received match, does a bunch of checks and
+        calls the actual handler resend()
+        """
         number = int(match.groups()[0])
         log.info(f"Resend of {number} requested. Current is "
                  f"{self.message_number}")
         if self.message_number >= number:
             if (self.current_instruction is None
                     or not self.current_instruction.to_checksum):
-                log.warning("Re-send requested for on a non-numbered message")
+                log.warning("Re-send requested for a non-numbered message")
                 # If that happened, the non-numbered message got yeeted from
                 # the buffer, so let's solve that first
                 self._rx_got_yeeted()
@@ -307,6 +343,8 @@ class SerialQueue(metaclass=MCSingleton):
     # ---
 
     def _resend(self, count):
+        """If possible, enqueue already sent instruction starting from the one
+        requested back into the recovery list/queue, to be re-sent"""
         if not 0 < count < len(self.send_history):
             log.error("Impossible re-send request! Aborting...")
             self._worst_case_scenario()
@@ -326,8 +364,8 @@ class SerialQueue(metaclass=MCSingleton):
 
     def _confirmed(self, force=False):
         """
-        Printer _confirmed an instruction.
-        Assume it confirms exactly one instruction once
+        Printer confirmed an instruction. Tears down the instruction
+        and prepares the module for processing of a new one
         """
         self.last_event_on = time()
         if self.current_instruction is None or \
@@ -383,10 +421,16 @@ class SerialQueue(metaclass=MCSingleton):
             self._reset_message_number()
 
     def _reset_message_number(self):
+        """Sends a massage number reset gcode to the printer"""
         instruction = Instruction("M110 N0")
         self._enqueue(instruction, to_front=True)
 
     def _flush_queues(self):
+        """
+        Tries to get rid of every queue by fake force confirming all
+        instructions, to keep the serial queue consistent for example after
+        a reboot.
+        """
         if self.current_instruction is not None:
             # To flush the one instruction, that has not yet been confirmed
             # but has been sent, use the usual way
@@ -413,13 +457,21 @@ class SerialQueue(metaclass=MCSingleton):
         self.serial_queue_failed.send()
 
     def printer_reset(self, was_printing):
+        """The printer reset, starts a thread to recover the serial queue
+        from such a state"""
         Thread(target=self._printer_reset,
                args=(was_printing, ),
                name="serial_queue_reset_thread").start()
 
     def _printer_reset(self, was_printing):
-        """Printer resets for two reasons, it has been stopped by the user,
-        or the serial communication failed"""
+        """
+        Printer resets for two reasons, it has been stopped by the user,
+        or the serial communication failed.
+
+        Either way, the old instructions inside the serial queue are now
+        useless. This method flushes the queues and depending on what caused
+        the error, moves the printer head up, or demands user attention.
+        """
         with self.write_lock:
             self._flush_queues()
             sleep(PRINTER_BOOT_WAIT)
@@ -449,6 +501,7 @@ class SerialQueue(metaclass=MCSingleton):
 
 
 class MonitoredSerialQueue(SerialQueue):
+    """Separates the queue monitoring into a different class."""
     def __init__(self,
                  serial: Serial,
                  serial_reader: SerialReader,
@@ -473,17 +526,26 @@ class MonitoredSerialQueue(SerialQueue):
         self.monitoring_thread.start()
 
     def get_current_delay(self):
+        """
+        If we are waiting on an instruction to be confirmed, returns the
+        time we've been waiting
+        """
         if self.is_empty() and self.current_instruction is None:
             return 0
         else:
             return time() - self.last_event_on
 
     def keep_monitoring(self):
+        """Runs the loop of monitoring the queue"""
         run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
                             lambda: SERIAL_QUEUE_MONITOR_INTERVAL,
                             self.check_status)
 
     def check_status(self):
+        """
+        Called periodically. If the confirmation wait times out, calls
+        the appropriate handler
+        """
         if self.get_current_delay() > SERIAL_QUEUE_TIMEOUT:
             # The printer did not respond in time, lets assume it forgot
             # what it was supposed to do
@@ -494,17 +556,21 @@ class MonitoredSerialQueue(SerialQueue):
             self._rx_got_yeeted()
 
     def stop(self):
+        """Stops the monitoring thread"""
         self.running = False
         self.is_planner_fed.save()
         self.monitoring_thread.join()
 
     def _send(self):
-        self.last_event_on = time()
+        """Adds a timeout renewal onto an instruction send"""
+        self._renew_timeout()
         super()._send()
 
     def _confirmed(self, force=False):
-        self.last_event_on = time()
+        """Adds a timeout renewal onto an instruction confirmation"""
+        self._renew_timeout()
         super()._confirmed(force=force)
 
-    def _renew_timeout(self, sender, match: re.Match):
+    def _renew_timeout(self, sender=None, match: re.Match = None):
+        """Renews the instruction confirmation timeout        """
         self.last_event_on = time()

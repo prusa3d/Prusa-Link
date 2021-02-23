@@ -15,16 +15,28 @@ class TryUntilState(Command):
     command_name = "pause/stop/resume print"
 
     def __init__(self, command_id=None, source=Source.CONNECT, **kwargs):
-        super().__init__(command_id=None, source=Source.CONNECT, **kwargs)
+        """
+        Sends a gcode in hopes of getting into a specific state.
+        :param command_id: Which command asked for the state change
+        :param source: Who asked us to change state
+        """
+        super().__init__(command_id=command_id, source=source, **kwargs)
         self.right_state = Event()
 
     def _try_until_state(self, gcode: str, desired_state: State):
+        """
+        Sends a gcode in hopes of reaching a desired_state.
+        :param gcode: Which gcode to send. For example: "M603"
+        :param desired_state: Into which state do we hope to get
+        """
         def state_changed(sender,
                           from_state,
                           to_state,
                           command_id=None,
                           source=None,
                           reason=None):
+            """Reacts to every state change, if the desired state has been
+            reached, stops the wait by setting an event"""
             if to_state == desired_state:
                 self.right_state.set()
 
@@ -42,6 +54,11 @@ class TryUntilState(Command):
         # Wait max n seconds for the desired state
         wait_until = time() + STATE_CHANGE_TIMEOUT
         succeeded = False
+
+        # Crush an edge case where we already are in the desired state
+        if self.model.state_manager.current_state == desired_state:
+            self.right_state.set()
+
         while self.running and time() < wait_until:
             succeeded = self.right_state.wait(QUIT_INTERVAL)
 
@@ -49,9 +66,6 @@ class TryUntilState(Command):
         self.state_manager.stop_expecting_change()
 
         if not succeeded:
-            log.debug(f"Our request has been confirmed, yet the state "
-                      f"remains {self.state_manager.get_state()} "
-                      f"instead of {desired_state}")
-            self.failed(f"Confirmed, but state did not change to "
-                        f"{desired_state}. Which it should've. "
-                        f"May be a bug in MK3 Connect.")
+            log.debug(f"Could not get from {self.state_manager.get_state()} "
+                      f"to {desired_state}")
+            self.failed(f"Couldnt get to the {desired_state} state.")

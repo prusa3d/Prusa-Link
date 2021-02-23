@@ -43,6 +43,10 @@ class JobData(BaseModel):
     filename_only: Optional[bool]
 
     def get_job_id_for_api(self):
+        """
+        The API does not send None values. This function returns None when
+        no job is running, otherwise it gives the job_id
+        """
         if self.job_state == JobState.IDLE:
             return None
         else:

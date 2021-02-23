@@ -11,6 +11,7 @@ class JobInfo(Command):
     command_name = "job_info"
 
     def _run_command(self):
+        """Returns job_info from the job component"""
         if self.model.job.job_state != JobState.IN_PROGRESS:
             self.failed("Cannot get job info, "
                         "when there is no job in progress.")

@@ -16,24 +16,37 @@ class ExecuteGcode(Command):
     command_name = "execute_gcode"
 
     def __init__(self, gcode, force=False, **kwargs):
+        """
+        If all checks pass, runs the specified gcode.
+        :param gcode: "\n" separated gcodes to send to the printer""
+        :param force: Whether to skip state checks
+        """
         super().__init__(**kwargs)
         self.gcode = gcode
         self.force = force
 
     def _run_command(self):
+        """
+        Sends the commands set if __init__ if all checks pass.
+        Attributes the first state change to connect.
+        Doesn't renew the expected state change, so the other state changes
+        will fall back onto defaults
+        """
         if self.force:
             log.debug(f"Force sending gcode: '{self.gcode}'")
 
-        is_printing = self.model.state_manager.printing_state == State.PRINTING
-        error_exists = self.model.state_manager.override_state == State.ERROR
-        if (is_printing or error_exists) and not self.force:
+        is_printing = self.model.state_manager.printing_state == \
+            State.PRINTING
+        error_exists = self.model.state_manager.override_state is not None
+        if not self.force:
             if is_printing:
                 self.failed("I'm sorry Dave but I'm afraid "
                             f"I can't run '{self.gcode}' while printing.")
+                return
             elif error_exists:
                 self.failed("Printer is in an error state, "
                             "cannot execute commands")
-            return
+                return
 
         self.state_manager.expect_change(
             StateChange(command_id=self.command_id,
