@@ -4,7 +4,8 @@ BASE_STATES = {State.READY, State.BUSY}
 PRINTING_STATES = {State.PRINTING, State.PAUSED, State.FINISHED, State.STOPPED}
 
 JOB_ONGOING_STATES = {State.PRINTING, State.PAUSED}
-JOB_ENDING_STATES = BASE_STATES.union({State.FINISHED, State.ERROR})
+JOB_ENDING_STATES = BASE_STATES.union(
+    {State.FINISHED, State.STOPPED, State.ERROR})
 
 # --- Intervals ---
 # Values are in seconds

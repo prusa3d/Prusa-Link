@@ -11,6 +11,11 @@ class StopPrint(TryUntilState):
     command_name = "stop print"
 
     def _run_command(self):
+        """
+        For serial prints, it first stops the flow of new commands using the
+        file printer component, then it uses its parent to go through the stop
+        sequence.
+        """
         if self.model.file_printer.printing:
             self.file_printer.stop_print()
 

@@ -16,11 +16,11 @@ log = logging.getLogger(__name__)
 
 class ResetPrinter(Command):
     """
-    Tries if we have pigpio available, if not, uses DTR to reset the printer
-    thanks @leptun.
+    Checks whether we have pigpio available, if yes, uses the RESET_PIN,
+    if not, uses USB DTR to reset the printer. Thanks @leptun.
 
     Waits until the printer boots and checks, if the printer wrote "start"
-    as it does every boot.
+    as it shoul do on every boot.
     """
 
     command_name = "reset_printer"
@@ -38,6 +38,7 @@ class ResetPrinter(Command):
         event = Event()
 
         def waiter(sender, match):
+            """Stops the wait for printer boot"""
             event.set()
 
         self.serial_reader.add_handler(PRINTER_BOOT_REGEX, waiter)
@@ -48,7 +49,8 @@ class ResetPrinter(Command):
         try:
             import wiringpi
             wiringpi.wiringPiSetupGpio()
-        except:
+        except Exception:
+            # Maybe use an import error, or something from within wiringpi
             self.serial.blip_dtr()
         else:
             wiringpi.pinMode(RESET_PIN, wiringpi.OUTPUT)
