@@ -187,6 +187,10 @@ class PrusaLink:
             self.debug_shell()
 
     def debug_shell(self):
+        """
+        Calling this in a thread that receives stdin enables th user to
+        give Prusa Link commands through the terminal
+        """
         print("Debug shell")
         while self.running:
             command = input("[Prusa-link]: ")
@@ -206,6 +210,11 @@ class PrusaLink:
                 print(result)
 
     def stop(self):
+        """
+        Calls stop on every module containing a thread, for debugging prints
+        out all threads which are still running and sets an event to signalize
+        that Prusa Link has stopped.
+        """
         self.running = False
         self.printer.stop()
         self.telemetry_thread.join()
@@ -225,54 +234,90 @@ class PrusaLink:
     # --- Command handlers ---
 
     def execute_gcode(self, caller: SDKCommand):
+        """
+        Connects the command to exectue gcode from CONNECT with its handler
+        """
         command = ExecuteGcode(gcode=caller.args[0],
                                command_id=caller.command_id)
         return command.run_command()
 
     def start_print(self, caller: SDKCommand):
+        """
+        Connects the command to start print from CONNECT with its handler
+        """
         command = StartPrint(filename=caller.args[0],
                              command_id=caller.command_id)
         return command.run_command()
 
     def pause_print(self, caller: SDKCommand):
+        """
+        Connects the command to pause print from CONNECT with its handler
+        """
         command = PausePrint(command_id=caller.command_id)
         return command.run_command()
 
     def resume_print(self, caller: SDKCommand):
+        """
+        Connects the command to resume print from CONNECT with its handler
+        """
         command = ResumePrint(command_id=caller.command_id)
         return command.run_command()
 
     def stop_print(self, caller: SDKCommand):
+        """
+        Connects the command to stop print from CONNECT with its handler
+        """
         command = StopPrint(command_id=caller.command_id)
         return command.run_command()
 
     def reset_printer(self, caller: SDKCommand):
+        """
+        Connects the command to reset printer from CONNECT with its handler
+        """
         command = ResetPrinter(command_id=caller.command_id)
         return command.run_command()
 
     def job_info(self, caller: SDKCommand):
+        """
+        Connects the command to send job info from CONNECT with its handler
+        """
         command = JobInfo(command_id=caller.command_id)
         return command.run_command()
 
     # --- Signal handlers ---
 
     def telemetry_observed_print(self, sender):
+        """
+        The telemetry can observe some states, this method connects
+        it observing a print in progress to the state manager
+        """
         self.state_manager.expect_change(
             StateChange(to_states={State.PRINTING: Source.FIRMWARE}))
         self.state_manager.printing()
         self.state_manager.stop_expecting_change()
 
     def telemetry_observed_sd_pause(self, sender):
+        """
+        Connects telemetry observing a paused sd print to the state manager
+        """
         self.state_manager.expect_change(
             StateChange(to_states={State.PAUSED: Source.FIRMWARE}))
         self.state_manager.paused()
         self.state_manager.stop_expecting_change()
 
     def telemetry_observed_serial_pause(self, sender):
+        """
+        Connects telemetry observing a paused serial print to the state
+        manager
+        """
         if not self.model.file_printer.printing:
             StopPrint().run_command()
 
     def telemetry_observed_no_print(self, sender):
+        """
+        Usefull only when not serial printing. Connects telemetry
+        observing there's no print in progress to the state_manager
+        """
         # When serial printing, the printer reports not printing
         # Let's ignore it in that case
         if not self.model.file_printer.printing:
@@ -282,36 +327,51 @@ class PrusaLink:
             self.state_manager.stop_expecting_change()
 
     def telemetry_gathered(self, sender, telemetry: Telemetry):
+        """Writes updated telemetry values to the model"""
         self.model.set_telemetry(telemetry)
 
     def progress_broken(self, sender, progress_broken):
+        """
+        Connects telemetry, which can see the progress returning garbage
+        values to the job component
+        """
         self.job.progress_broken(progress_broken)
 
     def file_path_observed(self,
                            sender,
                            path: str,
                            filename_only: bool = False):
+        """Connects telemetry observed file path to the job component"""
         self.job.set_file_path(path,
                                filename_only=filename_only,
                                prepend_sd_mountpoint=True)
 
     def sd_print_start_observed(self, sender, match):
+        """Tells the telemetry about a new print job starting"""
         self.telemetry_gatherer.new_print()
 
     def file_printer_started_printing(self, sender):
+        """
+        Tells thestate manager and telemetry about a new print job
+        starting
+        """
         self.state_manager.file_printer_started_printing()
         self.telemetry_gatherer.new_print()
 
     def file_printer_stopped_printing(self, sender):
+        """Connects file printer stopping with state manager"""
         self.state_manager.file_printer_stopped_printing()
 
     def file_printer_finished_printing(self, sender):
+        """Connects file printer finishing a print with state manager"""
         self.state_manager.file_printer_finished_printing()
 
     def serial_failed(self, sender):
+        """Connects serial errors with state manager"""
         self.state_manager.serial_error()
 
     def serial_renewed(self, sender):
+        """Connects serial recovery with state manager"""
         self.state_manager.serial_error_resolved()
 
     def set_sn(self, serial_number):
@@ -327,6 +387,11 @@ class PrusaLink:
             self.settings.write(ini)
 
     def ip_updated(self, sender, old_ip, new_ip):
+        """
+        On every ip change from ip updater sends a new info,
+        Also updates the lcd printer ip and clears physical network error
+        code
+        """
         # Don't send info again on init, because one is going to
         #  get sent anyway
         if old_ip != new_ip and new_ip != NO_IP and old_ip is not None:
@@ -339,21 +404,33 @@ class PrusaLink:
             errors.PHY.ok = False
 
     def dir_mount(self, sender, path):
+        """Connects a dir being mounted to Prusa Connect events"""
         self.printer.mount(path, os.path.basename(path))
 
     def dir_unmount(self, sender, path):
+        """Connects a dir being unmounted to Prusa Connect events"""
         self.printer.unmount(os.path.basename(path))
 
     def sd_mount(self, sender, files: File):
+        """Connects the sd being mounted to Prusa Connect events"""
         self.printer.fs.mount(SD_MOUNT_NAME, files, "", use_inotify=False)
 
     def sd_unmount(self, sender):
+        """Connects the sd being unmounted to Prusa Connect events"""
         self.printer.fs.unmount(SD_MOUNT_NAME)
 
     def instruction_confirmed(self, sender):
+        """
+        Connects instruction confirmation from serial queue to state manager
+        """
         self.state_manager.instruction_confirmed()
 
     def printer_reset(self, sender, match):
+        """
+        Connects the printer booting to many other components.
+        Stops serial prints, flushes the serial queue, updates the state and
+        tries to send its info again.
+        """
         was_printing = self.state_manager.get_state() in PRINTING_STATES
         self.file_printer.stop_print()
         self.serial_queue.printer_reset(was_printing)
@@ -368,9 +445,17 @@ class PrusaLink:
         return self.model.sd_card.sd_state == SDState.PRESENT
 
     def pre_state_change(self, sender: StateManager, command_id):
+        """
+        First step of a two step process. Connects the state change to the
+        job module. Explanation is(will be) in the job module
+        """
         self.job.state_changed(command_id=command_id)
 
     def post_state_change(self, sender: StateManager):
+        """
+        Second step of a two step process. Connects the state change to the
+        job module. Explanation is(will be) in the job module
+        """
         self.job.tick()
 
     def state_changed(self,
@@ -380,6 +465,7 @@ class PrusaLink:
                       command_id=None,
                       source=None,
                       reason=None):
+        """Connects the state manager state change to Prusa Connect"""
         if source is None:
             source = Source.WUI
             log.warning(f"State change had no source " f"{to_state.value}")
@@ -398,10 +484,12 @@ class PrusaLink:
         """Nothing to do, the writing to model is done inside the module"""
 
     def time_printing_updated(self, sender, time_printing):
+        """Connects the serial print print timer with telemetry"""
         self.model.set_telemetry(new_telemetry=Telemetry(
             time_printing=time_printing))
 
     def serial_queue_failed(self, sender):
+        """Handles the serial queue failure by resetting the printer"""
         reset_command = ResetPrinter()
         self.state_manager.serial_error()
         try:
@@ -413,17 +501,26 @@ class PrusaLink:
     # --- Telemetry sending ---
 
     def get_telemetry_interval(self):
+        """
+        Depending on the state, gets one of the intervals to send
+        telemetry in
+        """
         if self.model.state_manager.current_state in PRINTING_STATES:
             return TELEMETRY_PRINTING_INTERVAL
         else:
             return TELEMETRY_IDLE_INTERVAL
 
     def keep_sending_telemetry(self):
+        """Runs a loop in a thread to pass the telemetry from model to SDK"""
         run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
                             lambda: self.get_telemetry_interval(),
                             self.send_telemetry)
 
     def send_telemetry(self):
+        """
+        Passes the telemetry from the model, where it accumulated to the
+        SDK for sending
+        """
         if self.printer.queue.empty():
             telemetry = self.model.get_and_reset_telemetry()
             state = telemetry.state
@@ -433,6 +530,11 @@ class PrusaLink:
     # --- SDK loop runner ---
 
     def sdk_loop(self):
+        """
+        As long as the thread isn't supposed to quit, runs the SDK loop
+        function. Technically not needed, because the SDK loop contains also
+        a while loop
+        """
         while self.running:
             try:
                 self.printer.loop()

@@ -14,11 +14,18 @@ log = logging.getLogger(__name__)
 class StartPrint(Command):
     command_name = "start print"
 
-    def __init__(self, filename, **kwargs):
+    def __init__(self, path: str, **kwargs):
         super().__init__(**kwargs)
-        self.filename = filename
+        self.path_string = path
 
     def _run_command(self):
+        """
+        Starts a print using a file path. If the file resides on the SD,
+        it tells the printer to print it. If it's on the internal storage,
+        the file_printer component will be used.
+        :return:
+        """
+
         # No new print jobs while already printing
         # or when there is an Error/Attention state
         if self.model.state_manager.printing_state is not None:
@@ -33,8 +40,7 @@ class StartPrint(Command):
             StateChange(to_states={State.PRINTING: self.source},
                         command_id=self.command_id))
 
-        file_path_string = self.filename
-        path = Path(file_path_string)
+        path = Path(self.path_string)
         parts = path.parts
 
         if file_is_on_sd(parts):
@@ -58,22 +64,27 @@ class StartPrint(Command):
         self.state_manager.printing()
         self.state_manager.stop_expecting_change()
 
-    def _get_state_change(self, to_states):
-        return StateChange(to_states=to_states)
-
-    def _start_file_print(self, path):
+    def _start_file_print(self, path: Path):
+        """
+        Converts the given path object "back" to string
+        :param path:
+        """
         os_path = self.printer.fs.get_os_path(path)
         self.file_printer.print(os_path)
 
-    def _load_file(self, raw_path):
-        file_name = raw_path.lower()
+    def _load_file(self, raw_sd_path):
+        """
+        Sends the gcod required to load the file from a given sd path
+        :param raw_sd_path: The absolute sd path (starts with a "/")
+        """
+        sd_path = raw_sd_path.lower()  # FW requires lower case
 
-        instruction = self.do_matchable(f"M23 {file_name}", OPEN_RESULT_REGEX)
+        instruction = self.do_matchable(f"M23 {sd_path}", OPEN_RESULT_REGEX)
         match = instruction.match()
 
         if not match or match.groups()[0] is None:  # Opening failed
-            self.failed(
-                f"Wrong file name, or bad file. File name: {file_name}")
+            self.failed(f"Wrong file name, or bad file. File name: {sd_path}")
 
     def _start_print(self):
+        """Sends a gcode to start the print of an already loaded file"""
         self.do_instruction("M24")

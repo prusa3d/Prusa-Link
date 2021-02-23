@@ -19,6 +19,7 @@ log = logging.getLogger(__name__)
 
 
 class StateChange:
+    """Represents a set of state changes that can happen"""
     def __init__(self,
                  command_id=None,
                  to_states: Dict[State, Union[Source, None]] = None,
@@ -47,7 +48,9 @@ def state_influencer(state_change: StateChange = None):
     oncoming state change through expect_change
     """
     def inner(func):
+        """It's just how decorators work man"""
         def wrapper(self, *args, **kwargs):
+            """By nesting function definitions. Shut up Travis!"""
             with self.state_lock:
                 has_set_expected_change = False
                 if self.expected_state_change is None and \
@@ -70,6 +73,10 @@ def state_influencer(state_change: StateChange = None):
 
 
 class StateManager(metaclass=MCSingleton):
+    """
+    Keeps track of the printer states by observing the serial and by listening
+    to other PrusaLink components
+    """
     def __init__(self, serial_reader: SerialReader, model: Model):
 
         self.serial_reader: SerialReader = serial_reader
@@ -134,17 +141,34 @@ class StateManager(metaclass=MCSingleton):
         super().__init__()
 
     def file_printer_started_printing(self):
+        """
+        If the file printer truly is printing and we don't know about it
+        yet, let's change our state to PRINTING.
+        """
         if (self.model.file_printer.printing
                 and self.data.printing_state != State.PRINTING):
             self.printing()
 
     def file_printer_finished_printing(self):
+        """
+        React to a serial printer finishing printing by changing our
+        state to FINISHED
+        """
         self.finished()
 
     def file_printer_stopped_printing(self):
+        """
+        React to a serial printer stopping a print by changing our
+        state to STOPPED
+        """
         self.stopped()
 
     def get_state(self):
+        """
+        State manager has three levels of importance, the most important state
+        is the one returned. The least important is the base state,
+        followed by printing state and then the override state.
+        """
         if self.data.override_state is not None:
             return self.data.override_state
         elif self.data.printing_state is not None:
@@ -153,12 +177,18 @@ class StateManager(metaclass=MCSingleton):
             return self.data.base_state
 
     def expect_change(self, change: StateChange):
+        """
+        Pairing state changes with events that could've caused them
+        is done through expected state changes. This method sets it
+        """
         self.expected_state_change = change
 
     def stop_expecting_change(self):
+        """Resets the expected state change"""
         self.expected_state_change = None
 
     def is_expected(self):
+        """Figure out if the state change we are experiencing was expected"""
         state_change = self.expected_state_change
         expecting_change = state_change is not None
         if expecting_change:
@@ -170,6 +200,10 @@ class StateManager(metaclass=MCSingleton):
             return False
 
     def get_expected_source(self):
+        """
+        Figures out who or what could have caused the state change
+        :return:
+        """
         # No change expected,
         if self.expected_state_change is None:
             return None
@@ -211,6 +245,11 @@ class StateManager(metaclass=MCSingleton):
         return source
 
     def state_may_have_changed(self):
+        """
+        Should be called after every internal state change. If the internal
+        state change changed the external reported state, updates the state
+        history and lets everyone know the state change details.
+        """
         # Did our internal state change cause our reported state to change?
         # If yes, update state stuff
         if self.get_state() != self.data.current_state:
@@ -264,18 +303,32 @@ class StateManager(metaclass=MCSingleton):
     # --- State changing methods ---
 
     def stopped_or_not_printing(self):
+        """
+        Depending on state, clears the printing state or sets the printing
+        state to STOPPED
+        """
         if self.data.printing_state == State.PRINTING:
             self.stopped()
         else:
             self.not_printing()
 
     def reset(self):
+        """
+        On printer reset, the printer is not ready yet, so set the base state
+        to busy. After reset it surely can't carry on printing so take care of
+        that as well
+        :return:
+        """
         self.busy()
         self.stopped_or_not_printing()
 
     # This state change can change the state to "PRINTING"
     @state_influencer(StateChange(to_states={State.PRINTING: Source.USER}))
     def printing(self):
+        """
+        If not printing or paused, sets printing state to PRINTING
+        :return:
+        """
         log.debug("Should be PRINTING")
         if self.data.printing_state is None or \
                 self.data.printing_state == State.PAUSED:
@@ -293,23 +346,27 @@ class StateManager(metaclass=MCSingleton):
                 State.FINISHED: Source.MARLIN
             }))
     def not_printing(self):
+        """Clears the printing state"""
         self.unsure_whether_printing = False
         if self.data.printing_state is not None:
             self.data.printing_state = None
 
     @state_influencer(StateChange(to_states={State.FINISHED: Source.MARLIN}))
     def finished(self):
+        """Sets the printing state to FINISHED if we are printing"""
         if self.data.printing_state == State.PRINTING:
             self.data.printing_state = State.FINISHED
 
     @state_influencer(StateChange(to_states={State.BUSY: Source.MARLIN}))
     def busy(self):
+        """If we were ready, sets te base state to BUSY"""
         if self.data.base_state == State.READY:
             self.data.base_state = State.BUSY
 
     # Cannot distinguish pauses from the user and the gcode
     @state_influencer(StateChange(to_states={State.PAUSED: Source.USER}))
     def paused(self):
+        """If we were printing, sets the printing state to PAUSED"""
         if self.data.printing_state == State.PRINTING or \
                 self.data.base_state == State.READY:
             self.unsure_whether_printing = False
@@ -317,12 +374,16 @@ class StateManager(metaclass=MCSingleton):
 
     @state_influencer(StateChange(to_states={State.PRINTING: Source.USER}))
     def resumed(self):
+        """If we were paused, sets the printing state to PRINTING"""
         if self.data.printing_state == State.PAUSED:
             self.unsure_whether_printing = False
             self.data.printing_state = State.PRINTING
 
     @state_influencer(StateChange(from_states={State.PRINTING: Source.USER}))
     def stopped(self):
+        """
+        If we were printing or paused, sets the printing state to STOPPED
+        """
         if self.data.printing_state in {State.PRINTING, State.PAUSED}:
             self.unsure_whether_printing = False
             self.data.printing_state = State.STOPPED
@@ -335,6 +396,10 @@ class StateManager(metaclass=MCSingleton):
                         State.BUSY: Source.HW
                     }))
     def instruction_confirmed(self):
+        """
+        Instruction confirmation shall clear all temporary states
+        Starts at the least important so it generates only one state change
+        """
         if self.unsure_whether_printing:
             return
 
@@ -350,6 +415,10 @@ class StateManager(metaclass=MCSingleton):
 
     @state_influencer(StateChange(to_states={State.ATTENTION: Source.USER}))
     def attention(self):
+        """
+        Sets the override state to ATTENTION.
+        Includes a workaround for fan error info
+        """
         if self.fan_error_name is not None:
             log.debug(f"{self.fan_error_name} fan error has been observed "
                       f"before, reporting it now")
@@ -363,16 +432,22 @@ class StateManager(metaclass=MCSingleton):
 
     @state_influencer(StateChange(to_states={State.ERROR: Source.WUI}))
     def error(self):
+        """Sets the override state to ERROR"""
         log.debug("Overriding the state with ERROR")
         self.data.override_state = State.ERROR
 
     @state_influencer(StateChange(to_states={State.ERROR: Source.SERIAL}))
     def serial_error(self):
+        """
+        Also sets the override state to ERROR but has a different
+        default source
+        """
         log.debug("Overriding the state with ERROR")
         self.data.override_state = State.ERROR
 
     @state_influencer(StateChange(to_states={State.READY: Source.SERIAL}))
     def serial_error_resolved(self):
+        """Resets the error state if there is any"""
         if self.data.override_state == State.ERROR:
             log.debug("Removing the ERROR state")
             self.data.override_state = None

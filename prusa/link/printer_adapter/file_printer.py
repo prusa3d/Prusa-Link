@@ -30,6 +30,11 @@ log = logging.getLogger(__name__)
 
 
 class FilePrinter(metaclass=MCSingleton):
+    """
+    Facilitates serial printing, its pausing, resuming and stopping as well,
+    controlls print_stats, which provide info about progress and time left
+    for gcodes without said info
+    """
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
                  model: Model, cfg: Config, print_stats: PrintStats):
         self.serial_queue = serial_queue
@@ -69,17 +74,22 @@ class FilePrinter(metaclass=MCSingleton):
         self.thread = None
 
     def start(self):
+        """Power panic is not yet implemented, sso this does nothing"""
         self.check_failed_print()
 
     @property
     def pp_exists(self):
+        """Checks whether a file created on power panic exists"""
         return os.path.exists(self.data.pp_file_path)
 
     @property
     def tmp_exists(self):
+        """Checks whether the print was stopped so abruptly we failed to clean
+        our temporary gcode file copy"""
         return os.path.exists(self.data.tmp_file_path)
 
     def check_failed_print(self):
+        """Not implemented, would try to resume after power panic or error"""
         if self.tmp_exists and self.pp_exists:
             log.warning("There was a loss of power, let's try to recover")
             """
@@ -113,6 +123,7 @@ class FilePrinter(metaclass=MCSingleton):
                 os.remove(self.data.pp_file_path)
 
     def print(self, os_path):
+        """Starts a file print for the supplied path"""
         if self.data.printing:
             raise RuntimeError("Cannot print two things at once")
 
@@ -127,6 +138,10 @@ class FilePrinter(metaclass=MCSingleton):
         self.thread.start()
 
     def _print(self, from_line=0):
+        """
+        Parses and sends the gcode commands from the file to serial.
+        Supports pausing, resuming and stopping.
+        """
 
         with open(self.data.tmp_file_path, "r") as tmp_file:
             # Reset the line counter, printing a new file
@@ -163,6 +178,10 @@ class FilePrinter(metaclass=MCSingleton):
                 self.print_finished_signal.send(self)
 
     def print_gcode(self, gcode):
+        """
+        Sends a gcode to print, keeps a small buffer of gcodes
+         and inlines print stats for files without them
+        (estimated time left and progress)"""
         self.data.gcode_number += 1
 
         divisible = self.data.gcode_number % STATS_EVERY == 0
@@ -186,6 +205,7 @@ class FilePrinter(metaclass=MCSingleton):
             log.debug(f"{wait_for.message} confirmed")
 
     def power_panic(self):
+        """Not used/working"""
         # TODO: write print time
         if self.data.printing:
             self.pause()
@@ -197,6 +217,9 @@ class FilePrinter(metaclass=MCSingleton):
                 os.fsync(pp_file.fileno())
 
     def send_print_stats(self):
+        """Sends a gcode to the printer, which tells it the progress
+        percentage and estimated time left, the printer is expected to send
+        back its standard print stats output for parsing in telemetry"""
         percent_done, time_remaining = self.print_stats.get_stats(
             self.data.gcode_number)
 
@@ -210,31 +233,47 @@ class FilePrinter(metaclass=MCSingleton):
         wait_for_instruction(instruction, lambda: self.data.printing)
 
     def to_print_stats(self, gcode_number):
+        """
+        Decides whether to calculate and send print stats based on the
+        file being printed having stats or not,v the gcode number
+        divisibility, or just before the end of a file print
+        """
         divisible = gcode_number % STATS_EVERY == 0
         do_stats = not self.model.print_stats.has_inbuilt_stats
         print_ending = (
             gcode_number == self.model.print_stats.total_gcode_count -
             TAIL_COMMANDS)
-        return (do_stats and divisible) or print_ending
+        return do_stats and (divisible or print_ending)
 
     def printer_error(self):
-        # TODO: Maybe pause in some cases instead
+        """Reacts to a hard printer error by stopping the serial print"""
         self.stop_print()
 
     def wait_for_unpause(self):
+        """
+        Loops until some other thread flips a flag back, to resume the
+        print
+        """
         while self.data.printing and self.data.paused:
             sleep(QUIT_INTERVAL)
 
     def pause(self):
+        """Pauses the print by flipping a flag, pauses print timer"""
         self.data.paused = True
         self.print_stats.end_time_segment()
 
     def resume(self):
+        """
+        If paused, resumes the print by flipping a flag,
+        resumes print timer
+        """
         if self.data.printing:
             self.data.paused = False
             self.print_stats.start_time_segment()
 
     def stop_print(self):
+        """If printing, stops the print and indicates by a flag, that the
+        print has been stopped and did not finish on its own"""
         if self.data.printing:
             self.data.stopped_forcefully = True
             self.data.printing = False
