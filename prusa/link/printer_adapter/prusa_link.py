@@ -245,8 +245,7 @@ class PrusaLink:
         """
         Connects the command to start print from CONNECT with its handler
         """
-        command = StartPrint(filename=caller.args[0],
-                             command_id=caller.command_id)
+        command = StartPrint(path=caller.args[0], command_id=caller.command_id)
         return command.run_command()
 
     def pause_print(self, caller: SDKCommand):
