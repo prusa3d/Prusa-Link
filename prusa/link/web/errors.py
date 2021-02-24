@@ -53,6 +53,7 @@ def service_unavailable(req):
     """Error handler for 503 Service Unavailable."""
     if req.accept_json:
         return JSONResponse(message="Prusa Link not finished initializing. "
-                            "Please try again later")
+                            "Please try again later",
+                            status_code=503)
     return make_response(generate_page(req, "error503.html", error=exc_info()),
                          status_code=503)
