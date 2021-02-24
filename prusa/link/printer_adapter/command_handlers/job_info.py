@@ -1,8 +1,9 @@
 import logging
 
 from prusa.connect.printer.const import Source, Event
-from prusa.link.printer_adapter.command import Command
-from prusa.link.printer_adapter.informers.job import JobState
+
+from ..command import Command
+from ..informers.job import JobState
 
 log = logging.getLogger(__name__)
 
