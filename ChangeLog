@@ -43,6 +43,7 @@
     * Fix /api/files and /api/job endpoints
     * Nicer messages for Wlan errors; LCDPrinter now accesses the model for IP
     * Statics generated from submodule
+    * Support pausing, resuming and stopping of serial prints from the LCD
 
 0.2.0 (2020-12-14)
 

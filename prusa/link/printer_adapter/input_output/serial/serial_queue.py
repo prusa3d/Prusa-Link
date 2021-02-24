@@ -428,6 +428,20 @@ class SerialQueue(metaclass=MCSingleton):
         instruction = Instruction("M110 N0")
         self._enqueue(instruction, to_front=True)
 
+    def flush_print_queue(self):
+        """
+        Only printing instructions are checksummed, so let's get rid of
+        those. We don't need to confirm them, they shouldn't be waited on.
+        The only component able to wait on them is file printer and that
+        should be stopping when this is called.
+        """
+        with self.write_lock:
+            new_queue = deque()
+            for instruction in self.priority_queue:
+                if not instruction.to_checksum:
+                    new_queue.append(instruction)
+            self.priority_queue = new_queue
+
     def _flush_queues(self):
         """
         Tries to get rid of every queue by fake force confirming all
