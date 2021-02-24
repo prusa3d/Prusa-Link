@@ -22,7 +22,8 @@ from .const import STATS_EVERY, \
     PRINT_QUEUE_SIZE, TAIL_COMMANDS, QUIT_INTERVAL
 from .structures.mc_singleton import MCSingleton
 from .structures.regular_expressions import \
-    POWER_PANIC_REGEX, ERROR_REGEX, RESUMED_REGEX
+    POWER_PANIC_REGEX, ERROR_REGEX, CANCEL_REGEX, \
+    PAUSED_REGEX, RESUMED_REGEX
 from .util import get_clean_path, ensure_directory, \
     get_gcode
 
@@ -68,6 +69,10 @@ class FilePrinter(metaclass=MCSingleton):
             POWER_PANIC_REGEX, lambda sender, match: self.power_panic())
         self.serial_reader.add_handler(
             ERROR_REGEX, lambda sender, match: self.printer_error())
+        self.serial_reader.add_handler(CANCEL_REGEX,
+                                       lambda sender, match: self.stop_print())
+        self.serial_reader.add_handler(PAUSED_REGEX,
+                                       lambda sender, match: self.pause())
         self.serial_reader.add_handler(RESUMED_REGEX,
                                        lambda sender, match: self.resume())
 
@@ -148,6 +153,7 @@ class FilePrinter(metaclass=MCSingleton):
             self.serial_queue.reset_message_number()
 
             self.data.gcode_number = 0
+            self.data.enqueued.clear()
             for line_index, line in enumerate(tmp_file):
                 if line_index < from_line:
                     continue
@@ -171,6 +177,7 @@ class FilePrinter(metaclass=MCSingleton):
             if self.pp_exists:
                 os.remove(self.data.pp_file_path)
             self.data.printing = False
+            self.data.enqueued.clear()
 
             if self.data.stopped_forcefully:
                 self.print_stopped_signal.send(self)
@@ -277,5 +284,7 @@ class FilePrinter(metaclass=MCSingleton):
         if self.data.printing:
             self.data.stopped_forcefully = True
             self.data.printing = False
+            self.serial_queue.flush_print_queue()
+            self.data.enqueued.clear()  # Ensure this gets cleared
             self.thread.join()
             self.data.paused = False

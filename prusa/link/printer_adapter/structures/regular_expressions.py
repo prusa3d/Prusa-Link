@@ -26,13 +26,15 @@ SD_EJECTED_REGEX = re.compile(r"^(echo:SD card released)$")
 ANY_REGEX = re.compile(r".*")
 CONFIRMATION_REGEX = re.compile(r"^ok\s?(?P<extra>.*)$")  # highest priority
 FILE_OPEN_REGEX = re.compile(r"^echo:enqueing \"M23 (?P<sfn>[^\"]+)\"$")
-PAUSED_REGEX = re.compile(r"^// action:paused$")
 
 REJECTION_REGEX = re.compile(r"^(echo:Unknown command: (\"[^\"]*\"))|"
                              r"(Unknown \S code: .*)$")
 
 BUSY_REGEX = re.compile("^echo:busy: processing$")
 ATTENTION_REGEX = re.compile("^echo:busy: paused for user$")
+PAUSE_PRINT_REGEX = re.compile(r"^// action:pause$")
+PAUSED_REGEX = re.compile(r"^// action:paused$")
+RESUME_PRINT_REGEX = re.compile("^// action:resume$")
 RESUMED_REGEX = re.compile("^// action:resumed$")
 CANCEL_REGEX = re.compile("^// action:cancel$")
 START_PRINT_REGEX = re.compile(r"^echo:enqueing \"M24\"$")
