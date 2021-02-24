@@ -1,6 +1,6 @@
 import logging
 import os
-import threading
+from threading import Thread, Event, enumerate as enumerate_threads
 from time import time
 
 from requests import RequestException
@@ -10,49 +10,41 @@ from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType, State
 from prusa.connect.printer.const import Source
 
+from .command_handlers.execute_gcode import ExecuteGcode
+from .command_handlers.job_info import JobInfo
+from .command_handlers.pause_print import PausePrint
+from .command_handlers.reset_printer import ResetPrinter
+from .command_handlers.resume_print import ResumePrint
+from .command_handlers.start_print import StartPrint
+from .command_handlers.stop_print import StopPrint
+from .informers.filesystem.sd_card import SDState
+from .informers.job import Job
+from .print_stats import PrintStats
+from .sn_reader import SNReader
+from .file_printer import FilePrinter
+from .info_sender import InfoSender
+from .informers.ip_updater import IPUpdater
+from .informers.state_manager import StateManager, StateChange
+from .informers.filesystem.storage_controller import StorageController
+from .informers.telemetry_gatherer import TelemetryGatherer
+from .informers.getters import get_printer_type
+from .input_output.lcd_printer import LCDPrinter
+from .input_output.serial.serial_queue import MonitoredSerialQueue
+from .input_output.serial.serial import Serial
+from .input_output.serial.serial_reader import SerialReader
+from .model import Model
+from .structures.model_classes import Telemetry
+from .const import PRINTING_STATES, TELEMETRY_IDLE_INTERVAL, \
+    TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, NO_IP, SD_MOUNT_NAME, \
+    SN_INITIAL_TIMEOUT
+from .structures.regular_expressions import \
+    PRINTER_BOOT_REGEX, START_PRINT_REGEX, PAUSE_PRINT_REGEX, \
+    RESUME_PRINT_REGEX
+from .reporting_ensurer import ReportingEnsurer
+from .util import run_slowly_die_fast, make_fingerprint
 from ..config import Config, Settings
-from .command_handlers.execute_gcode import \
-    ExecuteGcode
-from prusa.link.printer_adapter.command_handlers.job_info import JobInfo
-from prusa.link.printer_adapter.command_handlers.pause_print import PausePrint
-from prusa.link.printer_adapter.command_handlers.reset_printer import \
-    ResetPrinter
-from prusa.link.printer_adapter.command_handlers.resume_print import \
-    ResumePrint
-from prusa.link.printer_adapter.command_handlers.start_print import StartPrint
-from prusa.link.printer_adapter.command_handlers.stop_print import StopPrint
-from prusa.link.printer_adapter.informers.filesystem.sd_card import SDState
-from prusa.link.printer_adapter.informers.job import Job
-from prusa.link.printer_adapter.print_stats import PrintStats
-from prusa.link.printer_adapter.sn_reader import SNReader
-from prusa.link.printer_adapter.file_printer import FilePrinter
-from prusa.link.printer_adapter.info_sender import InfoSender
-from prusa.link.printer_adapter.informers.ip_updater import IPUpdater
-from prusa.link.printer_adapter.informers.state_manager import StateManager, \
-    StateChange
-from prusa.link.printer_adapter.informers.filesystem.storage_controller import\
-    StorageController
-from prusa.link.printer_adapter.informers.telemetry_gatherer import \
-    TelemetryGatherer
-from prusa.link.printer_adapter.informers.getters import get_printer_type
-from prusa.link.printer_adapter.input_output.lcd_printer import LCDPrinter
-from prusa.link.printer_adapter.input_output.serial.serial_queue \
-    import MonitoredSerialQueue
-from prusa.link.printer_adapter.input_output.serial.serial import Serial
-from prusa.link.printer_adapter.input_output.serial.serial_reader import \
-    SerialReader
-from prusa.link.printer_adapter.model import Model
-from prusa.link.printer_adapter.structures.model_classes import Telemetry
-from prusa.link.printer_adapter.const import PRINTING_STATES, \
-    TELEMETRY_IDLE_INTERVAL, TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, \
-    NO_IP, SD_MOUNT_NAME, SN_INITIAL_TIMEOUT
-from prusa.link.printer_adapter.structures.regular_expressions import \
-    PRINTER_BOOT_REGEX, START_PRINT_REGEX
-from prusa.link.printer_adapter.reporting_ensurer import ReportingEnsurer
-from prusa.link.printer_adapter.util import run_slowly_die_fast, \
-    make_fingerprint
-from prusa.link.sdk_augmentation.printer import MyPrinter
-from prusa.link import errors
+from ..sdk_augmentation.printer import MyPrinter
+from .. import errors
 
 log = logging.getLogger(__name__)
 
@@ -63,7 +55,7 @@ class PrusaLink:
         log.info('Starting adapter for port %s', self.cfg.printer.port)
         self.settings: Settings = settings
         self.running = True
-        self.stopped_event = threading.Event()
+        self.stopped_event = Event()
 
         self.model = Model()
         self.serial_reader = SerialReader()
@@ -96,6 +88,13 @@ class PrusaLink:
         self.printer.set_handler(CommandType.START_PRINT, self.start_print)
         self.printer.set_handler(CommandType.STOP_PRINT, self.stop_print)
         self.printer.set_handler(CommandType.SEND_JOB_INFO, self.job_info)
+
+        self.serial_reader.add_handler(
+            PAUSE_PRINT_REGEX,
+            lambda sender, match: Thread(target=self.fw_pause_print).start())
+        self.serial_reader.add_handler(
+            RESUME_PRINT_REGEX,
+            lambda sender, match: Thread(target=self.fw_resume_print).start())
 
         # Init components first, so they all exist for signal binding stuff
         self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_reader,
@@ -170,12 +169,12 @@ class PrusaLink:
         self.storage.start()
         self.ip_updater.start()
         self.last_sent_telemetry = time()
-        self.telemetry_thread = threading.Thread(
-            target=self.keep_sending_telemetry, name="telemetry_passer")
+        self.telemetry_thread = Thread(target=self.keep_sending_telemetry,
+                                       name="telemetry_passer")
         self.telemetry_thread.start()
-        self.sdk_loop_thread = threading.Thread(target=self.sdk_loop,
-                                                name="sdk_loop",
-                                                daemon=True)
+        self.sdk_loop_thread = Thread(target=self.sdk_loop,
+                                      name="sdk_loop",
+                                      daemon=True)
         self.sdk_loop_thread.start()
 
         # Start this last, as it might start printing right away
@@ -228,7 +227,7 @@ class PrusaLink:
         self.serial.stop()
 
         log.debug("Remaining threads, that could prevent us from quitting:")
-        for thread in threading.enumerate():
+        for thread in enumerate_threads():
             log.debug(thread)
         self.stopped_event.set()
 
@@ -282,6 +281,17 @@ class PrusaLink:
         Connects the command to send job info from CONNECT with its handler
         """
         command = JobInfo(command_id=caller.command_id)
+        return command.run_command()
+
+    # --- FW Command handlers ---
+
+    def fw_pause_print(self):
+        # FIXME: The source is wrong for the LCD pause
+        command = PausePrint(source=Source.FIRMWARE)
+        return command.run_command()
+
+    def fw_resume_print(self):
+        command = ResumePrint(source=Source.USER)
         return command.run_command()
 
     # --- Signal handlers ---
