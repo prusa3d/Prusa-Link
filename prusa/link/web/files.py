@@ -9,14 +9,14 @@ from poorwsgi.response import Response, JSONResponse, HTTPException, \
         EmptyResponse
 
 from .lib.core import app
-from .lib.auth import check_api_key
+from .lib.auth import check_api_digest
 from .lib.files import files_to_api
 
 log = logging.getLogger(__name__)
 
 
 @app.route('/api/files')
-@check_api_key
+@check_api_digest
 def api_files(req):
     """Returns info about all available print files"""
     # pylint: disable=unused-argument
@@ -30,7 +30,7 @@ def api_files(req):
 
 
 @app.route('/api/files/<location>', state.METHOD_POST)
-@check_api_key
+@check_api_digest
 def api_upload(req, location):
     """Function for uploading G-CODE."""
     if location == 'sdcard':

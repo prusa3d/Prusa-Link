@@ -9,7 +9,7 @@ from prusa.connect.printer.const import State
 from .. import __version__, errors
 
 from .lib.core import app
-from .lib.auth import check_api_key, check_config, REALM
+from .lib.auth import check_api_digest, check_config, REALM
 from .lib.view import generate_page
 
 from ..printer_adapter.command_handlers.job_info import JobInfo
@@ -35,7 +35,7 @@ def index(req):
 
 
 @app.route('/api/version')
-@check_api_key
+@check_api_digest
 def api_version(req):
     """Return api version"""
     log.debug(req.headers)
@@ -46,7 +46,7 @@ def api_version(req):
 
 
 @app.route('/api/connection')
-@check_api_key
+@check_api_digest
 def api_connection(req):
     """Returns printer connection info"""
     # pylint: disable=unused-argument
@@ -73,7 +73,7 @@ def api_connection(req):
 
 
 @app.route('/api/printer')
-@check_api_key
+@check_api_digest
 def api_printer(req):
     """Returns printer telemetry info"""
     # pylint: disable=unused-argument
@@ -118,7 +118,7 @@ def api_printer(req):
 
 
 @app.route('/api/job')
-@check_api_key
+@check_api_digest
 def api_job(req):
     """Returns info about actual printing job"""
     # pylint: disable=unused-argument

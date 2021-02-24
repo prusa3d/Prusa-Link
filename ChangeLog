@@ -37,6 +37,7 @@
     * Don't store password in plaintext but use digest
     * Stop Wizard on printer errors.
     * Support the new STOPPED state
+    * Use X-Api-Key or HTTP Digest for /api endpoints
 
 0.2.0 (2020-12-14)
 
