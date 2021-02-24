@@ -1,4 +1,6 @@
 """Main pages and core API"""
+from socket import gethostname
+
 import logging
 
 from poorwsgi.response import JSONResponse
@@ -42,7 +44,8 @@ def api_version(req):
     return JSONResponse(api="0.1",
                         server=__version__,
                         original="PrusaLink %s" % __version__,
-                        text="OctoPrint 1.1.0")
+                        text="OctoPrint 1.1.0",
+                        hostname=gethostname())
 
 
 @app.route('/api/connection')
