@@ -33,9 +33,13 @@
             <div class="container navigation">
                 <div class="row">
                 {% if not errors.FW.ok %}
-                    <div class="col">Firmware is not up to date, please update it!</div>
+                    <div class="col" style="text-align: center;">Firmware is not up to date, please update it!<br /><br />
+                        You can download latest stable firmware at <a href="https://prusa3d.com/drivers" target="_blank">Drivers, Firmware and Manuals</a> download page.<br />
+                        Follow the instructions in this <a href="https://help.prusa3d.com/en/guide/upgrading-the-firmware-original-prusa-i3_24720" target="_blank">guide</a>.<br /><br />
+                        After upgrading the firmware, run this wizard again.
+                    </div>
                 {% elif not errors.SN.ok %}
-                    <div class="col">Can't get SN of your printer, please conntact our support.</div>
+                    <div class="col" style="text-align: center;">We can't get <b>serial number</b> of your printer, please contact our <a href="https://help.prusa3d.com/en/article/support_2287" target="_blank">Customer support</a>.</div>
                 {% else %}
                     <div class="col"><b>Great!</b> You can continue to Authorization</div>
                     <div class="col-xs-auto">
