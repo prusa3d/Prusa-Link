@@ -10,8 +10,8 @@ from blinker import Signal
 from ....config import Config
 from .serial import Serial
 from ...structures.regular_expressions import \
-    CONFIRMATION_REGEX, RESEND_REGEX, TEMPERATURE_REGEX as TEMP_REGEX, \
-    BUSY_REGEX, ATTENTION_REGEX, HEATING_HOTEND_REGEX, HEATING_REGEX, \
+    CONFIRMATION_REGEX, RESEND_REGEX, TEMPERATURE_REGEX, BUSY_REGEX, \
+    ATTENTION_REGEX, HEATING_HOTEND_REGEX, HEATING_REGEX, \
     M110_REGEX
 from ...util import run_slowly_die_fast
 from .instruction import Instruction
@@ -239,7 +239,7 @@ class SerialQueue(metaclass=MCSingleton):
             self.worked_around_m110 = False
             self.send_history.clear()
             log.debug("The message number is getting reset")
-            number = m110_match.groups()[1]
+            number = m110_match.group("cmd_number")
             if number is not None:
                 try:
                     self.message_number = int(number)
@@ -308,11 +308,14 @@ class SerialQueue(metaclass=MCSingleton):
         Temps aren't being polled anymore, so this is not used
         So other than that it just calls confirm()
         # """
-        additional_output = match.groups()[0]
-        capturing_regexps = self.current_instruction.capturing_regexps
+        additional_output = match.group("extra")
+        capturing_regexps = None
+        if self.current_instruction is not None:
+            capturing_regexps = self.current_instruction.capturing_regexps
 
-        if additional_output and TEMP_REGEX in capturing_regexps:
-            temperature_match = TEMP_REGEX.match(additional_output)
+        if additional_output and capturing_regexps is not None \
+                and TEMPERATURE_REGEX in capturing_regexps:
+            temperature_match = TEMPERATURE_REGEX.match(additional_output)
             if temperature_match:
                 self.current_instruction.output_captured(
                     None, match=temperature_match)
@@ -325,7 +328,7 @@ class SerialQueue(metaclass=MCSingleton):
         This method just parses the received match, does a bunch of checks and
         calls the actual handler resend()
         """
-        number = int(match.groups()[0])
+        number = int(match.group("cmd_number"))
         log.info(f"Resend of {number} requested. Current is "
                  f"{self.message_number}")
         if self.message_number >= number:

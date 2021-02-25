@@ -121,7 +121,7 @@ class SDCard(ThreadedUpdatable):
         wait_for_instruction(instruction, lambda: self.running)
         match = instruction.match()
         if match:
-            self.data.is_flash_air = match.groups()[0] == "01"
+            self.data.is_flash_air = match.group("data") == "01"
 
     def construct_file_tree(self):
         if self.data.sd_state == SDState.ABSENT:
@@ -144,11 +144,11 @@ class SDCard(ThreadedUpdatable):
         sfn_to_lfn_paths = {}
         mixed_to_lfn_paths = {}
         for match in instruction.captured:
-            groups = match.groups()
-            if groups[0] is not None:  # Dir entry
+            groups = match.groupdict()
+            if groups["dir_enter"] is not None:  # Dir entry
                 # Parse the dir info
-                long_dir_name = groups[2]
-                short_dir_name = Path(groups[1]).name
+                long_dir_name = groups["ldn"]
+                short_dir_name = Path(groups["sdn"]).name
 
                 # Sanitize the dir name
                 too_long = len(long_dir_name) >= MAX_FILENAME_LENGTH
@@ -168,17 +168,17 @@ class SDCard(ThreadedUpdatable):
                 except FileNotFoundError as e:
                     log.exception(e)
 
-            elif groups[3] is not None:  # The list item
+            elif groups["file"] is not None:  # The list item
                 # Parse the file listing
-                short_path_string = groups[4]
+                short_path_string = groups["sfn"]
                 if short_path_string[0] != "/":
                     short_path_string = "/" + short_path_string
                 short_filename = Path(short_path_string).name
                 short_dir_path = Path(short_path_string).parent
-                short_extension = groups[5]
+                short_extension = groups["extension"]
                 long_extension = SFN_TO_LFN_EXTENSIONS[short_extension]
-                raw_long_filename: str = groups[6]
-                size = int(groups[7])
+                raw_long_filename: str = groups["lfn"]
+                size = int(groups["size"])
 
                 too_long = (len(raw_long_filename) >= MAX_FILENAME_LENGTH)
 
@@ -214,7 +214,7 @@ class SDCard(ThreadedUpdatable):
                                   filename_too_long=too_long)
                 except FileNotFoundError as e:
                     log.exception(e)
-            elif groups[8] is not None:  # Dir exit
+            elif groups["dir_exit"] is not None:  # Dir exit
                 current_dir = current_dir.parent
 
         # Try to be as atomic as possible
@@ -263,7 +263,7 @@ class SDCard(ThreadedUpdatable):
         inserting a card
         """
         # Using a multi-purpose regex, only interested in the first group
-        if match.groups()[0]:
+        if match.group("ok"):
             if self.data.expecting_insertion:
                 self.data.expecting_insertion = False
             else:

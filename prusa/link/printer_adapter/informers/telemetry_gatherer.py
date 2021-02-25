@@ -108,11 +108,11 @@ class TelemetryGatherer(ThreadedUpdatable):
 
     def temperature_handler(self, sender, match: re.Match):
         if match:
-            groups = match.groups()
-            self.current_telemetry.temp_nozzle = float(groups[0])
-            self.current_telemetry.target_nozzle = float(groups[1])
-            self.current_telemetry.temp_bed = float(groups[2])
-            self.current_telemetry.target_bed = float(groups[3])
+            groups = match.groupdict()
+            self.current_telemetry.temp_nozzle = float(groups["ntemp"])
+            self.current_telemetry.target_nozzle = float(groups["set_ntemp"])
+            self.current_telemetry.temp_bed = float(groups["btemp"])
+            self.current_telemetry.target_bed = float(groups["set_btemp"])
             self.telemetry_updated()
 
     def temperature_result(self, instruction: MandatoryMatchableInstruction):
@@ -127,10 +127,10 @@ class TelemetryGatherer(ThreadedUpdatable):
 
     def position_handler(self, sender, match: re.Match):
         if match:
-            groups = match.groups()
-            self.current_telemetry.axis_x = float(groups[4])
-            self.current_telemetry.axis_y = float(groups[5])
-            self.current_telemetry.axis_z = float(groups[6])
+            groups = match.groupdict()
+            self.current_telemetry.axis_x = float(groups["x"])
+            self.current_telemetry.axis_y = float(groups["y"])
+            self.current_telemetry.axis_z = float(groups["z"])
             self.telemetry_updated()
 
     def fan_result(self, instruction: MandatoryMatchableInstruction):
@@ -144,25 +144,30 @@ class TelemetryGatherer(ThreadedUpdatable):
 
     def new_fan_handler(self, sender, match: re.Match):
         if match:
-            groups = match.groups()
-            self.current_telemetry.fan_extruder = int(groups[0])
-            self.current_telemetry.fan_print = int(groups[1])
-            self.current_telemetry.target_fan_extruder = int(groups[2])
-            self.current_telemetry.target_fan_print = int(groups[3])
+            groups = match.groupdict()
+            self.current_telemetry.fan_extruder = int(groups["extruder_rpm"])
+            self.current_telemetry.fan_print = int(groups["print_rpm"])
+            self.current_telemetry.target_fan_extruder = \
+                int(groups["extruder_power"])
+            self.current_telemetry.target_fan_print = \
+                int(groups["print_power"])
             self.telemetry_updated()
 
     def m27_result(self, instruction: MandatoryMatchableInstruction):
         file_or_status_match = instruction.match()
+        if not file_or_status_match:
+            return
 
         # Are we printing?
-        if file_or_status_match and file_or_status_match.groups()[0]:
+        if file_or_status_match.group("sdn_lfn"):
 
             # if we're SD printing and there is no reporting, let's get it here
             if self.model.job.from_sd and not self.model.job.inbuilt_reporting:
                 byte_position_match: re.Match = instruction.match(1)
+                groups = byte_position_match.groupdict()
                 if byte_position_match:
-                    current_byte = int(byte_position_match.groups()[5])
-                    bytes_in_total = int(byte_position_match.groups()[6])
+                    current_byte = int(groups["current"])
+                    bytes_in_total = int(groups["sum"])
                     progress = int((current_byte / bytes_in_total) * 100)
                     log.debug(f"SD print has no inbuilt percentage tracking, "
                               f"falling back to getting progress from byte "
@@ -173,16 +178,16 @@ class TelemetryGatherer(ThreadedUpdatable):
 
             print_timer_match: re.Match = instruction.match(2)
             if print_timer_match:
-                groups = print_timer_match.groups()
-                hours = int(groups[8])
-                mins = int(groups[9])
+                groups = print_timer_match.groupdict()
+                hours = int(groups["hours"])
+                mins = int(groups["minutes"])
                 hours_in_sec = hours * 60 * 60
                 mins_in_sec = mins * 60
                 printing_time_sec = mins_in_sec + hours_in_sec
                 self.current_telemetry.time_printing = printing_time_sec
                 self.telemetry_updated()
 
-            mixed_path = file_or_status_match.groups()[0]
+            mixed_path = file_or_status_match.group("sdn_lfn")
             try:
                 long_path = self.model.sd_card.mixed_to_lfn_paths[mixed_path]
                 self.file_path_signal.send(path=long_path, filename_only=False)
@@ -191,20 +196,19 @@ class TelemetryGatherer(ThreadedUpdatable):
                 self.file_path_signal.send(path=filename, filename_only=True)
             self.printing_signal.send(self)
 
-        elif file_or_status_match and file_or_status_match.groups()[1]:
+        elif file_or_status_match.group("no_print"):
             self.not_printing_signal.send(self)
 
-        elif file_or_status_match and file_or_status_match.groups()[2]:
+        elif file_or_status_match.group("serial_paused"):
             self.paused_serial_signal.send(self)
 
-        elif file_or_status_match and file_or_status_match.groups()[3]:
+        elif file_or_status_match.group("sd_paused"):
             self.paused_sd_signal.send(self)
 
     def flow_rate_result(self, instruction: MandatoryMatchableInstruction):
         match = instruction.match()
         if match:
-            groups = match.groups()
-            flow = int(groups[0])
+            flow = int(match.group("percent"))
             if 0 <= flow <= 999:
                 self.current_telemetry.flow = flow
                 self.telemetry_updated()
@@ -213,8 +217,7 @@ class TelemetryGatherer(ThreadedUpdatable):
                                 instruction: MandatoryMatchableInstruction):
         match = instruction.match()
         if match:
-            groups = match.groups()
-            speed = int(groups[0])
+            speed = int(match.group("percent"))
             log.debug(f"Speed is {speed}%")
             if 0 <= speed <= 999:
                 self.current_telemetry.speed = speed
@@ -226,9 +229,9 @@ class TelemetryGatherer(ThreadedUpdatable):
 
     def print_info_handler(self, sender, match: re.Match):
         if match:
-            groups = match.groups()
-            progress = int(groups[0])
-            speed_agnostic_mins_remaining = int(groups[1])
+            groups = match.groupdict()
+            progress = int(groups["progress"])
+            speed_agnostic_mins_remaining = int(groups["time"])
 
             if self.model.last_telemetry.speed is not None:
                 speed_multiplier = self.model.last_telemetry.speed / 100
@@ -255,16 +258,16 @@ class TelemetryGatherer(ThreadedUpdatable):
                 self.telemetry_updated()
 
     def heating_handler(self, sender, match: re.Match):
-        groups = match.groups()
+        groups = match.groupdict()
 
-        self.current_telemetry.temp_nozzle = float(groups[0])
-        self.current_telemetry.temp_bed = float(groups[1])
+        self.current_telemetry.temp_nozzle = float(groups["ntemp"])
+        self.current_telemetry.temp_bed = float(groups["btemp"])
         self.telemetry_updated()
 
     def heating_hotend_handler(self, sender, match: re.Match):
-        groups = match.groups()
+        groups = match.groupdict()
 
-        self.current_telemetry.temp_nozzle = float(groups[0])
+        self.current_telemetry.temp_nozzle = float(groups["ntemp"])
         self.telemetry_updated()
 
     def new_print(self):

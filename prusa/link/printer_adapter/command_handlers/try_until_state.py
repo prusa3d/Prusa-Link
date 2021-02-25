@@ -59,7 +59,7 @@ class TryUntilState(Command):
         if self.model.state_manager.current_state == desired_state:
             self.right_state.set()
 
-        while self.running and time() < wait_until:
+        while self.running and time() < wait_until and not succeeded:
             succeeded = self.right_state.wait(QUIT_INTERVAL)
 
         self.state_manager.state_changed_signal.disconnect(state_changed)
@@ -68,4 +68,4 @@ class TryUntilState(Command):
         if not succeeded:
             log.debug(f"Could not get from {self.state_manager.get_state()} "
                       f"to {desired_state}")
-            self.failed(f"Couldnt get to the {desired_state} state.")
+            self.failed(f"Couldn't get to the {desired_state} state.")
