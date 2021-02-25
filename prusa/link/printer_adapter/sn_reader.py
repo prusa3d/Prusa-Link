@@ -40,7 +40,7 @@ class SNReader(ThreadedUpdatable):
         match = instruction.match()
         errors.SN.ok = match is not None
         if match:
-            result = match.groups()[0]
+            result = match.group("sn")
             log.debug("Got serial %s", result)
             return result
 

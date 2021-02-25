@@ -17,6 +17,10 @@ class JobInfo(Command):
             self.failed("Cannot get job info, "
                         "when there is no job in progress.")
 
+        # Happens when launching into a paused print
+        if self.model.job.printing_file_path is None:
+            self.failed("Don't know the file details yet.")
+
         data = self.job.get_job_info_data()
 
         response = dict(job_id=self.model.job.get_job_id_for_api(),

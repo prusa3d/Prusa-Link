@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from re import Match
 
 from prusa.connect.printer.const import State
 from prusa.link.printer_adapter.command import Command
@@ -64,9 +65,9 @@ class StartPrint(Command):
         self.state_manager.printing()
         self.state_manager.stop_expecting_change()
 
-    def _start_file_print(self, path: Path):
+    def _start_file_print(self, path):
         """
-        Converts the given path object "back" to string
+        Converts connect path to os path
         :param path:
         """
         os_path = self.printer.fs.get_os_path(path)
@@ -80,9 +81,9 @@ class StartPrint(Command):
         sd_path = raw_sd_path.lower()  # FW requires lower case
 
         instruction = self.do_matchable(f"M23 {sd_path}", OPEN_RESULT_REGEX)
-        match = instruction.match()
+        match: Match = instruction.match()
 
-        if not match or match.groups()[0] is None:  # Opening failed
+        if not match or match.group("ok") is None:  # Opening failed
             self.failed(f"Wrong file name, or bad file. File name: {sd_path}")
 
     def _start_print(self):

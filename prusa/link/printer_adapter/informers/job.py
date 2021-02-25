@@ -69,7 +69,7 @@ class Job(metaclass=MCSingleton):
         # oh, we don't rely on that, I do :D TODO: stop doing that
         if self.data.printing_file_path is not None:
             return
-        if match is not None and match.groups()[0] != "":
+        if match is not None and match.group("sfn") != "":
             # TODO: fix when the fw support for full paths arrives
             filename = match.groups()[0]
             self.set_file_path(filename,
