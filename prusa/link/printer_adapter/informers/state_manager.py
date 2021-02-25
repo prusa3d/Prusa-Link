@@ -302,7 +302,7 @@ class StateManager(metaclass=MCSingleton):
         Even though using these two callables is more complicated,
         I think the majority of the implementation got condensed into here
         """
-        self.fan_error_name = match.groups()[0]
+        self.fan_error_name = match.group("fan_name")
 
     # --- State changing methods ---
 
@@ -371,8 +371,7 @@ class StateManager(metaclass=MCSingleton):
     @state_influencer(StateChange(to_states={State.PAUSED: Source.USER}))
     def paused(self):
         """If we were printing, sets the printing state to PAUSED"""
-        if self.data.printing_state == State.PRINTING or \
-                self.data.base_state == State.READY:
+        if self.data.printing_state in {State.PRINTING, None}:
             self.unsure_whether_printing = False
             self.data.printing_state = State.PAUSED
 

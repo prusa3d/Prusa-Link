@@ -35,7 +35,7 @@ def get_printer_type(serial_queue: SerialQueue, should_wait=lambda: True):
         errors.ID.ok = False
         raise RuntimeError("Printer responded with something unexpected")
 
-    code = int(match.groups()[0])
+    code = int(match.group("code"))
 
     try:
         errors.ID.ok = True
@@ -58,7 +58,7 @@ def get_firmware_version(serial_queue: SerialQueue, should_wait=lambda: True):
     match = instruction.match()
     if match is None:
         raise RuntimeError("Printer responded with something unexpected")
-    firmware_version = match.groups()[0]
+    firmware_version = match.group("version")
     errors.FW.ok = StrictVersion(firmware_version) >= MINIMAL_FIRMWARE
 
     return firmware_version
@@ -74,7 +74,7 @@ def get_nozzle_diameter(serial_queue: SerialQueue, should_wait=lambda: True):
     if match is None:
         raise RuntimeError("Printer responded with something unexpected")
 
-    return float(match.groups()[0])
+    return float(match.group("size"))
 
 
 def get_network_info(model: Model):

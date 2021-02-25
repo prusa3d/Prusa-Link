@@ -1,27 +1,31 @@
 import re
 
-OPEN_RESULT_REGEX = re.compile(r"^(File opened).*|^(open failed).*")
+OPEN_RESULT_REGEX = re.compile(
+    r"^(?P<ok>File opened).*|^(?P<nok>open failed).*")
 
-PRINTER_TYPE_REGEX = re.compile(r"^(\d{3,5})$")
-FW_REGEX = re.compile(r"^FIRMWARE_NAME:Prusa-Firmware ?((\d+\.)*\d).*$")
-SN_REGEX = re.compile(r"^(CZP.*)(CZP.*)?$")
-NOZZLE_REGEX = re.compile(r"^(\d\.\d+)$")
-PERCENT_REGEX = re.compile(r"^(\d{0,3})%$")
+PRINTER_TYPE_REGEX = re.compile(r"^(?P<code>\d{3,5})$")
+FW_REGEX = re.compile(r"^FIRMWARE_NAME:Prusa-Firmware ?"
+                      r"(?P<version>(\d+\.)*\d).*$")
+SN_REGEX = re.compile(r"^(?P<sn>CZP.*)$")
+NOZZLE_REGEX = re.compile(r"^(?P<size>\d\.\d+)$")
+PERCENT_REGEX = re.compile(r"^(?P<percent>\d{0,3})%$")
 
 BEGIN_FILES_REGEX = re.compile(r"^Begin file list$")
-FILE_PATH_REGEX = re.compile(r"^(.*\.(GCO|G)) (\d+)$")
 END_FILES_REGEX = re.compile(r"^End file list$")
 
-LFN_CAPTURE = re.compile(r"(^DIR_ENTER: (/[^ ]*/) \"([^\"]*)\"$)|"
-                         r"(^(.*\.(GCO|G)) \"([^\"]*)\" (\d+)$)|"
-                         r"(^DIR_EXIT$)")
+LFN_CAPTURE = re.compile(r"(?P<dir_enter>^DIR_ENTER: (?P<sdn>/[^ ]*/) "
+                         r"\"(?P<ldn>[^\"]*)\"$)|"
+                         r"(?P<file>^(?P<sfn>.*\.(?P<extension>GCO|G)) "
+                         r"\"(?P<lfn>[^\"]*)\" (?P<size>\d+)$)|"
+                         r"(?P<dir_exit>^DIR_EXIT$)")
 
-SD_PRESENT_REGEX = re.compile(r"^(echo:SD card ok)|(echo:SD init fail)$")
+SD_PRESENT_REGEX = re.compile(r"^echo:(?P<ok>SD card ok)|"
+                              r"(?P<fail>SD init fail)$")
 SD_EJECTED_REGEX = re.compile(r"^(echo:SD card released)$")
 
 ANY_REGEX = re.compile(r".*")
-CONFIRMATION_REGEX = re.compile(r"^ok\s?(.*)$")  # highest priority
-FILE_OPEN_REGEX = re.compile(r"^echo:enqueing \"M23 ([^\"]+)\"$")
+CONFIRMATION_REGEX = re.compile(r"^ok\s?(?P<extra>.*)$")  # highest priority
+FILE_OPEN_REGEX = re.compile(r"^echo:enqueing \"M23 (?P<sfn>[^\"]+)\"$")
 PAUSED_REGEX = re.compile(r"^// action:paused$")
 
 REJECTION_REGEX = re.compile(r"^(echo:Unknown command: (\"[^\"]*\"))|"
@@ -38,35 +42,42 @@ ERROR_REGEX = re.compile(
     r"and use M999 to restart.*")
 
 TEMPERATURE_REGEX = re.compile(
-    r"^T:(-?\d+\.\d+) /(-?\d+\.\d+) B:(-?\d+\.\d+) /(-?\d+\.\d+) "
-    r"T0:(-?\d+\.\d+) /(-?\d+\.\d+) @:(-?\d+) B@:(-?\d+) "
-    r"P:(-?\d+\.\d+) A:(-?\d+\.\d+)$")
+    r"^T:(?P<ntemp>-?\d+\.\d+) /(?P<set_ntemp>-?\d+\.\d+) "
+    r"B:(?P<btemp>-?\d+\.\d+) /(?P<set_btemp>-?\d+\.\d+) "
+    r"T0:(-?\d+\.\d+) /(-?\d+\.\d+) @:(?P<tpwm>-?\d+) B@:(?P<bpwm>-?\d+) "
+    r"P:(?P<ptemp>-?\d+\.\d+) A:(?P<atemp>-?\d+\.\d+)$")
 POSITION_REGEX = re.compile(
-    r"^X:(-?\d+\.\d+) Y:(-?\d+\.\d+) Z:(-?\d+\.\d+) "
-    r"E:(-?\d+\.\d+) Count X: (-?\d+\.\d+) Y:(-?\d+\.\d+) "
-    r"Z:(-?\d+\.\d+) E:(-?\d+\.\d+)$")
-FAN_REGEX = re.compile(r"E0:(\d+) RPM PRN1:(\d+) RPM E0@:(\d+) PRN1@:(\d+)")
-FAN_RPM_REGEX = re.compile(r"^(?:E0:(\d+) ?RPM)|(?:PRN0:(\d+) ?RPM)$")
+    r"^X:(?P<x>-?\d+\.\d+) Y:(?P<y>-?\d+\.\d+) Z:(?P<z>-?\d+\.\d+) "
+    r"E:(?P<e>-?\d+\.\d+) Count X: (?P<count_x>-?\d+\.\d+) "
+    r"Y:(?P<count_y>-?\d+\.\d+) Z:(?P<count_z>-?\d+\.\d+) "
+    r"E:(?P<count_e>-?\d+\.\d+)$")
+FAN_REGEX = re.compile(
+    r"E0:(?P<extruder_rpm>\d+) RPM PRN1:(?P<print_rpm>\d+) RPM "
+    r"E0@:(?P<extruder_power>\d+) PRN1@:(?P<print_power>\d+)")
 # This one takes some explaining
 # I cannot assign multiple regular expressions to a single instruction
 # The `M27 P` has more lines, the first one containing a status report or
 # a file path. The optional second line contains info about
 # which byte is being printed and the last one contains the print timer
 # Expressions below shall be in the order they appear in the output
-M27_OUTPUT_REGEX = re.compile(r"^(/.*\..*)|(Not SD printing)|(Print saved)|"
-                              r"(SD print paused)|"
-                              r"(SD printing byte (\d+)/(\d+))|"
-                              r"((\d+):(\d{2}))$")
-PRINT_INFO_REGEX = re.compile(r"^SILENT MODE: Percent done: (\d+); "
-                              r"print time remaining in mins: (-?\d+) ?.*$")
-HEATING_REGEX = re.compile(r"^T:(\d+\.\d+) E:\d+ B:(\d+\.\d+)$")
-HEATING_HOTEND_REGEX = re.compile(r"^T:(\d+\.\d+) E:([?]|\d+) W:([?]|\d+)$")
+M27_OUTPUT_REGEX = re.compile(
+    r"^(?P<sdn_lfn>/.*\..*)|(?P<no_print>Not SD printing)|"
+    r"(?P<serial_paused>Print saved)|(?P<sd_paused>SD print paused)|"
+    r"(?P<byte_pos>SD printing byte (?P<current>\d+)/(?P<sum>\d+))|"
+    r"(?P<printing_time>(?P<hours>\d+):(?P<minutes>\d{2}))$")
+PRINT_INFO_REGEX = re.compile(
+    r"^SILENT MODE: Percent done: (?P<progress>\d+); "
+    r"print time remaining in mins: (?P<time>-?\d+) ?.*$")
+HEATING_REGEX = re.compile(
+    r"^T:(?P<ntemp>\d+\.\d+) E:\d+ B:(?P<btemp>\d+\.\d+)$")
+HEATING_HOTEND_REGEX = re.compile(
+    r"^T:(?P<ntemp>\d+\.\d+) E:([?]|\d+) W:([?]|\d+)$")
 
-RESEND_REGEX = re.compile(r"^Resend: ?(\d+)$")
+RESEND_REGEX = re.compile(r"^Resend: ?(?P<cmd_number>\d+)$")
 PRINTER_BOOT_REGEX = re.compile(r"^start$")
 POWER_PANIC_REGEX = re.compile(r"^INT4$")
 LCD_UPDATE_REGEX = re.compile(r"^LCD status changed$")
-M110_REGEX = re.compile(r"^(N\d+)? *M110 N(-?\d*)$")
-FAN_ERROR_REGEX = re.compile(r"^(Extruder|Print) fan speed is lower than "
-                             r"expected$")
-D3_C1_OUTPUT_REGEX = re.compile(r"^\w{4} {2}(\w{2})$")
+M110_REGEX = re.compile(r"^(N\d+)? *M110 N(?P<cmd_number>-?\d*)$")
+FAN_ERROR_REGEX = re.compile(
+    r"^(?P<fan_name>Extruder|Print) fan speed is lower than expected$")
+D3_C1_OUTPUT_REGEX = re.compile(r"^\w{4} {2}(?P<data>\w{2})$")
