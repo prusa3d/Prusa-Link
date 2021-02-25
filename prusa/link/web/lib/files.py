@@ -1,12 +1,12 @@
 """Check and modify an input dictionary using recursion"""
 
 from datetime import datetime
+from os.path import join
 
-# TODO: get values from SDK
-GCODE_EXTENSIONS = (".gcode", ".gco")
+from prusa.connect.printer.const import GCODE_EXTENSIONS
 
 
-def files_to_api(node, origin='local'):
+def files_to_api(node, origin='local', path='/'):
     """Convert Prusa SDK Files tree for API.
 
     >>> files = {'type': 'DIR', 'name': '/', 'ro': True, 'children':[
@@ -30,7 +30,9 @@ def files_to_api(node, origin='local'):
     >>> # /SD Card/Examples
     >>> api_files['children'][0]['children'][0]['type']
     'folder'
-    >>> # /SD Card/Examples/1.gcode
+    >>> api_files['children'][0]['children'][0]['path']
+    '/SD Card/Examples'
+    >>> #'/SD Card/Examples/1.gcode'
     >>> api_files['children'][0]['children'][0]['children'][0]['type']
     'machinecode'
     >>> api_files['children'][0]['children'][0]['children'][0]['origin']
@@ -47,11 +49,12 @@ def files_to_api(node, origin='local'):
     2
     """
     name = node['name']
+    path = join(path, name)
 
-    result = {'name': name, 'path': None, 'display': None}
+    result = {'name': name, 'path': path, 'display': name}
 
     if "m_time" in node:
-        result["date"] = int(datetime.timestamp(datetime(*node['m_time'])))
+        result["date"] = int(datetime(*node['m_time']).timestamp())
 
     if 'size' in node:
         result['size'] = node['size']
@@ -66,7 +69,8 @@ def files_to_api(node, origin='local'):
         result['refs'] = {"resource": None}
 
         children = list(
-            files_to_api(child, origin) for child in node.get("children", []))
+            files_to_api(child, origin, path)
+            for child in node.get("children", []))
         result['children'] = list(child for child in children if child)
 
     elif name.endswith(GCODE_EXTENSIONS):
