@@ -21,12 +21,9 @@ def api_files(req):
     """Returns info about all available print files"""
     # pylint: disable=unused-argument
     data = app.daemon.prusa_link.printer.get_info()["files"]
+    files = [files_to_api(child) for child in data.get("children", [])]
 
-    return JSONResponse(**{
-        "files": [files_to_api(data)],
-        "free": 0,
-        "total": 0
-    })
+    return JSONResponse(**{"files": files, "free": 0, "total": 0})
 
 
 @app.route('/api/files/<location>', state.METHOD_POST)
