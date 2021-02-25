@@ -40,6 +40,7 @@
     * Use X-Api-Key or HTTP Digest for /api endpoints
     * hostname in /api/version
     * Fix /api/endpoints
+    * Fix /api/files and /api/job endpoints
 
 0.2.0 (2020-12-14)
 

@@ -1,6 +1,7 @@
 """Main pages and core API"""
 from socket import gethostname
 from os.path import basename
+from datetime import datetime
 
 import logging
 
@@ -186,10 +187,11 @@ def api_job(req):
     job_info = JobInfo()
     if job_info.model.job.job_state == JobState.IN_PROGRESS:
         job = job_info.run_command()
+        timestamp = int(datetime(*job.get("m_time")).timestamp())
         file_ = {
             'name': basename(job.get("file_path")),
             'path': job.get("file_path"),
-            'date': job.get("m_time"),
+            'date': timestamp,
             'size': job.get("size"),
             'origin': 'sdcard' if job.get("from_sd") else 'local'
         }
