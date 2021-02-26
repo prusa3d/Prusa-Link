@@ -4,6 +4,7 @@ from time import time, sleep
 
 from ... import errors
 from ..const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL, NO_IP
+from prusa.link.printer_adapter.model import Model
 from prusa.link.printer_adapter.input_output.serial.helpers import \
     enqueue_instruction, wait_for_instruction
 from prusa.link.printer_adapter.input_output.serial.serial_queue import \
@@ -26,11 +27,11 @@ class LCDMessage:
 class LCDPrinter(metaclass=MCSingleton):
     MESSAGE_DURATION = 5
 
-    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader):
+    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
+                 model: Model):
         self.serial_queue = serial_queue
         self.serial_reader = serial_reader
-
-        self.ip = NO_IP
+        self.model = model
 
         self.last_updated = time()
         # When printing from our queue, the "LCD status updated gets printed
@@ -42,6 +43,9 @@ class LCDPrinter(metaclass=MCSingleton):
         self.display_thread: Thread = Thread(target=self.show_status,
                                              name="LCDMessage")
         self.display_thread.start()
+
+    def ip(self):
+        return self.model.ip_updater.local_ip
 
     def lcd_updated(self, sender, match):
         if self.ignore > 0:
@@ -60,7 +64,7 @@ class LCDPrinter(metaclass=MCSingleton):
             # XXX implement a way how to display both the IP and the error
             #  state name. Maybe as carousel?
             if all_ok:
-                msg = "OK: " + self.ip
+                msg = "OK: " + self.ip()
             else:
                 for chain in errors.HEADS:
                     node = chain
@@ -68,10 +72,10 @@ class LCDPrinter(metaclass=MCSingleton):
                         log.debug(node.long_msg)
                         break
                     node = node.next
-                if self.ip == NO_IP:
+                if self.ip() == NO_IP:
                     what = node.short_msg
                 else:
-                    what = self.ip
+                    what = self.ip()
                 msg = "ERR: " + what
 
             log.debug(f"Print {msg}")

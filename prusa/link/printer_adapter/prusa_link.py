@@ -98,7 +98,8 @@ class PrusaLink:
         self.printer.set_handler(CommandType.SEND_JOB_INFO, self.job_info)
 
         # Init components first, so they all exist for signal binding stuff
-        self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_reader)
+        self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_reader,
+                                      self.model)
         self.job = Job(self.serial_reader, self.model, self.cfg, self.printer)
         self.state_manager = StateManager(self.serial_reader, self.model)
         self.telemetry_gatherer = TelemetryGatherer(self.serial_reader,
@@ -398,7 +399,6 @@ class PrusaLink:
 
         if new_ip is not NO_IP:
             errors.LAN.ok = True
-            self.lcd_printer.ip = new_ip
         else:
             errors.PHY.ok = False
 

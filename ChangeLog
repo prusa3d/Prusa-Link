@@ -41,6 +41,7 @@
     * hostname in /api/version
     * Fix /api/endpoints
     * Fix /api/files and /api/job endpoints
+    * Nicer messages for Wlan errors; LCDPrinter now accesses the model for IP
 
 0.2.0 (2020-12-14)
 
