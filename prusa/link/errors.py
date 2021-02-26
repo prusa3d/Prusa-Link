@@ -8,17 +8,25 @@ from prusa.connect.printer.errors import ErrorState, INTERNET, HTTP, TOKEN, API
 assert HTTP is not None
 assert TOKEN is not None
 
-DEVICE = ErrorState("Device", "Ethernet or WIFI device does not exist")
-PHY = ErrorState("Phy", "Eth|Wifi device is not connect", prev=DEVICE)
-LAN = ErrorState("Lan", "Device has assigned IP", prev=PHY)
+DEVICE = ErrorState("Device",
+                    "Eth|WLAN device does not exist",
+                    short_msg="No WLAN device")
+PHY = ErrorState("Phy",
+                 "Eth|WLAN device is not connected",
+                 prev=DEVICE,
+                 short_msg="No WLAN conn")
+LAN = ErrorState("Lan",
+                 "Eth|WLAN has no IP address",
+                 prev=PHY,
+                 short_msg="No WLAN IP addr")
 
 INTERNET.prev = LAN
 
 SERIAL = ErrorState("Port", "Serial device does not exist")
-RPI_ENABLED = ErrorState("RPIenabled", "RPI port is not enabled", prev=SERIAL)
-ID = ErrorState("ID", "Not a Prusa printer", prev=RPI_ENABLED)
+RPI_ENABLED = ErrorState("RPIenabled", "RPi port is not enabled", prev=SERIAL)
+ID = ErrorState("ID", "Device is not a Prusa printer", prev=RPI_ENABLED)
 FW = ErrorState("Firmware", "Firmware is not up-to-date", prev=ID)
-SN = ErrorState("SN", "Serial number can be read", prev=FW)
+SN = ErrorState("SN", "Serial number cannot be obtained", prev=FW)
 
 # first and last elements for all available error state chains
 HEADS = [SERIAL, DEVICE]
