@@ -1,21 +1,20 @@
 """Main pages and core API"""
 from socket import gethostname
-from os.path import basename
+from os.path import basename, join
 from datetime import datetime
 
 import logging
 
 from poorwsgi import state
-from poorwsgi.response import JSONResponse, EmptyResponse
+from poorwsgi.response import JSONResponse, EmptyResponse, FileResponse
 from poorwsgi.digest import check_digest
 
 from prusa.connect.printer.const import State
 
-from .. import __version__, errors
+from .. import __version__
 
 from .lib.core import app
 from .lib.auth import check_api_digest, check_config, REALM
-from .lib.view import generate_page
 
 from ..printer_adapter.command_handlers.job_info import JobInfo
 from ..printer_adapter.informers.job import JobState
@@ -39,10 +38,8 @@ PRINTER_STATES = {
 @check_digest(REALM)
 def index(req):
     """Return status page"""
-    return generate_page(req,
-                         "index.html",
-                         api_key=app.api_key,
-                         errors=errors.status())
+    # pylint: disable=unused-argument
+    return FileResponse(join(app.document_root, 'index.html'))
 
 
 @app.route('/sockjs/websocket')

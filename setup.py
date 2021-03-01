@@ -3,6 +3,12 @@ import os
 import re
 
 from sys import stderr
+from subprocess import call
+from grp import getgrnam
+from shutil import copytree
+from distutils import log
+from distutils.core import Command
+
 from setuptools import setup, find_namespace_packages
 
 from prusa.link import __version__, __doc__
@@ -65,6 +71,45 @@ def find_data_files(directory, target_folder=""):
     return rv
 
 
+class BuildStatic(Command):
+    """Build static html files, need docker."""
+    description = __doc__
+    user_options = [('target-dir=', 't',
+                     "target build directory (default: './prusa/link/static')")
+                    ]
+    target_dir = None
+
+    def initialize_options(self):
+        self.target_dir = None
+
+    def finalize_options(self):
+        if self.target_dir is None:
+            cwd = os.path.abspath(os.curdir)
+            self.target_dir = os.path.join(cwd, 'prusa', 'link', 'static')
+
+    def run(self):
+        log.info("building html documentation")
+        if self.dry_run:
+            if call(['docker', 'version']):
+                raise IOError(1, 'docker failed')
+            return
+
+        if call(['docker', 'pull', 'node:latest']):
+            raise IOError(1, "Can't get last node docker.")
+
+        cwd = os.path.abspath(os.path.join(os.curdir, 'prusa-connect-local'))
+        args = ('docker', 'run', '-t', '--rm', '-u',
+                '%d:%d' % (os.getuid(), getgrnam('docker').gr_gid), '-w', cwd,
+                '-v', '%s:%s' % (cwd, cwd), 'node:latest', 'sh', '-c',
+                'npm install && npm run build:mk3')
+        if call(args):
+            raise IOError(1, 'docker failed')
+
+        copytree(os.path.join(cwd, 'dist'),
+                 os.path.join(self.target_dir),
+                 dirs_exist_ok=True)
+
+
 setup(name="prusa-link",
       version=__version__,
       description=__doc__,
@@ -89,4 +134,5 @@ setup(name="prusa-link",
       install_requires=REQUIRES,
       entry_points={
           'console_scripts': ['prusa-link = prusa.link.__main__:main']
-      })
+      },
+      cmdclass={'build_static': BuildStatic})
