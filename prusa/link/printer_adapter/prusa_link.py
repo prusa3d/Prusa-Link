@@ -156,7 +156,10 @@ class PrusaLink:
         self.storage.sd_unmounted_signal.connect(self.sd_unmount)
         self.ip_updater.updated_signal.connect(self.ip_updated)
 
-        # Before starting anything, let's write what we gathered to connect
+        # Update the bare minimum of things for initial info
+        self.ip_updater.update()
+
+        # Before starting anything, let's send initial printer info to connect
         self.info_sender.initial_info()
 
         self.reporting_ensurer = ReportingEnsurer(self.serial_reader,
