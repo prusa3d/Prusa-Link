@@ -1,0 +1,3 @@
+[submodule "prusa-connect-local"]
+	path = prusa-connect-local
+	url = git@github.com:lowenware/prusa-connect-local.git
