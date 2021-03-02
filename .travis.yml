@@ -6,6 +6,9 @@ python:
  - "3.8"
  - "3.9"
 
+git:
+ submodules: false
+
 install:
  - pip3 install -r requirements.txt
  - pip3 install pytest pytest-pylint pytest-doctestplus pytest-mypy
