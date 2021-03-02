@@ -4,16 +4,12 @@ from time import time, sleep
 
 from ... import errors
 from ..const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL, NO_IP
-from prusa.link.printer_adapter.model import Model
-from prusa.link.printer_adapter.input_output.serial.helpers import \
-    enqueue_instruction, wait_for_instruction
-from prusa.link.printer_adapter.input_output.serial.serial_queue import \
-    SerialQueue
-from prusa.link.printer_adapter.input_output.serial.serial_reader import \
-    SerialReader
-from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
-from prusa.link.printer_adapter.structures.regular_expressions import \
-    LCD_UPDATE_REGEX
+from ..model import Model
+from .serial.helpers import enqueue_instruction, wait_for_instruction
+from .serial.serial_queue import SerialQueue
+from .serial.serial_reader import SerialReader
+from ..structures.mc_singleton import MCSingleton
+from ..structures.regular_expressions import LCD_UPDATE_REGEX
 
 log = logging.getLogger(__name__)
 

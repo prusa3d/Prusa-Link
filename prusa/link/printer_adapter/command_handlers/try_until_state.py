@@ -3,10 +3,10 @@ from threading import Event
 from time import time
 
 from prusa.connect.printer.const import State, Source
-from prusa.link.printer_adapter.command import Command
-from prusa.link.printer_adapter.informers.state_manager import StateChange
-from prusa.link.printer_adapter.const import \
-    STATE_CHANGE_TIMEOUT, QUIT_INTERVAL
+
+from ..command import Command
+from ..informers.state_manager import StateChange
+from ..const import STATE_CHANGE_TIMEOUT, QUIT_INTERVAL
 
 log = logging.getLogger(__name__)
 

@@ -1,8 +1,8 @@
 """Definition for ThreadUpdatable class."""
 from threading import Thread
 
-from prusa.link.printer_adapter.const import QUIT_INTERVAL
-from prusa.link.printer_adapter.util import run_slowly_die_fast
+from .const import QUIT_INTERVAL
+from .util import run_slowly_die_fast
 
 
 class ThreadedUpdatable:

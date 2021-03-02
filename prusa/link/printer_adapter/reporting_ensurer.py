@@ -1,15 +1,13 @@
 from time import time
 
-from prusa.link.printer_adapter.input_output.serial.serial_queue import \
-    SerialQueue
-from prusa.link.printer_adapter.input_output.serial.serial_reader import \
-    SerialReader
-from prusa.link.printer_adapter.input_output.serial.helpers import \
-    enqueue_instruction, wait_for_instruction
-from prusa.link.printer_adapter.const import REPORTING_TIMEOUT
-from prusa.link.printer_adapter.structures.regular_expressions import \
-    TEMPERATURE_REGEX, POSITION_REGEX, FAN_REGEX
-from prusa.link.printer_adapter.updatable import ThreadedUpdatable
+from .input_output.serial.serial_queue import SerialQueue
+from .input_output.serial.serial_reader import SerialReader
+from .input_output.serial.helpers import \
+        enqueue_instruction, wait_for_instruction
+from .const import REPORTING_TIMEOUT
+from .structures.regular_expressions import \
+        TEMPERATURE_REGEX, POSITION_REGEX, FAN_REGEX
+from .updatable import ThreadedUpdatable
 
 
 class ReportingEnsurer(ThreadedUpdatable):
