@@ -3,11 +3,11 @@ from pathlib import Path
 from re import Match
 
 from prusa.connect.printer.const import State
-from prusa.link.printer_adapter.command import Command
-from prusa.link.printer_adapter.informers.state_manager import StateChange
-from prusa.link.printer_adapter.structures.regular_expressions import \
-    OPEN_RESULT_REGEX
-from prusa.link.printer_adapter.util import file_is_on_sd
+
+from ..command import Command
+from ..informers.state_manager import StateChange
+from ..structures.regular_expressions import OPEN_RESULT_REGEX
+from ..util import file_is_on_sd
 
 log = logging.getLogger(__name__)
 

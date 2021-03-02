@@ -6,23 +6,20 @@ from pathlib import Path
 
 from blinker import Signal
 
-from prusa.link.printer_adapter.input_output.serial.instruction import \
-    MandatoryMatchableInstruction
-from prusa.link.printer_adapter.input_output.serial.serial_queue import \
-    SerialQueue
-from prusa.link.printer_adapter.input_output.serial.serial_reader import \
-    SerialReader
-from prusa.link.printer_adapter.input_output.serial.helpers import \
+from ..const import PRINTING_STATES, \
+    TELEMETRY_INTERVAL, SLOW_TELEMETRY
+from ..input_output.serial.instruction import MandatoryMatchableInstruction
+from ..input_output.serial.serial_queue import SerialQueue
+from ..input_output.serial.serial_reader import SerialReader
+from ..input_output.serial.helpers import \
     wait_for_instruction, enqueue_matchable
-from prusa.link.printer_adapter.model import Model
-from prusa.link.printer_adapter.structures.regular_expressions import \
+from ..model import Model
+from ..structures.regular_expressions import \
     TEMPERATURE_REGEX, POSITION_REGEX, M27_OUTPUT_REGEX, PRINT_INFO_REGEX, \
     HEATING_REGEX, HEATING_HOTEND_REGEX, PERCENT_REGEX, FAN_REGEX
-from prusa.link.printer_adapter.structures.model_classes import Telemetry
-from prusa.link.printer_adapter.const import PRINTING_STATES, \
-    TELEMETRY_INTERVAL, SLOW_TELEMETRY
-from prusa.link.printer_adapter.structures.ticker import Ticker
-from prusa.link.printer_adapter.updatable import ThreadedUpdatable
+from ..structures.model_classes import Telemetry
+from ..structures.ticker import Ticker
+from ..updatable import ThreadedUpdatable
 
 log = logging.getLogger(__name__)
 

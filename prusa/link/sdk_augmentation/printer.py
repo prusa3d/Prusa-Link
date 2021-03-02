@@ -9,11 +9,11 @@ from prusa.connect.printer import Printer as SDKPrinter, const
 from prusa.connect.printer import Command
 
 from ..printer_adapter.input_output.lcd_printer import LCDPrinter
-from prusa.link.printer_adapter.model import Model
-from prusa.link.printer_adapter.structures.mc_singleton import MCSingleton
-from prusa.link.printer_adapter.util import file_is_on_sd
-from prusa.link.sdk_augmentation.command_handler import CommandHandler
-from prusa.link import errors
+from ..printer_adapter.model import Model
+from ..printer_adapter.structures.mc_singleton import MCSingleton
+from ..printer_adapter.util import file_is_on_sd
+from .command_handler import CommandHandler
+from .. import errors
 
 log = getLogger("connect-printer")
 
