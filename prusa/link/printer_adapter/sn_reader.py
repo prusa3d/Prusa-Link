@@ -6,14 +6,11 @@ from time import time
 
 from blinker import Signal
 
-from prusa.link import errors
-from prusa.link.printer_adapter.updatable import ThreadedUpdatable
-from prusa.link.printer_adapter.input_output.serial.instruction import \
-    MatchableInstruction
-from prusa.link.printer_adapter.structures.regular_expressions import \
-    SN_REGEX
-from prusa.link.printer_adapter.input_output.serial.helpers import \
-    wait_for_instruction
+from .. import errors
+from .updatable import ThreadedUpdatable
+from .input_output.serial.instruction import MatchableInstruction
+from .structures.regular_expressions import SN_REGEX
+from .input_output.serial.helpers import wait_for_instruction
 
 log = logging.getLogger(__name__)
 

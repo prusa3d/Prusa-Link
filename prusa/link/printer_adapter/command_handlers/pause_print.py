@@ -1,8 +1,8 @@
 import logging
 
 from prusa.connect.printer.const import State
-from prusa.link.printer_adapter.command_handlers.try_until_state import \
-    TryUntilState
+
+from .try_until_state import TryUntilState
 
 log = logging.getLogger(__name__)
 

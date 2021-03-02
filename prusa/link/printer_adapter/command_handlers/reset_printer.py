@@ -2,14 +2,11 @@ import logging
 from threading import Event
 from time import sleep, time
 
-from prusa.link.printer_adapter.const import RESET_PIN
-
-from prusa.link.printer_adapter.command import Command
-from prusa.link.printer_adapter.const import \
-    SERIAL_QUEUE_TIMEOUT, QUIT_INTERVAL, PRINTER_BOOT_WAIT
-from prusa.link.printer_adapter.informers.state_manager import StateChange
-from prusa.link.printer_adapter.structures.regular_expressions import \
-    PRINTER_BOOT_REGEX
+from ..command import Command
+from ..const import \
+    SERIAL_QUEUE_TIMEOUT, QUIT_INTERVAL, PRINTER_BOOT_WAIT, RESET_PIN
+from ..informers.state_manager import StateChange
+from ..structures.regular_expressions import PRINTER_BOOT_REGEX
 
 log = logging.getLogger(__name__)
 

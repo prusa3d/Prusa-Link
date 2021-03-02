@@ -4,16 +4,15 @@ from time import time
 
 from blinker import Signal
 
-from prusa.link.printer_adapter.input_output.serial.helpers import \
+from ..input_output.serial.helpers import \
     enqueue_instruction, wait_for_instruction
-from prusa.link.printer_adapter.input_output.serial.serial_queue import \
-    SerialQueue
-from prusa.link.printer_adapter.model import Model
-from prusa.link.printer_adapter.const import IP_UPDATE_INTERVAL, \
+from ..input_output.serial.serial_queue import SerialQueue
+from ..model import Model
+from ..const import IP_UPDATE_INTERVAL, \
     SHOW_IP_INTERVAL, NO_IP, IP_WRITE_TIMEOUT
-from prusa.link.printer_adapter.updatable import ThreadedUpdatable
-from prusa.link.printer_adapter.util import get_local_ip
-from prusa.link import errors
+from ..updatable import ThreadedUpdatable
+from ..util import get_local_ip
+from ... import errors
 
 log = logging.getLogger(__name__)
 log.setLevel("INFO")

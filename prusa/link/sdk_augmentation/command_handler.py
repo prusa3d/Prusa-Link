@@ -2,7 +2,7 @@ from threading import Thread
 
 from prusa.connect.printer import Command
 
-from prusa.link.printer_adapter.const import QUIT_INTERVAL
+from ..printer_adapter.const import QUIT_INTERVAL
 
 
 class CommandHandler:

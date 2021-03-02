@@ -21,7 +21,7 @@ from ...structures.mc_singleton import MCSingleton
 from ...const import PRINTER_BOOT_WAIT, \
     QUIT_INTERVAL, SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT, \
     RX_SIZE, HISTORY_LENGTH, MAX_INT
-from prusa.link import errors
+from .... import errors
 
 log = logging.getLogger(__name__)
 

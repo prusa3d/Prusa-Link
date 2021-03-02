@@ -5,11 +5,11 @@ from typing import Set
 
 from blinker import Signal
 
-from prusa.link.config import Config
-from prusa.link.printer_adapter.const import BLACKLISTED_PATHS, \
+from ....config import Config
+from ...const import BLACKLISTED_PATHS, \
     BLACKLISTED_NAMES, BLACKLISTED_TYPES, QUIT_INTERVAL, DIR_RESCAN_INTERVAL
-from prusa.link.printer_adapter.updatable import ThreadedUpdatable
-from prusa.link.printer_adapter.util import get_clean_path, ensure_directory
+from ...updatable import ThreadedUpdatable
+from ...util import get_clean_path, ensure_directory
 
 log = logging.getLogger(__name__)
 

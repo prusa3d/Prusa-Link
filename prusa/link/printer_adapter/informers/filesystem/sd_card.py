@@ -23,23 +23,22 @@ from time import time
 from blinker import Signal
 
 from prusa.connect.printer.const import State
-from prusa.link.printer_adapter.informers.state_manager import StateManager
-from prusa.link.printer_adapter.input_output.serial.serial_queue import \
-    SerialQueue
-from prusa.link.printer_adapter.input_output.serial.serial_reader import \
-    SerialReader
-from prusa.link.printer_adapter.input_output.serial.helpers import \
+
+from ..state_manager import StateManager
+from ...input_output.serial.serial_queue import SerialQueue
+from ...input_output.serial.serial_reader import SerialReader
+from ...input_output.serial.helpers import \
     wait_for_instruction, enqueue_matchable, enqueue_collecting
-from prusa.link.printer_adapter.model import Model
-from prusa.link.printer_adapter.structures.model_classes import SDState
-from prusa.link.printer_adapter.structures.regular_expressions import \
+from ...model import Model
+from ...structures.model_classes import SDState
+from ...structures.regular_expressions import \
     SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, \
     SD_EJECTED_REGEX, LFN_CAPTURE, D3_C1_OUTPUT_REGEX
-from prusa.link.printer_adapter.const import SD_INTERVAL, \
+from ...const import SD_INTERVAL, \
     SD_FILESCAN_INTERVAL, SD_MOUNT_NAME, SFN_TO_LFN_EXTENSIONS, \
     MAX_FILENAME_LENGTH, FLASH_AIR_INTERVAL
-from prusa.link.printer_adapter.updatable import ThreadedUpdatable
-from prusa.link.sdk_augmentation.file import SDFile
+from ...updatable import ThreadedUpdatable
+from ....sdk_augmentation.file import SDFile
 
 log = logging.getLogger(__name__)
 
