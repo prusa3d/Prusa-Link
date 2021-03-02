@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from blinker import Signal
+from blinker import Signal  # type: ignore
 
 from prusa.connect.printer.files import File
 

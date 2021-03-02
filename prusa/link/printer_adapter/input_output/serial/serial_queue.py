@@ -5,7 +5,7 @@ from threading import Lock, Thread
 from time import time, sleep
 from typing import List, Optional
 
-from blinker import Signal
+from blinker import Signal  # type: ignore
 
 from ....config import Config
 from .serial import Serial

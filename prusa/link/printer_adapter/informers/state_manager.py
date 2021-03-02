@@ -4,7 +4,7 @@ from collections import deque
 from threading import Lock
 from typing import Union, Dict
 
-from blinker import Signal
+from blinker import Signal  # type: ignore
 
 from prusa.connect.printer.const import State, Source
 from ..const import STATE_HISTORY_SIZE
@@ -22,6 +22,8 @@ log = logging.getLogger(__name__)
 
 class StateChange:
     """Represents a set of state changes that can happen"""
+
+    # pylint: disable=too-few-public-methods
     def __init__(self,
                  command_id=None,
                  to_states: Dict[State, Union[Source, None]] = None,
@@ -174,10 +176,9 @@ class StateManager(metaclass=MCSingleton):
         """
         if self.data.override_state is not None:
             return self.data.override_state
-        elif self.data.printing_state is not None:
+        if self.data.printing_state is not None:
             return self.data.printing_state
-        else:
-            return self.data.base_state
+        return self.data.base_state
 
     def expect_change(self, change: StateChange):
         """
@@ -199,8 +200,7 @@ class StateManager(metaclass=MCSingleton):
             expected_from = self.data.last_state in state_change.from_states
             has_default_source = state_change.default_source is not None
             return expected_to or expected_from or has_default_source
-        else:
-            return False
+        return False
 
     def get_expected_source(self):
         """
@@ -339,7 +339,7 @@ class StateManager(metaclass=MCSingleton):
             self.unsure_whether_printing = False
             self.data.printing_state = State.PRINTING
         else:
-            log.debug(f"Ignoring switch to PRINTING "
+            log.debug("Ignoring switch to PRINTING "
                       f"{(self.data.base_state, self.data.printing_state)}")
 
     @state_influencer(
@@ -424,7 +424,7 @@ class StateManager(metaclass=MCSingleton):
         """
         if self.fan_error_name is not None:
             log.debug(f"{self.fan_error_name} fan error has been observed "
-                      f"before, reporting it now")
+                      "before, reporting it now")
             self.expect_change(
                 StateChange(to_states={State.ATTENTION: Source.FIRMWARE},
                             reason=f"{self.fan_error_name} fan error"))

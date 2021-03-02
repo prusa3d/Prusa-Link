@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict
 
-from blinker import Signal
+from blinker import Signal  # type: ignore
 from prusa.connect.printer import Printer
 
 from ...config import Config

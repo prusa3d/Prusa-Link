@@ -6,8 +6,8 @@ from grp import getgrnam
 from pwd import getpwnam
 from signal import SIGTERM
 
-from daemon import DaemonContext
-from lockfile.pidlockfile import PIDLockFile
+from daemon import DaemonContext  # type: ignore
+from lockfile.pidlockfile import PIDLockFile  # type: ignore
 
 from .config import Config
 from .daemon import Daemon
@@ -20,15 +20,18 @@ CONFIG_FILE = '/etc/Prusa-Link/prusa-link.ini'
 
 
 def set_log_levels(config: Config):
+    """Set log level for each defined module."""
     for module, level in config.log_settings.items():
         logging.getLogger(module).setLevel(level)
 
 
-def log_level(level):
-    if len(level.split("=")) != 2:
-        raise ArgumentTypeError("log level needs to be specified in format"
-                                "<module_path>=<log_level>")
-    return level
+class LogLevel(str):
+    """Log level type with __call__ checker method."""
+    def __new__(cls, level):
+        if len(level.split("=")) != 2:
+            raise ArgumentTypeError("log level needs to be specified in format"
+                                    "<module_path>=<log_level>")
+        return super().__new__(cls, level)
 
 
 def check_process(pid):
@@ -98,7 +101,7 @@ def main():
                         action="append",
                         help="sets the log level of any submodule(s). "
                         "use <module_path>=<log_level>",
-                        type=log_level)
+                        type=LogLevel)
 
     args = parser.parse_args()
     try:
