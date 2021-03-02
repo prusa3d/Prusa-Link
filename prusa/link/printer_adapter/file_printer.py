@@ -5,7 +5,7 @@ from collections import deque
 from threading import Thread
 from time import sleep
 
-from blinker import Signal
+from blinker import Signal  # type: ignore
 
 from ..config import Config
 from .input_output.serial.instruction import \

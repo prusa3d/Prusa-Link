@@ -15,8 +15,6 @@ __import__('errors', globals=globals(), level=1)
 __import__('main', globals=globals(), level=1)
 __import__('wizard', globals=globals(), level=1)
 __import__('files', globals=globals(), level=1)
-# __import__('login', globals=globals(), level=1)
-# __import__('page', globals=globals(), level=1)
 
 
 def init(daemon):

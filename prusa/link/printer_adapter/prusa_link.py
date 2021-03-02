@@ -50,6 +50,7 @@ log = logging.getLogger(__name__)
 
 
 class PrusaLink:
+    # pylint: disable=no-self-use
     def __init__(self, cfg: Config, settings):
         self.cfg: Config = cfg
         log.info('Starting adapter for port %s', self.cfg.printer.port)
@@ -480,7 +481,7 @@ class PrusaLink:
         """Connects the state manager state change to Prusa Connect"""
         if source is None:
             source = Source.WUI
-            log.warning(f"State change had no source " f"{to_state.value}")
+            log.warning(f"State change had no source {to_state.value}")
 
         extra_data = dict()
         if reason is not None:
@@ -519,14 +520,12 @@ class PrusaLink:
         """
         if self.model.state_manager.current_state in PRINTING_STATES:
             return TELEMETRY_PRINTING_INTERVAL
-        else:
-            return TELEMETRY_IDLE_INTERVAL
+        return TELEMETRY_IDLE_INTERVAL
 
     def keep_sending_telemetry(self):
         """Runs a loop in a thread to pass the telemetry from model to SDK"""
         run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
-                            lambda: self.get_telemetry_interval(),
-                            self.send_telemetry)
+                            self.get_telemetry_interval, self.send_telemetry)
 
     def send_telemetry(self):
         """

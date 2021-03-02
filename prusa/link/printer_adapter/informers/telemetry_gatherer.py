@@ -4,7 +4,7 @@ import logging
 import re
 from pathlib import Path
 
-from blinker import Signal
+from blinker import Signal  # type: ignore
 
 from ..const import PRINTING_STATES, \
     TELEMETRY_INTERVAL, SLOW_TELEMETRY

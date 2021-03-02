@@ -4,8 +4,8 @@ from re import Match
 from threading import Lock
 from typing import Dict, List, Callable
 
-from blinker import Signal
-from sortedcontainers import SortedKeyList
+from blinker import Signal  # type: ignore
+from sortedcontainers import SortedKeyList  # type: ignore
 
 from ...structures.mc_singleton import MCSingleton
 

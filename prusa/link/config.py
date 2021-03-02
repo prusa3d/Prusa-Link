@@ -23,6 +23,7 @@ LOG_FORMAT_SYSLOG = \
 
 
 def get_log_level_dict(log_levels: Iterable[str]):
+    """Parse log level from command line arguments."""
     log_level_dict = {}
     for log_config in log_levels:
         parts = log_config.split("=")
@@ -70,6 +71,7 @@ class Config(Get):
     instance = None
 
     def __init__(self, args):
+        # pylint: disable=too-many-branches
         if Config.instance is not None:
             raise RuntimeError('Config is singleton')
 
@@ -169,6 +171,8 @@ class Config(Get):
         Config.instance = self
 
     def set_global_log_level(self, args):
+        """Set default global log level from command line."""
+        # pylint: disable=no-self-use
         if args.debug:
             log_level = "DEBUG"
         elif args.info:
@@ -256,7 +260,8 @@ class Settings(Get):
         for key, val in model.items():
             self.set(name, key, str(val))
 
-    def update(self):
+    def update_sections(self):
+        """Update config from attributes."""
         self.set_section('printer', self.printer)
         self.set_section('network', self.network)
         self.set_section('service::connect', self.service_connect)

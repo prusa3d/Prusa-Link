@@ -9,9 +9,9 @@ from shutil import copytree
 from distutils import log
 from distutils.core import Command
 
-from setuptools import setup, find_namespace_packages
+from setuptools import setup, find_namespace_packages  # type: ignore
 
-from prusa.link import __version__, __doc__
+from prusa.link import __version__, __doc__ as description  # type: ignore
 
 RPI_MODEL_PATH = "/sys/firmware/devicetree/base/model"
 RE_GIT = re.compile(r'(-e )?git\+|:')
@@ -112,7 +112,7 @@ class BuildStatic(Command):
 
 setup(name="prusa-link",
       version=__version__,
-      description=__doc__,
+      description=description,
       author="Tomáš Jozífek",
       author_email="tomas.jozifek@prusa3d.cz",
       maintainer="Tomáš Jozífek",

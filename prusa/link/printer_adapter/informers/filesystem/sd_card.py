@@ -20,7 +20,7 @@ import re
 from pathlib import Path
 from time import time
 
-from blinker import Signal
+from blinker import Signal  # type: ignore
 
 from prusa.connect.printer.const import State
 

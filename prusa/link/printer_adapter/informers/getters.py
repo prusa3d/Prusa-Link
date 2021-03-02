@@ -1,6 +1,6 @@
 from distutils.version import StrictVersion
 
-from getmac import get_mac_address
+from getmac import get_mac_address  # type: ignore
 
 from prusa.connect.printer.const import PrinterType
 
