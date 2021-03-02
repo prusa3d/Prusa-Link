@@ -3,8 +3,8 @@ import termios
 from threading import Thread, Lock
 from time import sleep
 
-import serial
-from blinker import Signal
+import serial  # type: ignore
+from blinker import Signal  # type: ignore
 
 from .serial_reader import SerialReader
 from ...const import PRINTER_BOOT_WAIT, \

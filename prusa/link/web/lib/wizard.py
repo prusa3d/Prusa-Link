@@ -120,6 +120,6 @@ class Wizard:
         settings.service_connect.tls = self.connect_tls
         settings.service_connect.port = self.connect_port
 
-        settings.update()
+        settings.update_sections()
         with open(self.cfg.printer.settings, 'w') as ini:
             settings.write(ini)

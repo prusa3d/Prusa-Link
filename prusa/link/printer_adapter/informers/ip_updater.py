@@ -2,7 +2,7 @@ import logging
 import socket
 from time import time
 
-from blinker import Signal
+from blinker import Signal  # type: ignore
 
 from ..input_output.serial.helpers import \
     enqueue_instruction, wait_for_instruction

@@ -3,7 +3,7 @@ import os
 import select
 from typing import Set
 
-from blinker import Signal
+from blinker import Signal  # type: ignore
 
 from ....config import Config
 from ...const import BLACKLISTED_PATHS, \
