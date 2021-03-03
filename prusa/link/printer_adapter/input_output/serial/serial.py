@@ -125,18 +125,19 @@ class Serial(metaclass=MCSingleton):
 
         :param message: the message to be sent
         """
-        log.debug(f"Sending to printer: {message}")
+        log.debug("Sending to printer: %s", message)
 
         sent = False
+        if not self.serial:
+            return
 
         with self.write_lock:
             while not sent and self.running:
                 try:
                     self.serial.write(message)
                 except serial.SerialException:
-                    log.error(
-                        f"Serial error when sending '{message}' to the printer"
-                    )
+                    log.error("Serial error when sending '%s' to the printer",
+                              message)
                     self._renew_serial_connection()
                 else:
                     sent = True
