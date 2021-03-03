@@ -44,3 +44,32 @@ def status():
             current = current.next
         result.append(chain)
     return result
+
+
+class PrusaError:
+    """Error inspired by Prusa-Error-Codes"""
+    # pylint: disable=too-few-public-methods
+    code: str
+    title: str
+    text: str
+    id_: str
+
+    def __init__(self, code: str, title: str, text: str):
+        self.code = code
+        self.title = title
+        self.text = text
+        self.id_ = title.replace(' ', '_')
+
+
+PE_UPLOAD_SDCARD = PrusaError('024xx', 'SDCARD NOT SUPPORTED',
+                              'Location sdcard is not supported.')
+PE_LOC_NOT_FOUND = PrusaError('024xx', 'LOCATION NOT FOUND',
+                              'Location not found`.')
+PE_UPLOAD_BAD = PrusaError('024xx', 'BAD UPLOAD REQUEST',
+                           'No file or filename is set.')
+PE_UPLOAD_UNSUPPORTED = PrusaError(
+    '024xx', 'UNSUPPORTED MEDIA TYPE',
+    'File is not supported or it is not gcode.')
+PE_UPLOAD_CONFLICT = PrusaError(
+    '024xx', 'CURRENTLY PRINTED',
+    'Uploaded file is the same as currently printed')
