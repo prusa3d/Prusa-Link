@@ -161,8 +161,8 @@ class TelemetryGatherer(ThreadedUpdatable):
             # if we're SD printing and there is no reporting, let's get it here
             if self.model.job.from_sd and not self.model.job.inbuilt_reporting:
                 byte_position_match: re.Match = instruction.match(1)
-                groups = byte_position_match.groupdict()
                 if byte_position_match:
+                    groups = byte_position_match.groupdict()
                     current_byte = int(groups["current"])
                     bytes_in_total = int(groups["sum"])
                     progress = int((current_byte / bytes_in_total) * 100)

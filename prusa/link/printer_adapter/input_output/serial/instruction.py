@@ -93,13 +93,18 @@ class MatchableInstruction(Instruction):
         self.capturing_regexps = [capture_matching]
 
     def output_captured(self, sender, match):
+        """Appends captured output to the instructions captured list"""
         self.captured.append(match)
 
     def match(self, index=0):
-        if self.captured:
+        """If match with an index exists, return it, otherwise return None"""
+        if self.captured and len(self.captured) > index:
             return self.captured[index]
+        else:
+            return None
 
     def get_matches(self):
+        """Returns the list of all captured matches"""
         return self.captured
 
 
@@ -128,6 +133,9 @@ class CollectingInstruction(Instruction):
     Also refuses confirmation if nothing gets matched.
     """
     class States(Enum):
+        """
+        State of a capturing instruction that needs a start and an end match
+        """
         NOT_CAPTURING_YET = 0
         CAPTURING = 1
         ENDED = 2
@@ -149,6 +157,12 @@ class CollectingInstruction(Instruction):
         ]
 
     def output_captured(self, sender, match: re.Match):
+        """
+        Overrides the default output capturing method.
+        Starts capturing only after the begin_match
+        then captures everything matching capture_match
+        and this gets ended by the end_match.
+        """
         # The order of these blocks is important, it prevents the
         # begin and end matches from also matching with the capture regex
         if self.state == self.States.CAPTURING:
@@ -167,6 +181,9 @@ class CollectingInstruction(Instruction):
                 self.state = self.States.CAPTURING
 
     def confirm(self, force=False) -> bool:
+        """
+        Determines, whether the instruction agrees with being confirmed
+        """
         # Yes, collecting HAVE TO match now!
         if self.state != self.States.ENDED and not force:
             log.warning(f"Instruction {self.message} did not capture its "
