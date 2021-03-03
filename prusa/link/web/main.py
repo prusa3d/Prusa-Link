@@ -181,9 +181,10 @@ def api_job(req):
     """Returns info about actual printing job"""
     # pylint: disable=unused-argument
     tel = app.daemon.prusa_link.model.last_telemetry
+    command_queue = app.daemon.prusa_link.command_queue
     job_info = JobInfo()
     if job_info.model.job.job_state == JobState.IN_PROGRESS:
-        job = job_info.run_command()
+        job = command_queue.do_command(job_info)
         timestamp = int(datetime(*job.get("m_time")).timestamp())
         file_ = {
             'name': basename(job.get("file_path")),
