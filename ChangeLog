@@ -45,6 +45,7 @@
     * Statics generated from submodule
     * Support pausing, resuming and stopping of serial prints from the LCD
     * Implementation of metadata into /api/files endpoint
+    * Process all commands in a single thread -> racing avoided
 
 0.2.0 (2020-12-14)
 
