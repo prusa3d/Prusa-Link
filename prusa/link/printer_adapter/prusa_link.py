@@ -17,6 +17,7 @@ from .command_handlers.reset_printer import ResetPrinter
 from .command_handlers.resume_print import ResumePrint
 from .command_handlers.start_print import StartPrint
 from .command_handlers.stop_print import StopPrint
+from .command_queue import CommandQueue
 from .informers.filesystem.sd_card import SDState
 from .informers.job import Job
 from .print_stats import PrintStats
@@ -115,6 +116,7 @@ class PrusaLink:
                                          self.serial_reader,
                                          self.state_manager, self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
+        self.command_queue = CommandQueue()
 
         # Bind signals
         self.serial.failed_signal.connect(self.serial_failed)
@@ -172,6 +174,7 @@ class PrusaLink:
         self.telemetry_gatherer.start()
         self.storage.start()
         self.ip_updater.start()
+        self.command_queue.start()
         self.last_sent_telemetry = time()
         self.telemetry_thread = Thread(target=self.keep_sending_telemetry,
                                        name="telemetry_passer")
@@ -200,15 +203,17 @@ class PrusaLink:
             command = input("[Prusa-link]: ")
             result = ""
             if command == "pause":
-                result = PausePrint().run_command()
+                result = self.command_queue.do_command(PausePrint())
             elif command == "resume":
-                result = ResumePrint().run_command()
+                result = self.command_queue.do_command(ResumePrint())
             elif command == "stop":
-                result = StopPrint().run_command()
+                result = self.command_queue.do_command(StopPrint())
             elif command.startswith("gcode"):
-                result = ExecuteGcode(command.split(" ", 1)[1]).run_command()
+                result = self.command_queue.do_command(
+                    ExecuteGcode(command.split(" ", 1)[1]))
             elif command.startswith("print"):
-                result = StartPrint(command.split(" ", 1)[1]).run_command()
+                result = self.command_queue.do_command(
+                    StartPrint(command.split(" ", 1)[1]))
 
             if result:
                 print(result)
@@ -243,60 +248,60 @@ class PrusaLink:
         """
         command = ExecuteGcode(gcode=caller.args[0],
                                command_id=caller.command_id)
-        return command.run_command()
+        return self.command_queue.do_command(command)
 
     def start_print(self, caller: SDKCommand):
         """
         Connects the command to start print from CONNECT with its handler
         """
         command = StartPrint(path=caller.args[0], command_id=caller.command_id)
-        return command.run_command()
+        return self.command_queue.do_command(command)
 
     def pause_print(self, caller: SDKCommand):
         """
         Connects the command to pause print from CONNECT with its handler
         """
         command = PausePrint(command_id=caller.command_id)
-        return command.run_command()
+        return self.command_queue.do_command(command)
 
     def resume_print(self, caller: SDKCommand):
         """
         Connects the command to resume print from CONNECT with its handler
         """
         command = ResumePrint(command_id=caller.command_id)
-        return command.run_command()
+        return self.command_queue.do_command(command)
 
     def stop_print(self, caller: SDKCommand):
         """
         Connects the command to stop print from CONNECT with its handler
         """
         command = StopPrint(command_id=caller.command_id)
-        return command.run_command()
+        return self.command_queue.do_command(command)
 
     def reset_printer(self, caller: SDKCommand):
         """
         Connects the command to reset printer from CONNECT with its handler
         """
         command = ResetPrinter(command_id=caller.command_id)
-        return command.run_command()
+        return self.command_queue.do_command(command)
 
     def job_info(self, caller: SDKCommand):
         """
         Connects the command to send job info from CONNECT with its handler
         """
         command = JobInfo(command_id=caller.command_id)
-        return command.run_command()
+        return self.command_queue.do_command(command)
 
     # --- FW Command handlers ---
 
     def fw_pause_print(self):
         # FIXME: The source is wrong for the LCD pause
         command = PausePrint(source=Source.FIRMWARE)
-        return command.run_command()
+        return self.command_queue.do_command(command)
 
     def fw_resume_print(self):
         command = ResumePrint(source=Source.USER)
-        return command.run_command()
+        return self.command_queue.do_command(command)
 
     # --- Signal handlers ---
 
@@ -321,11 +326,12 @@ class PrusaLink:
 
     def telemetry_observed_serial_pause(self, sender):
         """
-        Connects telemetry observing a paused serial print to the state
-        manager
+        If the printer says the serial print is paused, but we're not serial
+        printing at all, we'll resolve it by stopping whatever was going on
+        before.
         """
         if not self.model.file_printer.printing:
-            StopPrint().run_command()
+            self.command_queue.enqueue_command(StopPrint())
 
     def telemetry_observed_no_print(self, sender):
         """
@@ -506,7 +512,7 @@ class PrusaLink:
         reset_command = ResetPrinter()
         self.state_manager.serial_error()
         try:
-            reset_command.run_command()
+            self.command_queue.do_command(reset_command)
         except Exception:
             log.exception("Failed to reset the printer. Oh my god... "
                           "my attempt at safely failing has failed.")
