@@ -3,7 +3,20 @@
 from datetime import datetime
 from os.path import join
 
+from prusa.connect.printer.metadata import MetaData
 from prusa.connect.printer.const import GCODE_EXTENSIONS
+
+from ..lib.core import app
+
+
+def get_os_path(abs_path):
+    """Gets the OS file path of the file specified by abs_path"""
+    file_system = app.daemon.prusa_link.printer.fs
+    file = file_system.get(abs_path)
+    abs_path = abs_path.strip(file_system.sep)
+    mount_name = abs_path.split(file_system.sep)[0]
+    mount = file_system.mounts[mount_name]
+    return file.abs_path(mount.path_storage)
 
 
 def files_to_api(node, origin='local', path='/'):
@@ -79,17 +92,32 @@ def files_to_api(node, origin='local', path='/'):
         result['typePath'] = ['machinecode', 'gcode']
         result['date'] = None
         result['hash'] = None
+
         result['refs'] = {
             'resource': None,
             'download': None,
             'thumbnailSmall': None,
             'thumbnailBig': None
         }
-        result['gcodeAnalysis'] = {
-            'estimatedPrintTime': None,
-            'material': None,
-            'layerHeight': None
-        }
+
+        if origin != "sdcard":
+            meta = MetaData(get_os_path(path))
+            if meta.is_cache_fresh():
+                meta.load_cache()
+            estimated_time = 'estimated printing time (normal mode)'
+            material = 'filament_type'
+
+            result['gcodeAnalysis'] = {
+                'estimatedPrintTime': meta.data.get(estimated_time),
+                'material': meta.data.get(material),
+                'layerHeight': None
+            }
+        else:
+            result['gcodeAnalysis'] = {
+                'estimatedPrintTime': None,
+                'material': None,
+                'layerHeight': None
+            }
 
     else:
         return {}  # not folder or allowed extension
