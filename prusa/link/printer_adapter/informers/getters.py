@@ -25,6 +25,15 @@ MINIMAL_FIRMWARE = StrictVersion(SUPPORTED_FIRMWARE)  # TODO: Firmware release
 
 
 def get_printer_type(serial_queue: SerialQueue, should_wait=lambda: True):
+    """
+    Gets the printer code using the M862.2 Q gcode.
+    Errors out if the code is invalid
+
+    :param serial_queue: serial queue to submit instructions to
+    :param should_wait: a lamda returning True or False, telling this funtion
+    whether to keep waiting for the instruction result
+    :return:
+    """
     instruction = enqueue_matchable(serial_queue,
                                     "M862.2 Q",
                                     PRINTER_TYPE_REGEX,
@@ -49,7 +58,12 @@ def get_printer_type(serial_queue: SerialQueue, should_wait=lambda: True):
 
 
 def get_firmware_version(serial_queue: SerialQueue, should_wait=lambda: True):
-    """Try to get firmware version from printer."""
+    """Try to get firmware version from the printer.
+
+    :param serial_queue: serial queue to submit instructions to
+    :param should_wait: a lamda returning True or False, telling this funtion
+    whether to keep waiting for the instruction result
+    """
     instruction = enqueue_matchable(serial_queue,
                                     "M115",
                                     FW_REGEX,
@@ -65,6 +79,12 @@ def get_firmware_version(serial_queue: SerialQueue, should_wait=lambda: True):
 
 
 def get_nozzle_diameter(serial_queue: SerialQueue, should_wait=lambda: True):
+    """Gets the printers nozzle diameter using M862.1 Q
+
+    :param serial_queue: serial queue to submit instructions to
+    :param should_wait: a lamda returning True or False, telling this funtion
+    whether to keep waiting for the instruction result
+    """
     instruction = enqueue_matchable(serial_queue,
                                     "M862.1 Q",
                                     NOZZLE_REGEX,
@@ -78,6 +98,7 @@ def get_nozzle_diameter(serial_queue: SerialQueue, should_wait=lambda: True):
 
 
 def get_network_info(model: Model):
+    """Gets the mac and ip addresses and packages them into an object."""
     network_info = NetworkInfo()
 
     if model.ip_updater.local_ip != NO_IP:

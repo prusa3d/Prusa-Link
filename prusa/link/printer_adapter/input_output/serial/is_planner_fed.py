@@ -15,11 +15,13 @@ log = logging.getLogger(__name__)
 
 
 class HeapName(Enum):
+    """Heap name enum"""
     SHORT_TIMES = "SHORT_TIMES"
     LONG_TIMES = "LONG_TIMES"
 
 
 class TimeValue(HeapItem):
+    """Time value with info in which queu it currently resides"""
     def __init__(self, value):
         super().__init__(value)
         self.heap_name: Optional[HeapName] = None
@@ -74,10 +76,15 @@ class IsPlannerFed:
 
     @property
     def item_count(self):
+        """Return how many time values are contributing to the percentile"""
         return len(self.times_queue)
 
     @property
     def threshold(self):
+        """
+        Depending on the internal state and settings, it returns
+        the percentile threshold or the default
+        """
         if self.item_count < self.times_queue.maxlen or \
                 not USE_DYNAMIC_THRESHOLD:
             return self.default_threshold
@@ -85,6 +92,7 @@ class IsPlannerFed:
             return self.get_dynamic_threshold()
 
     def get_dynamic_threshold(self):
+        """Returns the Nth percentile value. N is fixed in constants"""
         if not self.short_times and not self.long_times:
             return float("inf")
         elif self.short_times:
@@ -94,13 +102,16 @@ class IsPlannerFed:
 
     def __call__(self):
         """
-        :return: boolean - Did it take too long?
+        :return: boolean - Did it take long enough?
         """
         return self.is_fed
 
     def process_value(self, value):
         """
-        :param value: how long it took from send to confirmation
+        Adds the given value to tracked values and moves the percentile value
+        accordingly
+
+        :param value: how long did it take from send to confirmation
         """
         if value > IGNORE_ABOVE:
             return
@@ -116,6 +127,13 @@ class IsPlannerFed:
                       f"value: {value}")
 
     def _remove_last(self):
+        """
+        For the median to be influenced only by the last N commands
+        And for the RAM and CPU usage to not slowly creep up,
+        the size of the queue and heaps is capped.
+
+        This removes the item from the queue and from its associated heap
+        """
         item: TimeValue = self.times_queue.popleft()
         if item.heap_name == HeapName.LONG_TIMES:
             self.long_times.pop(item.heap_index)
@@ -124,6 +142,11 @@ class IsPlannerFed:
         self.balance()
 
     def _add(self, value):
+        """
+        Adds a new value to the queue and to the one of the heaps
+
+        Complexity should be O(log n)
+        """
         item = TimeValue(value)
 
         if not self.short_times:
@@ -145,6 +168,7 @@ class IsPlannerFed:
         self.times_queue.append(item)
 
     def balance(self):
+        """Balances heaps to maintain the percentile"""
         num_long = len(self.long_times)
         num_short = len(self.short_times)
         total = num_long + num_short
@@ -159,14 +183,24 @@ class IsPlannerFed:
                                "the higher value heap, that's not right...")
 
     def _short_push(self, item: TimeValue):
+        """
+        Pushes a value into the heap containing times shorter than percentile
+        """
         item.heap_name = HeapName.SHORT_TIMES
         self.short_times.push(item)
 
     def _long_push(self, item: TimeValue):
+        """
+        Pushes a value into the heap containing times longer than percentile
+        """
         item.heap_name = HeapName.LONG_TIMES
         self.long_times.push(item)
 
     def save(self):
+        """
+        Saves the threshold, so when the prusa-link starts up again,
+        it doesn't rely on the default threshold anymore
+        """
         if self.item_count >= self.times_queue.maxlen:
             with open(self.threshold_path, "w") as threshold_file:
                 threshold_file.write(str(self.get_dynamic_threshold()))

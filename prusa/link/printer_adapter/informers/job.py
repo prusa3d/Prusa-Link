@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
 
 
 class Job(metaclass=MCSingleton):
-    """This is a subcomponent of the state manager"""
+    """Keeps track of print jobs and their properties"""
     def __init__(self, serial_reader: SerialReader, model: Model, cfg: Config,
                  printer: Printer):
         # Sent every time the job id should disappear, appear or update
@@ -34,6 +34,7 @@ class Job(metaclass=MCSingleton):
         self.model: Model = model
         self.data = self.model.job
 
+        # Unused
         self.job_id_updated_signal = Signal()  # kwargs: job_id: int
 
         self.job_path = get_clean_path(cfg.daemon.job_file)
@@ -62,6 +63,7 @@ class Job(metaclass=MCSingleton):
                                         job_id=self.data.get_job_id_for_api())
 
     def file_opened(self, sender, match: re.Match):
+        """Called if the file name, but not the whole path is reported"""
         # This solves the issue, where the print is started from Connect, but
         # the printer responds the same way as if user started it from the
         # screen. We rely on file_name being populated sooner when Connect
@@ -77,6 +79,13 @@ class Job(metaclass=MCSingleton):
                                prepend_sd_mountpoint=True)
 
     def job_started(self, command_id=None):
+        """
+        Reacts to a new job happening, increments job_id and fills out
+        as much info as possible about the print job
+
+        Also writes the new job_id to a file, so there aren't two jobs with
+        the same id
+        """
         self.data.from_sd = not self.model.file_printer.printing
         self.data.job_id += 1
         self.data.job_start_cmd_id = command_id
@@ -92,6 +101,7 @@ class Job(metaclass=MCSingleton):
                                         job_id=self.data.get_job_id_for_api())
 
     def job_ended(self):
+        """Resets the job info """
         self.data.job_start_cmd_id = None
         self.data.printing_file_path = None
         self.data.filename_only = None
@@ -119,11 +129,17 @@ class Job(metaclass=MCSingleton):
             self.job_ended()
 
     def change_state(self, state: JobState):
+        """
+        Previously wrote the state into a file, now only logs the state change
+        """
         log.debug(f"Job changed state to {state}")
         self.data.job_state = state
-        self.write()
 
     def write(self):
+        """
+        This one was writing everything job related,
+        now it only keeps track of the job_id
+        """
         data = dict(job_id=self.data.job_id)
 
         with open(self.job_path, "w") as job_file:
@@ -138,6 +154,15 @@ class Job(metaclass=MCSingleton):
             return self.data.job_id
 
     def set_file_path(self, path, filename_only, prepend_sd_mountpoint):
+        """
+        Decides if the supplied file path is better, than what we had
+        previously, and updates the job info file parameters accordingly
+        :param path: the path/file name to assign to the job
+        :param filename_only: flag for distinguishing between filenames and
+        paths
+        :param prepend_sd_mountpoint: Whether to prepend the SD Card
+        mountpoint name
+        """
         # If we have a full path, don't overwrite it with just a filename
         if (not filename_only and not self.data.filename_only) \
                 or self.data.printing_file_path is None:
@@ -159,10 +184,9 @@ class Job(metaclass=MCSingleton):
                 if 'size' in file_obj.attrs:
                     self.data.printing_file_size = file_obj.attrs["size"]
 
-    def get_state(self):
-        return self.data.job_state
-
     def get_job_info_data(self):
+        """Compiles the job info data into a dict"""
+        # TODO: consider moving to module data classes
         data = dict()
 
         if self.data.filename_only:
@@ -181,6 +205,10 @@ class Job(metaclass=MCSingleton):
         return data
 
     def progress_broken(self, progress_broken):
+        """Uses the info about whether the progress percentage reported by
+        the printer is broken, to deduce, whether the gcode has inbuilt
+        percentage reporting for sd prints.
+        """
         if self.data.from_sd:
             if self.data.inbuilt_reporting is None and progress_broken:
                 self.data.inbuilt_reporting = False

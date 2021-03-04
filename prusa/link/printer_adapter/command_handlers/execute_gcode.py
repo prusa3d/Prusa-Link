@@ -59,7 +59,7 @@ class ExecuteGcode(Command):
         instruction_list = enqueue_list_from_str(self.serial_queue,
                                                  line_list,
                                                  REJECTION_REGEX,
-                                                 front=True)
+                                                 to_front=True)
 
         for instruction in instruction_list:
             self.wait_while_running(instruction)

@@ -29,6 +29,9 @@ class CommandQueue:
     def stop(self):
         """Stop the command processing"""
         self.running = False
+        while not self.command_queue.empty():
+            adapter = self.command_queue.get()
+            adapter.command.stop()
 
     def enqueue_command(self, command: Command):
         """

@@ -19,6 +19,10 @@ log.setLevel("INFO")
 
 
 class IPUpdater(ThreadedUpdatable):
+    """
+    Keeps track of what ip does the machine currently use when accessing the
+    internet
+    """
     thread_name = "ip_updater"
     update_interval = IP_UPDATE_INTERVAL
 
@@ -34,6 +38,10 @@ class IPUpdater(ThreadedUpdatable):
         super().__init__()
 
     def update(self):
+        """
+        Gets the current local ip. Calls update_ip(), if it changed,
+        or if it was over X seconds since the last update
+        """
         try:
             local_ip = get_local_ip()
             errors.LAN.ok = True
@@ -53,6 +61,13 @@ class IPUpdater(ThreadedUpdatable):
                 self.update_ip(self.data.local_ip)
 
     def update_ip(self, new_ip):
+        """
+        On ip change, sends the new one to the printer, so it can be displayed
+        in the printer support menu.
+
+        Generates a signal, even if no change happened, for printing the ip on
+        the LCD. This is getting obsolete.
+        """
         old_ip = self.data.local_ip
         self.data.local_ip = new_ip
         log.debug(f"old {old_ip} != new {new_ip} = {old_ip != new_ip}")
@@ -61,6 +76,10 @@ class IPUpdater(ThreadedUpdatable):
         self.updated_signal.send(self, old_ip=old_ip, new_ip=new_ip)
 
     def send_ip_to_printer(self, ip):
+        """
+        Uses the M552 gcode, to set the ip for displaying in the printer
+        support menu
+        """
         timeout_at = time() + IP_WRITE_TIMEOUT
         if ip == NO_IP:
             instruction = enqueue_instruction(self.serial_queue,
@@ -71,5 +90,6 @@ class IPUpdater(ThreadedUpdatable):
                              lambda: self.running and time() < timeout_at)
 
     def stop(self):
+        """Stops the module"""
         self.send_ip_to_printer(NO_IP)
         super().stop()

@@ -1,4 +1,7 @@
 class MCSingleton(type):
+    """
+    Classes that use this metaclass are singletons
+    """
     def __init__(cls, name, bases, dic):
         cls.__instance = None
         cls.get_instance = lambda: cls.__instance

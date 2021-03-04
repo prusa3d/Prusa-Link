@@ -17,6 +17,10 @@ log = logging.getLogger(__name__)
 
 
 class StorageController:
+    """
+    Sort of an interface layer between the (once larger) storage system
+    and the rest of the app
+    """
     def __init__(self, cfg, serial_queue: SerialQueue,
                  serial_reader: SerialReader, state_manager: StateManager,
                  model: Model):
@@ -32,7 +36,6 @@ class StorageController:
 
         self.sd_card = SDCard(self.serial_queue, self.serial_reader,
                               self.state_manager, self.model)
-        self.sd_card.tree_updated_signal.connect(self.sd_tree_updated)
         self.sd_card.sd_mounted_signal.connect(self.sd_mounted)
         self.sd_card.sd_unmounted_signal.connect(self.sd_unmounted)
 
@@ -46,32 +49,35 @@ class StorageController:
         self.sd_tree: Optional[SDFile] = None
 
     def dir_mounted(self, sender, path: str):
+        """Signal pass-through"""
         self.dir_mounted_signal.send(self, path=path)
 
     def dir_unmounted(self, sender, path: str):
+        """Signal pass-through"""
         self.dir_unmounted_signal.send(self, path=path)
 
     def sd_mounted(self, sender, files: File):
+        """Signal pass-through"""
         self.sd_mounted_signal.send(self, files=files)
 
     def sd_unmounted(self, sender):
+        """Signal pass-through"""
         self.sd_unmounted_signal.send(self)
 
     def update(self):
+        """Passes the call to update() to all its submodules"""
         self.sd_card.update()
         self.fs_mounts.update()
         self.dir_mounts.update()
 
     def start(self):
+        """Starts submodules"""
         self.sd_card.start()
         self.fs_mounts.start()
         self.dir_mounts.start()
 
-    def sd_tree_updated(self, sender, tree: SDFile):
-        self.sd_tree = tree
-        # TODO: what about this?
-
     def stop(self):
+        """Stops submodules"""
         self.sd_card.stop()
         self.fs_mounts.stop()
         self.dir_mounts.stop()

@@ -44,6 +44,9 @@ log = logging.getLogger(__name__)
 
 
 class SDCard(ThreadedUpdatable):
+    """
+    Keeps track of the SD Card presence and content
+    """
     thread_name = "sd_updater"
 
     # Cycle fast, but re-scan only on events or in big intervals
@@ -80,6 +83,14 @@ class SDCard(ThreadedUpdatable):
         super().__init__()
 
     def update(self):
+        """
+        Updates the file list on the SD Card.
+        Except:
+        - when the printer state is not READY
+        - when we already have a file listing and no FlashAir is connected
+        - When FlashAir is connected and configured, but it hasn't been long
+          enough from the previous update
+        """
         # Update only if READY
         if self.state_manager.get_state() != State.READY:
             return
@@ -115,6 +126,10 @@ class SDCard(ThreadedUpdatable):
         self.tree_updated_signal.send(self, tree=self.data.files)
 
     def determine_flash_air(self):
+        """
+        Uses a D3 command to determine whether the flash air option
+        is turned on
+        """
         instruction = enqueue_matchable(self.serial_queue, "D3 Ax0fbb C1",
                                         D3_C1_OUTPUT_REGEX)
         wait_for_instruction(instruction, lambda: self.running)
@@ -123,6 +138,25 @@ class SDCard(ThreadedUpdatable):
             self.data.is_flash_air = match.group("data") == "01"
 
     def construct_file_tree(self):
+        """
+        Uses M20 L to get the list of paths.
+
+        Some shorthand terms need explaining here:
+        SFN - short file name
+        LFN - long file name
+        SDN - short directory name
+        LDN - long directory name
+
+        The readout is a little complicated as SDN paths are provided inline,
+        but SDN -> LDN pairings are provided only when entering a directory
+
+        The long file names over the size limit of 52 chars have a chance of
+        not being unique, so this also ensures their uniqueness and
+        fills in missing extensions
+
+        :return: The constructed file tree. Also the translation data for
+        converting between all used path formats get saved at the end
+        """
         if self.data.sd_state == SDState.ABSENT:
             return None
 
@@ -224,6 +258,10 @@ class SDCard(ThreadedUpdatable):
         return tree
 
     def alternative_filename(self, long_filename: str, short_filename: str):
+        """
+        Ensures uniwueness of a file name by prepending it with its
+        guaranteed to be unique short name
+        """
         new_filename = f"{short_filename} - {long_filename}"
         log.warning(
             f"Filename {long_filename} too long, using an alternative: "
@@ -231,6 +269,7 @@ class SDCard(ThreadedUpdatable):
         return new_filename
 
     def check_uniqueness(self, path: Path, tree):
+        """Checks, whether the supplied path is not present in the tree"""
         # Ignores the first "/"
         if tree.get(path.parts[1:]) is not None:
             log.error(f"Despite our efforts, there is a name conflict "
@@ -238,6 +277,7 @@ class SDCard(ThreadedUpdatable):
 
     def ensure_extension(self, long_filename: str, long_extension: str,
                          short_extension: str):
+        """Fixes extensions of file names"""
         has_full_extension = (long_filename.endswith(short_extension)
                               or long_filename.endswith(long_extension))
         if not has_full_extension:
@@ -270,10 +310,20 @@ class SDCard(ThreadedUpdatable):
                 self.sd_state_changed(SDState.INITIALISING)
 
     def sd_ejected(self, sender, match: re.Match):
+        """
+        Handler for sd ejected serial messgaes.
+        Sets the card state to absent and notifies others
+        """
         self.data.invalidated = True
         self.sd_state_changed(SDState.ABSENT)
 
     def sd_state_changed(self, new_state):
+        """
+        Transforms the internal state changes to signals about sd card
+        (un)mounting
+        Also sets the internal state to the supplied one
+        :param new_state: the state to switch to
+        """
         log.debug(f"SD state changed from {self.data.sd_state} to "
                   f"{new_state}")
 
@@ -295,6 +345,9 @@ class SDCard(ThreadedUpdatable):
         Calling this can be disruptive to the user experience,
         the card will reload. If there is nothing on the SD card or
         if we suspect there is no SD card, calling this should be fine
+
+        Asks the firmware to re-init the SD card, uses the output,
+        to determine SD presence
         """
         self.data.expecting_insertion = True
         instruction = enqueue_matchable(self.serial_queue, "M21",
