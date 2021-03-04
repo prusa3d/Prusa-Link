@@ -281,7 +281,9 @@ class SerialQueue(metaclass=MCSingleton):
 
         self._try_writing()
 
-    def enqueue_list(self, instruction_list: List[Instruction], front=False):
+    def enqueue_list(self,
+                     instruction_list: List[Instruction],
+                     to_front=False):
         """
         Enqueue list of instructions
         Don't interrupt, if anyone else is enqueueing instructions
@@ -291,10 +293,10 @@ class SerialQueue(metaclass=MCSingleton):
 
         with self.write_lock:
             log.debug(f"Instructions {instruction_list} enqueued"
-                      f"{'to the front' if front else ''}")
+                      f"{'to the front' if to_front else ''}")
 
             for instruction in instruction_list:
-                self._enqueue(instruction, front)
+                self._enqueue(instruction, to_front)
 
         self._try_writing()
 

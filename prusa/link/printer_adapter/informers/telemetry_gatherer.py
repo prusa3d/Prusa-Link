@@ -25,6 +25,7 @@ log = logging.getLogger(__name__)
 
 
 class TelemetryGatherer(ThreadedUpdatable):
+    """Compiles telemetry data from any source into Telemetry"""
     thread_name = "telemetry"
     update_interval = TELEMETRY_INTERVAL
 
@@ -48,6 +49,7 @@ class TelemetryGatherer(ThreadedUpdatable):
         self.model = model
         self.serial_reader = serial_reader
         self.serial_queue = serial_queue
+        self.current_telemetry = Telemetry()
 
         self.slow_ticker = Ticker(SLOW_TELEMETRY)
 
@@ -76,19 +78,22 @@ class TelemetryGatherer(ThreadedUpdatable):
         for regex, handler in regex_handlers.items():
             self.serial_reader.add_handler(regex, handler)
 
-        self.current_telemetry = Telemetry()
-
         super().__init__()
 
     def ask_for_print_info(self):
+        """
+        Returns True, when the state is right for getting print info again
+        """
         return self.model.state_manager.current_state in PRINTING_STATES \
-                and self.slow_ticker.output()
-
-    def ask_for_positions(self):
-        return self.model.state_manager.current_state not in PRINTING_STATES \
-                or self.slow_ticker.output()
+            and self.slow_ticker.output()
 
     def update(self):
+        """
+        Goes through things to poll, for each one calls to_execute to know
+        whether to poll this time, sends appropriate gcode and handles the
+        result.
+        :return:
+        """
         for gcode, regexp, result_handler, to_execute \
                 in self.telemetry_instructions:
             if to_execute():
@@ -97,13 +102,32 @@ class TelemetryGatherer(ThreadedUpdatable):
                 wait_for_instruction(instruction, lambda: self.running)
                 result_handler(instruction)
 
-        self.current_telemetry = Telemetry()
         self.slow_ticker.update()
 
     def telemetry_updated(self):
+        """Notifies about new telemetry data being available"""
         self.updated_signal.send(self, telemetry=self.current_telemetry)
+        # Reset every model update, so if the model resets,
+        # the old data does not get sent twice
+        self.current_telemetry = Telemetry()
+
+    def temperature_result(self, instruction: MandatoryMatchableInstruction):
+        """
+        Temperature poll result handler, uses autoreport handler for parsing,
+        as the outputs are identical
+
+        Temperatures aren't polled anymore.
+        Keeping this around for a rainy day
+        """
+        match = instruction.match()
+        if match:
+            self.temperature_handler(None, match)
 
     def temperature_handler(self, sender, match: re.Match):
+        """
+        Parses the temperature autoreport data,
+        is called by poll result handler
+        """
         if match:
             groups = match.groupdict()
             self.current_telemetry.temp_nozzle = float(groups["ntemp"])
@@ -112,17 +136,23 @@ class TelemetryGatherer(ThreadedUpdatable):
             self.current_telemetry.target_bed = float(groups["set_btemp"])
             self.telemetry_updated()
 
-    def temperature_result(self, instruction: MandatoryMatchableInstruction):
-        match = instruction.match()
-        if match:
-            self.temperature_handler(None, match)
-
     def position_result(self, instruction: MandatoryMatchableInstruction):
+        """
+        Position poll result handler, uses autoreport handler for parsing,
+        as the outputs are identical
+
+        Positions aren't polled anymore.
+        Keeping this around for a rainy day
+        """
         match = instruction.match()
         if match:
             self.position_handler(None, match)
 
     def position_handler(self, sender, match: re.Match):
+        """
+        Parses the position autoreport data,
+        is called by poll result handler
+        """
         if match:
             groups = match.groupdict()
             self.current_telemetry.axis_x = float(groups["x"])
@@ -131,6 +161,13 @@ class TelemetryGatherer(ThreadedUpdatable):
             self.telemetry_updated()
 
     def fan_result(self, instruction: MandatoryMatchableInstruction):
+        """
+        Fan poll result handler, uses autoreport handler for parsing,
+        as the outputs are identical
+
+        Fans aren't polled anymore.
+        Keeping this around for a rainy day
+        """
         for match in instruction.get_matches():
             extruder_fan_rpm, print_fan_rpm = match.groups()
             if extruder_fan_rpm:
@@ -140,6 +177,10 @@ class TelemetryGatherer(ThreadedUpdatable):
         self.telemetry_updated()
 
     def new_fan_handler(self, sender, match: re.Match):
+        """
+        Parses the fan autoreport. The data here is not the same as when
+        we were polling them
+        """
         if match:
             groups = match.groupdict()
             self.current_telemetry.fan_extruder = int(groups["extruder_rpm"])
@@ -151,6 +192,15 @@ class TelemetryGatherer(ThreadedUpdatable):
             self.telemetry_updated()
 
     def m27_result(self, instruction: MandatoryMatchableInstruction):
+        """
+        Parses the M27 P polling result
+
+        The output varies a lot between states. Usually, only a state is
+        reported, unless the printer is SD printing.
+
+        During which the printer reports the file name, byte position in the
+        file and its size and the time it has been printing this file
+        """
         file_or_status_match = instruction.match()
         if not file_or_status_match:
             return
@@ -203,6 +253,7 @@ class TelemetryGatherer(ThreadedUpdatable):
             self.paused_sd_signal.send(self)
 
     def flow_rate_result(self, instruction: MandatoryMatchableInstruction):
+        """arses the flow rate poll result"""
         match = instruction.match()
         if match:
             flow = int(match.group("percent"))
@@ -212,6 +263,7 @@ class TelemetryGatherer(ThreadedUpdatable):
 
     def speed_multiplier_result(self,
                                 instruction: MandatoryMatchableInstruction):
+        """Parses the speed multiplier poll result"""
         match = instruction.match()
         if match:
             speed = int(match.group("percent"))
@@ -221,10 +273,19 @@ class TelemetryGatherer(ThreadedUpdatable):
                 self.telemetry_updated()
 
     def print_info_result(self, instruction: MandatoryMatchableInstruction):
+        """Print info polling handler"""
         match = instruction.match()
         self.print_info_handler(None, match)
 
     def print_info_handler(self, sender, match: re.Match):
+        """
+        Parses print info autoreports which includes minutes remaining and
+        progress percentage
+        Called by the polling handler as the output is identical
+
+        The minutes remaining are naively multiplied by the inverse of the
+        speed multiplier
+        """
         if match:
             groups = match.groupdict()
             progress = int(groups["progress"])
@@ -255,6 +316,12 @@ class TelemetryGatherer(ThreadedUpdatable):
                 self.telemetry_updated()
 
     def heating_handler(self, sender, match: re.Match):
+        """
+        When the printer is heating, it cannot be polled, but it
+        starts reporting temperatures by itself.
+        Parses the output of the printer when its heating the heatbed
+        and the extruder
+        """
         groups = match.groupdict()
 
         self.current_telemetry.temp_nozzle = float(groups["ntemp"])
@@ -262,12 +329,22 @@ class TelemetryGatherer(ThreadedUpdatable):
         self.telemetry_updated()
 
     def heating_hotend_handler(self, sender, match: re.Match):
+        """
+        When the printer is heating, it cannot be polled, but it
+        starts reporting temperatures by itself.
+        Parses the output of the printer when its heating the hotend
+        and the extruder
+        """
         groups = match.groupdict()
 
         self.current_telemetry.temp_nozzle = float(groups["ntemp"])
         self.telemetry_updated()
 
     def new_print(self):
+        """
+        When a new print is detected, it implies some values like progress and
+        time_printing being at zero
+        """
         self.current_telemetry.progress = 0
         self.current_telemetry.time_printing = 0
         self.telemetry_updated()

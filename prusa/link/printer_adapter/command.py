@@ -25,6 +25,11 @@ class CommandFailed(Exception):
 
 
 class Command:
+    """
+    Commands are like controllers, they do stuff and need a lot of info to
+    do it. This class provides most of the components a command could want to
+    access or use.
+    """
     command_name = "command"
 
     def __init__(self, command_id=None, source=Source.CONNECT, **kwargs):
@@ -44,6 +49,7 @@ class Command:
         self.running = True
 
     def failed(self, message):
+        """A shorthand for raising an exception when a command fails"""
         raise CommandFailed(message)
 
     def wait_while_running(self, instruction):
@@ -51,6 +57,10 @@ class Command:
         wait_for_instruction(instruction, lambda: self.running)
 
     def do_instruction(self, message):
+        """
+        Shorthand for enqueueing and waiting for an instruction
+        Enqueues everything to front as commands have a higher priority
+        """
         instruction = enqueue_instruction(self.serial_queue,
                                           message,
                                           to_front=True)
@@ -58,7 +68,10 @@ class Command:
         return instruction
 
     def do_matchable(self, message, regexp: re.Pattern):
-        """Enqueues everything to front as commands have a higher priority"""
+        """
+        Shorthand for enqueueing an waiting for a matchable instruction
+        Enqueues everything to front as commands have a higher priority
+        """
         instruction = enqueue_matchable(self.serial_queue,
                                         message,
                                         regexp,
@@ -67,12 +80,16 @@ class Command:
         return instruction
 
     def wait_for_instruction(self, instruction):
+        """Waits for instruction until it gets confirmed or we quit"""
         self.wait_while_running(instruction)
 
         if not instruction.is_confirmed():
             self.failed("Command interrupted")
 
     def run_command(self) -> Dict[str, Any]:
+        """
+        Encapsulates the run command, provides default data for returning
+        """
         data = self._run_command()
         default_data = dict(source=Source.CONNECT)
         if data is not None:
@@ -84,4 +101,5 @@ class Command:
         ...
 
     def stop(self):
+        """Stops the command"""
         self.running = False

@@ -8,6 +8,7 @@ from .model_classes import JobState, SDState
 
 
 class FilePrinterData(BaseModel):
+    """Data of the FilePrinter class"""
     tmp_file_path: Optional[str]
     pp_file_path: Optional[str]
     printing: Optional[bool]
@@ -19,6 +20,7 @@ class FilePrinterData(BaseModel):
 
 
 class StateManagerData(BaseModel):
+    """Data of the StateManager class"""
     # The ACTUAL states considered when reporting
     base_state: Optional[State] = State.READY
     printing_state: Optional[State] = None
@@ -31,6 +33,7 @@ class StateManagerData(BaseModel):
 
 
 class JobData(BaseModel):
+    """Data of the Job class"""
     job_start_cmd_id: Optional[int]
     printing_file_path: Optional[str]
     printing_file_m_time: Optional[str]
@@ -54,11 +57,13 @@ class JobData(BaseModel):
 
 
 class IpUpdaterData(BaseModel):
+    """Data of the IpUpdater class"""
     local_ip: Optional[str]
     update_ip_on: Optional[float]
 
 
 class SDCardData(BaseModel):
+    """Data of the SDCard class"""
     expecting_insertion: Optional[bool]
     invalidated: Optional[bool]
     is_flash_air: Optional[bool]
@@ -72,6 +77,7 @@ class SDCardData(BaseModel):
 
 
 class MountsData(BaseModel):
+    """Data of the Mounts class"""
     blacklisted_paths: Optional[List[str]]
     blacklisted_names: Optional[List[str]]
     configured_mounts: Optional[Set[str]]
@@ -79,6 +85,7 @@ class MountsData(BaseModel):
 
 
 class PrintStatsData(BaseModel):
+    """Data of the PrintStats class"""
     print_time: Optional[float]
     segment_start: Optional[float]
     has_inbuilt_stats: Optional[bool]

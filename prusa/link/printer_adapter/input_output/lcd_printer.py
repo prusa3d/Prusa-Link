@@ -41,15 +41,31 @@ class LCDPrinter(metaclass=MCSingleton):
         self.display_thread.start()
 
     def ip(self):
+        """
+        Proxy getter I guess, why this isn't a property or named
+        get_ip is a mystery to me
+        """
         return self.model.ip_updater.local_ip
 
     def lcd_updated(self, sender, match):
+        """
+        Gets called each time the firmware prints out "LCD status changed
+        The ignora parameter counts how many messages have we sent, so
+        we don't misrecognize our messages as FW printing something by itself
+        """
         if self.ignore > 0:
             self.ignore -= 1
         else:
             self.last_updated = time()
 
     def show_status(self):
+        """
+        Shows the Prusa Link status message
+        Waits for any FW produced messgae that appeared recently, so the
+        user can read it first
+
+        Those have this format: ERR|OK: <IP address>
+        """
         while self.running:
             # Wait until it's been X seconds since FW updated the LCD
             fw_msg_grace_end = self.last_updated + FW_MESSAGE_TIMEOUT
@@ -92,10 +108,18 @@ class LCDPrinter(metaclass=MCSingleton):
             sleep(max(0.0, to_sleep))
 
     def __print_text(self, text: str):
+        """
+        Sends the given message using M117 gcode and waits for its
+        confirmation
+
+        :param text: Text to be shown in the status portion of the printer LCD
+        Should not exceed 20 characters.
+        """
         instruction = enqueue_instruction(self.serial_queue, f"M117 {text}")
         wait_for_instruction(instruction, lambda: self.running)
         log.debug(f"Printed: '{text}' on the LCD.")
 
     def stop(self):
+        """Stops the module"""
         self.running = False
         self.display_thread.join()
