@@ -402,7 +402,7 @@ class PrusaLink:
     def printer_registered(self, token):
         """Store settings with updated token when printer was registered."""
         self.settings.service_connect.token = token
-        self.settings.update()
+        self.settings.update_sections()
         with open(self.cfg.printer.settings, 'w') as ini:
             self.settings.write(ini)
 
