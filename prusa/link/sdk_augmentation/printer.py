@@ -46,6 +46,10 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         return res
 
     def get_info(self) -> Dict[str, Any]:
+        """
+        Returns a dictionary containing the printers' nozzle diameter
+        and files
+        """
         info = super().get_info()
         info["nozzle_diameter"] = self.nozzle_diameter
         info["files"] = self.fs.to_dict()
@@ -79,6 +83,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         return data
 
     def from_path(self, path: Path):
+        """Parses SD file metadata from its name only"""
         string_path = str(path)
         file: File = self.fs.get(string_path)
 
@@ -96,4 +101,5 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         return data
 
     def stop(self):
+        """Passes the stop request to the custom command handler"""
         self.command_handler.stop()

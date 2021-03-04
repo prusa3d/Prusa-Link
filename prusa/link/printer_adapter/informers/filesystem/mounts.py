@@ -50,6 +50,11 @@ class Mounts(ThreadedUpdatable):
         self.data.mounted_set = set()
 
     def update(self):
+        """
+        Synchronizes our data model with the OS, produces signals for
+        mounts we're interested in
+        """
+
         # Add non mount directories to the mounts
         new_mount_set = self.get_mountpoints()
 
@@ -144,6 +149,11 @@ class FSMounts(Mounts):
         self.epoll_obj.register(self.mtab.fileno(), select.EPOLLOUT)
 
     def get_mountpoints(self):
+        """
+        Checks epoll for mountpoint changes. Ff there are changes, gets
+        a new mountpoint list from mtab.
+        If not, returns the current mountpoints
+        """
         # Non empty epoll result means something regarding mounts has changed
         epoll_result = self.epoll_obj.poll(QUIT_INTERVAL)
         if epoll_result or self.force_update:
@@ -166,11 +176,13 @@ class FSMounts(Mounts):
             return self.data.mounted_set
 
     def mount_belongs(self, path, fs_type):
+        """Checks if we are interested in tracking a given mountpoint"""
         is_wanted = str(path) in self.data.configured_mounts
         type_valid = is_wanted and fs_type not in BLACKLISTED_TYPES
         return is_wanted and type_valid
 
     def stop(self):
+        """Stops this component"""
         super().stop()
         self.mtab.close()
 
@@ -191,6 +203,10 @@ class DirMounts(Mounts):
     update_interval = DIR_RESCAN_INTERVAL
 
     def get_mountpoints(self):
+        """
+        Goes through the list of configured directories for mounting and
+        adds every usable one to the list of mounted directories
+        """
         new_directory_set: Set[str] = set()
         for directory in self.data.configured_mounts:
 
@@ -209,6 +225,9 @@ class DirMounts(Mounts):
 
     @staticmethod
     def dir_belongs(directory: str):
+        """
+        Checks if we are interested in tracking a given directory mountpoint
+        """
         exists = os.path.exists(directory)
         readable = exists and os.access(directory, os.R_OK)
         return exists and readable

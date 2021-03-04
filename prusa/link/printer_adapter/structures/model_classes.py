@@ -9,6 +9,7 @@ from ... import __version__
 
 
 class Telemetry(BaseModel):
+    """The Telemetry model"""
 
     temp_nozzle: Optional[float] = None
     temp_bed: Optional[float] = None
@@ -37,6 +38,7 @@ class Telemetry(BaseModel):
 
 
 class NetworkInfo(BaseModel):
+    """The Network Info model"""
 
     lan_ipv4: Optional[str] = None  # not implemented yet
     lan_ipv6: Optional[str] = None  # not implemented yet
@@ -48,6 +50,7 @@ class NetworkInfo(BaseModel):
 
 
 class FileTree(BaseModel):
+    """The File Tree model"""
 
     type: str = None
     name: str = None
@@ -62,6 +65,7 @@ FileTree.update_forward_refs()
 
 
 class PrinterInfo(BaseModel):
+    """The printer Info model"""
 
     type: int = None
     version: int = None
@@ -77,22 +81,26 @@ class PrinterInfo(BaseModel):
     nozzle_diameter: float = None
 
     def set_printer_model_info(self, data):
+        """Setter expanding a tuple into model fields"""
         self.type, self.version, self.subversion = data
 
 
 class FileType(Enum):
+    """File type enum"""
     FILE = "FILE"
     DIR = "DIR"
     MOUNT = "MOUNT"
 
 
 class JobState(Enum):
+    """Job state enum"""
     IDLE = "IDLE"
     IN_PROGRESS = "IN_PROGRESS"
     ENDING = "ENDING"
 
 
 class SDState(Enum):
+    """SD State enum"""
     PRESENT = "PRESENT"
     INITIALISING = "INITIALISING"
     UNSURE = "UNSURE"

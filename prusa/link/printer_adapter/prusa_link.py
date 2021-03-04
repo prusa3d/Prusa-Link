@@ -126,7 +126,6 @@ class PrusaLink:
         self.serial_reader.add_handler(START_PRINT_REGEX,
                                        self.sd_print_start_observed)
         self.serial_reader.add_handler(PRINTER_BOOT_REGEX, self.printer_reset)
-        self.job.job_id_updated_signal.connect(self.job_id_updated)
         self.state_manager.pre_state_change_signal.connect(
             self.pre_state_change)
         self.state_manager.post_state_change_signal.connect(
@@ -498,9 +497,6 @@ class PrusaLink:
                                source=source,
                                job_id=self.model.job.get_job_id_for_api(),
                                **extra_data)
-
-    def job_id_updated(self, sender, job_id):
-        """Nothing to do, the writing to model is done inside the module"""
 
     def time_printing_updated(self, sender, time_printing):
         """Connects the serial print print timer with telemetry"""

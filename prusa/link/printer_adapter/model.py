@@ -39,6 +39,10 @@ class Model(metaclass=MCSingleton):
         self.fs_mounts: MountsData = MountsData()
 
     def get_and_reset_telemetry(self):
+        """
+        Telemetry is special, to report only the most recent values,
+        each read it gets reset
+        """
         with self.lock:
             self._telemetry.state = self.state_manager.current_state
             self._telemetry.job_id = self.job.get_job_id_for_api()
@@ -58,6 +62,10 @@ class Model(metaclass=MCSingleton):
             return to_return
 
     def set_telemetry(self, new_telemetry: Telemetry):
+        """
+        Merges the new data into the cumulative telemetry.
+        The second telemetry is not being reset. It is useful for monitoring
+        """
         with self.lock:
             # let's merge them, instead of overwriting
             merge = self._telemetry.dict()

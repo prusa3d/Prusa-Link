@@ -11,6 +11,10 @@ from .updatable import ThreadedUpdatable
 
 
 class ReportingEnsurer(ThreadedUpdatable):
+    """
+    Monitors autoreporting output, if any is missing, tries to turn
+    autoreporting back on
+    """
     thread_name = "temp_ensurer"
     update_interval = 10
 
@@ -29,15 +33,24 @@ class ReportingEnsurer(ThreadedUpdatable):
         self.turn_reporting_on()
 
     def temps_recorded(self, sender=None, match=None):
+        """Resets the timeout for temperatures"""
         self.last_seen_temps = time()
 
     def positions_recorded(self, sender=None, match=None):
+        """Resets the timeout for positions"""
         self.last_seen_positions = time()
 
     def fans_recorded(self, sender=None, match=None):
+        """Resets the timeout for fans"""
         self.last_seen_fans = time()
 
     def update(self):
+        """
+        Calculates the time since the last time an autoreport came in
+        for each monitored value.
+        If any one of the is larger than REPORTING_TIMEOUT, calls
+        turn_reporting_on()
+        """
         since_last_temps = time() - self.last_seen_temps
         since_last_positions = time() - self.last_seen_positions
         since_last_fans = time() - self.last_seen_fans
@@ -51,6 +64,11 @@ class ReportingEnsurer(ThreadedUpdatable):
             self.turn_reporting_on()
 
     def turn_reporting_on(self):
+        """
+        Tries to turn reporting on using the M155
+        The C argument  is the bitmask for type of autoreporting
+        The S argument is the frequency of autoreports
+        """
         instruction = enqueue_instruction(self.serial_queue, "M155 S2 C7")
         wait_for_instruction(instruction, lambda: self.running)
         self.temps_recorded()
@@ -58,5 +76,6 @@ class ReportingEnsurer(ThreadedUpdatable):
         self.fans_recorded()
 
     def stop(self):
+        """Tries to turn the autoreporting off before stopping"""
         enqueue_instruction(self.serial_queue, "M155 S0 C0")
         super().stop()

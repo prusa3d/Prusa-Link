@@ -16,6 +16,12 @@ log = logging.getLogger(__name__)
 
 
 class Serial(metaclass=MCSingleton):
+    """
+    Class handling the basic serial management, opening, re-opening,
+    writing and reading.
+
+    It also can reset the connected device using DTR - works only with USB
+    """
     def __init__(self,
                  serial_reader: SerialReader,
                  port="/dev/ttyAMA0",
@@ -46,12 +52,16 @@ class Serial(metaclass=MCSingleton):
         self.read_thread.start()
 
     def _reopen(self):
+        """
+        If open, closes the serial port, for usb prevents unnecessary
+        device resets and finally tries to open the serial again
+        """
         if self.serial is not None and self.serial.is_open:
             self.serial.close()
 
         # Prevent a hangup on serial close, this will make it,
         # so the printer resets only on reboot or replug,
-        # not on prusa_link restarts
+        # not when prusa_link restarts
         f = open(self.port)
         attrs = termios.tcgetattr(f)
         log.debug(f"Serial attributes: {attrs}")
@@ -75,6 +85,12 @@ class Serial(metaclass=MCSingleton):
         sleep(PRINTER_BOOT_WAIT)
 
     def _renew_serial_connection(self):
+        """
+        Informs the rest of the app about failed serial connection,
+        After which it keeps trying to re-open the serial port
+
+        If it succeeds, generates a signal to remove the rest of the app
+        """
         # Never call this without locking the write lock first!
 
         # When just starting, this is fine as the signal handlers
@@ -121,7 +137,8 @@ class Serial(metaclass=MCSingleton):
 
     def write(self, message: bytes):
         """
-        Writes a message
+        Writes a message to serial, if it for some reason fails,
+        calls _renew_serial_connection
 
         :param message: the message to be sent
         """
@@ -143,12 +160,14 @@ class Serial(metaclass=MCSingleton):
                     sent = True
 
     def blip_dtr(self):
+        """Pulses the DTR to reset the connected device. Work only over USB"""
         with self.write_lock:
             self.serial.dtr = False
             self.serial.dtr = True
             sleep(PRINTER_BOOT_WAIT)
 
     def stop(self):
+        """Stops the component"""
         self.running = False
         self.serial.close()
         self.read_thread.join()

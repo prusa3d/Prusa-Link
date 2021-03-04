@@ -15,6 +15,10 @@ log = logging.getLogger(__name__)
 
 
 class InfoSender:
+    """
+    Responsible for compiling the printer info for the SDK
+    Repurposed, it really used to send info
+    """
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
                  printer: MyPrinter, model: Model, lcd_printer: LCDPrinter):
         self.printer = printer
@@ -28,6 +32,7 @@ class InfoSender:
         self.running = True
 
     def update_info(self):
+        """Gets and refreshes the printer info for SDK"""
         self.printer.network_info = get_network_info(
             self.model).dict(exclude_none=True)
         self.printer.firmware = get_firmware_version(self.serial_queue,
@@ -38,6 +43,7 @@ class InfoSender:
                                                      lambda: self.running)
 
     def fill_missing_info(self):
+        """Fills only info, which is missing"""
         self.printer.network_info = get_network_info(
             self.model).dict(exclude_none=True)
         if self.printer.firmware is None:
@@ -51,6 +57,7 @@ class InfoSender:
                 self.serial_queue, lambda: self.running)
 
     def initial_info(self):
+        """Persistently tries to gather missing printer info"""
         # Let's get only the stuff we don't have yet
         while self.running:
             try:
@@ -63,6 +70,7 @@ class InfoSender:
                 break
 
     def try_sending_info(self):
+        """Starts a thread for attempting no update info for the SDK"""
         if self.info_updating_thread is None:
             # Wait for the printer to boot
             sleep(PRINTER_BOOT_WAIT)
@@ -72,6 +80,8 @@ class InfoSender:
             log.warning("Already trying to send info")
 
     def _try_sending_info(self):
+        """Tries to update the info, but does not persist, i
+        f an error occurs"""
         try:
             self.update_info()
             self.printer.event_cb(**self.printer.get_info())
@@ -81,6 +91,7 @@ class InfoSender:
             self.info_updating_thread = None
 
     def stop(self):
+        """Stops the module"""
         if self.info_updating_thread is not None:
             self.running = False
             self.info_updating_thread.join()

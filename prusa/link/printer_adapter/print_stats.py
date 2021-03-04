@@ -9,6 +9,10 @@ log = logging.getLogger(__name__)
 
 
 class PrintStats:
+    """
+    For serial prints without inbuilt progress and estimated time left
+    reporting, this component tries to estimate those values
+    """
     def __init__(self, model: Model):
         self.model = model
 
@@ -21,6 +25,11 @@ class PrintStats:
         self.data.total_gcode_count = 0
 
     def track_new_print(self, file_path):
+        """
+        Analyzes the file, to determine whether it contains progress and time
+        reporting
+        :param file_path: path of the file to analyze
+        """
         self.data.total_gcode_count = 0
         self.data.print_time = 0
         self.data.has_inbuilt_stats = False
@@ -40,12 +49,26 @@ class PrintStats:
             f"inbuilt percent and time reporting.")
 
     def end_time_segment(self):
+        """
+        Ends the crrent time segment and adds its length to the print time
+        """
         self.data.print_time += time() - self.data.segment_start
 
     def start_time_segment(self):
+        """
+        Starts a new time segment for the print time measuring
+        """
         self.data.segment_start = time()
 
     def get_stats(self, gcode_number):
+        """
+        Based on which gcode are we now processing and how long is the print
+        running, estimates the progress and time left
+
+        :param the gcode number being printed
+        :return tuple containing the percentage and the estimated minutes
+        remaining
+        """
         self.end_time_segment()
         self.start_time_segment()
 
@@ -66,4 +89,5 @@ class PrintStats:
             return percent_done, min_remaining
 
     def get_time_printing(self):
+        """Returns for how long was the print running"""
         return self.data.print_time + (time() - self.data.segment_start)

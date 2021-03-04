@@ -67,32 +67,58 @@ def get_local_ip():
 
 
 def get_clean_path(path):
+    """
+    Uses pathlib to load a path string, then gets a string for it,
+    ensuring consistent formatting
+    """
     return str(Path(path))
 
 
 def ensure_directory(directory):
+    """If missing, makes directories, along the supplied path"""
     if not os.path.exists(directory):
         os.makedirs(directory)
 
 
 def get_checksum(message: str):
+    """
+    Goes over each byte of the supplied message and xors it onto the checksum
+    :param message: message to compute the checksum for (usually a gcode)
+    :return the computed checksum
+    """
     checksum = 0
     for char in message.encode("ascii"):
         checksum ^= char
 
 
 def persist_file(file: typing.TextIO):
+    """
+    Tells the system to write and sync the file
+
+    Unused
+    """
     file.flush()
     os.fsync(file.fileno())
 
 
 def get_gcode(line):
+    """
+    Removes comments after the supplied gcode line
+    :param line: line of gcode most likely read from a file
+    :return: gcode without the comment at the end
+    """
     return line.split(";", 1)[0].strip()
 
 
 def file_is_on_sd(path_parts):
+    """Checks if the file path starts wit the sd cards' mount point name"""
     return path_parts[1] == SD_MOUNT_NAME
 
 
 def make_fingerprint(sn):
+    """
+    Uses sha256 to hask the serial number for use as a fingerprint
+    Ideally, we would have the printer's UUID too, but MK3 printers
+    don't have it
+    """
     return sha256(sn.encode()).hexdigest()

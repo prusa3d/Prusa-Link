@@ -2,6 +2,7 @@ from typing import List
 
 
 class HeapItem:
+    """An item in the heap. Needs to be camparable"""
     def __init__(self, value):
         self.value = value
         self.heap_value = None
@@ -24,6 +25,7 @@ class HeapItem:
 
 
 class MinHeap:
+    """Min heap implementation with element adding and removing"""
     def __init__(self):
         self.heap: List[HeapItem] = []
 
@@ -40,16 +42,31 @@ class MinHeap:
         self.heap[key] = value
 
     def push(self, item: HeapItem):
+        """Ads an element to the heap"""
         item.heap_value = item.value
         self._push(item)
 
     def _push(self, item):
+        """
+        Adds an element to the heap
+
+        In min heaps this is done by adding the element at the end, then
+        switching places with parents larger than it
+        """
         self.heap.append(item)
 
         initial_index = len(self.heap) - 1
         self.sift_down(0, initial_index)
 
     def pop(self, index=0):
+        """
+        Removes an element from the heap
+
+        In min heaps this is done by swapping the element with the last
+        element in the heap, then removing the last element, (which is now
+        the thing we wanted to delete). After that depending on the value of
+        the element that replaced the deleted one sifting it up or down
+        """
         old_item: HeapItem = self.heap[index]
         old_value = old_item.heap_value
 
@@ -73,6 +90,11 @@ class MinHeap:
         return old_item
 
     def sift_up(self, pos):
+        """
+        Compares an element with its children, if the element is larger,
+        its position gets swapt with the smaller child. Continues until
+        there are no children smalle than the element
+        """
         endpos = len(self.heap)
         startpos = pos
         newitem = self.heap[pos]
@@ -96,6 +118,14 @@ class MinHeap:
         self.sift_down(startpos, pos)
 
     def sift_down(self, startpos, pos):
+        """
+        The element gets compared with its parent, if it's smaller, they get
+        swapped. Continues until it finds a parent smaller than itself,
+        or the element becomes the root of the heap
+        :param startpos:
+        :param pos:
+        :return:
+        """
         newitem = self.heap[pos]
         # Follow the path to the root, moving parents down until finding
         # a place newitem fits.
@@ -113,6 +143,10 @@ class MinHeap:
 
 
 class MaxHeap(MinHeap):
+    """
+    Lazily implemented max heap by using the min heap, just inverting
+    the heap value
+    """
     def push(self, item: HeapItem):
         item.heap_value = -item.value
         self._push(item)
