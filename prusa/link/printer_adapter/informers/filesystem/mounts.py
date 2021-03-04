@@ -45,7 +45,7 @@ class Mounts(ThreadedUpdatable):
             self.filter_blacklisted_names(finalist_mountpoints,
                                           self.data.blacklisted_names))
 
-        log.debug(f"Configured mounpoints: {self.data.configured_mounts}")
+        log.debug("Configured mounpoints: %s", self.data.configured_mounts)
 
         self.data.mounted_set = set()
 
@@ -61,11 +61,11 @@ class Mounts(ThreadedUpdatable):
         added, removed = self.get_differences(new_mount_set)
 
         for path in added:
-            log.info(f"Newly mounting {path}")
+            log.info("Newly mounting %s", path)
             self.mounted_signal.send(self, path=path)
 
         for path in removed:
-            log.info(f"Unmounted {path}")
+            log.info("Unmounted %s", path)
             self.unmounted_signal.send(self, path=path)
 
         self.data.mounted_set = new_mount_set
@@ -96,8 +96,8 @@ class Mounts(ThreadedUpdatable):
         """
         for blacklisted in black_list:
             if candidate.startswith(blacklisted):
-                log.warning(f"Ignoring {candidate} because it's "
-                            f"blacklisted by {blacklisted}")
+                log.warning("Ignoring %s because it's blacklisted by %s",
+                            candidate, blacklisted)
                 return True
         return False
 
@@ -108,8 +108,8 @@ class Mounts(ThreadedUpdatable):
         clean_candidate = candidate.strip("/").split("/")[-1]
         for blacklisted in black_list:
             if clean_candidate == blacklisted:
-                log.warning(f"Ignoring {clean_candidate} because it's "
-                            f"blacklisted by {blacklisted}")
+                log.warning("Ignoring %s because it's blacklisted by %s",
+                            clean_candidate, blacklisted)
                 return True
         return False
 
@@ -214,13 +214,13 @@ class DirMounts(Mounts):
             try:
                 ensure_directory(directory)
             except OSError:
-                log.exception(f"Cannot create a dirextory at {directory}")
+                log.exception("Cannot create a directory at %s", directory)
 
             if self.dir_belongs(directory):
                 new_directory_set.add(directory)
             else:
-                log.warning(f"Directory {directory} does not exist or isn't "
-                            f"readable.")
+                log.warning("Directory %s does not exist or isn't readable.",
+                            directory)
         return new_directory_set
 
     @staticmethod

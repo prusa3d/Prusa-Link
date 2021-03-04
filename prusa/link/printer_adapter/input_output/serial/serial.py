@@ -64,7 +64,7 @@ class Serial(metaclass=MCSingleton):
         # not when prusa_link restarts
         f = open(self.port)
         attrs = termios.tcgetattr(f)
-        log.debug(f"Serial attributes: {attrs}")
+        log.debug("Serial attributes: %s", attrs)
         # disable hangup
         attrs[2] = attrs[2] & ~termios.HUPCL
         # TCSAFLUSH set after everything is done
@@ -102,8 +102,8 @@ class Serial(metaclass=MCSingleton):
                 errors.SERIAL.ok = True
             except (serial.SerialException, FileNotFoundError):
                 errors.SERIAL.ok = False
-                log.warning(f"Opening of the serial port {self.port} failed. "
-                            f"Retrying...")
+                log.warning("Opening of the serial port %s failed. Retrying",
+                            self.port)
                 sleep(SERIAL_REOPEN_TIMEOUT)
             else:
                 break
@@ -125,14 +125,14 @@ class Serial(metaclass=MCSingleton):
                     # if the serial is broken
                     self._renew_serial_connection()
             except UnicodeDecodeError:
-                log.error(f"Failed decoding a message {raw_line}")
+                log.error("Failed decoding a message %s", raw_line)
             else:
                 if line != "":
                     # with self.write_read_lock:
                     # Why would I not want to write and handle reads
                     # at the same time? IDK, but if something weird starts
                     # happening, i'll re-enable this
-                    log.debug(f"Printer says: '{line}'")
+                    log.debug("Printer says: '%s'", line)
                     self.serial_reader.decide(line)
 
     def write(self, message: bytes):

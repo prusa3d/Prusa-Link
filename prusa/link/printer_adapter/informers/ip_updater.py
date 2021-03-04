@@ -53,8 +53,9 @@ class IPUpdater(ThreadedUpdatable):
             # Show the IP at least once every minute,
             # so any errors printed won't stay forever displayed
             if self.data.local_ip != local_ip:
-                log.debug(f"The IP has changed, or we reconnected."
-                          f"The new one is {local_ip}")
+                log.debug(
+                    "The IP has changed, or we reconnected. "
+                    "The new one is %s", local_ip)
                 self.update_ip(local_ip)
             elif time() > self.data.update_ip_on:
                 self.data.update_ip_on = time() + SHOW_IP_INTERVAL
@@ -70,7 +71,7 @@ class IPUpdater(ThreadedUpdatable):
         """
         old_ip = self.data.local_ip
         self.data.local_ip = new_ip
-        log.debug(f"old {old_ip} != new {new_ip} = {old_ip != new_ip}")
+        log.debug("old %s != new %s = %s", old_ip, new_ip, old_ip != new_ip)
         if old_ip != new_ip:
             self.send_ip_to_printer(new_ip)
         self.updated_signal.send(self, old_ip=old_ip, new_ip=new_ip)

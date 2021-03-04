@@ -96,7 +96,7 @@ class Job(metaclass=MCSingleton):
                 self.model.print_stats.has_inbuilt_stats
         self.change_state(JobState.IN_PROGRESS)
         self.write()
-        log.debug(f"New job started, id = {self.data.job_id}")
+        log.debug("New job started, id = %s", self.data.job_id)
         self.job_id_updated_signal.send(self,
                                         job_id=self.data.get_job_id_for_api())
 
@@ -132,7 +132,7 @@ class Job(metaclass=MCSingleton):
         """
         Previously wrote the state into a file, now only logs the state change
         """
-        log.debug(f"Job changed state to {state}")
+        log.debug("Job changed state to %s", state)
         self.data.job_state = state
 
     def write(self):
@@ -149,7 +149,7 @@ class Job(metaclass=MCSingleton):
 
     def get_job_id(self):
         """Only return job_id if a job is in progress, otherwise return None"""
-        log.debug(f"job_id requested, we are {self.data.job_state.name}")
+        log.debug("job_id requested, we are %s", self.data.job_state.name)
         if self.data.job_state != JobState.IDLE:
             return self.data.job_id
 

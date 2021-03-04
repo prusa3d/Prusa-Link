@@ -65,7 +65,7 @@ class PrintStats:
         Based on which gcode are we now processing and how long is the print
         running, estimates the progress and time left
 
-        :param the gcode number being printed
+        :param gcode_number: the gcode number being printed
         :return tuple containing the percentage and the estimated minutes
         remaining
         """
@@ -76,12 +76,12 @@ class PrintStats:
         total_time = time_per_command * self.data.total_gcode_count
         sec_remaining = total_time - self.data.print_time
         min_remaining = round(sec_remaining / 60)
-        log.debug(f"sec: {sec_remaining}, min: {min_remaining}, "
-                  f"print_time: {self.data.print_time}")
+        log.debug("sec: %s, min: %s}, print_time: %s", sec_remaining,
+                  min_remaining, self.data.print_time)
         fraction_done = gcode_number / self.data.total_gcode_count
         percent_done = round(fraction_done * 100)
 
-        log.debug(f"Print stats: {percent_done}% done,  {min_remaining}")
+        log.debug("Print stats: %s%% done,  %s", percent_done, min_remaining)
 
         if gcode_number == self.data.total_gcode_count - TAIL_COMMANDS:
             return 100, min_remaining

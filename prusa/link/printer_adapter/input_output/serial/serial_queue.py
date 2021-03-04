@@ -248,14 +248,15 @@ class SerialQueue(metaclass=MCSingleton):
 
         size = len(instruction.data)
         if size > self.rx_max:
-            log.warning(f"The data {instruction.data.decode('ASCII')} "
-                        f"we're trying to write is {size}B. But we can "
-                        f"only send {self.rx_max}B max.")
+            log.warning(
+                "The data %s we're trying to write is %sB. "
+                "But we can only send %sB at most.",
+                instruction.data.decode('ASCII'), size, self.rx_max)
 
         self._hookup_output_capture()
         self.current_instruction.sent()
 
-        log.debug(f"{instruction.data.decode('ASCII')} sent")
+        log.debug("%s sent", instruction.data.decode('ASCII'))
         self.serial.write(self.current_instruction.data)
 
     def _enqueue(self, instruction: Instruction, to_front=False):
@@ -274,8 +275,8 @@ class SerialQueue(metaclass=MCSingleton):
         """
 
         with self.write_lock:
-            log.debug(f"{instruction} enqueued. "
-                      f"{'to the front' if to_front else ''}")
+            log.debug("%s enqueued.  %s", instruction,
+                      'to the front' if to_front else '')
 
             self._enqueue(instruction, to_front)
 
@@ -288,12 +289,12 @@ class SerialQueue(metaclass=MCSingleton):
         Enqueue list of instructions
         Don't interrupt, if anyone else is enqueueing instructions
         :param instruction_list: the list to enqueue
-        :param front: whether to enqueue to front of the queue
+        :param to_front: whether to enqueue to front of the queue
         """
 
         with self.write_lock:
-            log.debug(f"Instructions {instruction_list} enqueued"
-                      f"{'to the front' if to_front else ''}")
+            log.debug("Instructions %s enqueued %s", instruction_list,
+                      'to the front' if to_front else '')
 
             for instruction in instruction_list:
                 self._enqueue(instruction, to_front)
@@ -331,8 +332,8 @@ class SerialQueue(metaclass=MCSingleton):
         calls the actual handler resend()
         """
         number = int(match.group("cmd_number"))
-        log.info(f"Resend of {number} requested. Current is "
-                 f"{self.message_number}")
+        log.info("Resend of %s requested. Current is %s", number,
+                 self.message_number)
         if self.message_number >= number:
             if (self.current_instruction is None
                     or not self.current_instruction.to_checksum):
@@ -383,7 +384,7 @@ class SerialQueue(metaclass=MCSingleton):
 
                 # If the instruction did not refuse to be confirmed
                 # Yes, that needs to happen
-                log.debug(f"{instruction} confirmed")
+                log.debug("%s confirmed", instruction)
 
                 self._teardown_output_capture()
 
@@ -394,8 +395,9 @@ class SerialQueue(metaclass=MCSingleton):
 
                 self.current_instruction = None
         else:
-            log.debug(f"{self.current_instruction} refused confirmation. "
-                      f"Hopefully it has a reason for that")
+            log.debug(
+                "%s refused confirmation. Hopefully it has a reason "
+                "for that", self.current_instruction)
 
         self._try_writing()
 
@@ -568,9 +570,8 @@ class MonitoredSerialQueue(SerialQueue):
         if self.get_current_delay() > SERIAL_QUEUE_TIMEOUT:
             # The printer did not respond in time, lets assume it forgot
             # what it was supposed to do
-            log.info(f"Timed out waiting for confirmation of "
-                     f"{self.current_instruction} after "
-                     f"{SERIAL_QUEUE_TIMEOUT}sec.")
+            log.info("Timed out waiting for confirmation of %s after %ssec.",
+                     self.current_instruction, SERIAL_QUEUE_TIMEOUT)
             log.debug("Assuming the printer yeeted our RX buffer")
             self._rx_got_yeeted()
 
