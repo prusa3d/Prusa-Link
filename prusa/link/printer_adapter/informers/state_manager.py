@@ -241,9 +241,10 @@ class StateManager(metaclass=MCSingleton):
         if source is None:
             source = state_change.default_source
 
-        log.debug(f"Source has been determined to be {source}. "
-                  f"Default was: {state_change.default_source}, "
-                  f"from: {source_from}, to: {source_to}")
+        log.debug(
+            "Source has been determined to be %s. Default was: %s, "
+            "from: %s, to: %s", source, state_change.default_source,
+            source_from, source_to)
 
         return source
 
@@ -259,8 +260,8 @@ class StateManager(metaclass=MCSingleton):
             self.data.last_state = self.data.current_state
             self.data.current_state = self.get_state()
             self.data.state_history.append(self.data.current_state)
-            log.debug(f"Changing state from {self.data.last_state} to "
-                      f"{self.data.current_state}")
+            log.debug("Changing state from %s to %s", self.data.last_state,
+                      self.data.current_state)
 
             # Now let's find out if the state change was expected
             # and what parameters can we deduce from that
@@ -269,10 +270,11 @@ class StateManager(metaclass=MCSingleton):
             reason = None
 
             if self.data.printing_state is not None:
-                log.debug(f"We are printing - {self.data.printing_state}")
+                log.debug("We are printing - %s", self.data.printing_state)
 
             if self.data.override_state is not None:
-                log.debug(f"State is overridden by {self.data.override_state}")
+                log.debug("State is overridden by %s",
+                          self.data.override_state)
 
             # If the state changed to something expected,
             # then send the information about it
@@ -282,7 +284,7 @@ class StateManager(metaclass=MCSingleton):
                 source = self.get_expected_source()
                 reason = self.expected_state_change.reason
                 if reason is not None:
-                    log.debug(f"Reason for {self.get_state()}: {reason}")
+                    log.debug("Reason for %s: %s", self.get_state(), reason)
             else:
                 log.debug("Unexpected state change. This is weird")
             self.expected_state_change = None
@@ -413,7 +415,7 @@ class StateManager(metaclass=MCSingleton):
             self.data.printing_state = None
 
         if self.data.override_state is not None:
-            log.debug(f"No longer having state {self.data.override_state}")
+            log.debug("No longer having state %s", self.data.override_state)
             self.data.override_state = None
 
     @state_influencer(StateChange(to_states={State.ATTENTION: Source.USER}))
@@ -423,8 +425,9 @@ class StateManager(metaclass=MCSingleton):
         Includes a workaround for fan error info
         """
         if self.fan_error_name is not None:
-            log.debug(f"{self.fan_error_name} fan error has been observed "
-                      "before, reporting it now")
+            log.debug(
+                "%s fan error has been observed before, reporting "
+                "it now", self.fan_error_name)
             self.expect_change(
                 StateChange(to_states={State.ATTENTION: Source.FIRMWARE},
                             reason=f"{self.fan_error_name} fan error"))

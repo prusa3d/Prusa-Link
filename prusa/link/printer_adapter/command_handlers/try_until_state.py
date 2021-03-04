@@ -45,7 +45,7 @@ class TryUntilState(Command):
                 StateChange(command_id=self.command_id,
                             to_states={desired_state: self.source}))
 
-        log.debug(f"Trying to get to the {desired_state.name} state.")
+        log.debug("Trying to get to the %s state.", desired_state.name)
 
         self.state_manager.state_changed_signal.connect(state_changed)
 
@@ -66,6 +66,6 @@ class TryUntilState(Command):
         self.state_manager.stop_expecting_change()
 
         if not succeeded:
-            log.debug(f"Could not get from {self.state_manager.get_state()} "
-                      f"to {desired_state}")
+            log.debug("Could not get from %s to %s",
+                      self.state_manager.get_state(), desired_state)
             self.failed(f"Couldn't get to the {desired_state} state.")

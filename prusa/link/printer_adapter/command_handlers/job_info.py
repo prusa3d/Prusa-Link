@@ -29,5 +29,5 @@ class JobInfo(Command):
                         source=Source.CONNECT,
                         **data)
 
-        log.debug(f"Job Info retrieved: {response}")
+        log.debug("Job Info retrieved: %s", response)
         return response

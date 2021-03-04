@@ -216,10 +216,12 @@ class TelemetryGatherer(ThreadedUpdatable):
                     current_byte = int(groups["current"])
                     bytes_in_total = int(groups["sum"])
                     progress = int((current_byte / bytes_in_total) * 100)
-                    log.debug(f"SD print has no inbuilt percentage tracking, "
-                              f"falling back to getting progress from byte "
-                              f"position in the file. Progress: {progress}% "
-                              f"Byte {current_byte}/{bytes_in_total}")
+                    log.debug(
+                        "SD print has no inbuilt percentage tracking, "
+                        "falling back to getting progress from byte "
+                        "position in the file. "
+                        "Progress: %s%% Byte %s/%s", progress, current_byte,
+                        bytes_in_total)
                     self.current_telemetry.progress = progress
                     self.telemetry_updated()
 
@@ -267,7 +269,7 @@ class TelemetryGatherer(ThreadedUpdatable):
         match = instruction.match()
         if match:
             speed = int(match.group("percent"))
-            log.debug(f"Speed is {speed}%")
+            log.debug("Speed is %s%%", speed)
             if 0 <= speed <= 999:
                 self.current_telemetry.speed = speed
                 self.telemetry_updated()
@@ -299,9 +301,8 @@ class TelemetryGatherer(ThreadedUpdatable):
 
             mins_remaining = int(speed_agnostic_mins_remaining *
                                  inverse_speed_multiplier)
-            log.debug(f"Mins without speed considering "
-                      f"{speed_agnostic_mins_remaining}, mins otherwise "
-                      f"{mins_remaining}")
+            log.debug("Mins without speed considering %s, mins otherwise %s",
+                      speed_agnostic_mins_remaining, mins_remaining)
             secs_remaining = mins_remaining * 60
             progress_broken = not (0 <= progress <= 100)
             if not progress_broken:

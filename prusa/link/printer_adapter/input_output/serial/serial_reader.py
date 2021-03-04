@@ -54,7 +54,7 @@ class SerialReader(metaclass=MCSingleton):
 
         with self.lock:
             for pairing in self.pattern_list:
-                log.debug(f"Trying {pairing.regexp.pattern} on {line}")
+                log.debug("Trying %s on %s", pairing.regexp.pattern, line)
                 match = pairing.regexp.match(line)
                 if match:
                     log.debug("Success")
@@ -64,7 +64,7 @@ class SerialReader(metaclass=MCSingleton):
 
         for signal in signal_list:
             signal: Signal
-            log.debug(f"calling {signal.receivers}")
+            log.debug("calling %s", signal.receivers)
             signal.send(self, match=match)
 
     def add_handler(self, regexp, handler, priority=None, stops_matching=None):
@@ -84,8 +84,8 @@ class SerialReader(metaclass=MCSingleton):
             if regexp in self.pairing_dict:
                 pairing: RegexPairing = self.pairing_dict[regexp]
                 if pairing not in self.pattern_list:
-                    log.debug(f"{pairing} is not in {self.pattern_list}. "
-                              f"What?!")
+                    log.debug("%s is not in %s. What?!", pairing,
+                              self.pattern_list)
 
                 if stops_matching is not None and \
                         stops_matching != pairing.stops_matching:
@@ -97,8 +97,8 @@ class SerialReader(metaclass=MCSingleton):
                         self.pattern_list.remove(pairing)
                         pairing.priority = priority
                         self.pattern_list.add(pairing)
-                        log.debug(f"Priority updated from {pairing.priority} "
-                                  f"to {priority}")
+                        log.debug("Priority updated from %s to %s",
+                                  pairing.priority, priority)
                 pairing.signal.connect(handler, weak=False)
             else:
                 pairing_kwargs = {}

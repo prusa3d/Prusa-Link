@@ -123,8 +123,8 @@ class IsPlannerFed:
         self.is_fed = value > self.threshold
 
         if self.is_fed:
-            log.debug(f"Buffer is fed, threshold: {self.threshold}, "
-                      f"value: {value}")
+            log.debug("Buffer is fed, threshold: %s, value: %s",
+                      self.threshold, value)
 
     def _remove_last(self):
         """

@@ -231,10 +231,10 @@ class SDCard(ThreadedUpdatable):
                 mixed_path = short_dir_path.joinpath(long_file_name)
 
                 # Add translation between the two
-                log.debug(f"Adding translation between {long_path_string} "
-                          f"and {short_path_string}")
-                log.debug(f"Adding translation from {mixed_path} "
-                          f"to {long_path_string}")
+                log.debug("Adding translation between %s and %s",
+                          long_path_string, short_path_string)
+                log.debug("Adding translation from %s to %s", mixed_path,
+                          long_path_string)
                 lfn_to_sfn_paths[long_path_string] = short_path_string
                 sfn_to_lfn_paths[short_path_string] = long_path_string
                 mixed_to_lfn_paths[mixed_path] = long_path_string
@@ -272,8 +272,8 @@ class SDCard(ThreadedUpdatable):
         """Checks, whether the supplied path is not present in the tree"""
         # Ignores the first "/"
         if tree.get(path.parts[1:]) is not None:
-            log.error(f"Despite our efforts, there is a name conflict "
-                      f"for {path}")
+            log.error("Despite our efforts, there is a name conflict for %s",
+                      path)
 
     def ensure_extension(self, long_filename: str, long_extension: str,
                          short_extension: str):
@@ -324,8 +324,8 @@ class SDCard(ThreadedUpdatable):
         Also sets the internal state to the supplied one
         :param new_state: the state to switch to
         """
-        log.debug(f"SD state changed from {self.data.sd_state} to "
-                  f"{new_state}")
+        log.debug("SD state changed from %s to %s", self.data.sd_state,
+                  new_state)
 
         if self.data.sd_state in {SDState.INITIALISING, SDState.UNSURE} and \
                 new_state == SDState.PRESENT:
