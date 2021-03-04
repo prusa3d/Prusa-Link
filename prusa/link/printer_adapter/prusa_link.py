@@ -486,7 +486,7 @@ class PrusaLink:
         """Connects the state manager state change to Prusa Connect"""
         if source is None:
             source = Source.WUI
-            log.warning(f"State change had no source {to_state.value}")
+            log.warning("State change had no source %s", to_state.value)
 
         extra_data = dict()
         if reason is not None:

@@ -116,8 +116,9 @@ class MandatoryMatchableInstruction(MatchableInstruction):
     def confirm(self, force=False) -> bool:
         # Yes, matchables HAVE TO match now!
         if not self.captured and not force:
-            log.warning(f"Instruction {self.message} did not capture its "
-                        f"expected output, so it REFUSES to be confirmed!")
+            log.warning(
+                "Instruction %s did not capture its expected output, "
+                "so it REFUSES to be confirmed!", self.message)
             return False
         else:
             return super().confirm()
@@ -186,8 +187,9 @@ class CollectingInstruction(Instruction):
         """
         # Yes, collecting HAVE TO match now!
         if self.state != self.States.ENDED and not force:
-            log.warning(f"Instruction {self.message} did not capture its "
-                        f"expected output, so it REFUSES to be confirmed!")
+            log.warning(
+                "Instruction %s did not capture its expected output, "
+                "so it REFUSES to be confirmed!", self.message)
             return False
         else:
             return super().confirm()

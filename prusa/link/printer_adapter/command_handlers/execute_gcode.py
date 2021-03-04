@@ -31,7 +31,7 @@ class ExecuteGcode(Command):
         will fall back onto defaults
         """
         if self.force:
-            log.debug(f"Force sending gcode: '{self.gcode}'")
+            log.debug("Force sending gcode: '%s'", self.gcode)
 
         is_printing = self.model.state_manager.printing_state == \
             State.PRINTING

@@ -90,7 +90,7 @@ class LCDPrinter(metaclass=MCSingleton):
                     what = self.ip()
                 msg = "ERR: " + what
 
-            log.debug(f"Print {msg}")
+            log.debug("Print %s", msg)
             self.ignore += 1
             self.__print_text(msg)
             # Wait until it's time to print another one or quit
@@ -117,7 +117,7 @@ class LCDPrinter(metaclass=MCSingleton):
         """
         instruction = enqueue_instruction(self.serial_queue, f"M117 {text}")
         wait_for_instruction(instruction, lambda: self.running)
-        log.debug(f"Printed: '{text}' on the LCD.")
+        log.debug("Printed: '%s' on the LCD.", text)
 
     def stop(self):
         """Stops the module"""

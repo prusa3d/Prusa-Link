@@ -199,7 +199,7 @@ class FilePrinter(metaclass=MCSingleton):
         if self.to_print_stats(self.data.gcode_number):
             self.send_print_stats()
 
-        log.debug(f"USB enqueuing gcode: {gcode}")
+        log.debug("USB enqueuing gcode: %s", gcode)
         instruction = enqueue_instruction(self.serial_queue,
                                           gcode,
                                           to_front=True,
@@ -209,7 +209,7 @@ class FilePrinter(metaclass=MCSingleton):
             wait_for: Instruction = self.data.enqueued.popleft()
             wait_for_instruction(wait_for, lambda: self.data.printing)
 
-            log.debug(f"{wait_for.message} confirmed")
+            log.debug("%s confirmed", wait_for.message)
 
     def power_panic(self):
         """Not used/working"""
