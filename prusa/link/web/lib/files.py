@@ -101,16 +101,16 @@ def files_to_api(node, origin='local', path='/'):
         }
 
         if origin != "sdcard":
+            # get metadata only for files with cache
             meta = MetaData(get_os_path(path))
             if meta.is_cache_fresh():
                 meta.load_cache()
-            estimated_time = 'estimated printing time (normal mode)'
-            material = 'filament_type'
 
             result['gcodeAnalysis'] = {
-                'estimatedPrintTime': meta.data.get(estimated_time),
-                'material': meta.data.get(material),
-                'layerHeight': None
+                'estimatedPrintTime': meta.data.get(
+                    'estimated printing time (normal mode)'),
+                'material': meta.data.get('filament_type'),
+                'layerHeight': meta.data.get('layer_height')
             }
         else:
             result['gcodeAnalysis'] = {
