@@ -6,6 +6,7 @@ from time import time
 
 from blinker import Signal
 
+from .const import SN_OBTAIN_INTERVAL
 from .. import errors
 from .updatable import ThreadedUpdatable
 from .input_output.serial.instruction import MatchableInstruction
@@ -18,12 +19,17 @@ log = logging.getLogger(__name__)
 class SNReader(ThreadedUpdatable):
     """Obtain the SN using the FW"""
     thread_name = "sn_updater"
+    update_interval = SN_OBTAIN_INTERVAL
 
-    def __init__(self, serial_queue, handler):
+    def __init__(self, serial_queue):
         super().__init__()
-        self.updated_signal = Signal()
-        self.updated_signal.connect(handler)
+        self.updated_signal = Signal()  # kwargs: serial_number: string
         self.serial_queue = serial_queue
+        self.interested_in_sn = False
+        self.start()
+
+    def try_getting_sn(self):
+        self.interested_in_sn = True
 
     def read_sn(self, timeout=math.inf):
         """Read SN from serial line and set `prusa.link.errors.SN`"""
@@ -42,8 +48,14 @@ class SNReader(ThreadedUpdatable):
             return result
 
     def update(self):
-        """Read the serial number and stop running  based its value"""
-        sn = self.read_sn()
-        if sn is not None:
-            self.running = False
-            self.updated_signal.send(sn)
+        """
+        If asked to, tries to read the serial number until inevitable
+        success ;)
+        """
+        log.debug("interested: %s, sn error: %s", self.interested_in_sn,
+                  not errors.SN.ok)
+        if self.interested_in_sn or not errors.SN.ok:
+            sn = self.read_sn()
+            if sn is not None:
+                self.updated_signal.send(self, serial_number=sn)
+                self.interested_in_sn = False
