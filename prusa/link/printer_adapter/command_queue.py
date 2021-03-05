@@ -12,6 +12,7 @@ class CommandAdapter:
     def __init__(self, command):
         self.processed = Event()
         self.data = None
+        self.exception = None
         self.command: Command = command
 
 
@@ -55,7 +56,10 @@ class CommandQueue:
         while self.running:
             if adapter.processed.wait(QUIT_INTERVAL):
                 break
-        return adapter.data
+        if adapter.exception is not None:
+            raise adapter.exception
+        else:
+            return adapter.data
 
     def process_queue(self):
         """
@@ -69,6 +73,9 @@ class CommandQueue:
             except Empty:
                 pass
             else:
-                returned = adapter.command.run_command()
-                adapter.data = returned
+                try:
+                    adapter.data = adapter.command.run_command()
+                except Exception as command_exception:
+                    # Don't forget to pass exceptions as well as values
+                    adapter.exception = command_exception
                 adapter.processed.set()
