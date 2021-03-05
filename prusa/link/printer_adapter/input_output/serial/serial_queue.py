@@ -378,6 +378,10 @@ class SerialQueue(metaclass=MCSingleton):
                 not self.current_instruction.is_sent():
             log.error("Unexpected message confirmation. Ignoring")
         elif self.current_instruction.confirm(force=force):
+            if not force:
+                # If a message was successfully confirmed, the rpi port
+                # had to be ok imo
+                errors.RPI_ENABLED.ok = True
             self.instruction_confirmed_signal.send()
             with self.write_lock:
                 instruction = self.current_instruction

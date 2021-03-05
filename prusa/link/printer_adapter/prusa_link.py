@@ -72,13 +72,15 @@ class PrusaLink:
             self.serial_queue_failed)
 
         printer_type = get_printer_type(self.serial_queue)
-        sn_reader = SNReader(self.serial_queue, self.set_sn)
-        sn = sn_reader.read_sn(timeout=SN_INITIAL_TIMEOUT)
+        self.sn_reader = SNReader(self.serial_queue)
+        self.sn_reader.updated_signal.connect(self.set_sn)
+
+        sn = self.sn_reader.read_sn(timeout=SN_INITIAL_TIMEOUT)
         if sn:
             self.printer = MyPrinter(printer_type, sn, make_fingerprint(sn))
         else:
             self.printer = MyPrinter(printer_type)
-            sn_reader.start()
+            self.sn_reader.try_getting_sn()
         self.printer.register_handler = self.printer_registered
         self.printer.set_connect(settings)
 
@@ -226,6 +228,7 @@ class PrusaLink:
         self.running = False
         self.printer.stop()
         self.telemetry_thread.join()
+        self.sn_reader.stop()
         self.storage.stop()
         self.lcd_printer.stop()
         self.telemetry_gatherer.stop()
@@ -393,10 +396,17 @@ class PrusaLink:
         """Connects serial recovery with state manager"""
         self.state_manager.serial_error_resolved()
 
-    def set_sn(self, serial_number):
+    def set_sn(self, sender, serial_number):
         """Set serial number and fingerprint"""
-        self.printer.sn = serial_number
-        self.printer.fingerprint = make_fingerprint(serial_number)
+        # Only do it if the serial number is missing
+        # Setting it for a second time raises an error for some reason
+        if self.printer.sn is None:
+            self.printer.sn = serial_number
+            self.printer.fingerprint = make_fingerprint(serial_number)
+        elif self.printer.sn != serial_number:
+            log.error("The new serial number is different from the old one!")
+            raise RuntimeError(f"Serial numbers differ original: "
+                               f"{self.printer.sn} new one: {serial_number}.")
 
     def printer_registered(self, token):
         """Store settings with updated token when printer was registered."""
@@ -455,6 +465,7 @@ class PrusaLink:
 
         # file printer stop print needs to happen before this
         self.state_manager.reset()
+        self.sn_reader.try_getting_sn()
         self.info_sender.try_sending_info()
 
     @property
