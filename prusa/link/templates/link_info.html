@@ -67,6 +67,9 @@
             <li>File contains inbuilt print stats:
                 <span class="white">{{ prusa_link.model.job.inbuilt_reporting }}</span>
             </li>
+            <li>Byte position:
+                <span class="white">{{ prusa_link.model.job.printing_file_byte }}/{{ prusa_link.model.job.printing_file_size }}</span>
+            </li>
         {% endif %}
 
         <h2 class="align-center">Network</h2>

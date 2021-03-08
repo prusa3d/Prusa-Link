@@ -47,6 +47,8 @@ class FilePrinter(metaclass=MCSingleton):
         self.print_stopped_signal = Signal()
         self.print_finished_signal = Signal()
         self.time_printing_signal = Signal()
+        self.byte_position_signal = Signal()  # kwargs: current: int
+        #                                               total: int
 
         self.data = self.model.file_printer
 
@@ -148,13 +150,27 @@ class FilePrinter(metaclass=MCSingleton):
         Supports pausing, resuming and stopping.
         """
 
+        total_size = os.path.getsize(self.data.tmp_file_path)
         with open(self.data.tmp_file_path, "r") as tmp_file:
             # Reset the line counter, printing a new file
             self.serial_queue.reset_message_number()
 
             self.data.gcode_number = 0
             self.data.enqueued.clear()
-            for line_index, line in enumerate(tmp_file):
+            line_index = 0
+            while True:
+                line = tmp_file.readline()
+                if line == "":
+                    break
+
+                # This will make it PRINT_QUEUE_SIZE lines in front of what
+                # is being sent to the printer, which is another as much as
+                # 16 gcode commands in front of what's actually being printed.
+                current_byte = tmp_file.tell()
+                self.byte_position_signal.send(self,
+                                               current=current_byte,
+                                               total=total_size)
+
                 if line_index < from_line:
                     continue
 
@@ -167,6 +183,7 @@ class FilePrinter(metaclass=MCSingleton):
                 gcode = get_gcode(line)
                 if gcode:
                     self.print_gcode(gcode)
+                line_index += 1
 
                 if not self.data.printing:
                     break

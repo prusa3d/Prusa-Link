@@ -143,6 +143,8 @@ class PrusaLink:
             self.progress_broken)
         self.telemetry_gatherer.file_path_signal.connect(
             self.file_path_observed)
+        self.telemetry_gatherer.byte_position_signal.connect(
+            self.byte_position_changed)
         self.file_printer.time_printing_signal.connect(
             self.time_printing_updated)
         self.file_printer.new_print_started_signal.connect(
@@ -151,6 +153,8 @@ class PrusaLink:
             self.file_printer_stopped_printing)
         self.file_printer.print_finished_signal.connect(
             self.file_printer_finished_printing)
+        self.file_printer.byte_position_signal.connect(
+            self.byte_position_changed)
         self.storage.dir_mounted_signal.connect(self.dir_mount)
         self.storage.dir_unmounted_signal.connect(self.dir_unmount)
         self.storage.sd_mounted_signal.connect(self.sd_mount)
@@ -294,11 +298,19 @@ class PrusaLink:
     # --- FW Command handlers ---
 
     def fw_pause_print(self):
+        """
+        Pauses the print, when fw asks to through serial
+        This is activated by the user most of the time
+        """
         # FIXME: The source is wrong for the LCD pause
         command = PausePrint(source=Source.FIRMWARE)
         return self.command_queue.do_command(command)
 
     def fw_resume_print(self):
+        """
+        Pauses the print, when fw asks to through serial
+        This happens, when the user presses resume on the LCD
+        """
         command = ResumePrint(source=Source.USER)
         return self.command_queue.do_command(command)
 
@@ -355,6 +367,10 @@ class PrusaLink:
         values to the job component
         """
         self.job.progress_broken(progress_broken)
+
+    def byte_position_changed(self, sender, current: int, total: int):
+        """Passes byte positions to the job component"""
+        self.job.file_position(current=current, total=total)
 
     def file_path_observed(self,
                            sender,
