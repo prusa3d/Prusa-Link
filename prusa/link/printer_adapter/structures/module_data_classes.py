@@ -38,6 +38,7 @@ class JobData(BaseModel):
     printing_file_path: Optional[str]
     printing_file_m_time: Optional[str]
     printing_file_size: Optional[str]
+    printing_file_byte: Optional[int]
     filename_only: Optional[bool]
     from_sd: Optional[bool]
     inbuilt_reporting: Optional[bool]
