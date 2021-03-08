@@ -3,7 +3,7 @@
 from datetime import datetime
 from os.path import join
 
-from prusa.connect.printer.metadata import MetaData
+from prusa.connect.printer.metadata import MetaData, estimated_to_seconds
 from prusa.connect.printer.const import GCODE_EXTENSIONS
 
 from ..lib.core import app
@@ -106,9 +106,11 @@ def files_to_api(node, origin='local', path='/'):
             if meta.is_cache_fresh():
                 meta.load_cache()
 
+            estimated = estimated_to_seconds(
+                meta.data.get('estimated printing time (normal mode)', ''))
+
             result['gcodeAnalysis'] = {
-                'estimatedPrintTime': meta.data.get(
-                    'estimated printing time (normal mode)'),
+                'estimatedPrintTime': estimated,
                 'material': meta.data.get('filament_type'),
                 'layerHeight': meta.data.get('layer_height')
             }
