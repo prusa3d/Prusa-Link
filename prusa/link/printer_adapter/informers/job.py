@@ -214,3 +214,18 @@ class Job(metaclass=MCSingleton):
                 self.data.inbuilt_reporting = False
             elif not progress_broken:
                 self.data.inbuilt_reporting = True
+
+    def file_position(self, current, total):
+        """
+        Call to report a position in a file that's being printed
+        :param current: The byte number being printed
+        :param total: The file size
+        """
+        self.data.printing_file_byte = current
+        if self.data.printing_file_size is not None and \
+                self.data.printing_file_size != total:
+            log.warning("Reported file sizes differ %s vs %s",
+                        self.data.printing_file_size, total)
+        if self.data.printing_file_size is None:
+            # In the future, this should be pointless, now it may get used
+            self.data.printing_file_size = total

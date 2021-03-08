@@ -45,6 +45,8 @@ class TelemetryGatherer(ThreadedUpdatable):
         self.progress_broken_signal = Signal()  # kwargs: progress_broken: bool
         self.file_path_signal = Signal()  # kwargs: path: str,
         #                                           filename_only: bool
+        self.byte_position_signal = Signal()  # kwargs: current: int
+        #                                               total: int
 
         self.model = model
         self.serial_reader = serial_reader
@@ -208,14 +210,20 @@ class TelemetryGatherer(ThreadedUpdatable):
         # Are we printing?
         if file_or_status_match.group("sdn_lfn"):
 
-            # if we're SD printing and there is no reporting, let's get it here
-            if self.model.job.from_sd and not self.model.job.inbuilt_reporting:
-                byte_position_match: re.Match = instruction.match(1)
-                if byte_position_match:
-                    groups = byte_position_match.groupdict()
-                    current_byte = int(groups["current"])
-                    bytes_in_total = int(groups["sum"])
-                    progress = int((current_byte / bytes_in_total) * 100)
+            byte_position_match: re.Match = instruction.match(1)
+            if byte_position_match:
+                groups = byte_position_match.groupdict()
+                current_byte = int(groups["current"])
+                bytes_in_total = int(groups["sum"])
+                progress = int((current_byte / bytes_in_total) * 100)
+                self.byte_position_signal.send(self,
+                                               current=current_byte,
+                                               total=bytes_in_total)
+
+                # if we're SD printing and there is no reporting,
+                # let's get it from here
+                if self.model.job.from_sd \
+                        and not self.model.job.inbuilt_reporting:
                     log.debug(
                         "SD print has no inbuilt percentage tracking, "
                         "falling back to getting progress from byte "

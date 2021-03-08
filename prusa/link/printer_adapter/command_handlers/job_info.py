@@ -13,7 +13,7 @@ class JobInfo(Command):
 
     def _run_command(self):
         """Returns job_info from the job component"""
-        if self.model.job.job_state != JobState.IN_PROGRESS:
+        if self.model.job.job_state == JobState.IDLE:
             self.failed("Cannot get job info, "
                         "when there is no job in progress.")
 
