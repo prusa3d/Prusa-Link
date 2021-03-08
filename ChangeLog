@@ -47,6 +47,7 @@
     * Implementation of metadata into /api/files endpoint
     * Process all commands in a single thread -> racing avoided
     * Uploading from local web
+    * Prusa Link version in INFO event
 
 0.2.0 (2020-12-14)
 

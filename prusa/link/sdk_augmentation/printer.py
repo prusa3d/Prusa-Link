@@ -13,7 +13,7 @@ from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
 from ..printer_adapter.util import file_is_on_sd
 from .command_handler import CommandHandler
-from .. import errors
+from .. import errors, __version__
 
 log = getLogger("connect-printer")
 
@@ -46,13 +46,11 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         return res
 
     def get_info(self) -> Dict[str, Any]:
-        """
-        Returns a dictionary containing the printers' nozzle diameter
-        and files
-        """
+        """Returns a dictionary containing the printers info."""
         info = super().get_info()
         info["nozzle_diameter"] = self.nozzle_diameter
         info["files"] = self.fs.to_dict()
+        info["prusa_link"] = __version__
         return info
 
     def set_connect(self, settings):
@@ -72,14 +70,14 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
 
         file_path_string = caller.args[0]
         path: Path = Path(file_path_string)
-        log.warning(f"FILE_INFO for: {path}")
+        log.warning("FILE_INFO for: %s", path)
         parts = path.parts
 
         if file_is_on_sd(parts):
             data = self.from_path(path)
         else:
             data = super().get_file_info(caller)
-        log.warning(f"FILE_INFO: {data}")
+        log.warning("FILE_INFO: %s", data)
         return data
 
     def from_path(self, path: Path):
