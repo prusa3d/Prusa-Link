@@ -36,8 +36,7 @@ from .input_output.serial.serial_reader import SerialReader
 from .model import Model
 from .structures.model_classes import Telemetry
 from .const import PRINTING_STATES, TELEMETRY_IDLE_INTERVAL, \
-    TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, NO_IP, SD_MOUNT_NAME, \
-    SN_INITIAL_TIMEOUT
+    TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, NO_IP, SD_MOUNT_NAME
 from .structures.regular_expressions import \
     PRINTER_BOOT_REGEX, START_PRINT_REGEX, PAUSE_PRINT_REGEX, \
     RESUME_PRINT_REGEX
@@ -53,6 +52,7 @@ log = logging.getLogger(__name__)
 class PrusaLink:
     # pylint: disable=no-self-use
     def __init__(self, cfg: Config, settings):
+        # pylint: disable=too-many-statements
         self.cfg: Config = cfg
         log.info('Starting adapter for port %s', self.cfg.printer.port)
         self.settings: Settings = settings
@@ -72,15 +72,12 @@ class PrusaLink:
             self.serial_queue_failed)
 
         printer_type = get_printer_type(self.serial_queue)
+        self.printer = MyPrinter(printer_type)
+
         self.sn_reader = SNReader(self.serial_queue)
         self.sn_reader.updated_signal.connect(self.set_sn)
+        self.sn_reader.try_getting_sn()
 
-        sn = self.sn_reader.read_sn(timeout=SN_INITIAL_TIMEOUT)
-        if sn:
-            self.printer = MyPrinter(printer_type, sn, make_fingerprint(sn))
-        else:
-            self.printer = MyPrinter(printer_type)
-            self.sn_reader.try_getting_sn()
         self.printer.register_handler = self.printer_registered
         self.printer.set_connect(settings)
 

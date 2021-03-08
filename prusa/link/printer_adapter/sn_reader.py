@@ -29,6 +29,7 @@ class SNReader(ThreadedUpdatable):
         self.start()
 
     def try_getting_sn(self):
+        """Enable getting SN process."""
         self.interested_in_sn = True
 
     def read_sn(self, timeout=math.inf):
