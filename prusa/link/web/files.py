@@ -66,7 +66,7 @@ def api_upload(req, location):
             job_info.model.job.job_state == JobState.IN_PROGRESS:
         command_queue = app.daemon.prusa_link.command_queue
         job = command_queue.do_command(job_info)
-        if get_os_path(job.get("file_path")) == filename:
+        if job and get_os_path(job.get("file_path")) == filename:
             raise ApiException(req, errors.PE_UPLOAD_CONFLICT,
                                state.HTTP_CONFLICT)
 

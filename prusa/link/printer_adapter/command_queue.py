@@ -2,8 +2,8 @@ import logging
 from queue import Queue, Empty
 from threading import Thread, Event
 
-from prusa.link.printer_adapter.command import Command
-from prusa.link.printer_adapter.const import QUIT_INTERVAL
+from .command import Command
+from .const import QUIT_INTERVAL
 
 log = logging.getLogger(__name__)
 
@@ -57,9 +57,8 @@ class CommandQueue:
             if adapter.processed.wait(QUIT_INTERVAL):
                 break
         if adapter.exception is not None:
-            raise adapter.exception
-        else:
-            return adapter.data
+            raise adapter.exception  # pylint: disable=raising-bad-type
+        return adapter.data
 
     def process_queue(self):
         """

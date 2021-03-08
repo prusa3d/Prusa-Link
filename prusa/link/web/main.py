@@ -182,9 +182,12 @@ def api_job(req):
     # pylint: disable=unused-argument
     tel = app.daemon.prusa_link.model.last_telemetry
     command_queue = app.daemon.prusa_link.command_queue
+    job = None
     job_info = JobInfo()
     if job_info.model.job.job_state == JobState.IN_PROGRESS:
         job = command_queue.do_command(job_info)
+
+    if job:
         timestamp = int(datetime(*job.get("m_time")).timestamp())
         file_ = {
             'name': basename(job.get("file_path")),
