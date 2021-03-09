@@ -99,10 +99,17 @@ class Serial(metaclass=MCSingleton):
         while self.running:
             try:
                 self._reopen()
-            except (serial.SerialException, FileNotFoundError):
+            except (serial.SerialException, FileNotFoundError, OSError):
                 errors.SERIAL.ok = False
                 log.warning("Opening of the serial port %s failed. Retrying",
                             self.port)
+                sleep(SERIAL_REOPEN_TIMEOUT)
+            except Exception:
+                # The same as above, just a different warning
+                errors.SERIAL.ok = False
+                log.warning("Opening of the serial port failed for a "
+                            "different reason than what's expected. "
+                            "Please report this!")
                 sleep(SERIAL_REOPEN_TIMEOUT)
             else:
                 errors.SERIAL.ok = True
