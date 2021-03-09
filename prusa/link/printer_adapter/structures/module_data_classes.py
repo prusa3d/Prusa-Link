@@ -30,6 +30,7 @@ class StateManagerData(BaseModel):
     last_state: Optional[State]
     current_state: Optional[State]
     state_history: Optional[Deque[State]]
+    error_count: Optional[int]
 
 
 class JobData(BaseModel):
