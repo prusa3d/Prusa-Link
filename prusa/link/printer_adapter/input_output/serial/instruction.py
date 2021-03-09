@@ -43,6 +43,9 @@ class Instruction:
     def __str__(self):
         return f"Instruction '{self.message.strip()}'"
 
+    def __repr__(self):
+        return self.__str__()
+
     def confirm(self, force=False) -> bool:
         """
         Return False, if getting confirmed but not wanting to
