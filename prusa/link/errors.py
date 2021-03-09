@@ -46,6 +46,17 @@ def status():
     return result
 
 
+def get_all_error_states():
+    """Return a list of all ErrorStates"""
+    error_states = []
+    for head in HEADS:
+        current = head
+        while current is not None:
+            error_states.append(current)
+            current = current.next
+    return error_states
+
+
 class PrusaError:
     """Error inspired by Prusa-Error-Codes"""
     # pylint: disable=too-few-public-methods
