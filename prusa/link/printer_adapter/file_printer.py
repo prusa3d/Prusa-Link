@@ -183,6 +183,8 @@ class FilePrinter(metaclass=MCSingleton):
                 gcode = get_gcode(line)
                 if gcode:
                     self.print_gcode(gcode)
+                    self.react_to_gcode(gcode)
+
                 line_index += 1
 
                 if not self.data.printing:
@@ -227,6 +229,18 @@ class FilePrinter(metaclass=MCSingleton):
             wait_for_instruction(wait_for, lambda: self.data.printing)
 
             log.debug("%s confirmed", wait_for.message)
+
+    def react_to_gcode(self, gcode):
+        """
+        Some gcodes need to be reacted to right after they get enqueued
+         in order to compensate for the file_printer gcode buffer
+
+        For example M601 - Pause needs to pause the file read process
+        as soon as it's sent
+        :param gcode: gcode to react to
+        """
+        if gcode.startswith("M601") or gcode.startswith("M25"):
+            self.pause()
 
     def power_panic(self):
         """Not used/working"""
