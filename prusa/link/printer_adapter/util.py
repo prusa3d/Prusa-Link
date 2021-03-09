@@ -7,6 +7,8 @@ from pathlib import Path
 from time import sleep, time
 from typing import Callable
 
+import unidecode as unidecode
+
 from .const import SD_MOUNT_NAME
 
 log = logging.getLogger(__name__)
@@ -103,11 +105,15 @@ def persist_file(file: typing.TextIO):
 
 def get_gcode(line):
     """
-    Removes comments after the supplied gcode line
+    Removes comments after the supplied gcode command
+    Makes gcode encodeable in ascii
+    Put any other sanitization here
     :param line: line of gcode most likely read from a file
     :return: gcode without the comment at the end
     """
-    return line.split(";", 1)[0].strip()
+    unicode_gcode = line.split(";", 1)[0].strip()
+    ascii_gcode = unidecode.unidecode(unicode_gcode)
+    return ascii_gcode
 
 
 def file_is_on_sd(path_parts):
