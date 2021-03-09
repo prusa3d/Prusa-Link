@@ -16,6 +16,7 @@ from ..structures.mc_singleton import MCSingleton
 from ..structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, FAN_ERROR_REGEX
+from ...errors import get_all_error_states
 
 log = logging.getLogger(__name__)
 
@@ -143,7 +144,27 @@ class StateManager(metaclass=MCSingleton):
         for regex, handler in regex_handlers.items():
             self.serial_reader.add_handler(regex, handler)
 
+        # Track how many errors we believe there are and don't leave the error
+        # state until all are resolved
+        self.data.error_count = 0
+
+        error_states = get_all_error_states()
+        for state in error_states:
+            if not state.ok:
+                self.data.error_count += 1
+            state.detected_cb = self.error_detected
+            state.resolved_cb = self.error_resolved
+
         super().__init__()
+
+    def error_detected(self):
+        self.data.error_count += 1
+        log.debug("Error count increased to %s", self.data.error_count)
+        self.error()
+
+    def error_resolved(self):
+        self.data.error_count -= 1
+        log.debug("Error count decreased to %s", self.data.error_count)
 
     def file_printer_started_printing(self):
         """
@@ -414,7 +435,12 @@ class StateManager(metaclass=MCSingleton):
         if self.data.printing_state in {State.FINISHED, State.STOPPED}:
             self.data.printing_state = None
 
-        if self.data.override_state is not None:
+        if (self.data.override_state is not None
+                and (self.data.override_state != State.ERROR
+                     or self.data.error_count == 0)):
+            # If we have override state, but it's not an error, or if it is,
+            # there are no more errors detected, then let'S lose the
+            # override state
             log.debug("No longer having state %s", self.data.override_state)
             self.data.override_state = None
 
