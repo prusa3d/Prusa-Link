@@ -21,6 +21,7 @@ class InfoSender:
     """
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
                  printer: MyPrinter, model: Model, lcd_printer: LCDPrinter):
+        # pylint: disable=too-many-arguments
         self.printer = printer
         self.serial_reader = serial_reader
         self.serial_queue = serial_queue

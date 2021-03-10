@@ -85,8 +85,7 @@ class PrintStats:
 
         if gcode_number == self.data.total_gcode_count - TAIL_COMMANDS:
             return 100, min_remaining
-        else:
-            return percent_done, min_remaining
+        return percent_done, min_remaining
 
     def get_time_printing(self):
         """Returns for how long was the print running"""
