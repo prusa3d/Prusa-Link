@@ -14,3 +14,4 @@ PyYAML
 requests
 setuptools
 sortedcontainers
+unidecode
