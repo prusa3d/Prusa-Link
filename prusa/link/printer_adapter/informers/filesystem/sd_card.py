@@ -262,7 +262,7 @@ class SDCard(ThreadedUpdatable):
         Ensures uniwueness of a file name by prepending it with its
         guaranteed to be unique short name
         """
-        new_filename = f"{short_filename} - {long_filename}"
+        new_filename = f"{short_filename} - ({long_filename})"
         log.warning(
             f"Filename {long_filename} too long, using an alternative: "
             f"{new_filename}")
