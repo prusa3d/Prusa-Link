@@ -1,13 +1,16 @@
 """/api/files endpoint handlers"""
 from os import makedirs
 from os.path import abspath, join, exists
+from base64 import decodebytes
 
 import logging
 
 from poorwsgi import state
-from poorwsgi.response import JSONResponse, EmptyResponse
+from poorwsgi.response import JSONResponse, Response, FileResponse
+from poorwsgi.results import hbytes
 
 from prusa.connect.printer.const import GCODE_EXTENSIONS
+from prusa.connect.printer.metadata import MetaData
 
 from .lib.core import app
 from .lib.auth import check_api_digest
@@ -29,7 +32,17 @@ def api_files(req):
     data = app.daemon.prusa_link.printer.get_info()["files"]
     files = [files_to_api(child) for child in data.get("children", [])]
 
-    return JSONResponse(**{"files": files, "free": 0, "total": 0})
+    file_system = app.daemon.prusa_link.printer.fs
+    mount_path = ''
+    for item in files:
+        if item['origin'] == 'local':
+            mount_path = item['name']
+            break
+
+    mount = file_system.mounts.get(mount_path)
+    free = mount.get_free_space() if mount else 0
+
+    return JSONResponse(files=files, free='%d %s' % hbytes(free))
 
 
 @app.route('/api/files/<location>', state.METHOD_POST)
@@ -83,4 +96,35 @@ def api_upload(req, location):
                             free=0,
                             total=0,
                             status_code=state.HTTP_CREATED)
-    return EmptyResponse(status_code=state.HTTP_CREATED)
+    return Response(status_code=state.HTTP_CREATED)
+
+
+@app.route('/api/downloads/<path:re:.+>')
+@check_api_digest
+def api_downloads(req, path):
+    """Returns preview from cache file."""
+    # pylint: disable=unused-argument
+    os_path = get_os_path('/' + path)
+    if not exists(os_path):
+        return Response(status_code=state.HTTP_NOT_FOUND)
+    return FileResponse(os_path)
+
+
+@app.route('/api/thumbnails/<path:re:.+>.orig.png')
+@check_api_digest
+def api_thumbnails(req, path):
+    """Returns preview from cache file."""
+    # pylint: disable=unused-argument
+    meta = MetaData(get_os_path('/' + path))
+    if not meta.is_cache_fresh():
+        return Response(status_code=state.HTTP_NOT_FOUND)
+
+    meta.load_cache()
+    if not meta.thumbnails:
+        return Response(status_code=state.HTTP_NOT_FOUND)
+
+    biggest = b''
+    for data in meta.thumbnails.values():
+        if len(data) > len(biggest):
+            biggest = data
+    return Response(decodebytes(biggest), content_type="image/png")
