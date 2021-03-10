@@ -93,13 +93,6 @@ def files_to_api(node, origin='local', path='/'):
         result['date'] = None
         result['hash'] = None
 
-        result['refs'] = {
-            'resource': None,
-            'download': None,
-            'thumbnailSmall': None,
-            'thumbnailBig': None
-        }
-
         if origin != "sdcard":
             # get metadata only for files with cache
             meta = MetaData(get_os_path(path))
@@ -113,12 +106,34 @@ def files_to_api(node, origin='local', path='/'):
                 'estimatedPrintTime': estimated,
                 'material': meta.data.get('filament_type'),
                 'layerHeight': meta.data.get('layer_height')
+                # filament struct
+                # dimensions
+                # printingArea
+            }
+
+            thumbnail = None
+            if meta.thumbnails:
+                thumbnail = f"/api/thumbnails{path}.orig.png"
+            result['refs'] = {
+                # 'resource': f"/api/files/local{path}",
+                'resource': None,
+                'download': f"/api/downloads/local{path}",
+                'thumbnailSmall': None,
+                'thumbnailBig': thumbnail,
             }
         else:
             result['gcodeAnalysis'] = {
                 'estimatedPrintTime': None,
                 'material': None,
                 'layerHeight': None
+            }
+
+            result['refs'] = {
+                # 'resource': f"/api/files/local/{path}",
+                'resource': None,
+                'download': None,
+                'thumbnailSmall': None,
+                'thumbnailBig': None
             }
 
     else:
