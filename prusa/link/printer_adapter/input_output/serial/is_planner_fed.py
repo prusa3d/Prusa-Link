@@ -22,6 +22,8 @@ class HeapName(Enum):
 
 class TimeValue(HeapItem):
     """Time value with info in which queu it currently resides"""
+
+    # pylint: disable=too-few-public-methods
     def __init__(self, value):
         super().__init__(value)
         self.heap_name: Optional[HeapName] = None
@@ -88,17 +90,15 @@ class IsPlannerFed:
         if self.item_count < self.times_queue.maxlen or \
                 not USE_DYNAMIC_THRESHOLD:
             return self.default_threshold
-        else:
-            return self.get_dynamic_threshold()
+        return self.get_dynamic_threshold()
 
     def get_dynamic_threshold(self):
         """Returns the Nth percentile value. N is fixed in constants"""
         if not self.short_times and not self.long_times:
             return float("inf")
-        elif self.short_times:
+        if self.short_times:
             return self.short_times[0].value
-        else:
-            return (self.long_times[0].value + self.short_times[0].value) / 2
+        return (self.long_times[0].value + self.short_times[0].value) / 2
 
     def __call__(self):
         """
