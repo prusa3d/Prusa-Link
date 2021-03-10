@@ -81,6 +81,7 @@ def enqueue_collecting(queue: SerialQueue,
     only for print instructions!)
     :return the enqueued instruction
     """
+    # pylint: disable=too-many-arguments
     instruction = CollectingInstruction(begin_regex,
                                         capture_regex,
                                         end_regex,

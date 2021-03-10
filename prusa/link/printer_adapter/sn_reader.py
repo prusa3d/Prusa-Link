@@ -4,7 +4,7 @@ import logging
 import math
 from time import time
 
-from blinker import Signal
+from blinker import Signal  # type: ignore
 
 from .const import SN_OBTAIN_INTERVAL
 from .. import errors
