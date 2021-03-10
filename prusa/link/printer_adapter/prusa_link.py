@@ -486,6 +486,7 @@ class PrusaLink:
         self.state_manager.reset()
         self.sn_reader.try_getting_sn()
         self.info_sender.try_sending_info()
+        self.ip_updater.send_ip_to_printer()
 
     @property
     def sd_ready(self):

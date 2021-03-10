@@ -76,11 +76,16 @@ class IPUpdater(ThreadedUpdatable):
             self.send_ip_to_printer(new_ip)
         self.updated_signal.send(self, old_ip=old_ip, new_ip=new_ip)
 
-    def send_ip_to_printer(self, ip):
+    def send_ip_to_printer(self, ip=None):
         """
         Uses the M552 gcode, to set the ip for displaying in the printer
         support menu
+        :param ip: the ip to send to the printer, if unfilled, use the
+        current one
         """
+        if ip is None:
+            ip = self.data.local_ip
+
         timeout_at = time() + IP_WRITE_TIMEOUT
         if ip == NO_IP:
             instruction = enqueue_instruction(self.serial_queue,
