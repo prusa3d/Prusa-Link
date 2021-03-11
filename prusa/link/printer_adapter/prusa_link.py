@@ -42,6 +42,7 @@ from .structures.regular_expressions import \
     RESUME_PRINT_REGEX
 from .reporting_ensurer import ReportingEnsurer
 from .util import run_slowly_die_fast, make_fingerprint
+from .updatable import prctl_name
 from ..config import Config, Settings
 from ..sdk_augmentation.printer import MyPrinter
 from .. import errors
@@ -92,10 +93,12 @@ class PrusaLink:
 
         self.serial_reader.add_handler(
             PAUSE_PRINT_REGEX,
-            lambda sender, match: Thread(target=self.fw_pause_print).start())
+            lambda sender, match: Thread(target=self.fw_pause_print,
+                                         name="fw_pause_print").start())
         self.serial_reader.add_handler(
             RESUME_PRINT_REGEX,
-            lambda sender, match: Thread(target=self.fw_resume_print).start())
+            lambda sender, match: Thread(target=self.fw_resume_print,
+                                         name="fw_resume_print").start())
 
         # Init components first, so they all exist for signal binding stuff
         self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_reader,
@@ -304,6 +307,7 @@ class PrusaLink:
         This is activated by the user most of the time
         """
         # FIXME: The source is wrong for the LCD pause
+        prctl_name()
         command = PausePrint(source=Source.FIRMWARE)
         return self.command_queue.do_command(command)
 
@@ -312,6 +316,7 @@ class PrusaLink:
         Pauses the print, when fw asks to through serial
         This happens, when the user presses resume on the LCD
         """
+        prctl_name()
         command = ResumePrint(source=Source.USER)
         return self.command_queue.do_command(command)
 
@@ -534,7 +539,7 @@ class PrusaLink:
         self.state_manager.serial_error()
         try:
             self.command_queue.do_command(reset_command)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             log.exception("Failed to reset the printer. Oh my god... "
                           "my attempt at safely failing has failed.")
 
@@ -551,6 +556,7 @@ class PrusaLink:
 
     def keep_sending_telemetry(self):
         """Runs a loop in a thread to pass the telemetry from model to SDK"""
+        prctl_name()
         run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
                             self.get_telemetry_interval, self.send_telemetry)
 
@@ -573,6 +579,7 @@ class PrusaLink:
         function. Technically not needed, because the SDK loop contains also
         a while loop
         """
+        prctl_name()
         while self.running:
             try:
                 self.printer.loop()

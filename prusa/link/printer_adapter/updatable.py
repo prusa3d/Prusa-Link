@@ -1,8 +1,15 @@
-"""Definition for ThreadUpdatable class."""
-from threading import Thread
+"""Definition for ThreadUpdatable class and thread utils."""
+from threading import Thread, current_thread
+
+import prctl  # type: ignore
 
 from .const import QUIT_INTERVAL
 from .util import run_slowly_die_fast
+
+
+def prctl_name():
+    """Set system thread name with python thread name."""
+    prctl.set_name("prusal#%s" % current_thread().name)
 
 
 class ThreadedUpdatable:
@@ -21,6 +28,7 @@ class ThreadedUpdatable:
         self.thread.start()
 
     def __keep_updating(self):
+        prctl_name()
         run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
                             lambda: self.update_interval, self.update)
 

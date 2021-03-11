@@ -4,6 +4,7 @@ import logging
 from threading import Thread
 
 import ctypes
+import prctl  # type: ignore
 
 from .config import Config, Settings
 from .printer_adapter import prusa_link
@@ -82,6 +83,7 @@ class Daemon:
     def run(self, daemon=True):
         """Run daemon."""
 
+        prctl.set_name("prusal#main")
         self.settings = Settings(self.cfg.printer.settings)
         self.http = ExThread(target=run_http,
                              args=(self, not daemon),

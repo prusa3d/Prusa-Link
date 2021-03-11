@@ -4,6 +4,7 @@ from threading import Thread, Event
 
 from .command import Command
 from .const import QUIT_INTERVAL
+from .updatable import prctl_name
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +21,8 @@ class CommandQueue:
     def __init__(self):
         self.running = False
         self.command_queue = Queue()
-        self.runner_thread = Thread(target=self.process_queue)
+        self.runner_thread = Thread(target=self.process_queue,
+                                    name="command_queue")
 
     def start(self):
         """Start the command processing"""
@@ -68,6 +70,7 @@ class CommandQueue:
         Runs until stopped, processes commands in queue, writes outputs
         into a dict
         """
+        prctl_name()
         while self.running:
             try:
                 adapter: CommandAdapter = self.command_queue.get(

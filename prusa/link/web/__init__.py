@@ -3,6 +3,8 @@ import logging
 from time import sleep
 from wsgiref.simple_server import make_server
 
+import prctl  # type: ignore
+
 from .lib.core import app
 from .lib.auth import REALM
 from .lib.classes import ThreadingServer
@@ -47,6 +49,7 @@ def init(daemon):
 
 def run_http(daemon, foreground=False):
     """Run http thread"""
+    prctl.set_name("prusal#http")
     log.info('Starting server for http://%s:%d', daemon.cfg.http.address,
              daemon.cfg.http.port)
 

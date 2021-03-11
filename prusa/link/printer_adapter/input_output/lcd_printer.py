@@ -10,6 +10,7 @@ from .serial.serial_queue import SerialQueue
 from .serial.serial_reader import SerialReader
 from ..structures.mc_singleton import MCSingleton
 from ..structures.regular_expressions import LCD_UPDATE_REGEX
+from ..updatable import prctl_name
 
 log = logging.getLogger(__name__)
 
@@ -66,6 +67,7 @@ class LCDPrinter(metaclass=MCSingleton):
 
         Those have this format: ERR|OK: <IP address>
         """
+        prctl_name()
         while self.running:
             # Wait until it's been X seconds since FW updated the LCD
             fw_msg_grace_end = self.last_updated + FW_MESSAGE_TIMEOUT

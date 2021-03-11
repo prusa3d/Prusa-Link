@@ -22,6 +22,7 @@ from ...const import PRINTER_BOOT_WAIT, \
     QUIT_INTERVAL, SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT, \
     RX_SIZE, HISTORY_LENGTH, MAX_INT
 from .... import errors
+from ...updatable import prctl_name
 
 log = logging.getLogger(__name__)
 
@@ -497,6 +498,7 @@ class SerialQueue(metaclass=MCSingleton):
         useless. This method flushes the queues and depending on what caused
         the error, moves the printer head up, or demands user attention.
         """
+        prctl_name()
         with self.write_lock:
             self._flush_queues()
             sleep(PRINTER_BOOT_WAIT)
