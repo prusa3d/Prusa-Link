@@ -198,8 +198,8 @@ class SDCard(ThreadedUpdatable):
                     tree.add_directory(current_dir.parent,
                                        current_dir.name,
                                        filename_too_long=too_long)
-                except FileNotFoundError as e:
-                    log.exception(e)
+                except FileNotFoundError as exception:
+                    log.exception(exception)
 
             elif groups["file"] is not None:  # The list item
                 # Parse the file listing
@@ -245,8 +245,8 @@ class SDCard(ThreadedUpdatable):
                                   long_file_name,
                                   size=size,
                                   filename_too_long=too_long)
-                except FileNotFoundError as e:
-                    log.exception(e)
+                except FileNotFoundError as exception:
+                    log.exception(exception)
             elif groups["dir_exit"] is not None:  # Dir exit
                 current_dir = current_dir.parent
 
@@ -257,25 +257,27 @@ class SDCard(ThreadedUpdatable):
         self.data.mixed_to_lfn_paths = mixed_to_lfn_paths
         return tree
 
-    def alternative_filename(self, long_filename: str, short_filename: str):
+    @staticmethod
+    def alternative_filename(long_filename: str, short_filename: str):
         """
         Ensures uniwueness of a file name by prepending it with its
         guaranteed to be unique short name
         """
         new_filename = f"{short_filename} - ({long_filename})"
-        log.warning(
-            f"Filename {long_filename} too long, using an alternative: "
-            f"{new_filename}")
+        log.warning("Filename %s too long, using an alternative: %s",
+                    long_filename, new_filename)
         return new_filename
 
-    def check_uniqueness(self, path: Path, tree):
+    @staticmethod
+    def check_uniqueness(path: Path, tree):
         """Checks, whether the supplied path is not present in the tree"""
         # Ignores the first "/"
         if tree.get(path.parts[1:]) is not None:
             log.error("Despite our efforts, there is a name conflict for %s",
                       path)
 
-    def ensure_extension(self, long_filename: str, long_extension: str,
+    @staticmethod
+    def ensure_extension(long_filename: str, long_extension: str,
                          short_extension: str):
         """Fixes extensions of file names"""
         has_full_extension = (long_filename.endswith(short_extension)
@@ -301,6 +303,7 @@ class SDCard(ThreadedUpdatable):
         If received unexpectedly, this signalises someone physically
         inserting a card
         """
+        assert sender is not None
         # Using a multi-purpose regex, only interested in the first group
         if match.group("ok"):
             if self.data.expecting_insertion:
@@ -314,6 +317,8 @@ class SDCard(ThreadedUpdatable):
         Handler for sd ejected serial messgaes.
         Sets the card state to absent and notifies others
         """
+        assert sender is not None
+        assert match is not None
         self.data.invalidated = True
         self.sd_state_changed(SDState.ABSENT)
 

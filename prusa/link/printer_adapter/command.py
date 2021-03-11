@@ -1,4 +1,5 @@
 """Contains implementation of the Command class"""
+import abc
 import logging
 import re
 from typing import Any, Dict
@@ -22,6 +23,7 @@ log = logging.getLogger(__name__)
 
 
 class CommandFailed(Exception):
+    """Exception class for signalling that a command has failed"""
     ...
 
 
@@ -31,9 +33,10 @@ class Command:
     do it. This class provides most of the components a command could want to
     access or use.
     """
+    # pylint: disable=too-many-instance-attributes
     command_name = "command"
 
-    def __init__(self, command_id=None, source=Source.CONNECT, **kwargs):
+    def __init__(self, command_id=None, source=Source.CONNECT):
         self.serial_queue: MonitoredSerialQueue = \
             MonitoredSerialQueue.get_instance()
         self.serial: Serial = Serial.get_instance()
@@ -49,7 +52,8 @@ class Command:
 
         self.running = True
 
-    def failed(self, message):
+    @staticmethod
+    def failed(message):
         """A shorthand for raising an exception when a command fails"""
         raise CommandFailed(message)
 
@@ -97,6 +101,7 @@ class Command:
             default_data.update(data)
         return default_data
 
+    @abc.abstractmethod
     def _run_command(self):
         """Put implementation here"""
         ...

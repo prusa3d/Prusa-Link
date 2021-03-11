@@ -7,12 +7,15 @@ import re
 from enum import Enum
 from threading import Event
 from time import time
+from typing import List, Optional
 
 log = logging.getLogger(__name__)
 
 
 class Instruction:
     """Basic instruction which can be enqueued into SerialQueue"""
+
+    # pylint: disable=too-many-instance-attributes
     def __init__(self,
                  message: str,
                  to_checksum: bool = False,
@@ -37,12 +40,12 @@ class Instruction:
         self.sent_event = Event()
 
         # Api for registering instruction regexps
-        self.capturing_regexps = []
+        self.capturing_regexps: List[re.Pattern] = []
 
         # Measuring the time between sending and confirmation will hopefully
         # enable me to determine if the motion planner buffer is full
-        self.sent_at = None
-        self.time_to_confirm = None
+        self.sent_at: Optional[float] = None
+        self.time_to_confirm: Optional[float] = None
 
     def __str__(self):
         return f"Instruction '{self.message.strip()}'"
@@ -55,30 +58,47 @@ class Instruction:
         Return False, if getting confirmed but not wanting to
         (not used in the base implementation anymore)
         """
+        assert force is not None
+        assert self.sent_at is not None
         self.time_to_confirm = time() - self.sent_at
         self.confirmed_event.set()
         return True
 
     def sent(self):
+        """
+        Sets the instruction sent Event and writes the timestamp,
+        when the instruction got sent
+        """
         self.sent_event.set()
         self.sent_at = time()
 
+    # pylint: disable=no-self-use
     def output_captured(self, sender, match):
-        pass
+        """
+        Output captured event handler, this type does not capture anything
+        though
+        """
+        assert sender is not None
+        assert match is not None
 
     def wait_for_send(self, timeout=None):
+        """Proxy call to wait method of the sent Event"""
         return self.sent_event.wait(timeout)
 
     def wait_for_confirmation(self, timeout=None):
+        """Proxy call to wait method of the confirmed Event"""
         return self.confirmed_event.wait(timeout)
 
     def is_sent(self):
+        """Returns whether this instruction has been sent yet"""
         return self.sent_event.is_set()
 
     def is_confirmed(self):
+        """Returns whether this instruction has been confirmed yet"""
         return self.confirmed_event.is_set()
 
     def reset(self):
+        """Resets the send status of an instruction"""
         self.sent_at = None
         self.sent_event.clear()
 
@@ -95,20 +115,20 @@ class MatchableInstruction(Instruction):
 
         # Output captured between command submission and confirmation
         self.capture_matching = capture_matching
-        self.captured = []
+        self.captured: List[re.Match] = []
 
         self.capturing_regexps = [capture_matching]
 
     def output_captured(self, sender, match):
         """Appends captured output to the instructions captured list"""
+        assert sender is not None
         self.captured.append(match)
 
     def match(self, index=0):
         """If match with an index exists, return it, otherwise return None"""
         if self.captured and len(self.captured) > index:
             return self.captured[index]
-        else:
-            return None
+        return None
 
     def get_matches(self):
         """Returns the list of all captured matches"""
@@ -127,8 +147,7 @@ class MandatoryMatchableInstruction(MatchableInstruction):
                 "Instruction %s did not capture its expected output, "
                 "so it REFUSES to be confirmed!", self.message)
             return False
-        else:
-            return super().confirm()
+        return super().confirm()
 
 
 class CollectingInstruction(Instruction):
@@ -157,7 +176,7 @@ class CollectingInstruction(Instruction):
         self.end_regex = end_regex
         self.capture_regex = capture_regex
         self.begin_regex = begin_regex
-        self.captured = []
+        self.captured: List[re.Match] = []
         self.state = self.States.NOT_CAPTURING_YET
 
         self.capturing_regexps = [
@@ -173,6 +192,7 @@ class CollectingInstruction(Instruction):
         """
         # The order of these blocks is important, it prevents the
         # begin and end matches from also matching with the capture regex
+        assert sender is not None
         if self.state == self.States.CAPTURING:
             end_match = self.end_regex.match(match.string)
             if end_match:
@@ -198,5 +218,4 @@ class CollectingInstruction(Instruction):
                 "Instruction %s did not capture its expected output, "
                 "so it REFUSES to be confirmed!", self.message)
             return False
-        else:
-            return super().confirm()
+        return super().confirm()

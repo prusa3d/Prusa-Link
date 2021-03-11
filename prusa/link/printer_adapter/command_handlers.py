@@ -3,21 +3,22 @@ Implements all command Prusa Link command handlers
 Start, pause, resume and stop print as well as one for executing arbitrary
 gcodes, resetting the printer and sending the job info
 """
-
+import abc
+from importlib import util
 import logging
 from pathlib import Path
 from re import Match
 from threading import Event
 from time import time, sleep
 
-from prusa.connect.printer.const import State, Source, JobState, \
-    Event as EventConst
+from prusa.connect.printer.const import State, Source, Event as EventConst
 
 from .command import Command
 from .informers.state_manager import StateChange
 from .const import STATE_CHANGE_TIMEOUT, QUIT_INTERVAL, RESET_PIN, \
     PRINTER_BOOT_WAIT, SERIAL_QUEUE_TIMEOUT
 from .input_output.serial.helpers import enqueue_list_from_str
+from .structures.model_classes import JobState
 from .structures.regular_expressions import REJECTION_REGEX, \
     OPEN_RESULT_REGEX, PRINTER_BOOT_REGEX
 from .util import file_is_on_sd
@@ -29,13 +30,13 @@ class TryUntilState(Command):
     """A base for commands stop, pause and resume print"""
     command_name = "pause/stop/resume print"
 
-    def __init__(self, command_id=None, source=Source.CONNECT, **kwargs):
+    def __init__(self, command_id=None, source=Source.CONNECT):
         """
         Sends a gcode in hopes of getting into a specific state.
         :param command_id: Which command asked for the state change
         :param source: Who asked us to change state
         """
-        super().__init__(command_id=command_id, source=source, **kwargs)
+        super().__init__(command_id=command_id, source=source)
         self.right_state = Event()
 
     def _try_until_state(self, gcode: str, desired_state: State):
@@ -44,6 +45,8 @@ class TryUntilState(Command):
         :param gcode: Which gcode to send. For example: "M603"
         :param desired_state: Into which state do we hope to get
         """
+
+        # pylint: disable=too-many-arguments
         def state_changed(sender,
                           from_state,
                           to_state,
@@ -52,6 +55,9 @@ class TryUntilState(Command):
                           reason=None):
             """Reacts to every state change, if the desired state has been
             reached, stops the wait by setting an event"""
+            assert sender is not None
+            assert from_state is not None
+            assert to_state is not None
             if to_state == desired_state:
                 self.right_state.set()
 
@@ -84,6 +90,10 @@ class TryUntilState(Command):
             log.debug("Could not get from %s to %s",
                       self.state_manager.get_state(), desired_state)
             self.failed(f"Couldn't get to the {desired_state} state.")
+
+    @abc.abstractmethod
+    def _run_command(self):
+        ...
 
 
 class StopPrint(TryUntilState):
@@ -253,11 +263,9 @@ class ExecuteGcode(Command):
             if is_printing:
                 self.failed("I'm sorry Dave but I'm afraid "
                             f"I can't run '{self.gcode}' while printing.")
-                return
             elif error_exists:
                 self.failed("Printer is in an error state, "
                             "cannot execute commands")
-                return
 
         self.state_manager.expect_change(
             StateChange(command_id=self.command_id,
@@ -286,7 +294,8 @@ class ExecuteGcode(Command):
         # stop expecting it
         self.state_manager.stop_expecting_change()
 
-    def _get_state_change(self, default_source):
+    @staticmethod
+    def _get_state_change(default_source):
         return StateChange(default_source=default_source)
 
 
@@ -316,6 +325,8 @@ class ResetPrinter(Command):
 
         def waiter(sender, match):
             """Stops the wait for printer boot"""
+            assert sender is not None
+            assert match is not None
             event.set()
 
         self.serial_reader.add_handler(PRINTER_BOOT_REGEX, waiter)
@@ -323,18 +334,21 @@ class ResetPrinter(Command):
         self.state_manager.expect_change(
             StateChange(default_source=self.source,
                         command_id=self.command_id))
-        try:
+
+        spam_loader = util.find_spec('wiringpi')
+        if spam_loader is not None:
+            # pylint: disable=import-outside-toplevel
+            # pylint: disable=import-error
             import wiringpi
             wiringpi.wiringPiSetupGpio()
-        except Exception:
-            # Maybe use an import error, or something from within wiringpi
-            self.serial.blip_dtr()
-        else:
             wiringpi.pinMode(RESET_PIN, wiringpi.OUTPUT)
             wiringpi.digitalWrite(RESET_PIN, wiringpi.HIGH)
             wiringpi.digitalWrite(RESET_PIN, wiringpi.LOW)
             sleep(0.1)
             wiringpi.digitalWrite(RESET_PIN, wiringpi.LOW)
+        else:
+            # Maybe use an import error, or something from within wiringpi
+            self.serial.blip_dtr()
 
         while self.running and time() < times_out_at:
             if event.wait(QUIT_INTERVAL):

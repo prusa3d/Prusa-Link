@@ -1,10 +1,10 @@
 """Contains the implementation of Mounts, FSMounts and DirMounts for keeping
 track of Linux and directory mountpoints."""
-
+import abc
 import logging
 import os
 import select
-from typing import Set
+from typing import Set, List
 
 from blinker import Signal  # type: ignore
 
@@ -23,7 +23,7 @@ class Mounts(ThreadedUpdatable):
     supported mountpints
     """
 
-    paths_to_mount = []
+    paths_to_mount: List[str] = []
 
     def __init__(self, data):
         super().__init__()
@@ -118,16 +118,24 @@ class Mounts(ThreadedUpdatable):
 
     @staticmethod
     def _get_clean_paths(dirty_paths):
+        """
+        Cleans a list of paths by converting them to Path objects and back
+        """
         return [get_clean_path(path) for path in dirty_paths]
 
     def get_differences(self, new_mount_set: Set[str]):
+        """Retur the added and removed items from a given set"""
         removed = self.data.mounted_set.difference(new_mount_set)
         added = new_mount_set.difference(self.data.mounted_set)
         return added, removed
 
-    def get_mountpoints(self):
-        raise NotImplementedError(
-            "This is just a base class, don't instantiate")
+    @abc.abstractmethod
+    def get_mountpoints(self) -> Set[str]:
+        """
+        The implementation is expected to return a set of valid
+        mountpoints based on its configuration
+        """
+        ...
 
 
 class FSMounts(Mounts):
@@ -174,9 +182,8 @@ class FSMounts(Mounts):
                     new_mount_set.add(clean_path)
             # If something changed, return the newly constructed dict
             return new_mount_set
-        else:
-            # Otherwise, return the same dict
-            return self.data.mounted_set
+        # Otherwise, return the same dict
+        return self.data.mounted_set
 
     def mount_belongs(self, path, fs_type):
         """Checks if we are interested in tracking a given mountpoint"""

@@ -58,8 +58,7 @@ class JobData(BaseModel):
         """
         if self.job_state == JobState.IDLE:
             return None
-        else:
-            return self.job_id
+        return self.job_id
 
 
 class IpUpdaterData(BaseModel):

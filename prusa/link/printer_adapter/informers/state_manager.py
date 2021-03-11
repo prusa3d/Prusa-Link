@@ -162,11 +162,13 @@ class StateManager(metaclass=MCSingleton):
         super().__init__()
 
     def error_detected(self):
+        """increments an error counter once an error gets detected"""
         self.data.error_count += 1
         log.debug("Error count increased to %s", self.data.error_count)
         self.error()
 
     def error_resolved(self):
+        """decrements an error counter once an error gets resolved"""
         self.data.error_count -= 1
         log.debug("Error count decreased to %s", self.data.error_count)
 
@@ -329,6 +331,7 @@ class StateManager(metaclass=MCSingleton):
         Even though using these two callables is more complicated,
         I think the majority of the implementation got condensed into here
         """
+        assert sender is not None
         self.fan_error_name = match.group("fan_name")
 
     # --- State changing methods ---
@@ -366,8 +369,8 @@ class StateManager(metaclass=MCSingleton):
             self.unsure_whether_printing = False
             self.data.printing_state = State.PRINTING
         else:
-            log.debug("Ignoring switch to PRINTING "
-                      f"{(self.data.base_state, self.data.printing_state)}")
+            log.debug("Ignoring switch to PRINTING base: %s, printing: %s",
+                      self.data.base_state, self.data.printing_state)
 
     @state_influencer(
         StateChange(

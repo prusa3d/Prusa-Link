@@ -61,7 +61,7 @@ class IsPlannerFed:
     one until the values accumulate.
     """
     def __init__(self, cfg: Config):
-        self.times_queue = deque(maxlen=QUEUE_SIZE)
+        self.times_queue: deque[float] = deque(maxlen=QUEUE_SIZE)
 
         self.threshold_path = get_clean_path(cfg.daemon.threshold_file)
         ensure_directory(os.path.dirname(self.threshold_path))

@@ -68,14 +68,14 @@ class Serial(metaclass=MCSingleton):
         # Prevent a hangup on serial close, this will make it,
         # so the printer resets only on reboot or replug,
         # not when prusa_link restarts
-        f = open(self.port)
-        attrs = termios.tcgetattr(f)
+        serial_descriptor = open(self.port)
+        attrs = termios.tcgetattr(serial_descriptor)
         log.debug("Serial attributes: %s", attrs)
         # disable hangup
         attrs[2] = attrs[2] & ~termios.HUPCL
         # TCSAFLUSH set after everything is done
-        termios.tcsetattr(f, termios.TCSAFLUSH, attrs)
-        f.close()
+        termios.tcsetattr(serial_descriptor, termios.TCSAFLUSH, attrs)
+        serial_descriptor.close()
 
         self.serial = serial.Serial(port=self.port,
                                     baudrate=self.baudrate,
@@ -110,7 +110,7 @@ class Serial(metaclass=MCSingleton):
                 log.warning("Opening of the serial port %s failed. Retrying",
                             self.port)
                 sleep(SERIAL_REOPEN_TIMEOUT)
-            except Exception:
+            except Exception:  # pylint: disable=broad-except
                 # The same as above, just a different warning
                 errors.SERIAL.ok = False
                 log.warning("Opening of the serial port failed for a "

@@ -50,20 +50,20 @@ class NetworkInfo(BaseModel):
     lan_mac: Optional[str] = None  # not implemented yet
     wifi_ipv4: Optional[str] = None
     wifi_ipv6: Optional[str] = None  # not implemented yet
-    wifi_mac: str = None
+    wifi_mac: Optional[str] = None
     wifi_ssid: Optional[str] = None  # not implemented yet
 
 
 class FileTree(BaseModel):
     """The File Tree model"""
 
-    type: str = None
-    name: str = None
+    type: Optional[str] = None
+    name: Optional[str] = None
     ro: Optional[bool] = None
-    size: int = None
+    size: Optional[int] = None
     m_date: Optional[int] = None
     m_time: Optional[int] = None
-    children: List["FileTree"] = None
+    children: Optional[List["FileTree"]] = None
 
 
 FileTree.update_forward_refs()
@@ -72,18 +72,18 @@ FileTree.update_forward_refs()
 class PrinterInfo(BaseModel):
     """The printer Info model"""
 
-    type: int = None
-    version: int = None
-    subversion: int = None
-    firmware: str = None
-    wui: str = __version__
-    network_info: NetworkInfo = None
-    sn: str = None
-    uuid: str = None
-    appendix: bool = None
-    state: str = None
-    files: FileTree = None
-    nozzle_diameter: float = None
+    type: Optional[int] = None
+    version: Optional[int] = None
+    subversion: Optional[int] = None
+    firmware: Optional[str] = None
+    wui: Optional[str] = __version__
+    network_info: Optional[NetworkInfo] = None
+    sn: Optional[str] = None
+    uuid: Optional[str] = None
+    appendix: Optional[bool] = None
+    state: Optional[str] = None
+    files: Optional[FileTree] = None
+    nozzle_diameter: Optional[float] = None
 
     def set_printer_model_info(self, data):
         """Setter expanding a tuple into model fields"""

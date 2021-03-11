@@ -2,6 +2,8 @@
 Contains almost every constant for the printer communication part of
 Prusa Link
 """
+from typing import List
+
 from prusa.connect.printer.const import State
 
 BASE_STATES = {State.READY, State.BUSY}
@@ -30,7 +32,7 @@ SEND_INFO_RETRY = 5
 SERIAL_REOPEN_TIMEOUT = 10
 REPORTING_TIMEOUT = 60
 FW_MESSAGE_TIMEOUT = 5
-STATE_CHANGE_TIMEOUT = 5
+STATE_CHANGE_TIMEOUT = 15
 IP_WRITE_TIMEOUT = 5
 SN_INITIAL_TIMEOUT = 5
 SN_OBTAIN_INTERVAL = 5
@@ -59,7 +61,7 @@ PRINT_QUEUE_SIZE = 4
 # --- Mountpoints ---
 MAX_FILENAME_LENGTH = 52
 SD_MOUNT_NAME = "SD Card"
-BLACKLISTED_TYPES = []
+BLACKLISTED_TYPES: List[str] = []
 BLACKLISTED_PATHS = [
     "/dev",
     "/sys",
