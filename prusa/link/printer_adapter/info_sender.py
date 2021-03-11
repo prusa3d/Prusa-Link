@@ -10,6 +10,7 @@ from .informers.getters import get_network_info, get_firmware_version, \
 from .input_output.lcd_printer import LCDPrinter
 from .input_output.serial.serial_queue import SerialQueue
 from .input_output.serial.serial_reader import SerialReader
+from .updatable import prctl_name
 
 log = logging.getLogger(__name__)
 
@@ -75,7 +76,8 @@ class InfoSender:
         if self.info_updating_thread is None:
             # Wait for the printer to boot
             sleep(PRINTER_BOOT_WAIT)
-            self.info_updating_thread = Thread(target=self._try_sending_info)
+            self.info_updating_thread = Thread(target=self._try_sending_info,
+                                               name="info_sender")
             self.info_updating_thread.start()
         else:
             log.warning("Already trying to send info")
@@ -83,6 +85,7 @@ class InfoSender:
     def _try_sending_info(self):
         """Tries to update the info, but does not persist, i
         f an error occurs"""
+        prctl_name()
         try:
             self.update_info()
             self.printer.event_cb(**self.printer.get_info())
