@@ -1,4 +1,9 @@
-"""Definition for ThreadUpdatable class and thread utils."""
+"""
+Contains implementation of the ThreadedUpdatable class
+There was an updatable without a thread, but it stopped being used
+
+Also contains a thread utility function
+"""
 from threading import Thread, current_thread
 
 import prctl  # type: ignore

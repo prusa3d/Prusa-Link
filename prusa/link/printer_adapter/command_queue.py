@@ -1,3 +1,8 @@
+"""
+Implements the CommandQueue with CommandAdapter class, the objects of
+withch are the queue members
+"""
+
 import logging
 from queue import Queue, Empty
 from threading import Thread, Event
@@ -10,6 +15,7 @@ log = logging.getLogger(__name__)
 
 
 class CommandAdapter:
+    """Adapts the command class for processing in a queue"""
     def __init__(self, command):
         self.processed = Event()
         self.data = None
@@ -18,6 +24,10 @@ class CommandAdapter:
 
 
 class CommandQueue:
+    """
+    Executes commands from queue in its own thread
+    Prevents command racing
+    """
     def __init__(self):
         self.running = False
         self.command_queue = Queue()

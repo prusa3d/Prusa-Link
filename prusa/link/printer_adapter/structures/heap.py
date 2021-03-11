@@ -1,3 +1,4 @@
+"""Contains implementation of the HeapItem, MinHeap and MaxHeap classes"""
 from typing import List
 
 

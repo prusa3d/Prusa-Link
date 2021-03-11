@@ -1,3 +1,8 @@
+"""
+Contains implementation of the  controller for interfacing with the storage
+"subsystem", which included the linux filesystem and sd card file management,
+now only sd card and mountpoint tracking remain
+"""
 import logging
 from typing import Optional
 

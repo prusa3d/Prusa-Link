@@ -1,3 +1,4 @@
+"""Contains implementation of the Serial class"""
 import logging
 import termios
 from threading import Thread, Lock

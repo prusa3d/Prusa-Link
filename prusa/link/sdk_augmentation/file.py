@@ -1,3 +1,4 @@
+"""Contains implementation of the SDFile class which augments the SDK File"""
 from pathlib import Path
 
 from prusa.connect.printer.files import File

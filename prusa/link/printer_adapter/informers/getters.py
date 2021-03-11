@@ -1,3 +1,6 @@
+"""
+Includes functions for polling printer info which didn't fit anywhere else
+"""
 from distutils.version import StrictVersion
 
 from getmac import get_mac_address  # type: ignore

@@ -17,7 +17,7 @@ from .lib.auth import check_api_digest
 from .lib.files import files_to_api, get_os_path
 from .lib.response import ApiException
 
-from ..printer_adapter.command_handlers.job_info import JobInfo
+from ..printer_adapter.command_handlers import JobInfo
 from ..printer_adapter.informers.job import JobState
 from .. import errors
 

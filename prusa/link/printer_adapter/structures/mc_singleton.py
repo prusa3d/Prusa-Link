@@ -1,3 +1,6 @@
+"""Contains implementation of the MCSingleton class"""
+
+
 class MCSingleton(type):
     """
     Classes that use this metaclass are singletons

@@ -1,3 +1,4 @@
+"""Contains implementation of the  the StateManager and StateChange classes"""
 import logging
 import re
 from collections import deque
@@ -22,7 +23,10 @@ log = logging.getLogger(__name__)
 
 
 class StateChange:
-    """Represents a set of state changes that can happen"""
+    """
+    Represents a set of state changes that can happen
+    Used for assigning info to observed state changes
+    """
 
     # pylint: disable=too-few-public-methods
     def __init__(self,

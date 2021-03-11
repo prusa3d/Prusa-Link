@@ -1,3 +1,7 @@
+"""
+Contains implementation of the IsPlannerFed class, with HeapName and TimeValue
+classes. Tries to guess, whether the printer planner is full
+"""
 import logging
 import os
 from collections import deque
