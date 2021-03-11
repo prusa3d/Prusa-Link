@@ -23,9 +23,12 @@ class ReportingEnsurer(ThreadedUpdatable):
         super().__init__()
         self.serial_reader = serial_reader
         self.serial_queue = serial_queue
-        self.serial_reader.add_handler(TEMPERATURE_REGEX, self.temps_recorded)
-        self.serial_reader.add_handler(POSITION_REGEX, self.positions_recorded)
-        self.serial_reader.add_handler(FAN_REGEX, self.fans_recorded)
+        self.serial_reader.add_handler(
+            TEMPERATURE_REGEX, lambda sender, match: self.temps_recorded())
+        self.serial_reader.add_handler(
+            POSITION_REGEX, lambda sender, match: self.positions_recorded())
+        self.serial_reader.add_handler(
+            FAN_REGEX, lambda sender, match: self.fans_recorded())
 
         self.last_seen_temps = time()
         self.last_seen_positions = time()
@@ -33,15 +36,15 @@ class ReportingEnsurer(ThreadedUpdatable):
 
         self.turn_reporting_on()
 
-    def temps_recorded(self, sender=None, match=None):
+    def temps_recorded(self):
         """Resets the timeout for temperatures"""
         self.last_seen_temps = time()
 
-    def positions_recorded(self, sender=None, match=None):
+    def positions_recorded(self):
         """Resets the timeout for positions"""
         self.last_seen_positions = time()
 
-    def fans_recorded(self, sender=None, match=None):
+    def fans_recorded(self):
         """Resets the timeout for fans"""
         self.last_seen_fans = time()
 

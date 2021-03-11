@@ -39,10 +39,9 @@ class FilePrinter(metaclass=MCSingleton):
     for gcodes without said info
     """
 
-    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-instance-attributes, too-many-arguments
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
                  model: Model, cfg: Config, print_stats: PrintStats):
-        # pylint: disable=too-many-arguments
         self.serial_queue = serial_queue
         self.serial_reader = serial_reader
         self.print_stats = print_stats
@@ -70,7 +69,7 @@ class FilePrinter(metaclass=MCSingleton):
         self.data.enqueued = deque()
 
         self.serial_queue.serial_queue_failed.connect(
-            lambda sender: self.stop_print())
+            lambda sender: self.stop_print(), weak=False)
 
         self.serial_reader.add_handler(
             POWER_PANIC_REGEX, lambda sender, match: self.power_panic())
@@ -87,7 +86,7 @@ class FilePrinter(metaclass=MCSingleton):
 
     def start(self):
         """Power panic is not yet implemented, sso this does nothing"""
-        self.check_failed_print()
+        # self.check_failed_print()
 
     @property
     def pp_exists(self):
@@ -103,34 +102,7 @@ class FilePrinter(metaclass=MCSingleton):
     def check_failed_print(self):
         """Not implemented, would try to resume after power panic or error"""
         if self.tmp_exists and self.pp_exists:
-            log.warning("There was a loss of power, let's try to recover")
-            """
-            with open(self.data.pp_file_path, "r") as pp_file:
-                content = pp_file.read()
-                line_number = int(content)
-                line_index = line_number - 1
-            self.data.printing = True
-
-            prep_gcodes = ["G28 XY"]
-
-            if bed_temp != 0:
-                prep_gcodes.append(f"M140 S{bed_temp}")
-            if nozzle_temp != 0:
-                prep_gcodes.append(f"M104 S{nozzle_temp}")
-            if bed_temp != 0:
-                prep_gcodes.append(f"M190 R{bed_temp}")
-            if nozzle_temp != 0:
-                prep_gcodes.append(f"M109 R{nozzle_temp}")
-
-            for gcode in prep_gcodes:
-                instruction = enqueue_instruction(self.serial, gcode,
-                                                 front=True)
-                wait_for_instruction(instruction, lambda: self.data.printing)
-
-            self.thread = Thread(target=self._print, name="file_print",
-                                 args=(line_index,))
-            self.thread.start()
-            """
+            # log.warning("There was a loss of power, let's try to recover")
             if self.pp_exists:
                 os.remove(self.data.pp_file_path)
 
@@ -219,7 +191,7 @@ class FilePrinter(metaclass=MCSingleton):
         divisible = self.data.gcode_number % STATS_EVERY == 0
         if divisible:
             time_printing = self.print_stats.get_time_printing()
-            self.time_printing_signal.send(time_printing=time_printing)
+            self.time_printing_signal.send(self, time_printing=time_printing)
 
         if self.to_print_stats(self.data.gcode_number):
             self.send_print_stats()
@@ -250,7 +222,7 @@ class FilePrinter(metaclass=MCSingleton):
 
     def power_panic(self):
         """Not used/working"""
-        # TODO: write print time
+        # when doing this again don't forget to write print time
         if self.data.printing:
             self.pause()
             self.serial_queue.closed = True
@@ -267,8 +239,8 @@ class FilePrinter(metaclass=MCSingleton):
         percent_done, time_remaining = self.print_stats.get_stats(
             self.data.gcode_number)
 
-        # TODO: Idk what to do here, idk what would have happened if we used
-        #  the other mode, so let's report both modes the same
+        # Idk what to do here, idk what would have happened if we used
+        # the other mode, so let's report both modes the same
         stat_command = f"M73 P{percent_done} R{time_remaining} " \
                        f"Q{percent_done} S{time_remaining} "
         instruction = enqueue_instruction(self.serial_queue,

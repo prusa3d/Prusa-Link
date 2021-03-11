@@ -52,12 +52,13 @@ def get_printer_type(serial_queue: SerialQueue, should_wait=lambda: True):
     try:
         errors.ID.ok = True
         return PRINTER_TYPES[code]
-    except KeyError:
+    except KeyError as exception:
         errors.ID.ok = False
         enqueue_instruction(serial_queue,
                             "M117 Unsupported printer",
                             to_front=True)
-        raise RuntimeError(f"Unsupported printer model '{code}'")
+        raise RuntimeError(f"Unsupported printer model '{code}'") \
+            from exception
 
 
 def get_firmware_version(serial_queue: SerialQueue, should_wait=lambda: True):

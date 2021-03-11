@@ -57,7 +57,7 @@ class PrusaLink:
 
     # pylint: disable=no-self-use
     def __init__(self, cfg: Config, settings):
-        # pylint: disable=too-many-statements
+        # pylint: disable=too-many-statements, too-many-instance-attributes
         self.cfg: Config = cfg
         log.info('Starting adapter for port %s', self.cfg.printer.port)
         self.settings: Settings = settings
@@ -198,8 +198,8 @@ class PrusaLink:
 
         log.debug("Initialization done")
 
-        DEBUG = False
-        if DEBUG:
+        debug = False
+        if debug:
             self.debug_shell()
 
     def debug_shell(self):
@@ -331,6 +331,7 @@ class PrusaLink:
         The telemetry can observe some states, this method connects
         it observing a print in progress to the state manager
         """
+        assert sender is not None
         self.state_manager.expect_change(
             StateChange(to_states={State.PRINTING: Source.FIRMWARE}))
         self.state_manager.printing()
@@ -340,6 +341,7 @@ class PrusaLink:
         """
         Connects telemetry observing a paused sd print to the state manager
         """
+        assert sender is not None
         self.state_manager.expect_change(
             StateChange(to_states={State.PAUSED: Source.FIRMWARE}))
         self.state_manager.paused()
@@ -351,6 +353,7 @@ class PrusaLink:
         printing at all, we'll resolve it by stopping whatever was going on
         before.
         """
+        assert sender is not None
         if not self.model.file_printer.printing:
             self.command_queue.enqueue_command(StopPrint())
 
@@ -359,6 +362,7 @@ class PrusaLink:
         Usefull only when not serial printing. Connects telemetry
         observing there's no print in progress to the state_manager
         """
+        assert sender is not None
         # When serial printing, the printer reports not printing
         # Let's ignore it in that case
         if not self.model.file_printer.printing:
@@ -369,6 +373,7 @@ class PrusaLink:
 
     def telemetry_gathered(self, sender, telemetry: Telemetry):
         """Writes updated telemetry values to the model"""
+        assert sender is not None
         self.model.set_telemetry(telemetry)
 
     def progress_broken(self, sender, progress_broken):
@@ -376,10 +381,12 @@ class PrusaLink:
         Connects telemetry, which can see the progress returning garbage
         values to the job component
         """
+        assert sender is not None
         self.job.progress_broken(progress_broken)
 
     def byte_position_changed(self, sender, current: int, total: int):
         """Passes byte positions to the job component"""
+        assert sender is not None
         self.job.file_position(current=current, total=total)
 
     def file_path_observed(self,
@@ -387,12 +394,15 @@ class PrusaLink:
                            path: str,
                            filename_only: bool = False):
         """Connects telemetry observed file path to the job component"""
+        assert sender is not None
         self.job.set_file_path(path,
                                filename_only=filename_only,
                                prepend_sd_mountpoint=True)
 
     def sd_print_start_observed(self, sender, match):
         """Tells the telemetry about a new print job starting"""
+        assert sender is not None
+        assert match is not None
         self.telemetry_gatherer.new_print()
 
     def file_printer_started_printing(self, sender):
@@ -400,27 +410,33 @@ class PrusaLink:
         Tells thestate manager and telemetry about a new print job
         starting
         """
+        assert sender is not None
         self.state_manager.file_printer_started_printing()
         self.telemetry_gatherer.new_print()
 
     def file_printer_stopped_printing(self, sender):
         """Connects file printer stopping with state manager"""
+        assert sender is not None
         self.state_manager.file_printer_stopped_printing()
 
     def file_printer_finished_printing(self, sender):
         """Connects file printer finishing a print with state manager"""
+        assert sender is not None
         self.state_manager.file_printer_finished_printing()
 
     def serial_failed(self, sender):
         """Connects serial errors with state manager"""
+        assert sender is not None
         self.state_manager.serial_error()
 
     def serial_renewed(self, sender):
         """Connects serial recovery with state manager"""
+        assert sender is not None
         self.state_manager.serial_error_resolved()
 
     def set_sn(self, sender, serial_number):
         """Set serial number and fingerprint"""
+        assert sender is not None
         # Only do it if the serial number is missing
         # Setting it for a second time raises an error for some reason
         if self.printer.sn is None:
@@ -444,6 +460,7 @@ class PrusaLink:
         Also updates the lcd printer ip and clears physical network error
         code
         """
+        assert sender is not None
         # Don't send info again on init, because one is going to
         #  get sent anyway
         if old_ip != new_ip and new_ip != NO_IP and old_ip is not None:
@@ -456,24 +473,29 @@ class PrusaLink:
 
     def dir_mount(self, sender, path):
         """Connects a dir being mounted to Prusa Connect events"""
+        assert sender is not None
         self.printer.mount(path, os.path.basename(path))
 
     def dir_unmount(self, sender, path):
         """Connects a dir being unmounted to Prusa Connect events"""
+        assert sender is not None
         self.printer.unmount(os.path.basename(path))
 
     def sd_mount(self, sender, files: File):
         """Connects the sd being mounted to Prusa Connect events"""
+        assert sender is not None
         self.printer.fs.mount(SD_MOUNT_NAME, files, "", use_inotify=False)
 
     def sd_unmount(self, sender):
         """Connects the sd being unmounted to Prusa Connect events"""
+        assert sender is not None
         self.printer.fs.unmount(SD_MOUNT_NAME)
 
     def instruction_confirmed(self, sender):
         """
         Connects instruction confirmation from serial queue to state manager
         """
+        assert sender is not None
         self.state_manager.instruction_confirmed()
 
     def printer_reset(self, sender, match):
@@ -482,6 +504,8 @@ class PrusaLink:
         Stops serial prints, flushes the serial queue, updates the state and
         tries to send its info again.
         """
+        assert sender is not None
+        assert match is not None
         was_printing = self.state_manager.get_state() in PRINTING_STATES
         self.file_printer.stop_print()
         self.serial_queue.printer_reset(was_printing)
@@ -502,6 +526,7 @@ class PrusaLink:
         First step of a two step process. Connects the state change to the
         job module. Explanation is(will be) in the job module
         """
+        assert sender is not None
         self.job.state_changed(command_id=command_id)
 
     def post_state_change(self, sender: StateManager):
@@ -509,6 +534,7 @@ class PrusaLink:
         Second step of a two step process. Connects the state change to the
         job module. Explanation is(will be) in the job module
         """
+        assert sender is not None
         self.job.tick()
 
     def state_changed(self,
@@ -519,6 +545,10 @@ class PrusaLink:
                       source=None,
                       reason=None):
         """Connects the state manager state change to Prusa Connect"""
+        # pylint: disable: too-many-arguments
+        assert sender is not None
+        assert from_state is not None
+        assert to_state is not None
         if source is None:
             source = Source.WUI
             log.warning("State change had no source %s", to_state.value)
@@ -535,11 +565,13 @@ class PrusaLink:
 
     def time_printing_updated(self, sender, time_printing):
         """Connects the serial print print timer with telemetry"""
+        assert sender is not None
         self.model.set_telemetry(new_telemetry=Telemetry(
             time_printing=time_printing))
 
     def serial_queue_failed(self, sender):
         """Handles the serial queue failure by resetting the printer"""
+        assert sender is not None
         reset_command = ResetPrinter()
         self.state_manager.serial_error()
         try:

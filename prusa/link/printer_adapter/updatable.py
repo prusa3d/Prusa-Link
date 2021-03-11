@@ -20,13 +20,12 @@ def prctl_name():
 class ThreadedUpdatable:
     """Thread for parallel update operation."""
     thread_name = "updater_thread"
-    update_interval = 1
+    update_interval = 1.0
 
     def __init__(self):
         self.running = True
         self.thread = Thread(target=self.__keep_updating,
                              name=self.thread_name)
-        # XXX introduce a `signal` instance attr here?
 
     def start(self):
         """Start thread."""
