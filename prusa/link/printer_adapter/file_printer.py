@@ -26,6 +26,7 @@ from .structures.regular_expressions import \
     PAUSED_REGEX, RESUMED_REGEX
 from .util import get_clean_path, ensure_directory, \
     get_gcode
+from .updatable import prctl_name
 
 log = logging.getLogger(__name__)
 
@@ -36,8 +37,11 @@ class FilePrinter(metaclass=MCSingleton):
     controlls print_stats, which provide info about progress and time left
     for gcodes without said info
     """
+
+    # pylint: disable=too-many-instance-attributes
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
                  model: Model, cfg: Config, print_stats: PrintStats):
+        # pylint: disable=too-many-arguments
         self.serial_queue = serial_queue
         self.serial_reader = serial_reader
         self.print_stats = print_stats
@@ -150,6 +154,7 @@ class FilePrinter(metaclass=MCSingleton):
         Supports pausing, resuming and stopping.
         """
 
+        prctl_name()
         total_size = os.path.getsize(self.data.tmp_file_path)
         with open(self.data.tmp_file_path, "r") as tmp_file:
             # Reset the line counter, printing a new file

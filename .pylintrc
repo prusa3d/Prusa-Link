@@ -1,3 +1,7 @@
 [BASIC]
 
-good-names=i,l,sn
+good-names=i,l,f,sn,ip
+
+[TYPECHECK]
+
+generated-members=prctl

@@ -49,6 +49,7 @@
     * Uploading from local web
     * Prusa Link version in INFO event
     * G-code preview and download endpoints
+    * Thread names via prctl - can be show in htop
 
 0.2.0 (2020-12-14)
 

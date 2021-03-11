@@ -22,7 +22,7 @@ To install, make sure you have all the prerequisites:
 
 ```bash
 # install system dependencies
-sudo apt install git python3-pip python3-wheel pigpio
+sudo apt install git python3-pip python3-wheel pigpio libcap-dev
 
 # install Prusa Link from GitHub, While the repo is private,
 # you'll need to install an ssh deploy key

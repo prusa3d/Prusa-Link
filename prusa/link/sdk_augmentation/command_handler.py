@@ -3,6 +3,7 @@ from threading import Thread
 from prusa.connect.printer import Command
 
 from ..printer_adapter.const import QUIT_INTERVAL
+from ..printer_adapter.updatable import prctl_name
 
 
 class CommandHandler:
@@ -26,6 +27,7 @@ class CommandHandler:
         Calls the sdk command class, which is overloaded and in turn calls
         the commands handler
         """
+        prctl_name()
         while self.running:
             if self.sdk_command.new_cmd_evt.wait(QUIT_INTERVAL):
                 self.sdk_command()

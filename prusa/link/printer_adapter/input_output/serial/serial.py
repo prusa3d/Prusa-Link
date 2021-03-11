@@ -4,12 +4,14 @@ from threading import Thread, Lock
 from time import sleep
 
 import serial  # type: ignore
+
 from blinker import Signal  # type: ignore
 
 from .serial_reader import SerialReader
 from ...const import PRINTER_BOOT_WAIT, \
     SERIAL_REOPEN_TIMEOUT
 from ...structures.mc_singleton import MCSingleton
+from ...updatable import prctl_name
 from .... import errors
 
 log = logging.getLogger(__name__)
@@ -22,6 +24,8 @@ class Serial(metaclass=MCSingleton):
 
     It also can reset the connected device using DTR - works only with USB
     """
+
+    # pylint: disable=too-many-instance-attributes
     def __init__(self,
                  serial_reader: SerialReader,
                  port="/dev/ttyAMA0",
@@ -30,6 +34,7 @@ class Serial(metaclass=MCSingleton):
                  write_timeout=0,
                  connection_write_delay=10):
 
+        # pylint: disable=too-many-arguments
         self.connection_write_delay = connection_write_delay
         self.port = port
         self.baudrate = baudrate
@@ -118,6 +123,7 @@ class Serial(metaclass=MCSingleton):
 
     def _read_continually(self):
         """Ran in a thread, reads stuff over an over"""
+        prctl_name()
         while self.running:
             raw_line = "[No data] - This is a fallback value, " \
                        "so stuff doesn't break"
