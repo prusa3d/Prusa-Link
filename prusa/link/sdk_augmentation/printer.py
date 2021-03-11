@@ -1,3 +1,4 @@
+"""Contains implementation of the augmented Printer class from the SDK"""
 from logging import getLogger
 from pathlib import Path
 from typing import Dict, Any

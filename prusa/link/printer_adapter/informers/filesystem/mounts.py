@@ -1,3 +1,6 @@
+"""Contains the implementation of Mounts, FSMounts and DirMounts for keeping
+track of Linux and directory mountpoints."""
+
 import logging
 import os
 import select

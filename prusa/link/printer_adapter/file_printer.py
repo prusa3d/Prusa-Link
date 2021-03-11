@@ -1,3 +1,4 @@
+"""Contains implementation of the FilePrinter class"""
 import logging
 import os
 import shutil
@@ -34,7 +35,7 @@ log = logging.getLogger(__name__)
 class FilePrinter(metaclass=MCSingleton):
     """
     Facilitates serial printing, its pausing, resuming and stopping as well,
-    controlls print_stats, which provide info about progress and time left
+    controls print_stats, which provide info about progress and time left
     for gcodes without said info
     """
 

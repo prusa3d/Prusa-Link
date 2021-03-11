@@ -1,3 +1,9 @@
+"""
+Contains implementation of the SerialQueue and the MonitoredSerialQueue
+
+The idea was to separate the monitoring functionality to not clutter the queue
+and instruction management
+"""
 import logging
 import re
 from collections import deque

@@ -16,7 +16,7 @@ from .. import __version__
 from .lib.core import app
 from .lib.auth import check_api_digest, check_config, REALM
 
-from ..printer_adapter.command_handlers.job_info import JobInfo
+from ..printer_adapter.command_handlers import JobInfo
 from ..printer_adapter.informers.job import JobState
 
 log = logging.getLogger(__name__)

@@ -1,4 +1,4 @@
-"""Try read SN from file."""
+"""Contains implementation of the SNReader class"""
 
 import logging
 import math

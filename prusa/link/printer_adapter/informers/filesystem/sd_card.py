@@ -1,20 +1,5 @@
-"""
-The SD state can start only in the UNSURE state, we know nothing
-
-From there, we will ask the printer about the files present.
-If there are files, the SD card is present.
-If not, we still know nothing and need to ask the printer to re-init the card
-that provides the information about SD card presence
-
-Now there is an SD ejection message, so no more fortune-telling wizardry
-is happening
-
-Unlikely now, was very likely before:
-The card removal could've gone unnoticed and the printer is telling
-us about an SD insertion. Let's tell connect the card got removed and go to the
-INITIALISING state
-"""
-
+"""Contains implementation of the class for keeping track of the sd status
+and its files"""
 import logging
 import re
 from pathlib import Path
@@ -46,6 +31,21 @@ log = logging.getLogger(__name__)
 class SDCard(ThreadedUpdatable):
     """
     Keeps track of the SD Card presence and content
+
+    The SD state can start only in the UNSURE state, we know nothing
+
+    From there, we will ask the printer about the files present.
+    If there are files, the SD card is present.
+    If not, we still know nothing and need to ask the printer to re-init the
+    card that provides the information about SD card presence
+
+    Now there is an SD ejection message, so no more fortune-telling wizardry
+    is happening
+
+    Unlikely now, was very likely before:
+    The card removal could've gone unnoticed and the printer is telling
+    us about an SD insertion. Let's tell connect the card got removed and go
+    to the INITIALISING state
     """
     thread_name = "sd_updater"
 

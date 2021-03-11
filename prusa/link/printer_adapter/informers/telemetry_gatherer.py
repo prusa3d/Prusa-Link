@@ -1,4 +1,4 @@
-"""Functions for gathering telemetry"""
+"""Contains implementation of the TelemetryGatherer class"""
 
 import logging
 import re

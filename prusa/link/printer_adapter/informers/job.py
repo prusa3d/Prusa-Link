@@ -1,3 +1,4 @@
+"""Contains implementation of the Job class"""
 import json
 import logging
 import os

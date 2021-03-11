@@ -1,3 +1,7 @@
+"""
+Decided that keeping module data externally will aid with gathering them for
+the api, definitions of which is what this module contains
+"""
 from typing import Deque, Optional, Set, List, Any, Dict
 
 from pydantic import BaseModel

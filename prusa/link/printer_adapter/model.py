@@ -1,3 +1,4 @@
+"""Contains implementation of the Model class"""
 from threading import Lock
 
 from prusa.connect.printer.const import State

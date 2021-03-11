@@ -1,3 +1,4 @@
+"""Contains implementation of the IPUpdater class"""
 import logging
 import socket
 from time import time
