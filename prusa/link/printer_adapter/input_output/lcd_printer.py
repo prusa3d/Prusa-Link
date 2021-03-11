@@ -37,7 +37,7 @@ class LCDPrinter(metaclass=MCSingleton):
                                              name="LCDMessage")
         self.display_thread.start()
 
-    def ip(self):
+    def get_ip(self):
         """
         Proxy getter I guess, why this isn't a property or named
         get_ip is a mystery to me
@@ -50,6 +50,8 @@ class LCDPrinter(metaclass=MCSingleton):
         The ignora parameter counts how many messages have we sent, so
         we don't misrecognize our messages as FW printing something by itself
         """
+        assert sender is not None
+        assert match is not None
         if self.ignore > 0:
             self.ignore -= 1
         else:
@@ -74,7 +76,7 @@ class LCDPrinter(metaclass=MCSingleton):
             # XXX implement a way how to display both the IP and the error
             #  state name. Maybe as carousel?
             if all_ok:
-                msg = "OK: " + self.ip()
+                msg = "OK: " + self.get_ip()
             else:
                 for chain in errors.HEADS:
                     node = chain
@@ -82,10 +84,10 @@ class LCDPrinter(metaclass=MCSingleton):
                         log.debug(node.long_msg)
                         break
                     node = node.next
-                if self.ip() == NO_IP:
+                if self.get_ip() == NO_IP:
                     what = node.short_msg
                 else:
-                    what = self.ip()
+                    what = self.get_ip()
                 msg = "ERR: " + what
 
             log.debug("Print %s", msg)

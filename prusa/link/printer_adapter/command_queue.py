@@ -16,6 +16,8 @@ log = logging.getLogger(__name__)
 
 class CommandAdapter:
     """Adapts the command class for processing in a queue"""
+
+    # pylint: disable=too-few-public-methods
     def __init__(self, command):
         self.processed = Event()
         self.data = None
@@ -90,7 +92,7 @@ class CommandQueue:
             else:
                 try:
                     adapter.data = adapter.command.run_command()
-                except Exception as command_exception:
+                except Exception as exception:  # pylint: disable=broad-except
                     # Don't forget to pass exceptions as well as values
-                    adapter.exception = command_exception
+                    adapter.exception = exception
                 adapter.processed.set()

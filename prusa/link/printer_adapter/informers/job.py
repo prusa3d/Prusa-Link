@@ -41,7 +41,7 @@ class Job(metaclass=MCSingleton):
         self.job_path = get_clean_path(cfg.daemon.job_file)
         ensure_directory(os.path.dirname(self.job_path))
 
-        loaded_data: Dict[Any] = dict()
+        loaded_data: Dict[str, Any] = dict()
 
         # ok fine, this is getting complicated, you get a json
         if os.path.exists(self.job_path):
@@ -70,6 +70,7 @@ class Job(metaclass=MCSingleton):
         # screen. We rely on file_name being populated sooner when Connect
         # starts the print. A flag would be arguably more obvious
         # oh, we don't rely on that, I do :D TODO: stop doing that
+        assert sender is not None
         if self.data.printing_file_path is not None:
             return
         if match is not None and match.group("sfn") != "":
@@ -153,6 +154,7 @@ class Job(metaclass=MCSingleton):
         log.debug("job_id requested, we are %s", self.data.job_state.name)
         if self.data.job_state != JobState.IDLE:
             return self.data.job_id
+        return None
 
     def set_file_path(self, path, filename_only, prepend_sd_mountpoint):
         """
@@ -171,9 +173,8 @@ class Job(metaclass=MCSingleton):
             if prepend_sd_mountpoint:
                 path = str(Path(f"/{SD_MOUNT_NAME}").joinpath(path))
 
-            log.debug(
-                f"Overwriting file {'name' if filename_only else 'path'} "
-                f"with {path}")
+            log.debug("Overwriting file %s with %s",
+                      'name' if filename_only else 'path', path)
             self.data.printing_file_path = path
             self.data.filename_only = filename_only
 

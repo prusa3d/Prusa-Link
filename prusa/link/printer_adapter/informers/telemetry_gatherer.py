@@ -123,13 +123,14 @@ class TelemetryGatherer(ThreadedUpdatable):
         """
         match = instruction.match()
         if match:
-            self.temperature_handler(None, match)
+            self.temperature_handler(self, match)
 
     def temperature_handler(self, sender, match: re.Match):
         """
         Parses the temperature autoreport data,
         is called by poll result handler
         """
+        assert sender is not None
         if match:
             groups = match.groupdict()
             self.current_telemetry.temp_nozzle = float(groups["ntemp"])
@@ -148,13 +149,14 @@ class TelemetryGatherer(ThreadedUpdatable):
         """
         match = instruction.match()
         if match:
-            self.position_handler(None, match)
+            self.position_handler(self, match)
 
     def position_handler(self, sender, match: re.Match):
         """
         Parses the position autoreport data,
         is called by poll result handler
         """
+        assert sender is not None
         if match:
             groups = match.groupdict()
             self.current_telemetry.axis_x = float(groups["x"])
@@ -183,6 +185,7 @@ class TelemetryGatherer(ThreadedUpdatable):
         Parses the fan autoreport. The data here is not the same as when
         we were polling them
         """
+        assert sender is not None
         if match:
             groups = match.groupdict()
             self.current_telemetry.fan_extruder = int(groups["extruder_rpm"])
@@ -247,10 +250,14 @@ class TelemetryGatherer(ThreadedUpdatable):
             mixed_path = file_or_status_match.group("sdn_lfn")
             try:
                 long_path = self.model.sd_card.mixed_to_lfn_paths[mixed_path]
-                self.file_path_signal.send(path=long_path, filename_only=False)
+                self.file_path_signal.send(self,
+                                           path=long_path,
+                                           filename_only=False)
             except KeyError:
                 filename = Path(mixed_path).name
-                self.file_path_signal.send(path=filename, filename_only=True)
+                self.file_path_signal.send(self,
+                                           path=filename,
+                                           filename_only=True)
             self.printing_signal.send(self)
 
         elif file_or_status_match.group("no_print"):
@@ -285,7 +292,7 @@ class TelemetryGatherer(ThreadedUpdatable):
     def print_info_result(self, instruction: MandatoryMatchableInstruction):
         """Print info polling handler"""
         match = instruction.match()
-        self.print_info_handler(None, match)
+        self.print_info_handler(self, match)
 
     def print_info_handler(self, sender, match: re.Match):
         """
@@ -296,6 +303,7 @@ class TelemetryGatherer(ThreadedUpdatable):
         The minutes remaining are naively multiplied by the inverse of the
         speed multiplier
         """
+        assert sender is not None
         if match:
             groups = match.groupdict()
             progress = int(groups["progress"])
@@ -312,7 +320,7 @@ class TelemetryGatherer(ThreadedUpdatable):
             log.debug("Mins without speed considering %s, mins otherwise %s",
                       speed_agnostic_mins_remaining, mins_remaining)
             secs_remaining = mins_remaining * 60
-            progress_broken = not (0 <= progress <= 100)
+            progress_broken = not 0 <= progress <= 100
             if not progress_broken:
                 self.current_telemetry.progress = progress
                 self.telemetry_updated()
@@ -331,6 +339,7 @@ class TelemetryGatherer(ThreadedUpdatable):
         Parses the output of the printer when its heating the heatbed
         and the extruder
         """
+        assert sender is not None
         groups = match.groupdict()
 
         self.current_telemetry.temp_nozzle = float(groups["ntemp"])
@@ -344,6 +353,7 @@ class TelemetryGatherer(ThreadedUpdatable):
         Parses the output of the printer when its heating the hotend
         and the extruder
         """
+        assert sender is not None
         groups = match.groupdict()
 
         self.current_telemetry.temp_nozzle = float(groups["ntemp"])

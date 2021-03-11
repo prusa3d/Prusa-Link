@@ -8,7 +8,7 @@ from pathlib import Path
 from time import sleep, time
 from typing import Callable
 
-import unidecode as unidecode
+import unidecode
 
 from .const import SD_MOUNT_NAME
 
@@ -28,7 +28,7 @@ def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,
     by reference
     """
 
-    last_called = 0
+    last_called = 0.0
 
     while should_loop():
         last_checked_exit = time()
@@ -41,7 +41,7 @@ def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,
                 args.append(getter())
 
             kwargs = {}
-            for name, getter in kwarg_getters:
+            for name, getter in kwarg_getters.items():
                 kwargs[name] = getter()
 
             to_run(*args, **kwargs)
@@ -60,12 +60,12 @@ def get_local_ip():
     Gets the local ip used for connecting to MQTT_HOSTNAME
     Code from https://stackoverflow.com/a/166589
     """
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     # does not matter if host is reachable or not,
     # any client interface that is UP should suffice
-    s.connect(("8.8.8.8", 1))
-    local_ip = s.getsockname()[0]
-    s.close()
+    sock.connect(("8.8.8.8", 1))
+    local_ip = sock.getsockname()[0]
+    sock.close()
     return local_ip
 
 

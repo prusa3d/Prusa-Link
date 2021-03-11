@@ -55,18 +55,22 @@ class StorageController:
 
     def dir_mounted(self, sender, path: str):
         """Signal pass-through"""
+        assert sender is not None
         self.dir_mounted_signal.send(self, path=path)
 
     def dir_unmounted(self, sender, path: str):
         """Signal pass-through"""
+        assert sender is not None
         self.dir_unmounted_signal.send(self, path=path)
 
     def sd_mounted(self, sender, files: File):
         """Signal pass-through"""
+        assert sender is not None
         self.sd_mounted_signal.send(self, files=files)
 
     def sd_unmounted(self, sender):
         """Signal pass-through"""
+        assert sender is not None
         self.sd_unmounted_signal.send(self)
 
     def update(self):

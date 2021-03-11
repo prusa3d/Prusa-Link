@@ -44,10 +44,9 @@ class PrintStats:
                     self.data.has_inbuilt_stats = True
 
         log.info(
-            f"New file analyzed, contains {self.data.total_gcode_count} "
-            f"gcode commands and "
-            f"{'has' if self.data.has_inbuilt_stats else 'does not have'} "
-            f"inbuilt percent and time reporting.")
+            "New file analyzed, contains %s  gcode commands and %s "
+            "inbuilt percent and time reporting.", self.data.total_gcode_count,
+            'has' if self.data.has_inbuilt_stats else 'does not have')
 
     def end_time_segment(self):
         """
