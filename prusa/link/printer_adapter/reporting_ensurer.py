@@ -1,3 +1,4 @@
+"""Contains implementation of the ReportingEnsurer class"""
 from time import time
 
 from .input_output.serial.serial_queue import SerialQueue

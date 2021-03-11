@@ -1,3 +1,4 @@
+"""Contains implementation of the LCDPrinter class"""
 import logging
 from threading import Thread
 from time import time, sleep
@@ -15,13 +16,8 @@ from ..updatable import prctl_name
 log = logging.getLogger(__name__)
 
 
-class LCDMessage:
-    def __init__(self, text: str, duration: float = 2):
-        self.duration = duration
-        self.text: str = text
-
-
 class LCDPrinter(metaclass=MCSingleton):
+    """Reports Prusa Link status on the printer LCD whenever possible"""
     MESSAGE_DURATION = 5
 
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,

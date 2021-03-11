@@ -1,3 +1,8 @@
+"""
+Contains implementation of the SerialReader and Regex pairing classes
+The latter is used by the former for tracking which regular expressions
+have which handlers
+"""
 import logging
 import re
 from re import Match

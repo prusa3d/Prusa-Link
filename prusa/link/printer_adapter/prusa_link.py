@@ -1,3 +1,5 @@
+"""Implements the PrusaLink class"""
+
 import logging
 import os
 from threading import Thread, Event, enumerate as enumerate_threads
@@ -10,13 +12,8 @@ from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType, State
 from prusa.connect.printer.const import Source
 
-from .command_handlers.execute_gcode import ExecuteGcode
-from .command_handlers.job_info import JobInfo
-from .command_handlers.pause_print import PausePrint
-from .command_handlers.reset_printer import ResetPrinter
-from .command_handlers.resume_print import ResumePrint
-from .command_handlers.start_print import StartPrint
-from .command_handlers.stop_print import StopPrint
+from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
+    ResetPrinter, ResumePrint, StartPrint, StopPrint
 from .command_queue import CommandQueue
 from .informers.filesystem.sd_card import SDState
 from .informers.job import Job
@@ -51,6 +48,13 @@ log = logging.getLogger(__name__)
 
 
 class PrusaLink:
+    """
+    This class is the controller for Prusa Link, more specifically the part
+    that communicates with the printer.
+
+    It connects signals with their handlers
+    """
+
     # pylint: disable=no-self-use
     def __init__(self, cfg: Config, settings):
         # pylint: disable=too-many-statements

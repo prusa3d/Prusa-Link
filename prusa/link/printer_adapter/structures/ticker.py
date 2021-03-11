@@ -1,3 +1,4 @@
+"""Contains implementation of the Ticker class"""
 from time import time
 
 

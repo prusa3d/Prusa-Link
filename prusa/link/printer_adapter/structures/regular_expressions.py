@@ -1,3 +1,4 @@
+"""Contains every regular expression used in the app as a constant"""
 import re
 
 OPEN_RESULT_REGEX = re.compile(

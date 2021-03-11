@@ -1,3 +1,8 @@
+"""
+Contains models that were originally intended for sending to the connect.
+Pydantic makes a great tool for cleanly serializing simple python objects,
+while enforcing their type
+"""
 from enum import Enum
 from typing import Optional, List
 

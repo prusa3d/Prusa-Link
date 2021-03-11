@@ -1,3 +1,4 @@
+"""Contains implementation of the CommandHandler class"""
 from threading import Thread
 
 from prusa.connect.printer import Command

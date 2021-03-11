@@ -1,3 +1,7 @@
+"""
+Contains almost every constant for the printer communication part of
+Prusa Link
+"""
 from prusa.connect.printer.const import State
 
 BASE_STATES = {State.READY, State.BUSY}

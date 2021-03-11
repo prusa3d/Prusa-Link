@@ -1,3 +1,7 @@
+"""
+Contains implementation for all the types of instructions enqueueable to the
+serial queue
+"""
 import logging
 import re
 from enum import Enum

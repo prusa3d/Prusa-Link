@@ -1,3 +1,4 @@
+"""Contains implementation of the Command class"""
 import logging
 import re
 from typing import Any, Dict

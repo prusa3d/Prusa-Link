@@ -1,3 +1,4 @@
+"""Contains implementation of the PrintStats class"""
 import logging
 from time import time
 

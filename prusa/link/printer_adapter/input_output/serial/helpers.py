@@ -1,3 +1,4 @@
+"""Contains helper functions, for instruction enqueuing"""
 import re
 from typing import List, Callable
 

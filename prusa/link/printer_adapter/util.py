@@ -1,3 +1,4 @@
+"""Contains functions that might be useful outside of their modules"""
 import logging
 import os
 import socket
