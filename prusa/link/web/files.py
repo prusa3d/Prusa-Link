@@ -2,6 +2,8 @@
 from os import makedirs
 from os.path import abspath, join, exists
 from base64 import decodebytes
+from datetime import datetime
+from hashlib import md5
 
 import logging
 
@@ -22,13 +24,43 @@ from ..printer_adapter.informers.job import JobState
 from .. import errors
 
 log = logging.getLogger(__name__)
+HEADER_DATETIME_FORMAT = "%a, %d %b %Y %X GMT"
 
 
 @app.route('/api/files')
 @check_api_digest
 def api_files(req):
     """Returns info about all available print files"""
-    # pylint: disable=unused-argument
+
+    file_system = app.daemon.prusa_link.printer.fs
+
+    last_updated = 0
+    for mount in file_system.mounts.values():
+        if mount.last_updated > last_updated:
+            last_updated = mount.last_updated
+    last_modified = datetime.utcfromtimestamp(last_updated)
+    last_modified_str = last_modified.strftime(HEADER_DATETIME_FORMAT)
+    etag = 'W/"%s"' % md5(last_modified_str.encode()).hexdigest()[:10]
+
+    headers = {
+        'Last-Modified': last_modified_str,
+        'ETag': etag,
+        'Date': datetime.utcnow().strftime(HEADER_DATETIME_FORMAT)
+    }
+
+    if 'If-Modified-Since' in req.headers:  # check cache header
+        hdt = datetime.strptime(req.headers['If-Modified-Since'],
+                                HEADER_DATETIME_FORMAT)
+
+        if last_modified <= hdt:
+            return Response(status_code=state.HTTP_NOT_MODIFIED,
+                            headers=headers)
+
+    if 'If-None-Match' in req.headers:
+        if req.headers['If-None-Match'] == etag:
+            return Response(status_code=state.HTTP_NOT_MODIFIED,
+                            headers=headers)
+
     data = app.daemon.prusa_link.printer.get_info()["files"]
     files = [files_to_api(child) for child in data.get("children", [])]
 
@@ -42,7 +74,9 @@ def api_files(req):
     mount = file_system.mounts.get(mount_path)
     free = mount.get_free_space() if mount else 0
 
-    return JSONResponse(files=files, free='%d %s' % hbytes(free))
+    return JSONResponse(headers=headers,
+                        files=files,
+                        free='%d %s' % hbytes(free))
 
 
 @app.route('/api/files/<location>', state.METHOD_POST)
