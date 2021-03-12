@@ -70,14 +70,14 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
 
         file_path_string = caller.args[0]
         path: Path = Path(file_path_string)
-        log.warning("FILE_INFO for: %s", path)
+        log.info("FILE_INFO for: %s", path)
         parts = path.parts
 
         if file_is_on_sd(parts):
             data = self.from_path(path)
         else:
             data = super().get_file_info(caller)
-        log.warning("FILE_INFO: %s", data)
+        log.info("FILE_INFO: %s", data)
         return data
 
     def from_path(self, path: Path):
@@ -87,7 +87,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
 
         meta = FDMMetaData(string_path)
         meta.load_from_path(string_path)
-        log.warning(meta.data)
+        log.info(meta.data)
 
         data = dict(source=Source.CONNECT,
                     event=const.Event.FILE_INFO,
