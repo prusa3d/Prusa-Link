@@ -9,6 +9,9 @@ python:
 git:
  submodules: false
 
+before_install:
+ - sudo apt-get update && sudo apt-get install -y libcap-dev
+
 install:
  - pip3 install -r requirements.txt
  - pip3 install pytest pytest-pylint pytest-doctestplus pytest-mypy
