@@ -16,6 +16,7 @@ from ...input_output.serial.helpers import \
     wait_for_instruction, enqueue_matchable, enqueue_collecting
 from ...model import Model
 from ...structures.model_classes import SDState
+from ...structures.module_data_classes import SDCardData
 from ...structures.regular_expressions import \
     SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, \
     SD_EJECTED_REGEX, LFN_CAPTURE, D3_C1_OUTPUT_REGEX
@@ -47,6 +48,7 @@ class SDCard(ThreadedUpdatable):
     us about an SD insertion. Let's tell connect the card got removed and go
     to the INITIALISING state
     """
+    # pylint: disable=too-many-instance-attributes
     thread_name = "sd_updater"
 
     # Cycle fast, but re-scan only on events or in big intervals
@@ -67,18 +69,17 @@ class SDCard(ThreadedUpdatable):
         self.state_manager = state_manager
         self.model = model
 
+        self.model.sd_card = SDCardData(expecting_insertion=False,
+                                        invalidated=True,
+                                        last_updated=time(),
+                                        last_checked_flash_air=time(),
+                                        sd_state=SDState.UNSURE,
+                                        files=self.get_root(),
+                                        lfn_to_sfn_paths={},
+                                        sfn_to_lfn_paths={},
+                                        mixed_to_lfn_paths={},
+                                        is_flash_air=False)
         self.data = self.model.sd_card
-
-        self.data.expecting_insertion = False
-        self.data.invalidated = True
-        self.data.last_updated = time()
-        self.data.last_checked_flash_air = time()
-        self.data.sd_state = SDState.UNSURE
-        self.data.files = None
-        self.data.lfn_to_sfn_paths = {}
-        self.data.sfn_to_lfn_paths = {}
-        self.data.mixed_to_lfn_paths = {}
-        self.data.is_flash_air = False
 
         super().__init__()
 
@@ -157,10 +158,12 @@ class SDCard(ThreadedUpdatable):
         :return: The constructed file tree. Also the translation data for
         converting between all used path formats get saved at the end
         """
+        # pylint: disable=too-many-locals,too-many-statements
+        # TODO: Find a way to split this up
         if self.data.sd_state == SDState.ABSENT:
             return None
 
-        tree = SDFile(name=SD_MOUNT_NAME, is_dir=True, ro=True)
+        tree = self.get_root()
 
         instruction = enqueue_collecting(self.serial_queue,
                                          "M20 L",
@@ -369,3 +372,8 @@ class SDCard(ThreadedUpdatable):
                     self.sd_state_changed(SDState.PRESENT)
             else:
                 self.sd_state_changed(SDState.ABSENT)
+
+    @staticmethod
+    def get_root():
+        """Gets the root node for sd card files"""
+        return SDFile(name=SD_MOUNT_NAME, is_dir=True, ro=True)

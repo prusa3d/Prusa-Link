@@ -5,3 +5,6 @@ good-names=i,l,f,sn,ip
 [TYPECHECK]
 
 generated-members=prctl
+
+[MASTER]
+extension-pkg-whitelist=pydantic

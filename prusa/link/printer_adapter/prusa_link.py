@@ -47,6 +47,7 @@ from .. import errors
 log = logging.getLogger(__name__)
 
 
+# pylint: disable=too-many-instance-attributes, too-many-public-methods
 class PrusaLink:
     """
     This class is the controller for Prusa Link, more specifically the part
@@ -54,10 +55,8 @@ class PrusaLink:
 
     It connects signals with their handlers
     """
-
-    # pylint: disable=no-self-use
     def __init__(self, cfg: Config, settings):
-        # pylint: disable=too-many-statements, too-many-instance-attributes
+        # pylint: disable=too-many-statements
         self.cfg: Config = cfg
         log.info('Starting adapter for port %s', self.cfg.printer.port)
         self.settings: Settings = settings
@@ -183,6 +182,7 @@ class PrusaLink:
         self.telemetry_gatherer.start()
         self.storage.start()
         self.ip_updater.start()
+        self.lcd_printer.start()
         self.command_queue.start()
         self.last_sent_telemetry = time()
         self.telemetry_thread = Thread(target=self.keep_sending_telemetry,
@@ -537,6 +537,7 @@ class PrusaLink:
         assert sender is not None
         self.job.tick()
 
+    # pylint: disable=too-many-arguments
     def state_changed(self,
                       sender,
                       from_state,
@@ -545,7 +546,6 @@ class PrusaLink:
                       source=None,
                       reason=None):
         """Connects the state manager state change to Prusa Connect"""
-        # pylint: disable: too-many-arguments
         assert sender is not None
         assert from_state is not None
         assert to_state is not None

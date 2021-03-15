@@ -14,6 +14,7 @@ from ..input_output.serial.serial_reader import \
     SerialReader
 from ..model import Model
 from ..structures.mc_singleton import MCSingleton
+from ..structures.module_data_classes import StateManagerData
 from ..structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, FAN_ERROR_REGEX
@@ -28,7 +29,7 @@ class StateChange:
     Used for assigning info to observed state changes
     """
 
-    # pylint: disable=too-few-public-methods
+    # pylint: disable=too-few-public-methods, too-many-arguments
     def __init__(self,
                  command_id=None,
                  to_states: Dict[State, Union[Source, None]] = None,
@@ -86,6 +87,8 @@ class StateManager(metaclass=MCSingleton):
     Keeps track of the printer states by observing the serial and by listening
     to other PrusaLink components
     """
+
+    # pylint: disable=too-many-instance-attributes,too-many-public-methods
     def __init__(self, serial_reader: SerialReader, model: Model):
 
         self.serial_reader: SerialReader = serial_reader
@@ -100,17 +103,19 @@ class StateManager(metaclass=MCSingleton):
         #                                           source: Sources
         #                                           reason: str
 
+        self.model.state_manager = StateManagerData(
+            # The ACTUAL states considered when reporting
+            base_state=State.BUSY,
+            printing_state=None,
+            override_state=None,
+            # Reported state history
+            state_history=deque(maxlen=STATE_HISTORY_SIZE),
+            last_state=State.BUSY,
+            current_state=State.BUSY,
+            # Track how many errors we believe there are and don't
+            # leave the error state until all are resolved
+            error_count=0)
         self.data = self.model.state_manager
-
-        # The ACTUAL states considered when reporting
-        self.data.base_state = State.BUSY
-        self.data.printing_state = None
-        self.data.override_state = None
-
-        # Reported state history
-        self.data.state_history = deque(maxlen=STATE_HISTORY_SIZE)
-        self.data.last_state = self.get_state()
-        self.data.current_state = self.get_state()
 
         # Prevent multiple threads changing the state at once
         self.state_lock = Lock()
@@ -147,10 +152,6 @@ class StateManager(metaclass=MCSingleton):
 
         for regex, handler in regex_handlers.items():
             self.serial_reader.add_handler(regex, handler)
-
-        # Track how many errors we believe there are and don't leave the error
-        # state until all are resolved
-        self.data.error_count = 0
 
         error_states = get_all_error_states()
         for state in error_states:

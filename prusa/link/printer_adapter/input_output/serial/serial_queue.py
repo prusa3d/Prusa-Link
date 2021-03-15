@@ -9,7 +9,7 @@ import re
 from collections import deque
 from threading import Lock, Thread
 from time import time, sleep
-from typing import Optional, Sequence
+from typing import Optional, Deque, List
 
 from blinker import Signal  # type: ignore
 
@@ -42,6 +42,8 @@ class SerialQueue(metaclass=MCSingleton):
     RX buffer dumping and so on, which this class works around to provide
     as deterministic of a serial connection to a Prusa printer as possible
     """
+
+    # pylint: disable=too-many-instance-attributes
     def __init__(self,
                  serial: Serial,
                  serial_reader: SerialReader,
@@ -56,10 +58,10 @@ class SerialQueue(metaclass=MCSingleton):
         self.instruction_confirmed_signal = Signal()
 
         # A queue of instructions for the printer
-        self.queue: deque[Instruction] = deque()
+        self.queue: Deque[Instruction] = deque()
 
         # This one shall contain time critical instructions
-        self.priority_queue: deque[Instruction] = deque()
+        self.priority_queue: Deque[Instruction] = deque()
 
         # Instruction that is currently being handled
         self.current_instruction: Optional[Instruction] = None
@@ -76,10 +78,10 @@ class SerialQueue(metaclass=MCSingleton):
         # When filament runs out or other buffer flushing calamity occurs
         # We need to re-send some commands that we already had dismissed as
         # confirmed
-        self.send_history: deque[Instruction] = deque(maxlen=HISTORY_LENGTH)
+        self.send_history: Deque[Instruction] = deque(maxlen=HISTORY_LENGTH)
 
         # A list which will contain all messages needed to recover
-        self.recovery_list: Sequence[Instruction] = []
+        self.recovery_list: List[Instruction] = []
         self.rx_yeet_slot = None
 
         # For stopping fast (power panic)
@@ -227,7 +229,6 @@ class SerialQueue(metaclass=MCSingleton):
         """
         next_instruction = self.peek_next()
 
-        # FIXME: Two consecutive M110s have the potential to break stuff
         if M110_REGEX.match(next_instruction.message) and \
                 not self.worked_around_m110:
             self.m110_workaround_slot = Instruction("G4 S0.001")
@@ -295,7 +296,7 @@ class SerialQueue(metaclass=MCSingleton):
         self._try_writing()
 
     def enqueue_list(self,
-                     instruction_list: Sequence[Instruction],
+                     instruction_list: List[Instruction],
                      to_front=False):
         """
         Enqueue list of instructions
@@ -329,12 +330,12 @@ class SerialQueue(metaclass=MCSingleton):
         if self.current_instruction is not None:
             capturing_regexps = self.current_instruction.capturing_regexps
 
-        if additional_output and capturing_regexps is not None \
-                and TEMPERATURE_REGEX in capturing_regexps:
-            temperature_match = TEMPERATURE_REGEX.match(additional_output)
-            if temperature_match:
-                self.current_instruction.output_captured(
-                    None, match=temperature_match)
+            if additional_output and capturing_regexps is not None \
+                    and TEMPERATURE_REGEX in capturing_regexps:
+                temperature_match = TEMPERATURE_REGEX.match(additional_output)
+                if temperature_match:
+                    self.current_instruction.output_captured(
+                        None, match=temperature_match)
 
         self._confirmed()
 

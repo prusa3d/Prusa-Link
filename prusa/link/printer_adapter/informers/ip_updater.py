@@ -11,6 +11,7 @@ from ..input_output.serial.serial_queue import SerialQueue
 from ..model import Model
 from ..const import IP_UPDATE_INTERVAL, \
     SHOW_IP_INTERVAL, NO_IP, IP_WRITE_TIMEOUT
+from ..structures.module_data_classes import IPUpdaterData
 from ..updatable import ThreadedUpdatable
 from ..util import get_local_ip
 from ... import errors
@@ -29,12 +30,11 @@ class IPUpdater(ThreadedUpdatable):
 
     def __init__(self, model: Model, serial_queue: SerialQueue):
         self.serial_queue = serial_queue
-        self.data = model.ip_updater
 
         self.updated_signal = Signal()  # kwargs: old_ip: str, new_ip: str
 
-        self.data.local_ip = None
-        self.data.update_ip_on = time()
+        model.ip_updater = IPUpdaterData(local_ip=NO_IP, update_ip_on=time())
+        self.data = model.ip_updater
 
         super().__init__()
 

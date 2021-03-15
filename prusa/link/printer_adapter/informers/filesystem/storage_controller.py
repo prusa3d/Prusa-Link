@@ -26,6 +26,8 @@ class StorageController:
     Sort of an interface layer between the (once larger) storage system
     and the rest of the app
     """
+
+    # pylint: disable=too-many-instance-attributes,too-many-arguments
     def __init__(self, cfg, serial_queue: SerialQueue,
                  serial_reader: SerialReader, state_manager: StateManager,
                  model: Model):
@@ -44,8 +46,8 @@ class StorageController:
         self.sd_card.sd_mounted_signal.connect(self.sd_mounted)
         self.sd_card.sd_unmounted_signal.connect(self.sd_unmounted)
 
-        self.fs_mounts = FSMounts(self.model.fs_mounts)
-        self.dir_mounts = DirMounts(cfg, self.model.dir_mounts)
+        self.fs_mounts = FSMounts(self.model)
+        self.dir_mounts = DirMounts(self.model, cfg)
         self.fs_mounts.mounted_signal.connect(self.dir_mounted)
         self.fs_mounts.unmounted_signal.connect(self.dir_unmounted)
         self.dir_mounts.mounted_signal.connect(self.dir_mounted)

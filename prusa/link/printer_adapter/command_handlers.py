@@ -46,7 +46,7 @@ class TryUntilState(Command):
         :param desired_state: Into which state do we hope to get
         """
 
-        # pylint: disable=too-many-arguments
+        # pylint: disable=too-many-arguments,unused-argument
         def state_changed(sender,
                           from_state,
                           to_state,
@@ -339,7 +339,7 @@ class ResetPrinter(Command):
         if spam_loader is not None:
             # pylint: disable=import-outside-toplevel
             # pylint: disable=import-error
-            import wiringpi
+            import wiringpi  # type: ignore
             wiringpi.wiringPiSetupGpio()
             wiringpi.pinMode(RESET_PIN, wiringpi.OUTPUT)
             wiringpi.digitalWrite(RESET_PIN, wiringpi.HIGH)

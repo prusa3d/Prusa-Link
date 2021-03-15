@@ -35,6 +35,9 @@ class LCDPrinter(metaclass=MCSingleton):
         self.running = True
         self.display_thread: Thread = Thread(target=self.show_status,
                                              name="LCDMessage")
+
+    def start(self):
+        """Starts the module"""
         self.display_thread.start()
 
     def get_ip(self):

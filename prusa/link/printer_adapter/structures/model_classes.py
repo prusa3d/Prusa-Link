@@ -12,9 +12,12 @@ from prusa.connect.printer.const import State
 
 from ... import __version__
 
+# pylint: disable=too-few-public-methods
+
 
 class Telemetry(BaseModel):
     """The Telemetry model"""
+    # pylint: disable=too-many-instance-attributes
 
     temp_nozzle: Optional[float] = None
     temp_bed: Optional[float] = None

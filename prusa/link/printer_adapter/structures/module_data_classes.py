@@ -10,31 +10,35 @@ from prusa.connect.printer.const import State
 
 from .model_classes import JobState, SDState
 
+# pylint: disable=too-few-public-methods
+
 
 class FilePrinterData(BaseModel):
     """Data of the FilePrinter class"""
-    tmp_file_path: Optional[str]
-    pp_file_path: Optional[str]
-    printing: Optional[bool]
-    stopped_forcefully: Optional[bool]
-    paused: Optional[bool]
-    line_number: Optional[int]
-    enqueued: Optional[Deque]
-    gcode_number: Optional[int]
+    tmp_file_path: str
+    pp_file_path: str
+    printing: bool
+    paused: bool
+    stopped_forcefully: bool
+    line_number: int
+
+    # In reality Deque[Instruction] but that cannot be validated by pydantic
+    enqueued: Deque[Any]
+    gcode_number: int
 
 
 class StateManagerData(BaseModel):
     """Data of the StateManager class"""
     # The ACTUAL states considered when reporting
-    base_state: Optional[State] = State.READY
-    printing_state: Optional[State] = None
-    override_state: Optional[State] = None
+    base_state: State
+    printing_state: Optional[State]
+    override_state: Optional[State]
 
     # Reported state history
-    last_state: Optional[State]
-    current_state: Optional[State]
-    state_history: Optional[Deque[State]]
-    error_count: Optional[int]
+    last_state: State
+    current_state: State
+    state_history: Deque[State]
+    error_count: int
 
 
 class JobData(BaseModel):
@@ -48,8 +52,8 @@ class JobData(BaseModel):
     from_sd: Optional[bool]
     inbuilt_reporting: Optional[bool]
 
-    job_id: Optional[int]
-    job_state: Optional[JobState]
+    job_id: int
+    job_state: JobState
 
     def get_job_id_for_api(self):
         """
@@ -61,37 +65,37 @@ class JobData(BaseModel):
         return self.job_id
 
 
-class IpUpdaterData(BaseModel):
+class IPUpdaterData(BaseModel):
     """Data of the IpUpdater class"""
-    local_ip: Optional[str]
-    update_ip_on: Optional[float]
+    local_ip: str
+    update_ip_on: float
 
 
 class SDCardData(BaseModel):
     """Data of the SDCard class"""
-    expecting_insertion: Optional[bool]
-    invalidated: Optional[bool]
-    is_flash_air: Optional[bool]
-    last_updated: Optional[float]
-    last_checked_flash_air: Optional[float]
-    sd_state: Optional[SDState]
-    files: Optional[Any]  # We cannot type-check SDFile, only basic ones
-    sfn_to_lfn_paths: Optional[Dict[str, str]]
-    lfn_to_sfn_paths: Optional[Dict[str, str]]
-    mixed_to_lfn_paths: Optional[Dict[str, str]]
+    expecting_insertion: bool
+    invalidated: bool
+    is_flash_air: bool
+    last_updated: float
+    last_checked_flash_air: float
+    sd_state: SDState
+    files: Any  # We cannot type-check SDFile, only basic ones
+    sfn_to_lfn_paths: Dict[str, str]
+    lfn_to_sfn_paths: Dict[str, str]
+    mixed_to_lfn_paths: Dict[str, str]
 
 
 class MountsData(BaseModel):
     """Data of the Mounts class"""
-    blacklisted_paths: Optional[List[str]]
-    blacklisted_names: Optional[List[str]]
-    configured_mounts: Optional[Set[str]]
-    mounted_set: Optional[Set[str]]
+    blacklisted_paths: List[str]
+    blacklisted_names: List[str]
+    configured_mounts: Set[str]
+    mounted_set: Set[str]
 
 
 class PrintStatsData(BaseModel):
     """Data of the PrintStats class"""
-    print_time: Optional[float]
-    segment_start: Optional[float]
-    has_inbuilt_stats: Optional[bool]
-    total_gcode_count: Optional[int]
+    print_time: float
+    segment_start: float
+    has_inbuilt_stats: bool
+    total_gcode_count: int
