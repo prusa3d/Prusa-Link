@@ -4,6 +4,7 @@ from time import time
 
 from .const import TAIL_COMMANDS
 from .model import Model
+from .structures.module_data_classes import PrintStatsData
 from .util import get_gcode
 
 log = logging.getLogger(__name__)
@@ -17,13 +18,13 @@ class PrintStats:
     def __init__(self, model: Model):
         self.model = model
 
+        self.model.print_stats = PrintStatsData(
+            print_time=0,
+            segment_start=time(),
+            has_inbuilt_stats=False,
+            total_gcode_count=0,
+        )
         self.data = self.model.print_stats
-
-        self.data.print_time = 0
-        self.data.segment_start = time()
-
-        self.data.has_inbuilt_stats = False
-        self.data.total_gcode_count = 0
 
     def track_new_print(self, file_path):
         """

@@ -26,6 +26,8 @@ log = logging.getLogger(__name__)
 
 class TelemetryGatherer(ThreadedUpdatable):
     """Compiles telemetry data from any source into Telemetry"""
+    # pylint: disable=too-many-instance-attributes
+
     thread_name = "telemetry"
     update_interval = TELEMETRY_INTERVAL
 
@@ -175,9 +177,9 @@ class TelemetryGatherer(ThreadedUpdatable):
         for match in instruction.get_matches():
             extruder_fan_rpm, print_fan_rpm = match.groups()
             if extruder_fan_rpm:
-                self.current_telemetry.fan_extruder = float(extruder_fan_rpm)
+                self.current_telemetry.fan_extruder = int(extruder_fan_rpm)
             if print_fan_rpm:
-                self.current_telemetry.fan_print = float(print_fan_rpm)
+                self.current_telemetry.fan_print = int(print_fan_rpm)
         self.telemetry_updated()
 
     def new_fan_handler(self, sender, match: re.Match):
@@ -196,6 +198,8 @@ class TelemetryGatherer(ThreadedUpdatable):
                 int(groups["print_power"])
             self.telemetry_updated()
 
+    # pylint: disable=too-many-locals
+    # TODO: Figure out a way to break this up
     def m27_result(self, instruction: MandatoryMatchableInstruction):
         """
         Parses the M27 P polling result

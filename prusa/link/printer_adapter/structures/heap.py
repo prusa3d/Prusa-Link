@@ -9,20 +9,30 @@ class HeapItem:
         self.heap_value = None
         self.heap_index = None
 
-    def __gt__(self, other: "HeapItem"):
-        return self.heap_value > other.heap_value
+    def __gt__(self, other):
+        if isinstance(other, HeapItem):
+            return self.heap_value > other.heap_value
+        return super().__gt__(other)
 
-    def __ge__(self, other: "HeapItem"):
-        return self.heap_value >= other.heap_value
+    def __ge__(self, other):
+        if isinstance(other, HeapItem):
+            return self.heap_value >= other.heap_value
+        return super().__ge__(other)
 
-    def __lt__(self, other: "HeapItem"):
-        return self.heap_value < other.heap_value
+    def __lt__(self, other):
+        if isinstance(other, HeapItem):
+            return self.heap_value < other.heap_value
+        return super().__lt__(other)
 
-    def __le__(self, other: "HeapItem"):
-        return self.heap_value <= other.heap_value
+    def __le__(self, other):
+        if isinstance(other, HeapItem):
+            return self.heap_value <= other.heap_value
+        return super().__le__(other)
 
-    def __eq__(self, other: "HeapItem"):
-        return self.heap_value == other.heap_value
+    def __eq__(self, other):
+        if isinstance(other, HeapItem):
+            return self.heap_value == other.heap_value
+        return super().__eq__(other)
 
 
 class MinHeap:
