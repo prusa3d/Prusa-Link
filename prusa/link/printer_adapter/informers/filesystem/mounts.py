@@ -8,6 +8,8 @@ from typing import Set, List
 
 from blinker import Signal  # type: ignore
 
+from ...model import Model
+from ...structures.module_data_classes import MountsData
 from ....config import Config
 from ...const import BLACKLISTED_PATHS, \
     BLACKLISTED_NAMES, BLACKLISTED_TYPES, QUIT_INTERVAL, DIR_RESCAN_INTERVAL
@@ -25,13 +27,14 @@ class Mounts(ThreadedUpdatable):
 
     paths_to_mount: List[str] = []
 
-    def __init__(self, data):
+    def __init__(self, model: Model):
         super().__init__()
-
-        self.data = data
+        self.model: Model = model
 
         self.mounted_signal = Signal()  # kwargs = path: str
         self.unmounted_signal = Signal()  # kwargs = path: str
+
+        self.data: MountsData = self.get_data_object()
 
         self.data.blacklisted_paths = self._get_clean_paths(BLACKLISTED_PATHS)
         self.data.blacklisted_names = BLACKLISTED_NAMES
@@ -137,6 +140,14 @@ class Mounts(ThreadedUpdatable):
         """
         ...
 
+    @abc.abstractmethod
+    def get_data_object(self) -> MountsData:
+        """
+        There need to be two different object for the two different mount
+        types. This method takes care of that
+        """
+        ...
+
 
 class FSMounts(Mounts):
     """
@@ -146,10 +157,16 @@ class FSMounts(Mounts):
     thread_name = "fs_mounts_thread"
     update_interval = 0  # The waiting is done in epoll timeout instead of here
 
-    def __init__(self, data, mountpoints=None):
+    def __init__(self, model: Model, mountpoints=None):
         if mountpoints:
             FSMounts.paths_to_mount = mountpoints
-        super().__init__(data)
+
+        model.fs_mounts = MountsData(blacklisted_paths=[],
+                                     blacklisted_names=[],
+                                     configured_mounts=set(),
+                                     mounted_set=set())
+        # Call this after initializing the data
+        super().__init__(model)
 
         # Force the update, even if no events are caught, we need to see
         # which things are mounted, before beginning to only observe changes
@@ -158,6 +175,9 @@ class FSMounts(Mounts):
         self.mtab = open("/etc/mtab", "r")
         self.epoll_obj = select.epoll(1)
         self.epoll_obj.register(self.mtab.fileno(), select.EPOLLOUT)
+
+    def get_data_object(self) -> MountsData:
+        return self.model.fs_mounts
 
     def get_mountpoints(self):
         """
@@ -202,9 +222,16 @@ class DirMounts(Mounts):
     Configured directories are reported as mountpoints too,
     having the fs_type of "directory".
     """
-    def __init__(self, cfg: Config, data):
+    def __init__(self, model: Model, cfg: Config):
         DirMounts.paths_to_mount = cfg.printer.directories
-        super().__init__(data)
+
+        model.dir_mounts = MountsData(blacklisted_paths=[],
+                                      blacklisted_names=[],
+                                      configured_mounts=set(),
+                                      mounted_set=set())
+
+        # Call this after initializing the data
+        super().__init__(model)
 
         for directory in self.data.configured_mounts:
             ensure_directory(directory)
@@ -212,11 +239,14 @@ class DirMounts(Mounts):
     thread_name = "dir_mounts_thread"
     update_interval = DIR_RESCAN_INTERVAL
 
+    def get_data_object(self) -> MountsData:
+        """
+        There need to be two different object for the two different mount
+        types. This method takes care of that
+        """
+        return self.model.dir_mounts
+
     def get_mountpoints(self):
-        """
-        Goes through the list of configured directories for mounting and
-        adds every usable one to the list of mounted directories
-        """
         new_directory_set: Set[str] = set()
         for directory in self.data.configured_mounts:
 

@@ -8,6 +8,7 @@ from time import sleep
 
 from blinker import Signal  # type: ignore
 
+from .structures.module_data_classes import FilePrinterData
 from ..config import Config
 from .input_output.serial.instruction import \
     Instruction
@@ -54,19 +55,18 @@ class FilePrinter(metaclass=MCSingleton):
         self.byte_position_signal = Signal()  # kwargs: current: int
         #                                               total: int
 
+        self.model.file_printer = FilePrinterData(
+            printing=False,
+            paused=False,
+            stopped_forcefully=False,
+            tmp_file_path=get_clean_path(cfg.daemon.current_file),
+            pp_file_path=get_clean_path(cfg.daemon.power_panic_file),
+            enqueued=deque(),
+            line_number=0,
+            gcode_number=0)
         self.data = self.model.file_printer
 
-        self.data.tmp_file_path = get_clean_path(cfg.daemon.current_file)
-        self.data.pp_file_path = get_clean_path(cfg.daemon.power_panic_file)
         ensure_directory(os.path.dirname(self.data.tmp_file_path))
-
-        self.data.printing = False
-        self.data.paused = False
-
-        self.data.line_number = 0
-        self.data.gcode_number = 0
-
-        self.data.enqueued = deque()
 
         self.serial_queue.serial_queue_failed.connect(
             lambda sender: self.stop_print(), weak=False)

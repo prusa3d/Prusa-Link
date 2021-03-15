@@ -6,7 +6,7 @@ import logging
 import os
 from collections import deque
 from enum import Enum
-from typing import Optional
+from typing import Optional, Deque
 
 from ....config import Config
 from ...const import QUEUE_SIZE, \
@@ -61,7 +61,7 @@ class IsPlannerFed:
     one until the values accumulate.
     """
     def __init__(self, cfg: Config):
-        self.times_queue: deque[float] = deque(maxlen=QUEUE_SIZE)
+        self.times_queue: Deque[float] = deque(maxlen=QUEUE_SIZE)
 
         self.threshold_path = get_clean_path(cfg.daemon.threshold_file)
         ensure_directory(os.path.dirname(self.threshold_path))

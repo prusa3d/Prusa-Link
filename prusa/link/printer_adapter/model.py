@@ -7,7 +7,7 @@ from .const import PRINTING_STATES
 from .structures.mc_singleton import MCSingleton
 from .structures.model_classes import Telemetry
 from .structures.module_data_classes import \
-    FilePrinterData, StateManagerData, JobData, IpUpdaterData, SDCardData, \
+    FilePrinterData, StateManagerData, JobData, IPUpdaterData, SDCardData, \
     MountsData, PrintStatsData
 
 
@@ -32,14 +32,14 @@ class Model(metaclass=MCSingleton):
         # The idea is, every module will get the model.
         # Every component HAS TO write its OWN INFO ONLY but can read
         # everything
-        self.file_printer: FilePrinterData = FilePrinterData()
-        self.print_stats: PrintStatsData = PrintStatsData()
-        self.state_manager: StateManagerData = StateManagerData()
-        self.job: JobData = JobData()
-        self.ip_updater: IpUpdaterData = IpUpdaterData()
-        self.sd_card: SDCardData = SDCardData()
-        self.dir_mounts: MountsData = MountsData()
-        self.fs_mounts: MountsData = MountsData()
+        self.file_printer: FilePrinterData
+        self.print_stats: PrintStatsData
+        self.state_manager: StateManagerData
+        self.job: JobData
+        self.ip_updater: IPUpdaterData
+        self.sd_card: SDCardData
+        self.dir_mounts: MountsData
+        self.fs_mounts: MountsData
 
     def get_and_reset_telemetry(self):
         """

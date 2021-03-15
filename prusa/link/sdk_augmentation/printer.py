@@ -19,8 +19,6 @@ from .. import errors, __version__
 log = getLogger("connect-printer")
 
 
-# TODO: rename, it is using the same name just because double underscores
-#  break otherwise
 class MyPrinter(SDKPrinter, metaclass=MCSingleton):
     """
     Overrides some methods of the SDK Printer to provide better support for

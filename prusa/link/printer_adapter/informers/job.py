@@ -9,6 +9,7 @@ from typing import Any, Dict
 from blinker import Signal  # type: ignore
 from prusa.connect.printer import Printer
 
+from ..structures.module_data_classes import JobData
 from ...config import Config
 from ..input_output.serial.serial_reader import SerialReader
 from ..model import Model
@@ -32,9 +33,6 @@ class Job(metaclass=MCSingleton):
         self.serial_reader = serial_reader
         self.serial_reader.add_handler(FILE_OPEN_REGEX, self.file_opened)
 
-        self.model: Model = model
-        self.data = self.model.job
-
         # Unused
         self.job_id_updated_signal = Signal()  # kwargs: job_id: int
 
@@ -43,22 +41,21 @@ class Job(metaclass=MCSingleton):
 
         loaded_data: Dict[str, Any] = dict()
 
-        # ok fine, this is getting complicated, you get a json
         if os.path.exists(self.job_path):
             with open(self.job_path, "r") as job_file:
                 loaded_data = json.loads(job_file.read())
 
-        self.data.job_start_cmd_id = None
-        self.data.printing_file_path = None
-        self.data.printing_file_m_time = None
-        self.data.printing_file_size = None
-
-        self.data.filename_only = None
-        self.data.from_sd = None
-        self.data.inbuilt_reporting = None
-
-        self.data.job_id = int(loaded_data.get("job_id", 0))
-        self.data.job_state = JobState.IDLE
+        self.model: Model = model
+        self.model.job = JobData(job_start_cmd_id=None,
+                                 printing_file_path=None,
+                                 printing_file_m_time=None,
+                                 printing_file_size=None,
+                                 filename_only=None,
+                                 from_sd=None,
+                                 inbuilt_reporting=None,
+                                 job_state=JobState.IDLE,
+                                 job_id=int(loaded_data.get("job_id", 0)))
+        self.data = self.model.job
 
         self.job_id_updated_signal.send(self,
                                         job_id=self.data.get_job_id_for_api())

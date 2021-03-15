@@ -82,11 +82,8 @@ class Serial(metaclass=MCSingleton):
                                     timeout=self.timeout,
                                     write_timeout=self.write_timeout)
 
-        # No idea what these mean, but they seem to be 0, when the printer
-        # isn't going to restart
-        # FIXME: thought i could determine whether the printer is going to
-        #  restart or not. But that proved unreliable
-        # if attrs[0] != 0 or attrs[1] != 0:
+        # Tried to predict, whether the printer was going to restart on serial
+        # connect, but it proved unreliable
         log.debug("Waiting for the printer to boot")
         sleep(PRINTER_BOOT_WAIT)
 
