@@ -5,6 +5,8 @@ import os
 from threading import Thread, Event, enumerate as enumerate_threads
 from time import time
 
+from requests import RequestException
+
 from prusa.connect.printer import Command as SDKCommand
 from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType, State
@@ -231,7 +233,13 @@ class PrusaLink:
         out all threads which are still running and sets an event to signalize
         that Prusa Link has stopped.
         """
+        if self.model.file_printer.printing:
+            try:
+                self.command_queue.do_command(StopPrint())
+            except Exception:  # pylint: disable=broad-except
+                pass
         self.running = False
+        self.file_printer.stop()
         self.command_queue.stop()
         self.printer.stop_loop()
         self.printer.stop()
