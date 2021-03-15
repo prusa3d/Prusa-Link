@@ -88,6 +88,13 @@ class FilePrinter(metaclass=MCSingleton):
         """Power panic is not yet implemented, sso this does nothing"""
         # self.check_failed_print()
 
+    def stop(self):
+        if self.data.printing:
+            self.stop_print()
+        if self.thread is not None and self.thread.is_alive():
+            self.thread.join()
+            log.warning("File printer thread joined")
+
     @property
     def pp_exists(self):
         """Checks whether a file created on power panic exists"""
