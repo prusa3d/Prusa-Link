@@ -45,7 +45,6 @@ from .. import errors
 log = logging.getLogger(__name__)
 
 
-# pylint: disable=too-many-instance-attributes, too-many-public-methods
 class PrusaLink:
     """
     This class is the controller for Prusa Link, more specifically the part
@@ -258,6 +257,7 @@ class PrusaLink:
         """
         Connects the command to exectue gcode from CONNECT with its handler
         """
+        assert caller.args
         command = ExecuteGcode(gcode=caller.args[0],
                                force=caller.force,
                                command_id=caller.command_id)
@@ -267,6 +267,7 @@ class PrusaLink:
         """
         Connects the command to start print from CONNECT with its handler
         """
+        assert caller.args
         command = StartPrint(path=caller.args[0], command_id=caller.command_id)
         return self.command_queue.do_command(command)
 

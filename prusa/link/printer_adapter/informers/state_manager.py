@@ -29,7 +29,7 @@ class StateChange:
     Used for assigning info to observed state changes
     """
 
-    # pylint: disable=too-few-public-methods, too-many-arguments
+    # pylint: disable=too-many-arguments
     def __init__(self,
                  command_id=None,
                  to_states: Dict[State, Union[Source, None]] = None,

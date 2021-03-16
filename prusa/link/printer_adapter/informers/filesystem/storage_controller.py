@@ -27,7 +27,7 @@ class StorageController:
     and the rest of the app
     """
 
-    # pylint: disable=too-many-instance-attributes,too-many-arguments
+    # pylint: disable=too-many-arguments
     def __init__(self, cfg, serial_queue: SerialQueue,
                  serial_reader: SerialReader, state_manager: StateManager,
                  model: Model):

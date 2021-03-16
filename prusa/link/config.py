@@ -19,7 +19,6 @@ LOG_FORMAT_SYSLOG = \
     "%(levelname)s: %(message)s {%(funcName)s():%(lineno)d}"
 
 # pylint: disable=too-many-ancestors
-# pylint: disable=too-many-instance-attributes
 
 
 def get_log_level_dict(log_levels: Iterable[str]):

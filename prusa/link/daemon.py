@@ -31,12 +31,14 @@ class DaemonLogger:
         return self.config.configured_handler.socket.fileno()
 
 
-class STDOutLogger(DaemonLogger):
+class STDOutLogger(DaemonLogger):  # TODO: use own http class
+    """for catching std::out"""
     def write(self, message):
         logging.root.info(message)
 
 
-class STDErrLogger(DaemonLogger):
+class STDErrLogger(DaemonLogger):  # TODO: use own http class
+    """for catching std::err"""
     def write(self, message):
         logging.root.error(message)
 

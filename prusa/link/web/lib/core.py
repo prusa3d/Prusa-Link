@@ -20,7 +20,6 @@ STATIC_DIR = abspath(
 
 class PrusaLink(Application):
     """Extended Application object."""
-    # pylint: disable=too-many-instance-attributes
     cfg = None
     settings = None
     daemon = None

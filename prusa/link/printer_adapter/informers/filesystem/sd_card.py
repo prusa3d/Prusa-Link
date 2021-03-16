@@ -48,7 +48,6 @@ class SDCard(ThreadedUpdatable):
     us about an SD insertion. Let's tell connect the card got removed and go
     to the INITIALISING state
     """
-    # pylint: disable=too-many-instance-attributes
     thread_name = "sd_updater"
 
     # Cycle fast, but re-scan only on events or in big intervals

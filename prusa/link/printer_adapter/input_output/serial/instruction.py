@@ -14,8 +14,6 @@ log = logging.getLogger(__name__)
 
 class Instruction:
     """Basic instruction which can be enqueued into SerialQueue"""
-
-    # pylint: disable=too-many-instance-attributes
     def __init__(self,
                  message: str,
                  to_checksum: bool = False,

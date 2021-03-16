@@ -25,8 +25,6 @@ class Serial(metaclass=MCSingleton):
 
     It also can reset the connected device using DTR - works only with USB
     """
-
-    # pylint: disable=too-many-instance-attributes
     def __init__(self,
                  serial_reader: SerialReader,
                  port="/dev/ttyAMA0",

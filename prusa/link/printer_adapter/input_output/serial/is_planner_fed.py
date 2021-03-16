@@ -26,8 +26,6 @@ class HeapName(Enum):
 
 class TimeValue(HeapItem):
     """Time value with info in which queu it currently resides"""
-
-    # pylint: disable=too-few-public-methods
     def __init__(self, value):
         super().__init__(value)
         self.heap_name: Optional[HeapName] = None

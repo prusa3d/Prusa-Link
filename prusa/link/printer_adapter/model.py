@@ -16,8 +16,6 @@ class Model(metaclass=MCSingleton):
     This class should collect every bit of info from all the informer classes
     Some values are reset upon reading, other, more state oriented should stay
     """
-
-    # pylint: disable=too-many-instance-attributes
     def __init__(self):
         # Make only one thread be able to write or read our variables
         self.lock = Lock()

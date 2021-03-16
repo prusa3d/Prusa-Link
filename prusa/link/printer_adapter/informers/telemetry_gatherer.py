@@ -26,7 +26,6 @@ log = logging.getLogger(__name__)
 
 class TelemetryGatherer(ThreadedUpdatable):
     """Compiles telemetry data from any source into Telemetry"""
-    # pylint: disable=too-many-instance-attributes
 
     thread_name = "telemetry"
     update_interval = TELEMETRY_INTERVAL
