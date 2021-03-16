@@ -5,8 +5,7 @@ OPEN_RESULT_REGEX = re.compile(
     r"^(?P<ok>File opened).*|^(?P<nok>open failed).*")
 
 PRINTER_TYPE_REGEX = re.compile(r"^(?P<code>\d{3,5})$")
-FW_REGEX = re.compile(r"^FIRMWARE_NAME:Prusa-Firmware ?"
-                      r"(?P<version>(\d+\.)*\d).*$")
+FW_REGEX = re.compile(r"^(?P<version>\d+\.\d+\.\d+-\d+)$")
 SN_REGEX = re.compile(r"^(?P<sn>CZP.*)$")
 NOZZLE_REGEX = re.compile(r"^(?P<size>\d\.\d+)$")
 PERCENT_REGEX = re.compile(r"^(?P<percent>\d{0,3})%$")

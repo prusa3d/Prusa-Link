@@ -69,7 +69,7 @@ def get_firmware_version(serial_queue: SerialQueue, should_wait=lambda: True):
     whether to keep waiting for the instruction result
     """
     instruction = enqueue_matchable(serial_queue,
-                                    "M115",
+                                    "PRUSA Fir",
                                     FW_REGEX,
                                     to_front=True)
     wait_for_instruction(instruction, should_wait)
@@ -77,7 +77,8 @@ def get_firmware_version(serial_queue: SerialQueue, should_wait=lambda: True):
     if match is None:
         raise RuntimeError("Printer responded with something unexpected")
     firmware_version = match.group("version")
-    errors.FW.ok = StrictVersion(firmware_version) >= MINIMAL_FIRMWARE
+    without_buildnumber = firmware_version.split("-")[0]
+    errors.FW.ok = StrictVersion(without_buildnumber) >= MINIMAL_FIRMWARE
 
     return firmware_version
 
