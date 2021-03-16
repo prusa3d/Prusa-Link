@@ -2,6 +2,8 @@
 from logging import getLogger
 from pathlib import Path
 from typing import Dict, Any
+from threading import Thread
+from time import sleep
 
 from prusa.connect.printer.const import Source
 from prusa.connect.printer.metadata import FDMMetaData
@@ -13,6 +15,7 @@ from ..printer_adapter.input_output.lcd_printer import LCDPrinter
 from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
 from ..printer_adapter.util import file_is_on_sd
+from ..printer_adapter.updatable import prctl_name
 from .command_handler import CommandHandler
 from .. import errors, __version__
 
@@ -30,6 +33,9 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.model = Model.get_instance()
         self.nozzle_diameter = None
         self.command_handler = CommandHandler(self.command)
+        self.loop_thread = Thread(target=self.loop, name="loop")
+        self.__inotify_running = False
+        self.inotify_thread = Thread(target=self.inotify_loop, name="inotify")
 
     def parse_command(self, res):
         """Parse telemetry response.
@@ -101,6 +107,40 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
 
         return data
 
+    def start(self):
+        """Start SDK related threads.
+
+        * loop
+        * inotify
+        """
+        self.__inotify_running = True
+        self.loop_thread.start()
+        self.inotify_thread.start()
+
     def stop(self):
-        """Passes the stop request to the custom command handler"""
+        """Passes the stop request to all SDK related threads.
+
+        * command handler
+        * loop
+        * inotify
+        """
+        self.__inotify_running = False
+        self.stop_loop()
         self.command_handler.stop()
+        self.inotify_thread.join()
+        self.loop_thread.join()
+
+    def loop(self):
+        """SDKPrinter.loop with thread name."""
+        prctl_name()
+        super().loop()
+
+    def inotify_loop(self):
+        """Inotify_handler in loop."""
+        prctl_name()
+        while self.__inotify_running:
+            try:
+                self.inotify_handler()
+                sleep(0.2)
+            except Exception:  # pylint: disable=broad-except
+                log.exception('Unhadled exception')
