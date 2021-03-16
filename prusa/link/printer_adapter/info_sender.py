@@ -42,8 +42,6 @@ class InfoSender:
                                                      lambda: self.running)
         self.printer.nozzle_diameter = get_nozzle_diameter(
             self.serial_queue, lambda: self.running)
-        self.printer.firmware = get_firmware_version(self.serial_queue,
-                                                     lambda: self.running)
 
     def fill_missing_info(self):
         """Fills only info, which is missing"""
@@ -54,9 +52,6 @@ class InfoSender:
                 self.serial_queue, lambda: self.running)
         if self.printer.nozzle_diameter is None:
             self.printer.nozzle_diameter = get_nozzle_diameter(
-                self.serial_queue, lambda: self.running)
-        if self.printer.firmware is None:
-            self.printer.firmware = get_firmware_version(
                 self.serial_queue, lambda: self.running)
 
     def initial_info(self):
