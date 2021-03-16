@@ -14,7 +14,6 @@ log = logging.getLogger(__name__)
 
 class Wizard:
     """Configuration wizard singleton with validation methods."""
-    # pylint: disable=too-many-instance-attributes
     instance = None
 
     def __init__(self, app):

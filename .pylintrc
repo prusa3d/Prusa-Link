@@ -8,3 +8,11 @@ generated-members=prctl
 
 [MASTER]
 extension-pkg-whitelist=pydantic
+
+[MESSAGES CONTROL]
+disable=
+    fixme,
+    unsubscriptable-object,
+    too-few-public-methods,
+    too-many-instance-attributes,
+    too-many-public-methods

@@ -42,8 +42,6 @@ class SerialQueue(metaclass=MCSingleton):
     RX buffer dumping and so on, which this class works around to provide
     as deterministic of a serial connection to a Prusa printer as possible
     """
-
-    # pylint: disable=too-many-instance-attributes
     def __init__(self,
                  serial: Serial,
                  serial_reader: SerialReader,

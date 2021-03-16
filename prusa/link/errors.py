@@ -59,7 +59,6 @@ def get_all_error_states():
 
 class PrusaError:
     """Error inspired by Prusa-Error-Codes"""
-    # pylint: disable=too-few-public-methods
     code: str
     title: str
     text: str

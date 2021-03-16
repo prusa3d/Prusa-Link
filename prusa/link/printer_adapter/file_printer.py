@@ -40,7 +40,7 @@ class FilePrinter(metaclass=MCSingleton):
     for gcodes without said info
     """
 
-    # pylint: disable=too-many-instance-attributes, too-many-arguments
+    # pylint: disable=too-many-arguments
     def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
                  model: Model, cfg: Config, print_stats: PrintStats):
         self.serial_queue = serial_queue
@@ -89,6 +89,7 @@ class FilePrinter(metaclass=MCSingleton):
         # self.check_failed_print()
 
     def stop(self):
+        """Stop printing thread."""
         if self.data.printing:
             self.stop_print()
         if self.thread is not None and self.thread.is_alive():
