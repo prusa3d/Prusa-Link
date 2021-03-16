@@ -35,4 +35,3 @@ class CommandHandler:
     def stop(self):
         """Stops the command handling module"""
         self.running = False
-        self.command_thread.join()

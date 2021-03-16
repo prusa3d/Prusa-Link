@@ -3,8 +3,6 @@ import os
 from threading import Thread, Event, enumerate as enumerate_threads
 from time import time
 
-from requests import RequestException
-
 from prusa.connect.printer import Command as SDKCommand
 from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType, State
@@ -230,6 +228,8 @@ class PrusaLink:
         that Prusa Link has stopped.
         """
         self.running = False
+        self.command_queue.stop()
+        self.printer.stop_loop()
         self.printer.stop()
         self.telemetry_thread.join()
         self.sn_reader.stop()
@@ -580,8 +580,4 @@ class PrusaLink:
         a while loop
         """
         prctl_name()
-        while self.running:
-            try:
-                self.printer.loop()
-            except RequestException:
-                errors.INTERNET.ok = False
+        self.printer.loop()
