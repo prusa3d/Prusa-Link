@@ -5,8 +5,6 @@ import os
 from threading import Thread, Event, enumerate as enumerate_threads
 from time import time
 
-from requests import RequestException
-
 from prusa.connect.printer import Command as SDKCommand
 from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType, State
@@ -188,10 +186,7 @@ class PrusaLink:
         self.telemetry_thread = Thread(target=self.keep_sending_telemetry,
                                        name="telemetry_passer")
         self.telemetry_thread.start()
-        self.sdk_loop_thread = Thread(target=self.sdk_loop,
-                                      name="sdk_loop",
-                                      daemon=True)
-        self.sdk_loop_thread.start()
+        self.printer.start()
 
         # Start this last, as it might start printing right away
         self.file_printer.start()
@@ -241,7 +236,6 @@ class PrusaLink:
         self.running = False
         self.file_printer.stop()
         self.command_queue.stop()
-        self.printer.stop_loop()
         self.printer.stop()
         self.telemetry_thread.join()
         self.sn_reader.stop()
@@ -615,14 +609,3 @@ class PrusaLink:
             state = telemetry.state
             kwargs = telemetry.dict(exclude={"state"}, exclude_none=True)
             self.printer.telemetry(state=state, **kwargs)
-
-    # --- SDK loop runner ---
-
-    def sdk_loop(self):
-        """
-        As long as the thread isn't supposed to quit, runs the SDK loop
-        function. Technically not needed, because the SDK loop contains also
-        a while loop
-        """
-        prctl_name()
-        self.printer.loop()
