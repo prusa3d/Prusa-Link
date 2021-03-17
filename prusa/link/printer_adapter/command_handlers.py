@@ -45,19 +45,13 @@ class TryUntilState(Command):
         :param gcode: Which gcode to send. For example: "M603"
         :param desired_state: Into which state do we hope to get
         """
-
-        # pylint: disable=too-many-arguments,unused-argument
-        def state_changed(sender,
-                          from_state,
-                          to_state,
-                          command_id=None,
-                          source=None,
-                          reason=None):
+        def state_changed(sender, from_state, to_state, *args):
             """Reacts to every state change, if the desired state has been
             reached, stops the wait by setting an event"""
             assert sender is not None
             assert from_state is not None
             assert to_state is not None
+            assert args is not None
             if to_state == desired_state:
                 self.right_state.set()
 

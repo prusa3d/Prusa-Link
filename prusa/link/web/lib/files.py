@@ -10,18 +10,36 @@ from ..lib.core import app
 
 
 def get_os_path(abs_path):
-    """Gets the OS file path of the file specified by abs_path"""
+    """Gets the OS file path of the file specified by abs_path.
+
+    >>> from mock import Mock
+    >>> from prusa.connect.printer.files import Filesystem
+    >>> fs = Filesystem()
+    >>> fs.from_dir('/tmp', 'Examples')
+    >>> app.daemon = Mock()
+    >>> app.daemon.prusa_link.printer.fs = fs
+    >>> get_os_path('/Examples/not_exist')
+    """
     file_system = app.daemon.prusa_link.printer.fs
-    file = file_system.get(abs_path)
+    file_ = file_system.get(abs_path)
+    if not file_:
+        return None
     abs_path = abs_path.strip(file_system.sep)
     mount_name = abs_path.split(file_system.sep)[0]
     mount = file_system.mounts[mount_name]
-    return file.abs_path(mount.path_storage)
+    return file_.abs_path(mount.path_storage)
 
 
 def files_to_api(node, origin='local', path='/'):
     """Convert Prusa SDK Files tree for API.
 
+    >>> from mock import Mock
+    >>> from prusa.connect.printer.files import Filesystem
+    >>> fs = Filesystem()
+    >>> fs.from_dir('/tmp', 'Prusa Link gcodes')
+    >>> fs.get('/Prusa Link gcodes/Examples')
+    >>> app.daemon = Mock()
+    >>> app.daemon.prusa_link.printer.fs = fs
     >>> files = {'type': 'DIR', 'name': '/', 'ro': True, 'children':[
     ...     {'type': 'DIR', 'name': 'SD Card', 'children':[
     ...         {'type': 'DIR', 'name': 'Examples', 'children':[
@@ -95,8 +113,9 @@ def files_to_api(node, origin='local', path='/'):
 
         if origin != "sdcard":
             # get metadata only for files with cache
-            meta = MetaData(get_os_path(path))
-            if meta.is_cache_fresh():
+            os_path = get_os_path(path)
+            meta = MetaData(os_path)
+            if os_path and meta.is_cache_fresh():
                 meta.load_cache()
 
             estimated = estimated_to_seconds(

@@ -17,8 +17,7 @@ install:
  - pip3 install pytest pytest-pylint pytest-doctestplus pytest-mypy
 
 script:
-  - PYTHONPATH=`pwd` pytest -v --mypy --pylint
-  # - PYTHONPATH=`pwd` pytest -v --mypy --pylint --doctest-plus --doctest-rst
+  - PYTHONPATH=`pwd` pytest -v --mypy --pylint --doctest-plus --doctest-rst
 
 before_deploy:
  - python3 setup.py sdist

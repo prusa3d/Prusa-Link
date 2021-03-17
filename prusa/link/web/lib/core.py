@@ -6,7 +6,7 @@ from os.path import join, abspath
 import os
 
 try:
-    from importlib.resources import files
+    from importlib.resources import files  # type: ignore
 except ImportError:
     from importlib_resources import files  # 3.9 has native resources
 
