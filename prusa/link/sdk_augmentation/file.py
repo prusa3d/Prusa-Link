@@ -14,10 +14,11 @@ class SDFile(File):
         parts = Path(path).parts
         # Ignores the first "/"
         node: SDFile = self.get(parts[1:])
-        if node is None:
-            raise FileNotFoundError(f"Can't find the node at {path} to add"
-                                    f" the child named {name} to.")
-        node.add(is_dir=is_dir, name=name, ro=True, **attrs)
+        if not str(path).startswith("/."):
+            if node is None:
+                raise FileNotFoundError(f"Can't find the node at {path} to add"
+                                        f" the child named {name} to.")
+            node.add(is_dir=is_dir, name=name, ro=True, **attrs)
 
     def add_directory(self, path: Path, name, **attrs):
         """Shorthand for adding directories"""
