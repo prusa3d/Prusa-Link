@@ -6,7 +6,8 @@ from datetime import datetime
 import logging
 
 from poorwsgi import state
-from poorwsgi.response import JSONResponse, EmptyResponse, FileResponse
+from poorwsgi.response import JSONResponse, EmptyResponse, FileResponse,\
+    Response
 from poorwsgi.digest import check_digest
 
 from prusa.connect.printer.const import State
@@ -18,6 +19,8 @@ from .lib.auth import check_api_digest, check_config, REALM
 
 from ..printer_adapter.command_handlers import JobInfo
 from ..printer_adapter.informers.job import JobState
+from ..printer_adapter.command_handlers import PausePrint, StopPrint,\
+    ResumePrint
 
 log = logging.getLogger(__name__)
 
@@ -233,3 +236,20 @@ def api_job(req):
             },
             "state": PRINTER_STATES[job_state]
         })
+
+
+@app.route("/api/job", method=state.METHOD_POST)
+@check_api_digest
+def api_job_command(req):
+    """Send command for job control"""
+    command = req.json.get("command")
+    command_queue = app.daemon.prusa_link.command_queue
+
+    if command == "pause":
+        command_queue.do_command(PausePrint())
+    elif command == "cancel":
+        command_queue.do_command(StopPrint())
+    elif command == "resume":
+        command_queue.do_command(ResumePrint())
+
+    return Response(status_code=state.HTTP_NO_CONTENT)
