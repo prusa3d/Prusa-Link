@@ -2,7 +2,8 @@
 import re
 
 OPEN_RESULT_REGEX = re.compile(
-    r"^(?P<ok>File opened).*|^(?P<nok>open failed).*")
+    r"^((?P<ok>File opened): (?P<sdn_lfn>.*) Size: (?P<size>\d+))"
+    r"|(?P<nok>open failed).*")
 
 PRINTER_TYPE_REGEX = re.compile(r"^(?P<code>\d{3,5})$")
 FW_REGEX = re.compile(r"^(?P<version>\d+\.\d+\.\d+-\d+)$")

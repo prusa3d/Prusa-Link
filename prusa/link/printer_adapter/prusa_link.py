@@ -4,6 +4,7 @@ import logging
 import os
 from threading import Thread, Event, enumerate as enumerate_threads
 from time import time
+from typing import Dict, Any
 
 from prusa.connect.printer import Command as SDKCommand
 from prusa.connect.printer.files import File
@@ -128,6 +129,7 @@ class PrusaLink:
         self.serial_reader.add_handler(START_PRINT_REGEX,
                                        self.sd_print_start_observed)
         self.serial_reader.add_handler(PRINTER_BOOT_REGEX, self.printer_reset)
+        self.job.job_info_updated_signal.connect(self.job_info_updated)
         self.state_manager.pre_state_change_signal.connect(
             self.pre_state_change)
         self.state_manager.post_state_change_signal.connect(
@@ -329,6 +331,18 @@ class PrusaLink:
 
     # --- Signal handlers ---
 
+    def job_info_updated(self, sender):
+        """On job info update, sends the updated job info to the Connect"""
+        assert sender is not None
+        # pylint: disable=unsupported-assignment-operation,not-a-mapping
+        try:
+            job_info: Dict[str, Any] = self.command_queue.do_command(JobInfo())
+        except Exception:  # pylint: disable=broad-except
+            log.warning("Job update could not get job info")
+        else:
+            job_info["source"] = Source.FIRMWARE
+            self.printer.event_cb(**job_info)
+
     def telemetry_observed_print(self, sender):
         """
         The telemetry can observe some states, this method connects
@@ -392,15 +406,10 @@ class PrusaLink:
         assert sender is not None
         self.job.file_position(current=current, total=total)
 
-    def file_path_observed(self,
-                           sender,
-                           path: str,
-                           filename_only: bool = False):
+    def file_path_observed(self, sender, path: str):
         """Connects telemetry observed file path to the job component"""
         assert sender is not None
-        self.job.set_file_path(path,
-                               filename_only=filename_only,
-                               prepend_sd_mountpoint=True)
+        self.job.process_mixed_path(path)
 
     def sd_print_start_observed(self, sender, match):
         """Tells the telemetry about a new print job starting"""
@@ -541,6 +550,14 @@ class PrusaLink:
         self.job.tick()
 
     # pylint: disable=too-many-arguments
+    # Please don't change the order of the arguments, pylint could start
+    # complaining again about duplicate code
+    # https://github.com/PyCQA/pylint/issues/214
+    # the duplicate-code cannot be disabled since at least when I was in
+    # high school. And it misreports two identical handler function headers
+    # as duplicate code. Gotta love pylint making me lose an hour on this
+    # garbage, because it didn't even report this consistently, but only
+    # the first run after a file change
     def state_changed(self,
                       sender,
                       from_state,

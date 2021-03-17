@@ -74,7 +74,7 @@ class CommandQueue:
             raise adapter.exception  # pylint: disable=raising-bad-type
         if not adapter.processed.is_set():
             log.warning("Unprocessed command %s! Returning data: %s",
-                        adapter.command.__name__, adapter.data)
+                        adapter.command.__class__.__name__, adapter.data)
         return adapter.data
 
     def process_queue(self):
