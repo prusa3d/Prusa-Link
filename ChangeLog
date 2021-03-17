@@ -56,6 +56,7 @@
     * If-Modified-Since and If-None-Match headers support for /api/files
     * Additional version info
     * Files in hidden folder are ignored
+    * Report file names of SD prints better
 
 0.2.0 (2020-12-14)
 
