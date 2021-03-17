@@ -205,7 +205,7 @@ class SDCard(ThreadedUpdatable):
 
             elif groups["file"] is not None:  # The list item
                 # Parse the file listing
-                short_path_string = groups["sfn"]
+                short_path_string = groups["sfn"].lower()
                 if short_path_string[0] != "/":
                     short_path_string = "/" + short_path_string
                 short_filename = Path(short_path_string).name
@@ -231,6 +231,7 @@ class SDCard(ThreadedUpdatable):
                 long_path_string = str(long_path)
 
                 mixed_path = short_dir_path.joinpath(long_file_name)
+                mixed_path_string = str(mixed_path).lower()
 
                 # Add translation between the two
                 log.debug("Adding translation between %s and %s",
@@ -239,8 +240,7 @@ class SDCard(ThreadedUpdatable):
                           long_path_string)
                 lfn_to_sfn_paths[long_path_string] = short_path_string
                 sfn_to_lfn_paths[short_path_string] = long_path_string
-                mixed_to_lfn_paths[mixed_path] = long_path_string
-
+                mixed_to_lfn_paths[mixed_path_string] = long_path_string
                 # Add the file to the tree
                 try:
                     tree.add_file(current_dir,

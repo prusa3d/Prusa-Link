@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import re
-from pathlib import Path
 from typing import Any, Dict
 
 from blinker import Signal  # type: ignore
@@ -17,8 +16,7 @@ from ..const import PRINTING_STATES, \
     JOB_ENDING_STATES, BASE_STATES, JOB_ONGOING_STATES, SD_MOUNT_NAME
 from ..structures.mc_singleton import MCSingleton
 from ..structures.model_classes import JobState
-from ..structures.regular_expressions import \
-    FILE_OPEN_REGEX
+from ..structures.regular_expressions import OPEN_RESULT_REGEX
 from ..util import get_clean_path, ensure_directory
 
 log = logging.getLogger(__name__)
@@ -31,10 +29,11 @@ class Job(metaclass=MCSingleton):
         # Sent every time the job id should disappear, appear or update
         self.printer = printer
         self.serial_reader = serial_reader
-        self.serial_reader.add_handler(FILE_OPEN_REGEX, self.file_opened)
+        self.serial_reader.add_handler(OPEN_RESULT_REGEX, self.file_opened)
 
         # Unused
         self.job_id_updated_signal = Signal()  # kwargs: job_id: int
+        self.job_info_updated_signal = Signal()  # kwargs: job_id: int
 
         self.job_path = get_clean_path(cfg.daemon.job_file)
         ensure_directory(os.path.dirname(self.job_path))
@@ -46,11 +45,12 @@ class Job(metaclass=MCSingleton):
                 loaded_data = json.loads(job_file.read())
 
         self.model: Model = model
-        self.model.job = JobData(job_start_cmd_id=None,
+        self.model.job = JobData(already_sent=False,
+                                 job_start_cmd_id=None,
                                  printing_file_path=None,
                                  printing_file_m_time=None,
                                  printing_file_size=None,
-                                 filename_only=None,
+                                 path_incomplete=True,
                                  from_sd=None,
                                  inbuilt_reporting=None,
                                  job_state=JobState.IDLE,
@@ -61,20 +61,33 @@ class Job(metaclass=MCSingleton):
                                         job_id=self.data.get_job_id_for_api())
 
     def file_opened(self, sender, match: re.Match):
-        """Called if the file name, but not the whole path is reported"""
-        # This solves the issue, where the print is started from Connect, but
-        # the printer responds the same way as if user started it from the
-        # screen. We rely on file_name being populated sooner when Connect
-        # starts the print. A flag would be arguably more obvious
-        # oh, we don't rely on that, I do :D TODO: stop doing that
+        """
+        Handles the M23 output by extracting the mixed path and sends it
+        for parsing
+        """
         assert sender is not None
-        if self.data.printing_file_path is not None:
-            return
-        if match is not None and match.group("sfn") != "":
-            # TODO: fix when the fw support for full paths arrives
-            filename = match.groups()[0]
-            self.set_file_path(filename,
-                               filename_only=True,
+        if match is not None and match.group("sdn_lfn") != "":
+            mixed_path = match.group("sdn_lfn")
+            self.process_mixed_path(mixed_path)
+
+    def process_mixed_path(self, mixed_path):
+        """
+        Takes the mixed path and tries translating it into the long format
+        Sends the result to set_file_path
+        :param mixed_path: the path in SDR_LFN format
+        (short dir name, long file name)
+        """
+        log.debug("Processing %s", mixed_path)
+        if mixed_path.lower() in self.model.sd_card.mixed_to_lfn_paths:
+            log.debug("It has been found in the SD card file tree")
+            self.set_file_path(
+                self.model.sd_card.mixed_to_lfn_paths[mixed_path.lower()],
+                path_incomplete=False,
+                prepend_sd_mountpoint=True)
+        else:
+            log.debug("It has not been found in the SD card file tree.")
+            self.set_file_path(mixed_path,
+                               path_incomplete=True,
                                prepend_sd_mountpoint=True)
 
     def job_started(self, command_id=None):
@@ -85,6 +98,7 @@ class Job(metaclass=MCSingleton):
         Also writes the new job_id to a file, so there aren't two jobs with
         the same id
         """
+        self.data.already_sent = False
         self.data.from_sd = not self.model.file_printer.printing
         self.data.job_id += 1
         self.data.job_start_cmd_id = command_id
@@ -101,9 +115,10 @@ class Job(metaclass=MCSingleton):
 
     def job_ended(self):
         """Resets the job info """
+        self.data.already_sent = False
         self.data.job_start_cmd_id = None
         self.data.printing_file_path = None
-        self.data.filename_only = None
+        self.data.path_incomplete = True
         self.data.from_sd = None
         self.data.inbuilt_reporting = None
         self.change_state(JobState.IDLE)
@@ -153,43 +168,61 @@ class Job(metaclass=MCSingleton):
             return self.data.job_id
         return None
 
-    def set_file_path(self, path, filename_only, prepend_sd_mountpoint):
+    def set_file_path(self, path, path_incomplete, prepend_sd_mountpoint):
         """
         Decides if the supplied file path is better, than what we had
         previously, and updates the job info file parameters accordingly
         :param path: the path/file name to assign to the job
-        :param filename_only: flag for distinguishing between filenames and
-        paths
+        :param path_incomplete: flag for distinguishing between paths which
+        could not be linked to an SD file and those which could
         :param prepend_sd_mountpoint: Whether to prepend the SD Card
         mountpoint name
         """
-        # If we have a full path, don't overwrite it with just a filename
-        if (not filename_only and not self.data.filename_only) \
-                or self.data.printing_file_path is None:
-            # If asked to, prepend SD mount name
-            if prepend_sd_mountpoint:
-                path = str(Path(f"/{SD_MOUNT_NAME}").joinpath(path))
 
-            log.debug("Overwriting file %s with %s",
-                      'name' if filename_only else 'path', path)
+        # If asked to, prepend the SD mount name
+        if prepend_sd_mountpoint:
+            # Path joins don't work on paths with leading slashes
+            if path.startswith("/"):
+                path = path[1:]
+            log.debug("prepending %s, result = %s", SD_MOUNT_NAME,
+                      os.path.join(f"/{SD_MOUNT_NAME}", path))
+            path = os.path.join(f"/{SD_MOUNT_NAME}", path)
+
+        log.debug(
+            "Processing a file path: %s, incomplete path=%s, "
+            "already known path is incomplete=%s, job state=%s, "
+            "known path=%s", path, path_incomplete, self.data.path_incomplete,
+            self.data.job_state, self.data.printing_file_path)
+        # If we have a full path, don't overwrite it with an incomplete one
+        # Also don't overwrite with the same path
+        if path != self.data.printing_file_path and \
+                (not path_incomplete or self.data.path_incomplete):
+
+            log.debug("Overwriting file path with %s", path)
             self.data.printing_file_path = path
-            self.data.filename_only = filename_only
+            self.data.path_incomplete = path_incomplete
 
-        if not filename_only:
-            file_obj = self.printer.fs.get(self.data.printing_file_path)
-            if file_obj:
-                if "m_time" in file_obj.attrs:
-                    self.data.printing_file_m_time = file_obj.attrs["m_time"]
-                if 'size' in file_obj.attrs:
-                    self.data.printing_file_size = file_obj.attrs["size"]
+            if not path_incomplete:
+                file_obj = self.printer.fs.get(self.data.printing_file_path)
+                if file_obj:
+                    if "m_time" in file_obj.attrs:
+                        self.data.printing_file_m_time = \
+                            file_obj.attrs["m_time"]
+                    if 'size' in file_obj.attrs:
+                        self.data.printing_file_size = \
+                            file_obj.attrs["size"]
 
-    def get_job_info_data(self):
+            self.job_info_updated()
+
+    def get_job_info_data(self, for_connect=False):
         """Compiles the job info data into a dict"""
-        # TODO: consider moving to module data classes
+        if for_connect:
+            self.data.already_sent = True
+
         data = dict()
 
-        if self.data.filename_only:
-            data["filename_only"] = self.data.filename_only
+        if self.data.path_incomplete:
+            data["path_incomplete"] = self.data.path_incomplete
         if self.data.job_start_cmd_id is not None:
             data["start_cmd_id"] = self.data.job_start_cmd_id
         if self.data.printing_file_path is not None:
@@ -209,10 +242,14 @@ class Job(metaclass=MCSingleton):
         percentage reporting for sd prints.
         """
         if self.data.from_sd:
+            old_inbuilt_reporting = self.data.inbuilt_reporting
             if self.data.inbuilt_reporting is None and progress_broken:
                 self.data.inbuilt_reporting = False
             elif not progress_broken:
                 self.data.inbuilt_reporting = True
+
+            if old_inbuilt_reporting != self.data.inbuilt_reporting:
+                self.job_info_updated()
 
     def file_position(self, current, total):
         """
@@ -228,3 +265,13 @@ class Job(metaclass=MCSingleton):
         if self.data.printing_file_size is None:
             # In the future, this should be pointless, now it may get used
             self.data.printing_file_size = total
+            self.job_info_updated()
+
+    def job_info_updated(self):
+        """If a job is in progress, a signal about an update will be sent"""
+        # The same check as in the job info command, se we aren't trying
+        # to send the job info, when it'll just fail instantly
+        if self.data.job_state == JobState.IN_PROGRESS \
+                and self.data.printing_file_path is not None \
+                and self.data.already_sent:
+            self.job_info_updated_signal.send(self)

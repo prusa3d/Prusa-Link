@@ -3,6 +3,7 @@ Implements all command Prusa Link command handlers
 Start, pause, resume and stop print as well as one for executing arbitrary
 gcodes, resetting the printer and sending the job info
 """
+
 import abc
 from importlib import util
 import logging
@@ -45,13 +46,30 @@ class TryUntilState(Command):
         :param gcode: Which gcode to send. For example: "M603"
         :param desired_state: Into which state do we hope to get
         """
-        def state_changed(sender, from_state, to_state, *args):
+
+        # pylint: disable=too-many-arguments
+        def state_changed(sender,
+                          from_state,
+                          to_state,
+                          reason=None,
+                          source=None,
+                          command_id=None):
+            # --- pylint section ---
             """Reacts to every state change, if the desired state has been
             reached, stops the wait by setting an event"""
             assert sender is not None
             assert from_state is not None
             assert to_state is not None
-            assert args is not None
+            # Fixing stupid pylint errors creates real ones. Here I show
+            # my anger
+            if command_id is None:
+                log.debug("Hey Pylint!")
+            if source is None:
+                log.debug("Go screw yourself!")
+            if reason is None:
+                log.debug("And use an impact gun while you're at it.")
+
+            # --- actual code ---
             if to_state == desired_state:
                 self.right_state.set()
 
@@ -195,7 +213,7 @@ class StartPrint(Command):
             self._start_file_print(str(path))
 
         self.job.set_file_path(str(path),
-                               filename_only=False,
+                               path_incomplete=False,
                                prepend_sd_mountpoint=False)
         self.state_manager.printing()
         self.state_manager.stop_expecting_change()
@@ -370,7 +388,8 @@ class JobInfo(Command):
         if self.model.job.printing_file_path is None:
             self.failed("Don't know the file details yet.")
 
-        data = self.job.get_job_info_data()
+        data = self.job.get_job_info_data(
+            for_connect=self.command_id is not None)
 
         response = dict(job_id=self.model.job.get_job_id_for_api(),
                         state=self.model.state_manager.current_state,

@@ -2,7 +2,6 @@
 
 import logging
 import re
-from pathlib import Path
 
 from blinker import Signal  # type: ignore
 
@@ -44,8 +43,8 @@ class TelemetryGatherer(ThreadedUpdatable):
 
         # Additionally, two for the job module
         self.progress_broken_signal = Signal()  # kwargs: progress_broken: bool
-        self.file_path_signal = Signal()  # kwargs: path: str,
-        #                                           filename_only: bool
+        # Passes mixed path for further processing by the job component
+        self.file_path_signal = Signal()  # kwargs: path: str
         self.byte_position_signal = Signal()  # kwargs: current: int
         #                                               total: int
 
@@ -251,16 +250,8 @@ class TelemetryGatherer(ThreadedUpdatable):
                 self.telemetry_updated()
 
             mixed_path = file_or_status_match.group("sdn_lfn")
-            try:
-                long_path = self.model.sd_card.mixed_to_lfn_paths[mixed_path]
-                self.file_path_signal.send(self,
-                                           path=long_path,
-                                           filename_only=False)
-            except KeyError:
-                filename = Path(mixed_path).name
-                self.file_path_signal.send(self,
-                                           path=filename,
-                                           filename_only=True)
+            self.file_path_signal.send(self, path=mixed_path)
+
             self.printing_signal.send(self)
 
         elif file_or_status_match.group("no_print"):

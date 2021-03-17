@@ -43,12 +43,13 @@ class StateManagerData(BaseModel):
 
 class JobData(BaseModel):
     """Data of the Job class"""
+    already_sent: Optional[bool]
     job_start_cmd_id: Optional[int]
     printing_file_path: Optional[str]
     printing_file_m_time: Optional[str]
     printing_file_size: Optional[str]
     printing_file_byte: Optional[int]
-    filename_only: Optional[bool]
+    path_incomplete: Optional[bool]
     from_sd: Optional[bool]
     inbuilt_reporting: Optional[bool]
 
