@@ -52,6 +52,7 @@
     * Thread names via prctl - can be show in htop
     * Shutdown fix
     * Report build number alongside firmware version
+    * Added api commands for pause, stop and resume print job
     * If-Modified-Since and If-None-Match headers support for /api/files
 
 0.2.0 (2020-12-14)
