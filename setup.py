@@ -105,6 +105,8 @@ class BuildStatic(Command):
         if call(args):
             raise IOError(1, 'docker failed')
 
+        # pylint: disable=unexpected-keyword-arg
+        # (python 3.7)
         copytree(os.path.join(cwd, 'dist'),
                  os.path.join(self.target_dir),
                  dirs_exist_ok=True)
