@@ -1,8 +1,10 @@
 """Debug page of Prusa-Link."""
+from prusa.connect.printer import __version__ as sdk_version
+
 from .lib.core import app
 from .lib.view import generate_page
 
-from .. import errors
+from .. import errors, __version__
 
 
 def link_info(req):
@@ -15,4 +17,6 @@ def link_info(req):
                          prusa_link=prusa_link,
                          printer=printer,
                          app=app,
+                         version=__version__,
+                         sdk_version=sdk_version,
                          errors=errors.status())

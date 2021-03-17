@@ -10,6 +10,7 @@ from poorwsgi.response import JSONResponse, EmptyResponse, FileResponse,\
     Response
 from poorwsgi.digest import check_digest
 
+from prusa.connect.printer import __version__ as sdk_version
 from prusa.connect.printer.const import State
 
 from .. import __version__
@@ -65,10 +66,13 @@ def api_system_commands(req):
 def api_version(req):
     """Return api version"""
     log.debug(req.headers)
+    prusa_link = app.daemon.prusa_link
     return JSONResponse(api="0.1",
                         server=__version__,
                         original="PrusaLink %s" % __version__,
                         text="OctoPrint 1.1.0",
+                        firmware=prusa_link.printer.firmware,
+                        sdk=sdk_version,
                         hostname=gethostname())
 
 
