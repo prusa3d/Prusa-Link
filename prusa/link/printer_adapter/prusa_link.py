@@ -550,20 +550,12 @@ class PrusaLink:
         self.job.tick()
 
     # pylint: disable=too-many-arguments
-    # Please don't change the order of the arguments, pylint could start
-    # complaining again about duplicate code
-    # https://github.com/PyCQA/pylint/issues/214
-    # the duplicate-code cannot be disabled since at least when I was in
-    # high school. And it misreports two identical handler function headers
-    # as duplicate code. Gotta love pylint making me lose an hour on this
-    # garbage, because it didn't even report this consistently, but only
-    # the first run after a file change
     def state_changed(self,
                       sender,
                       from_state,
                       to_state,
-                      command_id=None,
                       source=None,
+                      command_id=None,
                       reason=None):
         """Connects the state manager state change to Prusa Connect"""
         assert sender is not None
