@@ -7,7 +7,7 @@ import logging
 from queue import Queue, Empty
 from threading import Thread, Event
 
-from .command import Command
+from .command import Command, CommandFailed
 from .const import QUIT_INTERVAL
 from .updatable import prctl_name
 
@@ -33,6 +33,7 @@ class CommandQueue:
     def __init__(self):
         self.running = False
         self.command_queue = Queue()
+        self.current_command_adapter = None
         self.runner_thread = Thread(target=self.process_queue,
                                     name="command_queue")
 
@@ -44,6 +45,8 @@ class CommandQueue:
     def stop(self):
         """Stop the command processing"""
         self.running = False
+        if self.current_command_adapter is not None:
+            self.current_command_adapter.command.stop()
         while not self.command_queue.empty():
             adapter = self.command_queue.get()
             adapter.command.stop()
@@ -73,8 +76,9 @@ class CommandQueue:
         if adapter.exception is not None:
             raise adapter.exception  # pylint: disable=raising-bad-type
         if not adapter.processed.is_set():
-            log.warning("Unprocessed command %s! Returning data: %s",
-                        adapter.command, adapter.data)
+            log.warning("Unprocessed command %s!", adapter.command)
+            raise CommandFailed("Command has not been processed because "
+                                "Prusa Link is stopping or in an error state")
         return adapter.data
 
     def process_queue(self):

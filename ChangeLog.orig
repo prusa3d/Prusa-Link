@@ -1,0 +1,86 @@
+# ChangeLog
+
+0.3.0-dev
+
+    * Fixed broken command resends
+    * Fixed state changed handler
+    * Added new endpoint /api/connections with JSON response
+    * Skipped pidfile when process is not alive
+    * Added new endpoint /api/printer with JSON response
+    * Fixed complaint in wizard about `api-key` when `username` was too short
+    * Fix printer.sn being unset in the wizard by waiting for it
+    * Fixed some telemetry being sent basically at random
+    * Enabled the RESET_PRINTER command
+    * Fixed printer resetting multiple times when it gets reset mid-print
+    * Fixed accidentally hogging CPU when displaying LCD messages
+    * Set log levels by module name in config or as command arguments
+    * Report whether the current job is from the SD or not
+    * Support long file names in the upcoming 3.10 release (file explorer only)
+    * Added new endpoint /api/files with JSON response
+    * Added new endpoint /api/job with JSON response
+    * Added support for the new C parameter in M155
+    * Modification of /api/connection, files, printer and job endpoints
+    * All files in data_dir (user's home by default)
+    * Parse print info from the file name (for SD files)
+    * Introduce ErrorState(s) from SDK
+    * Modify `LCDPrinter` to show IP and status based on SDK error states
+    * Support the nem M27 P
+    * Fix not being able to print from root of SD when in a folder in LCD menu
+    * Send 0% when a new print start is observed
+    * Fix no progress being sent when SD print has no stats in its gcode
+    * Support fan errors. Send reason for ATTENTION state in state change data
+    * Support showing the IP address in the support menu using "M552 P<IP>"
+    * /link-info debug page
+    * SN is obtained always through the FW and isn't stored in a file anymore
+    * Ensure M20 won't be sent during print. Ever
+    * Start faster when already printing from SD
+    * Don't store password in plaintext but use digest
+    * Stop Wizard on printer errors.
+    * Support the new STOPPED state
+    * Use X-Api-Key or HTTP Digest for /api endpoints
+    * hostname in /api/version
+    * Fix /api/endpoints
+    * Fix /api/files and /api/job endpoints
+    * Nicer messages for Wlan errors; LCDPrinter now accesses the model for IP
+    * Statics generated from submodule
+    * Support pausing, resuming and stopping of serial prints from the LCD
+    * Implementation of metadata into /api/files endpoint
+    * Process all commands in a single thread -> racing avoided
+    * Uploading from local web
+    * Prusa Link version in INFO event
+    * G-code preview and download endpoints
+    * Thread names via prctl - can be show in htop
+    * Shutdown fix
+    * Report build number alongside firmware version
+    * Added api commands for pause, stop and resume print job
+    * If-Modified-Since and If-None-Match headers support for /api/files
+    * Additional version info
+<<<<<<< HEAD
+    * Files in hidden folder are ignored
+=======
+>>>>>>> ea7f1c9 (Report the path to the file being SD printed)
+    * Report file names of SD prints better
+
+0.2.0 (2020-12-14)
+
+    * JOB_INFO fix
+    * Service must be start using daemon script prusa-link
+    * Implicit config path is /etc/Prusa-Link/prusa-link.ini
+    * Implicit settings path is {HOME}/prusa_printer_settings.ini
+    * Wizard - part II
+    * Api-Key in INFO event
+    * Wizard redesign
+
+
+0.1.3 (2020-12-01)
+
+    * Report at least a file name for SD prints
+    * Wizard - part I
+    * Fix command handling and re-undo fw double-ok workarounds
+      (FW commit gd167b3bd or newer is required)
+
+0.1.2 (2020-11-23)
+
+    * New FW (3.9.2.3566) required
+    * local web service on http://IP-address:8080
+    * file upload from Prusa Slicer (use `PrusaSlicer` Api-Key)
