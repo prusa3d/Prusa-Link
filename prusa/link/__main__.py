@@ -1,14 +1,19 @@
 """main() command line function."""
 import logging
+import subprocess
+import threading
+import sys
 from argparse import ArgumentParser, ArgumentTypeError
 from os import kill, geteuid, path, mkdir, chmod
 from grp import getgrnam
 from pwd import getpwnam
-from signal import SIGTERM
+from signal import SIGTERM, SIGKILL
+from time import time, sleep
 
 from daemon import DaemonContext  # type: ignore
 from lockfile.pidlockfile import PIDLockFile  # type: ignore
 
+from .printer_adapter.const import EXIT_TIMEOUT, QUIT_INTERVAL
 from .config import Config
 from .daemon import Daemon
 
@@ -17,6 +22,19 @@ log = logging.getLogger(__name__)
 # pylint: disable=too-many-return-statements
 # pylint: disable=too-many-statements
 CONFIG_FILE = '/etc/Prusa-Link/prusa-link.ini'
+
+
+def excepthook(exception_arguments, args):
+    """If running as a daemon, restarts the app on unhandled exceptions"""
+    log.error(exception_arguments.exc_value)
+    if args is None:
+        log.fatal("Exception during startup, cannot restart")
+    if args.foreground:
+        log.fatal("This instance is now broken. Will not restart "
+                  "because we're running in the foreground mode")
+    else:
+        log.warning("Caught unhandled exception, restarting Prusa Link")
+        subprocess.Popen(["prusa-link", "restart"], stdin=sys.stdin)
 
 
 def set_log_levels(config: Config):
@@ -104,6 +122,10 @@ def main():
                         type=LogLevel)
 
     args = parser.parse_args()
+
+    # Restart on thread exceptions
+    threading.excepthook = lambda exc_args: excepthook(exc_args, args)
+
     try:
         config = Config(args)
 
@@ -131,6 +153,25 @@ def main():
             if pid and check_process(pid):
                 print("Restarting service with pid", pid)
                 kill(pid, SIGTERM)
+                timeout_at = time() + EXIT_TIMEOUT
+                while time() <= timeout_at:
+                    if not check_process(pid):
+                        break
+                    sleep(QUIT_INTERVAL)
+
+                # If we timed out, kill the process
+                if time() >= timeout_at:
+                    log.warning("Failed to stop - SIGKIL will be used!")
+                    try:
+                        kill(pid, SIGKILL)
+                    except ProcessLookupError:
+                        log.warning(
+                            "Could not find a prcess with pid %s "
+                            "to kill", pid)
+                    else:
+                        # Give the OS some time
+                        sleep(1)
+
         elif args.command == "start":
             pass
         elif not args.foreground:
@@ -178,6 +219,5 @@ def main():
 
 
 if __name__ == "__main__":
-    import sys
 
     sys.exit(main())

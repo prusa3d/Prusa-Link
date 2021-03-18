@@ -229,14 +229,13 @@ class PrusaLink:
         out all threads which are still running and sets an event to signalize
         that Prusa Link has stopped.
         """
-        if self.model.file_printer.printing:
-            try:
-                self.command_queue.do_command(StopPrint())
-            except Exception:  # pylint: disable=broad-except
-                pass
+
+        was_printing = self.model.file_printer.printing
+
         self.running = False
         self.file_printer.stop()
         self.command_queue.stop()
+        self.printer.stop_loop()
         self.printer.stop()
         self.telemetry_thread.join()
         self.sn_reader.stop()
@@ -246,6 +245,10 @@ class PrusaLink:
         self.ip_updater.stop()
         self.reporting_ensurer.stop()
         self.serial_queue.stop()
+
+        if was_printing:
+            self.serial.write(b"M603\n")
+
         self.serial.stop()
 
         log.debug("Remaining threads, that could prevent us from quitting:")
@@ -619,3 +622,14 @@ class PrusaLink:
             state = telemetry.state
             kwargs = telemetry.dict(exclude={"state"}, exclude_none=True)
             self.printer.telemetry(state=state, **kwargs)
+
+    # --- SDK loop runner ---
+
+    def sdk_loop(self):
+        """
+        As long as the thread isn't supposed to quit, runs the SDK loop
+        function. Technically not needed, because the SDK loop contains also
+        a while loop
+        """
+        prctl_name()
+        self.printer.loop()
