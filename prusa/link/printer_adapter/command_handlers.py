@@ -46,28 +46,15 @@ class TryUntilState(Command):
         :param gcode: Which gcode to send. For example: "M603"
         :param desired_state: Into which state do we hope to get
         """
-
-        # pylint: disable=too-many-arguments
-        def state_changed(sender,
-                          from_state,
-                          to_state,
-                          reason=None,
-                          source=None,
-                          command_id=None):
+        def state_changed(sender, from_state, to_state, *args, **kwargs):
             # --- pylint section ---
             """Reacts to every state change, if the desired state has been
             reached, stops the wait by setting an event"""
             assert sender is not None
             assert from_state is not None
             assert to_state is not None
-            # Fixing stupid pylint errors creates real ones. Here I show
-            # my anger
-            if command_id is None:
-                log.debug("Hey Pylint!")
-            if source is None:
-                log.debug("Go screw yourself!")
-            if reason is None:
-                log.debug("And use an impact gun while you're at it.")
+            assert args is not None
+            assert kwargs is not None
 
             # --- actual code ---
             if to_state == desired_state:
