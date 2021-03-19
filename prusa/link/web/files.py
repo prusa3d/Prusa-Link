@@ -133,6 +133,17 @@ def api_upload(req, location):
     return Response(status_code=state.HTTP_CREATED)
 
 
+@app.route("/api/files/<target>/<path:re:.+>", method=state.METHOD_POST)
+@check_api_digest
+def api_start_print(req, target, path):
+    """Start print if no print job is running"""
+    # pylint: disable=unused-argument
+    select = req.form.getfirst('select') == 'true'
+    _print = req.form.getfirst('print') == 'true'
+    log.debug('select=%s, print=%s', select, _print)
+    return Response(status_code=state.HTTP_NO_CONTENT)
+
+
 @app.route('/api/downloads/<path:re:.+>')
 @check_api_digest
 def api_downloads(req, path):

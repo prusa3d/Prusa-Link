@@ -57,6 +57,7 @@
     * Additional version info
     * Files in hidden folder are ignored
     * Report file names of SD prints better
+    * Added endpoint for start print
 
 0.2.0 (2020-12-14)
 
