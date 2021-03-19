@@ -622,14 +622,3 @@ class PrusaLink:
             state = telemetry.state
             kwargs = telemetry.dict(exclude={"state"}, exclude_none=True)
             self.printer.telemetry(state=state, **kwargs)
-
-    # --- SDK loop runner ---
-
-    def sdk_loop(self):
-        """
-        As long as the thread isn't supposed to quit, runs the SDK loop
-        function. Technically not needed, because the SDK loop contains also
-        a while loop
-        """
-        prctl_name()
-        self.printer.loop()
