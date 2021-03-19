@@ -61,6 +61,27 @@ def check_process(pid):
         return False
 
 
+def stop(pid):
+    """Tries to stop Prusa Link nicely, if it times out, uses SIGKILL"""
+    kill(pid, SIGTERM)
+    timeout_at = time() + EXIT_TIMEOUT
+    while time() <= timeout_at:
+        if not check_process(pid):
+            break
+        sleep(QUIT_INTERVAL)
+
+    # If we timed out, kill the process
+    if time() >= timeout_at:
+        log.warning("Failed to stop - SIGKIL will be used!")
+        try:
+            kill(pid, SIGKILL)
+        except ProcessLookupError:
+            log.warning("Could not find a prcess with pid %s " "to kill", pid)
+        else:
+            # Give the OS some time
+            sleep(1)
+
+
 def main():
     """Standard main function."""
     # pylint: disable=too-many-branches
@@ -137,7 +158,7 @@ def main():
         if args.command == "stop":
             if pid and check_process(pid):
                 print("Stopping service with pid", pid)
-                kill(pid, SIGTERM)
+                stop(pid)
             else:
                 print("Service not running")
             return 0
@@ -152,25 +173,7 @@ def main():
         if args.command == "restart":
             if pid and check_process(pid):
                 print("Restarting service with pid", pid)
-                kill(pid, SIGTERM)
-                timeout_at = time() + EXIT_TIMEOUT
-                while time() <= timeout_at:
-                    if not check_process(pid):
-                        break
-                    sleep(QUIT_INTERVAL)
-
-                # If we timed out, kill the process
-                if time() >= timeout_at:
-                    log.warning("Failed to stop - SIGKIL will be used!")
-                    try:
-                        kill(pid, SIGKILL)
-                    except ProcessLookupError:
-                        log.warning(
-                            "Could not find a prcess with pid %s "
-                            "to kill", pid)
-                    else:
-                        # Give the OS some time
-                        sleep(1)
+                stop(pid)
 
         elif args.command == "start":
             pass
