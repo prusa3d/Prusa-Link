@@ -1,9 +1,13 @@
-"""Contains implementation of the HeapItem, MinHeap and MaxHeap classes"""
+"""
+Contains implementation of the HeapItem, MinHeap and MaxHeap classes
+I HAVE COPIED THIS FROM THE INTERNET!
+It turns out that popping the last item in the queue was broken
+"""
 from typing import List
 
 
 class HeapItem:
-    """An item in the heap. Needs to be camparable"""
+    """An item in the heap. Needs to be comparable"""
     def __init__(self, value):
         self.value = value
         self.heap_value = None
@@ -12,27 +16,27 @@ class HeapItem:
     def __gt__(self, other):
         if isinstance(other, HeapItem):
             return self.heap_value > other.heap_value
-        return super().__gt__(other)
+        raise TypeError("HeapItems can be compared only with each other")
 
     def __ge__(self, other):
         if isinstance(other, HeapItem):
             return self.heap_value >= other.heap_value
-        return super().__ge__(other)
+        raise TypeError("HeapItems can be compared only with each other")
 
     def __lt__(self, other):
         if isinstance(other, HeapItem):
             return self.heap_value < other.heap_value
-        return super().__lt__(other)
+        raise TypeError("HeapItems can be compared only with each other")
 
     def __le__(self, other):
         if isinstance(other, HeapItem):
             return self.heap_value <= other.heap_value
-        return super().__le__(other)
+        raise TypeError("HeapItems can be compared only with each other")
 
     def __eq__(self, other):
         if isinstance(other, HeapItem):
             return self.heap_value == other.heap_value
-        return super().__eq__(other)
+        raise TypeError("HeapItems can be compared only with each other")
 
 
 class MinHeap:
@@ -78,6 +82,7 @@ class MinHeap:
         the thing we wanted to delete). After that depending on the value of
         the element that replaced the deleted one sifting it up or down
         """
+
         old_item: HeapItem = self.heap[index]
         old_value = old_item.heap_value
 
@@ -86,11 +91,10 @@ class MinHeap:
 
         new_item = self.heap.pop()
 
-        if self:
+        # The first one checks if we didn't remove the last item from the
+        # heap, if we did, there is nothing else that needs to be done
+        if index != len(self) and self:
             new_value = new_item.heap_value
-
-            if index > len(self) - 1:
-                index = len(self) - 1
 
             self.heap[index] = new_item
             if new_value > old_value:
@@ -103,8 +107,8 @@ class MinHeap:
     def sift_up(self, pos):
         """
         Compares an element with its children, if the element is larger,
-        its position gets swapt with the smaller child. Continues until
-        there are no children smalle than the element
+        its position gets swapped with the smaller child. Continues until
+        there are no children smaller than the element
         """
         endpos = len(self.heap)
         startpos = pos
@@ -122,7 +126,7 @@ class MinHeap:
             self.heap[pos].heap_index = pos
             pos = childpos
             childpos = 2 * pos + 1
-        # The leaf at pos is empty now.  Put newitem there, and bubble it up
+        # The leaf at pos is empty now. Put newitem there, and bubble it up
         # to its final resting place (by sifting its parents down).
         self.heap[pos] = newitem
         self.heap[pos].heap_index = pos
