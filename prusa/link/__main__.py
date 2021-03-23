@@ -35,6 +35,10 @@ def excepthook(exception_arguments, args):
     else:
         log.warning("Caught unhandled exception, restarting Prusa Link")
         subprocess.Popen(["prusa-link", "restart"], stdin=sys.stdin)
+    # excepthook has the global exception set, besides even if we failed
+    # here, it will literally affect nothing
+    # pylint: disable=misplaced-bare-raise
+    raise
 
 
 def set_log_levels(config: Config):

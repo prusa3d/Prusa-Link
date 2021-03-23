@@ -59,7 +59,7 @@ class IsPlannerFed:
     one until the values accumulate.
     """
     def __init__(self, cfg: Config):
-        self.times_queue: Deque[float] = deque(maxlen=QUEUE_SIZE)
+        self.times_queue: Deque[TimeValue] = deque(maxlen=QUEUE_SIZE)
 
         self.threshold_path = get_clean_path(cfg.daemon.threshold_file)
         ensure_directory(os.path.dirname(self.threshold_path))
@@ -98,7 +98,7 @@ class IsPlannerFed:
         """Returns the Nth percentile value. N is fixed in constants"""
         if not self.short_times and not self.long_times:
             return float("inf")
-        if self.short_times:
+        if not self.long_times and self.short_times:
             return self.short_times[0].value
         return (self.long_times[0].value + self.short_times[0].value) / 2
 
