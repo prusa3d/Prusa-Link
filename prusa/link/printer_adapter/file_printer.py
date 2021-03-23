@@ -125,8 +125,8 @@ class FilePrinter(metaclass=MCSingleton):
         self.data.printing = True
         self.data.stopped_forcefully = False
         self.print_stats.start_time_segment()
-        self.print_stats.track_new_print(self.data.tmp_file_path)
         self.new_print_started_signal.send(self)
+        self.print_stats.track_new_print(self.data.tmp_file_path)
         self.thread.start()
 
     def _print(self, from_line=0):

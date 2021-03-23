@@ -43,10 +43,10 @@ class PrintStats:
                     self.data.total_gcode_count += 1
                 if "M73" in gcode:
                     self.data.has_inbuilt_stats = True
+                    break
 
         log.info(
-            "New file analyzed, contains %s  gcode commands and %s "
-            "inbuilt percent and time reporting.", self.data.total_gcode_count,
+            "New file analyzed. It %s inbuilt percent and time reporting.",
             'has' if self.data.has_inbuilt_stats else 'does not have')
 
     def end_time_segment(self):
