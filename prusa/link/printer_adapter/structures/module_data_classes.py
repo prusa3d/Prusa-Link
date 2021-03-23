@@ -99,4 +99,5 @@ class PrintStatsData(BaseModel):
     print_time: float
     segment_start: float
     has_inbuilt_stats: bool
-    total_gcode_count: int
+    total_gcode_count: int  # is not computed for files containg reporting
+    #                         to speed stuff up
