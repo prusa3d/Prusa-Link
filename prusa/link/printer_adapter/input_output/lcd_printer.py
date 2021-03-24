@@ -80,6 +80,9 @@ class LCDPrinter(metaclass=MCSingleton):
             #  state name. Maybe as carousel?
             if all_ok:
                 msg = "OK: " + self.get_ip()
+            # If wizard is not completed, show GO: <IP> msg on LCD
+            elif self.get_ip() != NO_IP and errors.TAILS[1].ok is None:
+                msg = "GO: " + self.get_ip()
             else:
                 for chain in errors.HEADS:
                     node = chain
