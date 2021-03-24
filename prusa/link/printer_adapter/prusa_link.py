@@ -16,6 +16,7 @@ from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
 from .command_queue import CommandQueue
 from .informers.filesystem.sd_card import SDState
 from .informers.job import Job
+from .interesting_logger import InterestingLogRotator
 from .print_stats import PrintStats
 from .sn_reader import SNReader
 from .file_printer import FilePrinter
@@ -218,6 +219,8 @@ class PrusaLink:
             elif command.startswith("print"):
                 result = self.command_queue.do_command(
                     StartPrint(command.split(" ", 1)[1]))
+            elif command.startswith("trigger"):
+                InterestingLogRotator.trigger("a debugging command")
 
             if result:
                 print(result)

@@ -77,3 +77,7 @@ RESET_PIN = 22  # RPi gpio pin for resetting printer
 SUPPORTED_FIRMWARE = "3.9.3"
 MAX_INT = (2**31) - 1
 STATE_HISTORY_SIZE = 10
+
+# --- Interesting_Logger ---
+LOG_BUFFER_SIZE = 200
+AFTERMATH_LOG_SIZE = 100
