@@ -12,10 +12,17 @@ from time import time, sleep
 
 from daemon import DaemonContext  # type: ignore
 from lockfile.pidlockfile import PIDLockFile  # type: ignore
-
 from .printer_adapter.const import EXIT_TIMEOUT, QUIT_INTERVAL
 from .config import Config
-from .daemon import Daemon
+from .printer_adapter.interesting_logger import InterestingLogRotator, \
+    InterestingLogger
+
+# pylint: disable=wrong-import-position, wrong-import-order
+# Pop this singleton into existence before importing prusa link
+InterestingLogRotator()
+logging.setLoggerClass(InterestingLogger)
+
+from .daemon import Daemon  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -26,6 +33,7 @@ CONFIG_FILE = '/etc/Prusa-Link/prusa-link.ini'
 
 def excepthook(exception_arguments, args):
     """If running as a daemon, restarts the app on unhandled exceptions"""
+    InterestingLogRotator.trigger("exception in a thread")
     log.error(exception_arguments.exc_value)
     if args is None:
         log.fatal("Exception during startup, cannot restart")

@@ -58,14 +58,18 @@ class SerialReader(metaclass=MCSingleton):
         signal_list = []
 
         with self.lock:
+            log.debug("Deciding on handlers for line: %s", line)
             for pairing in self.pattern_list:
-                log.debug("Trying %s on %s", pairing.regexp.pattern, line)
                 match = pairing.regexp.match(line)
                 if match:
-                    log.debug("Success")
+                    log.debug("Successfully matched %s",
+                              pairing.regexp.pattern)
                     signal_list.append(pairing.signal)
                     if pairing.stops_matching:
                         break
+
+            if not signal_list:
+                log.debug("Match not found")
 
         for signal in signal_list:
             signal: Signal
