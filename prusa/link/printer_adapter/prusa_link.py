@@ -41,7 +41,6 @@ from .util import run_slowly_die_fast, make_fingerprint
 from .updatable import prctl_name
 from ..config import Config, Settings
 from ..sdk_augmentation.printer import MyPrinter
-from .. import errors
 
 log = logging.getLogger(__name__)
 
@@ -480,11 +479,6 @@ class PrusaLink:
         #  get sent anyway
         if old_ip != new_ip and new_ip != NO_IP and old_ip is not None:
             self.info_sender.try_sending_info()
-
-        if new_ip is not NO_IP:
-            errors.LAN.ok = True
-        else:
-            errors.PHY.ok = False
 
     def dir_mount(self, sender, path):
         """Connects a dir being mounted to Prusa Connect events"""

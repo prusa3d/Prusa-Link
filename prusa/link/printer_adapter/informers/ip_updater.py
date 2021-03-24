@@ -48,8 +48,8 @@ class IPUpdater(ThreadedUpdatable):
             errors.LAN.ok = True
         except socket.error:
             log.error("Failed getting the local IP, are we connected to LAN?")
-            self.update_ip(NO_IP)
             errors.PHY.ok = False
+            self.update_ip(NO_IP)
         else:
             # Show the IP at least once every minute,
             # so any errors printed won't stay forever displayed
