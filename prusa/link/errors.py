@@ -46,14 +46,28 @@ def status():
     return result
 
 
+def get_error_states_for_head(head):
+    """Gets the string of errors starting at the one given"""
+    error_states = []
+    current = head
+    while current is not None:
+        error_states.append(current)
+        current = current.next
+    return error_states
+
+
+def get_printer_error_states():
+    """
+    Proxy for getting errors that cause the printer to report
+    being in an ERROR state"""
+    return get_error_states_for_head(SERIAL)
+
+
 def get_all_error_states():
     """Return a list of all ErrorStates"""
     error_states = []
     for head in HEADS:
-        current = head
-        while current is not None:
-            error_states.append(current)
-            current = current.next
+        error_states.extend(get_error_states_for_head(head))
     return error_states
 
 

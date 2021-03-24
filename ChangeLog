@@ -59,6 +59,7 @@
     * Report file names of SD prints better
     * Added endpoint for start print
     * LCD message modification (GO: <IP>)
+    * Fix connection errors causing the printer to report being in ERROR state
 
 0.2.0 (2020-12-14)
 
