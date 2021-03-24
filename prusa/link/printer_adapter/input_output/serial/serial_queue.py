@@ -13,6 +13,7 @@ from typing import Optional, Deque, List
 
 from blinker import Signal  # type: ignore
 
+from ...interesting_logger import InterestingLogRotator
 from ....config import Config
 from .serial import Serial
 from ...structures.regular_expressions import \
@@ -592,6 +593,7 @@ class MonitoredSerialQueue(SerialQueue):
             log.info("Timed out waiting for confirmation of %s after %ssec.",
                      self.current_instruction, SERIAL_QUEUE_TIMEOUT)
             log.debug("Assuming the printer yeeted our RX buffer")
+            InterestingLogRotator.trigger("a stuck instruction")
             self._rx_got_yeeted()
 
     def stop(self):
