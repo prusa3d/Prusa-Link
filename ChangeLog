@@ -58,6 +58,7 @@
     * Files in hidden folder are ignored
     * Report file names of SD prints better
     * Added endpoint for start print
+    * LCD message modification (GO: <IP>)
 
 0.2.0 (2020-12-14)
 
