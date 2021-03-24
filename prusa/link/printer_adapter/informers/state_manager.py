@@ -18,16 +18,9 @@ from ..structures.module_data_classes import StateManagerData
 from ..structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, FAN_ERROR_REGEX
-from ...errors import get_all_error_states
-from ... import errors
+from ...errors import get_printer_error_states
 
 log = logging.getLogger(__name__)
-
-# Errors that don't signalize any problems which would make a print fail
-ERROR_WHITELIST = {
-    errors.HTTP, errors.API, errors.INTERNET, errors.TOKEN, errors.FW,
-    errors.PHY, errors.LAN
-}
 
 
 class StateChange:
@@ -160,11 +153,8 @@ class StateManager(metaclass=MCSingleton):
         for regex, handler in regex_handlers.items():
             self.serial_reader.add_handler(regex, handler)
 
-        error_states = get_all_error_states()
+        error_states = get_printer_error_states()
         for state in error_states:
-            # Don't go to the ERROR state for whitelisted errors
-            if state in ERROR_WHITELIST:
-                continue
             if not state.ok:
                 self.data.error_count += 1
             state.detected_cb = self.error_detected
