@@ -53,6 +53,7 @@ class Job(metaclass=MCSingleton):
                                  path_incomplete=True,
                                  from_sd=None,
                                  inbuilt_reporting=None,
+                                 selected_file=None,
                                  job_state=JobState.IDLE,
                                  job_id=int(loaded_data.get("job_id", 0)))
         self.data = self.model.job
@@ -117,7 +118,6 @@ class Job(metaclass=MCSingleton):
         """Resets the job info """
         self.data.already_sent = False
         self.data.job_start_cmd_id = None
-        self.data.printing_file_path = None
         self.data.path_incomplete = True
         self.data.from_sd = None
         self.data.inbuilt_reporting = None
@@ -185,24 +185,24 @@ class Job(metaclass=MCSingleton):
             "Processing a file path: %s, incomplete path=%s, "
             "already known path is incomplete=%s, job state=%s, "
             "known path=%s", path, path_incomplete, self.data.path_incomplete,
-            self.data.job_state, self.data.printing_file_path)
+            self.data.job_state, self.data.selected_file_path)
         # If we have a full path, don't overwrite it with an incomplete one
         # Also don't overwrite with the same path
-        if path != self.data.printing_file_path and \
+        if path != self.data.selected_file_path and \
                 (not path_incomplete or self.data.path_incomplete):
 
             log.debug("Overwriting file path with %s", path)
-            self.data.printing_file_path = path
+            self.data.selected_file_path = path
             self.data.path_incomplete = path_incomplete
 
             if not path_incomplete:
-                file_obj = self.printer.fs.get(self.data.printing_file_path)
+                file_obj = self.printer.fs.get(self.data.selected_file_path)
                 if file_obj:
                     if "m_time" in file_obj.attrs:
-                        self.data.printing_file_m_time = \
+                        self.data.selected_file_m_time = \
                             file_obj.attrs["m_time"]
                     if 'size' in file_obj.attrs:
-                        self.data.printing_file_size = \
+                        self.data.selected_file_size = \
                             file_obj.attrs["size"]
 
             self.job_info_updated()
@@ -218,12 +218,12 @@ class Job(metaclass=MCSingleton):
             data["path_incomplete"] = self.data.path_incomplete
         if self.data.job_start_cmd_id is not None:
             data["start_cmd_id"] = self.data.job_start_cmd_id
-        if self.data.printing_file_path is not None:
-            data["file_path"] = self.data.printing_file_path
-        if self.data.printing_file_m_time is not None:
-            data["m_time"] = self.data.printing_file_m_time
-        if self.data.printing_file_size is not None:
-            data["size"] = self.data.printing_file_size
+        if self.data.selected_file_path is not None:
+            data["file_path"] = self.data.selected_file_path
+        if self.data.selected_file_m_time is not None:
+            data["m_time"] = self.data.selected_file_m_time
+        if self.data.selected_file_size is not None:
+            data["size"] = self.data.selected_file_size
         if self.data.from_sd is not None:
             data["from_sd"] = self.data.from_sd
 
@@ -251,13 +251,13 @@ class Job(metaclass=MCSingleton):
         :param total: The file size
         """
         self.data.printing_file_byte = current
-        if self.data.printing_file_size is not None and \
-                self.data.printing_file_size != total:
+        if self.data.selected_file_size is not None and \
+                self.data.selected_file_size != total:
             log.warning("Reported file sizes differ %s vs %s",
-                        self.data.printing_file_size, total)
-        if self.data.printing_file_size is None:
+                        self.data.selected_file_size, total)
+        if self.data.selected_file_size is None:
             # In the future, this should be pointless, now it may get used
-            self.data.printing_file_size = total
+            self.data.selected_file_size = total
             self.job_info_updated()
 
     def job_info_updated(self):
@@ -265,6 +265,28 @@ class Job(metaclass=MCSingleton):
         # The same check as in the job info command, se we aren't trying
         # to send the job info, when it'll just fail instantly
         if self.data.job_state == JobState.IN_PROGRESS \
-                and self.data.printing_file_path is not None \
+                and self.data.selected_file_path is not None \
                 and self.data.already_sent:
             self.job_info_updated_signal.send(self)
+
+    def select_file(self, path):
+        """
+        For Octoprint API to select a file to print
+        supply only existing file paths
+
+        :param path: The connect path to a file, including the mountpoint name
+        """
+        if self.printer.fs.get(path) is None:
+            raise RuntimeError(f"Cannot select a non existing file {path}")
+        self.set_file_path(path,
+                           path_incomplete=False,
+                           prepend_sd_mountpoint=False)
+
+    def deselect_file(self):
+        """
+        For Octoprint API to deselect a file
+        Only works when IDLE
+        """
+        if self.data.job_state != JobState.IDLE:
+            raise RuntimeError("Cannot deselect a file while printing it")
+        self.data.selected_file_path = None

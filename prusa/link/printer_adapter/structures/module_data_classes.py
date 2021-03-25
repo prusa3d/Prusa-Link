@@ -45,9 +45,9 @@ class JobData(BaseModel):
     """Data of the Job class"""
     already_sent: Optional[bool]
     job_start_cmd_id: Optional[int]
-    printing_file_path: Optional[str]
-    printing_file_m_time: Optional[str]
-    printing_file_size: Optional[str]
+    selected_file_path: Optional[str]
+    selected_file_m_time: Optional[str]
+    selected_file_size: Optional[str]
     printing_file_byte: Optional[int]
     path_incomplete: Optional[bool]
     from_sd: Optional[bool]
