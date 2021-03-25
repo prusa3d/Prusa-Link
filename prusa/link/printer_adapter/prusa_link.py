@@ -130,6 +130,7 @@ class PrusaLink:
                                        self.sd_print_start_observed)
         self.serial_reader.add_handler(PRINTER_BOOT_REGEX, self.printer_reset)
         self.job.job_info_updated_signal.connect(self.job_info_updated)
+        self.job.job_id_updated_signal.connect(self.job_id_updated)
         self.state_manager.pre_state_change_signal.connect(
             self.pre_state_change)
         self.state_manager.post_state_change_signal.connect(
@@ -347,6 +348,11 @@ class PrusaLink:
         else:
             job_info["source"] = Source.FIRMWARE
             self.printer.event_cb(**job_info)
+
+    def job_id_updated(self, sender, job_id):
+        """Passes the job_id into the SDK"""
+        assert sender
+        self.printer.job_id = job_id
 
     def telemetry_observed_print(self, sender):
         """
