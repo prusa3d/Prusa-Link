@@ -46,7 +46,6 @@ class Model(metaclass=MCSingleton):
         """
         with self.lock:
             self._telemetry.state = self.state_manager.current_state
-            self._telemetry.job_id = self.job.get_job_id_for_api()
 
             # Make sure that even if the printer tells us print specific
             # values, nothing will be sent out while not printing
@@ -79,7 +78,11 @@ class Model(metaclass=MCSingleton):
 
     @property
     def last_telemetry(self):
-        """Returns telemetry values without resetting to None."""
+        """
+        Returns telemetry values without resetting to None.
+        Adds the current job id even though "oficially" the SDK adds it
+        into the telemetry being sent.
+        """
         with self.lock:
             self._last_telemetry.state = self.state_manager.current_state
             self._last_telemetry.job_id = self.job.get_job_id_for_api()

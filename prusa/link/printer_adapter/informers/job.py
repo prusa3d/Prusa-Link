@@ -33,7 +33,7 @@ class Job(metaclass=MCSingleton):
 
         # Unused
         self.job_id_updated_signal = Signal()  # kwargs: job_id: int
-        self.job_info_updated_signal = Signal()  # kwargs: job_id: int
+        self.job_info_updated_signal = Signal()
 
         self.job_path = get_clean_path(cfg.daemon.job_file)
         ensure_directory(os.path.dirname(self.job_path))
@@ -160,13 +160,6 @@ class Job(metaclass=MCSingleton):
             job_file.write(json.dumps(data))
             job_file.flush()
             os.fsync(job_file.fileno())
-
-    def get_job_id(self):
-        """Only return job_id if a job is in progress, otherwise return None"""
-        log.debug("job_id requested, we are %s", self.data.job_state.name)
-        if self.data.job_state != JobState.IDLE:
-            return self.data.job_id
-        return None
 
     def set_file_path(self, path, path_incomplete, prepend_sd_mountpoint):
         """
