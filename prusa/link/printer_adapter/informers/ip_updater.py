@@ -17,7 +17,7 @@ from ..const import IP_UPDATE_INTERVAL, \
     SHOW_IP_INTERVAL, NO_IP, IP_WRITE_TIMEOUT, NO_MAC
 from ..structures.module_data_classes import IPUpdaterData
 from ..updatable import ThreadedUpdatable
-from ..util import get_local_ip
+from ..util import get_local_ip, get_local_ip6
 from ... import errors
 
 log = logging.getLogger(__name__)
@@ -38,6 +38,7 @@ class IPUpdater(ThreadedUpdatable):
         self.updated_signal = Signal()  # kwargs: old_ip: str, new_ip: str
 
         model.ip_updater = IPUpdaterData(local_ip=NO_IP,
+                                         local_ip6=NO_IP,
                                          is_wireless=False,
                                          update_ip_on=time(),
                                          mac=NO_MAC)
@@ -53,6 +54,10 @@ class IPUpdater(ThreadedUpdatable):
 
         self.data.mac = get_mac_address() or NO_MAC
 
+        # Fixme: Let's do the update sharade even on ipv6 changes
+        # For now just send it and ignore its changes
+        self.data.local_ip6 = get_local_ip6()
+
         is_wireless = False
         for nic in nics:
             try:
@@ -63,6 +68,7 @@ class IPUpdater(ThreadedUpdatable):
             else:
                 if ip in ips:
                     is_wireless = pyw.iswireless(nic)
+                    self.data.ssid = pyw.link(card)["ssid"].decode("ASCII")
         self.data.is_wireless = is_wireless
 
     def update(self):

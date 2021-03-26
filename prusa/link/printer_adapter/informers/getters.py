@@ -109,16 +109,22 @@ def get_network_info(model: Model):
     ip_data = model.ip_updater
     if ip_data.local_ip != NO_IP:
         if ip_data.is_wireless:
-            log.debug("WIFI - mac: %s", model.ip_updater.mac)
-            network_info.wifi_ipv4 = model.ip_updater.local_ip
-            network_info.wifi_mac = model.ip_updater.mac
+            log.debug("WIFI - mac: %s", ip_data.mac)
+            network_info.wifi_ipv4 = ip_data.local_ip
+            network_info.wifi_ipv6 = ip_data.local_ip6
+            network_info.wifi_mac = ip_data.mac
+            network_info.wifi_ssid = ip_data.ssid
             network_info.lan_ipv4 = None
+            network_info.lan_ipv6 = None
             network_info.lan_mac = None
         else:
-            log.debug("LAN - mac: %s", model.ip_updater.mac)
-            network_info.lan_ipv4 = model.ip_updater.local_ip
-            network_info.lan_mac = model.ip_updater.mac
+            log.debug("LAN - mac: %s", ip_data.mac)
+            network_info.lan_ipv4 = ip_data.local_ip
+            network_info.lan_ipv6 = ip_data.local_ip6
+            network_info.lan_mac = ip_data.mac
             network_info.wifi_ipv4 = None
+            network_info.wifi_ipv6 = None
             network_info.wifi_mac = None
+            network_info.wifi_ssid = None
 
     return network_info
