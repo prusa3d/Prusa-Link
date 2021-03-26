@@ -52,16 +52,16 @@
                 <span class="white">{{ prusa_link.model.job.job_start_cmd_id }}</span>
             </li>
             <li>Printing file:
-                <span class="white">{{ prusa_link.model.job.printing_file_path }}</span>
+                <span class="white">{{ prusa_link.model.job.selected_file_path }}</span>
             </li>
-            <li>Only file name shown:
-                <span class="white">{{ prusa_link.model.job.filename_only }}</span>
+            <li>Is path incomplete:
+                <span class="white">{{ prusa_link.model.job.path_incomplete }}</span>
             </li>
             <li>Last modified at:
-                <span class="white">{{ prusa_link.model.job.printing_file_m_time }}</span>
+                <span class="white">{{ prusa_link.model.job.selected_file_m_time }}</span>
             </li>
             <li>Size:
-                <span class="white">{{ prusa_link.model.job.printing_file_size }}</span>
+                <span class="white">{{ prusa_link.model.job.selected_file_size }}</span>
             </li>
             <li>From SD card:
                 <span class="white">{{ prusa_link.model.job.from_sd }}</span>

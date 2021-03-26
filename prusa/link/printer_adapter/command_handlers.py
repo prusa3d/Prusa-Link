@@ -372,7 +372,7 @@ class JobInfo(Command):
                         "when there is no job in progress.")
 
         # Happens when launching into a paused print
-        if self.model.job.printing_file_path is None:
+        if self.model.job.selected_file_path is None:
             self.failed("Don't know the file details yet.")
 
         data = self.job.get_job_info_data(
