@@ -73,6 +73,7 @@ BLACKLISTED_NAMES = [SD_MOUNT_NAME]
 SFN_TO_LFN_EXTENSIONS = {"GCO": "gcode", "G": "g"}
 
 NO_IP = "NO_IP"
+NO_MAC = "NO_MAC"
 RESET_PIN = 22  # RPi gpio pin for resetting printer
 SUPPORTED_FIRMWARE = "3.9.3"
 MAX_INT = (2**31) - 1

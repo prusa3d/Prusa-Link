@@ -16,3 +16,4 @@ requests
 setuptools
 sortedcontainers
 unidecode
+pyric
