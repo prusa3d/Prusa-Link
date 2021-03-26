@@ -61,6 +61,7 @@
     * LCD message modification (GO: <IP>)
     * Fix connection errors causing the printer to report being in ERROR state
     * Add the possibility to log at debug level around interesting events
+    * Distinguish wifi from lan
 
 0.2.0 (2020-12-14)
 

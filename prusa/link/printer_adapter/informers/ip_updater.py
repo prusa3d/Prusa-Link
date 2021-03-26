@@ -3,6 +3,10 @@ import logging
 import socket
 from time import time
 
+import pyric  # type: ignore
+from getmac import get_mac_address  # type: ignore
+from pyric import pyw  # type: ignore
+
 from blinker import Signal  # type: ignore
 
 from ..input_output.serial.helpers import \
@@ -10,7 +14,7 @@ from ..input_output.serial.helpers import \
 from ..input_output.serial.serial_queue import SerialQueue
 from ..model import Model
 from ..const import IP_UPDATE_INTERVAL, \
-    SHOW_IP_INTERVAL, NO_IP, IP_WRITE_TIMEOUT
+    SHOW_IP_INTERVAL, NO_IP, IP_WRITE_TIMEOUT, NO_MAC
 from ..structures.module_data_classes import IPUpdaterData
 from ..updatable import ThreadedUpdatable
 from ..util import get_local_ip
@@ -33,10 +37,33 @@ class IPUpdater(ThreadedUpdatable):
 
         self.updated_signal = Signal()  # kwargs: old_ip: str, new_ip: str
 
-        model.ip_updater = IPUpdaterData(local_ip=NO_IP, update_ip_on=time())
+        model.ip_updater = IPUpdaterData(local_ip=NO_IP,
+                                         is_wireless=False,
+                                         update_ip_on=time(),
+                                         mac=NO_MAC)
         self.data = model.ip_updater
 
         super().__init__()
+
+    def update_additional_info(self, ip):
+        """
+        Updates the mac address and info about the network being wireless
+        """
+        nics = pyw.interfaces()
+
+        self.data.mac = get_mac_address() or NO_MAC
+
+        is_wireless = False
+        for nic in nics:
+            try:
+                card = pyw.getcard(nic)
+                ips = pyw.ifaddrget(card)
+            except pyric.error:
+                pass
+            else:
+                if ip in ips:
+                    is_wireless = pyw.iswireless(nic)
+        self.data.is_wireless = is_wireless
 
     def update(self):
         """
@@ -49,11 +76,13 @@ class IPUpdater(ThreadedUpdatable):
         except socket.error:
             log.error("Failed getting the local IP, are we connected to LAN?")
             errors.PHY.ok = False
+            self.data.mac = NO_MAC
             self.update_ip(NO_IP)
         else:
             # Show the IP at least once every minute,
             # so any errors printed won't stay forever displayed
             if self.data.local_ip != local_ip:
+                self.update_additional_info(local_ip)
                 log.debug(
                     "The IP has changed, or we reconnected. "
                     "The new one is %s", local_ip)
@@ -64,6 +93,8 @@ class IPUpdater(ThreadedUpdatable):
 
     def update_ip(self, new_ip):
         """
+        Only updates the IP, everything else gets updated beforehand
+
         On ip change, sends the new one to the printer, so it can be displayed
         in the printer support menu.
 
