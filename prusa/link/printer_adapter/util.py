@@ -69,6 +69,20 @@ def get_local_ip():
     return local_ip
 
 
+def get_local_ip6():
+    """
+    Gets the local ip used for connecting to MQTT_HOSTNAME
+    Code from https://stackoverflow.com/a/166589
+    """
+    sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+    # does not matter if host is reachable or not,
+    # any client interface that is UP should suffice
+    sock.connect(("2606:4700:4700::1111", 1))
+    local_ip = sock.getsockname()[0]
+    sock.close()
+    return local_ip
+
+
 def get_clean_path(path):
     """
     Uses pathlib to load a path string, then gets a string for it,
