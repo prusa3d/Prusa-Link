@@ -1,9 +1,8 @@
 """
 Includes functions for polling printer info which didn't fit anywhere else
 """
+import logging
 from distutils.version import StrictVersion
-
-from getmac import get_mac_address  # type: ignore
 
 from prusa.connect.printer.const import PrinterType
 
@@ -16,6 +15,8 @@ from ..input_output.serial.helpers import enqueue_matchable, \
 from ..structures.model_classes import NetworkInfo
 from ..structures.regular_expressions import \
     PRINTER_TYPE_REGEX, FW_REGEX, NOZZLE_REGEX
+
+log = logging.getLogger(__name__)
 
 PRINTER_TYPES = {
     300: PrinterType.I3MK3,
@@ -105,10 +106,19 @@ def get_nozzle_diameter(serial_queue: SerialQueue, should_wait=lambda: True):
 def get_network_info(model: Model):
     """Gets the mac and ip addresses and packages them into an object."""
     network_info = NetworkInfo()
-
-    if model.ip_updater.local_ip != NO_IP:
-        network_info.wifi_ipv4 = model.ip_updater.local_ip
-
-    network_info.wifi_mac = get_mac_address()
+    ip_data = model.ip_updater
+    if ip_data.local_ip != NO_IP:
+        if ip_data.is_wireless:
+            log.debug("WIFI - mac: %s", model.ip_updater.mac)
+            network_info.wifi_ipv4 = model.ip_updater.local_ip
+            network_info.wifi_mac = model.ip_updater.mac
+            network_info.lan_ipv4 = None
+            network_info.lan_mac = None
+        else:
+            log.debug("LAN - mac: %s", model.ip_updater.mac)
+            network_info.lan_ipv4 = model.ip_updater.local_ip
+            network_info.lan_mac = model.ip_updater.mac
+            network_info.wifi_ipv4 = None
+            network_info.wifi_mac = None
 
     return network_info

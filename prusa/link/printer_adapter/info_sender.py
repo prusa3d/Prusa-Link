@@ -33,6 +33,7 @@ class InfoSender:
 
         self.info_updating_thread = None
         self.running = True
+        self.send_again = False
 
     def update_info(self):
         """Gets and refreshes the printer info for SDK"""
@@ -76,19 +77,22 @@ class InfoSender:
                                                name="info_sender")
             self.info_updating_thread.start()
         else:
-            log.warning("Already trying to send info")
+            self.send_again = True
 
     def _try_sending_info(self):
         """Tries to update the info, but does not persist, i
         f an error occurs"""
         prctl_name()
-        try:
-            self.update_info()
-            self.printer.event_cb(**self.printer.get_info())
-        except Exception:  # pylint: disable=broad-except
-            log.exception("Failed to update info")
-        finally:
-            self.info_updating_thread = None
+
+        self.send_again = True  # simulate do while
+        while self.send_again:
+            self.send_again = False
+            try:
+                self.update_info()
+                self.printer.event_cb(**self.printer.get_info())
+            except Exception:  # pylint: disable=broad-except
+                log.exception("Failed to update info")
+        self.info_updating_thread = None
 
     def stop(self):
         """Stops the module"""
