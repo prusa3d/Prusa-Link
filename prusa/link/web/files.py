@@ -19,8 +19,8 @@ from .lib.auth import check_api_digest
 from .lib.files import files_to_api, get_os_path
 from .lib.response import ApiException
 
-from ..printer_adapter.command_handlers import JobInfo
-from ..printer_adapter.informers.job import JobState
+from ..printer_adapter.command_handlers import JobInfo, StartPrint
+from ..printer_adapter.informers.job import JobState, Job
 from .. import errors
 
 log = logging.getLogger(__name__)
@@ -138,9 +138,22 @@ def api_upload(req, location):
 def api_start_print(req, target, path):
     """Start print if no print job is running"""
     # pylint: disable=unused-argument
-    select = req.form.getfirst('select') == 'true'
-    _print = req.form.getfirst('print') == 'true'
-    log.debug('select=%s, print=%s', select, _print)
+    command = req.json.get('command')
+    command_queue = app.daemon.prusa_link.command_queue
+    job = Job.get_instance()
+    filename = ""
+
+    if job.data.job_state == JobState.IDLE:
+        if command == 'select':
+            if target == "local":
+                filename = join("Prusa Link gcodes", path)
+            elif target == "sdcard":
+                filename = join("SD Card", path)
+            job.deselect_file()
+            job.select_file(filename)
+        elif command == 'print':
+            command_queue.do_command(StartPrint(job.data.selected_file_path))
+
     return Response(status_code=state.HTTP_NO_CONTENT)
 
 
