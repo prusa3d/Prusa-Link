@@ -62,6 +62,7 @@
     * Fix connection errors causing the printer to report being in ERROR state
     * Add the possibility to log at debug level around interesting events
     * Distinguish wifi from lan
+    * Implementation of select/print file functions from local web
 
 0.2.0 (2020-12-14)
 
