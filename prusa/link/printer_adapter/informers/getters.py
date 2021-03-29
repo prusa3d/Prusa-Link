@@ -7,7 +7,7 @@ from distutils.version import StrictVersion
 from prusa.connect.printer.const import PrinterType
 
 from ... import errors
-from ..const import NO_IP, SUPPORTED_FIRMWARE
+from ..const import SUPPORTED_FIRMWARE
 from ..model import Model
 from ..input_output.serial.serial_queue import SerialQueue
 from ..input_output.serial.helpers import enqueue_matchable, \
@@ -107,7 +107,7 @@ def get_network_info(model: Model):
     """Gets the mac and ip addresses and packages them into an object."""
     network_info = NetworkInfo()
     ip_data = model.ip_updater
-    if ip_data.local_ip != NO_IP:
+    if ip_data.local_ip is not None:
         if ip_data.is_wireless:
             log.debug("WIFI - mac: %s", ip_data.mac)
             network_info.wifi_ipv4 = ip_data.local_ip

@@ -4,7 +4,7 @@ from threading import Thread
 from time import time, sleep
 
 from ... import errors
-from ..const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL, NO_IP
+from ..const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL
 from ..model import Model
 from .serial.helpers import enqueue_instruction, wait_for_instruction
 from .serial.serial_queue import SerialQueue
@@ -42,10 +42,10 @@ class LCDPrinter(metaclass=MCSingleton):
 
     def get_ip(self):
         """
-        Proxy getter I guess, why this isn't a property or named
-        get_ip is a mystery to me
+        A getter for the lcd printer, returns the ip or a messgae
+        informing about not knowing the ip
         """
-        return self.model.ip_updater.local_ip
+        return self.model.ip_updater.local_ip or "NO IP"
 
     def lcd_updated(self, sender, match):
         """
@@ -81,7 +81,7 @@ class LCDPrinter(metaclass=MCSingleton):
             if all_ok:
                 msg = "OK: " + self.get_ip()
             # If wizard is not completed, show GO: <IP> msg on LCD
-            elif self.get_ip() != NO_IP and errors.TAILS[1].ok is None:
+            elif self.get_ip() is None and errors.TAILS[1].ok is None:
                 msg = "GO: " + self.get_ip()
             else:
                 for chain in errors.HEADS:
@@ -90,7 +90,7 @@ class LCDPrinter(metaclass=MCSingleton):
                         log.debug(node.long_msg)
                         break
                     node = node.next
-                if self.get_ip() == NO_IP:
+                if self.get_ip() is None:
                     what = node.short_msg
                 else:
                     what = self.get_ip()
