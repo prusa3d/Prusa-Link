@@ -33,7 +33,7 @@ from .input_output.serial.serial_reader import SerialReader
 from .model import Model
 from .structures.model_classes import Telemetry
 from .const import PRINTING_STATES, TELEMETRY_IDLE_INTERVAL, \
-    TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, NO_IP, SD_MOUNT_NAME
+    TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, SD_MOUNT_NAME
 from .structures.regular_expressions import \
     PRINTER_BOOT_REGEX, START_PRINT_REGEX, PAUSE_PRINT_REGEX, \
     RESUME_PRINT_REGEX
@@ -165,13 +165,16 @@ class PrusaLink:
         self.storage.dir_unmounted_signal.connect(self.dir_unmount)
         self.storage.sd_mounted_signal.connect(self.sd_mount)
         self.storage.sd_unmounted_signal.connect(self.sd_unmount)
-        self.ip_updater.updated_signal.connect(self.ip_updated)
 
         # Update the bare minimum of things for initial info
         self.ip_updater.update()
 
         # Before starting anything, let's send initial printer info to connect
         self.info_sender.initial_info()
+
+        # Bind this after the initial info is sent so it doesn't get
+        # sent twice
+        self.ip_updater.updated_signal.connect(self.ip_updated)
 
         self.reporting_ensurer = ReportingEnsurer(self.serial_reader,
                                                   self.serial_queue)
@@ -477,17 +480,12 @@ class PrusaLink:
         with open(self.cfg.printer.settings, 'w') as ini:
             self.settings.write(ini)
 
-    def ip_updated(self, sender, old_ip, new_ip):
+    def ip_updated(self, sender):
         """
-        On every ip change from ip updater sends a new info,
-        Also updates the lcd printer ip and clears physical network error
-        code
+        On every ip change from ip updater sends a new info
         """
         assert sender is not None
-        # Don't send info again on init, because one is going to
-        #  get sent anyway
-        if old_ip != new_ip and new_ip != NO_IP and old_ip is not None:
-            self.info_sender.try_sending_info()
+        self.info_sender.try_sending_info()
 
     def dir_mount(self, sender, path):
         """Connects a dir being mounted to Prusa Connect events"""

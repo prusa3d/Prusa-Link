@@ -90,6 +90,7 @@ class InfoSender:
             try:
                 self.update_info()
                 self.printer.event_cb(**self.printer.get_info())
+                log.debug("Info enqueued")
             except Exception:  # pylint: disable=broad-except
                 log.exception("Failed to update info")
         self.info_updating_thread = None

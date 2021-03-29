@@ -2,7 +2,6 @@ git+ssh://git@github.com/prusa3d/Prusa-Connect-SDK-Printer.git@0.4.0#egg=prusa.c
 appdirs
 blinker
 extendparser
-getmac
 importlib_resources
 jinja2-template-info>=0.2.2
 lockfile

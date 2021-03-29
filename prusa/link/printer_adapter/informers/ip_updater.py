@@ -4,8 +4,8 @@ import socket
 from time import time
 
 import pyric  # type: ignore
-from getmac import get_mac_address  # type: ignore
 from pyric import pyw  # type: ignore
+from pyric.pyw import Card  # type: ignore
 
 from blinker import Signal  # type: ignore
 
@@ -13,8 +13,7 @@ from ..input_output.serial.helpers import \
     enqueue_instruction, wait_for_instruction
 from ..input_output.serial.serial_queue import SerialQueue
 from ..model import Model
-from ..const import IP_UPDATE_INTERVAL, \
-    SHOW_IP_INTERVAL, NO_IP, IP_WRITE_TIMEOUT, NO_MAC
+from ..const import IP_UPDATE_INTERVAL, IP_WRITE_TIMEOUT
 from ..structures.module_data_classes import IPUpdaterData
 from ..updatable import ThreadedUpdatable
 from ..util import get_local_ip, get_local_ip6
@@ -35,13 +34,13 @@ class IPUpdater(ThreadedUpdatable):
     def __init__(self, model: Model, serial_queue: SerialQueue):
         self.serial_queue = serial_queue
 
-        self.updated_signal = Signal()  # kwargs: old_ip: str, new_ip: str
+        self.updated_signal = Signal()
 
-        model.ip_updater = IPUpdaterData(local_ip=NO_IP,
-                                         local_ip6=NO_IP,
+        model.ip_updater = IPUpdaterData(local_ip=None,
+                                         local_ip6=None,
                                          is_wireless=False,
                                          update_ip_on=time(),
-                                         mac=NO_MAC)
+                                         mac=None)
         self.data = model.ip_updater
 
         super().__init__()
@@ -50,69 +49,89 @@ class IPUpdater(ThreadedUpdatable):
         """
         Updates the mac address and info about the network being wireless
         """
+        if ip is None:
+            return
         nics = pyw.interfaces()
 
-        self.data.mac = get_mac_address() or NO_MAC
-
-        # Fixme: Let's do the update sharade even on ipv6 changes
-        # For now just send it and ignore its changes
-        self.data.local_ip6 = get_local_ip6()
-
         is_wireless = False
+        mac = None
         for nic in nics:
             try:
-                card = pyw.getcard(nic)
+                # A hack to work around a block for non-wireless cards
+                card = Card(None, nic, None)
                 ips = pyw.ifaddrget(card)
             except pyric.error:
                 pass
             else:
                 if ip in ips:
                     is_wireless = pyw.iswireless(nic)
-                    self.data.ssid = pyw.link(card)["ssid"].decode("ASCII")
+                    mac = pyw.macget(card)
+                    if is_wireless:
+                        card = pyw.getcard(nic)
+                        try:
+                            ssid_bytes = pyw.link(card)["ssid"]
+                            self.data.ssid = ssid_bytes.decode("ASCII")
+                        except pyric.error:
+                            log.exception("Failed getting the SSID")
+                            self.data.ssid = None
         self.data.is_wireless = is_wireless
+        self.data.mac = mac
 
     def update(self):
         """
         Gets the current local ip. Calls update_ip(), if it changed,
         or if it was over X seconds since the last update
         """
-        try:
-            local_ip = get_local_ip()
-            errors.LAN.ok = True
-        except socket.error:
-            log.error("Failed getting the local IP, are we connected to LAN?")
-            errors.PHY.ok = False
-            self.data.mac = NO_MAC
-            self.update_ip(NO_IP)
-        else:
-            # Show the IP at least once every minute,
-            # so any errors printed won't stay forever displayed
-            if self.data.local_ip != local_ip:
-                self.update_additional_info(local_ip)
-                log.debug(
-                    "The IP has changed, or we reconnected. "
-                    "The new one is %s", local_ip)
-                self.update_ip(local_ip)
-            elif time() > self.data.update_ip_on:
-                self.data.update_ip_on = time() + SHOW_IP_INTERVAL
-                self.update_ip(self.data.local_ip)
+        old_ip = self.data.local_ip
+        old_ip6 = self.data.local_ip6
+        self.update_ip()
+        self.update_ip6()
+        errors.LAN.ok = self.data.local_ip is not None
 
-    def update_ip(self, new_ip):
+        if old_ip != self.data.local_ip or old_ip6 != self.data.local_ip6:
+            self.update_additional_info(self.data.local_ip)
+            self.updated_signal.send(self)
+
+    def update_ip(self):
         """
-        Only updates the IP, everything else gets updated beforehand
+        Only updates the IPv4
 
         On ip change, sends the new one to the printer, so it can be displayed
         in the printer support menu.
 
-        Generates a signal, even if no change happened, for printing the ip on
-        the LCD. This is getting obsolete.
+        Generates a signal on ip change
         """
-        old_ip = self.data.local_ip
-        self.data.local_ip = new_ip
-        log.debug("old %s != new %s = %s", old_ip, new_ip, old_ip != new_ip)
-        if old_ip != new_ip:
+        try:
+            new_ip = get_local_ip()
+        except socket.error:
+            log.error("Failed getting the local IP, are we connected to LAN?")
+
+            self.data.mac = None
+            new_ip = None
+
+        if self.data.local_ip != new_ip:
+            log.debug(
+                "Our IP has changed, or we reconnected. "
+                "The new one is %s", new_ip)
+            self.data.local_ip = new_ip
             self.send_ip_to_printer(new_ip)
-        self.updated_signal.send(self, old_ip=old_ip, new_ip=new_ip)
+
+    def update_ip6(self):
+        """
+        Looks on what IPv6 we have and updates it if necessary
+        """
+        try:
+            new_ip6 = get_local_ip6()
+        except socket.error:
+            log.error("Failed getting the local IPv6")
+            new_ip6 = None
+        if new_ip6 is not None and new_ip6.startswith("fe80"):
+            new_ip6 = None
+        if self.data.local_ip6 != new_ip6:
+            log.debug(
+                "Our IPv6 has changed, or we reconnected. "
+                "The new one is %s", new_ip6)
+            self.data.local_ip6 = new_ip6
 
     def send_ip_to_printer(self, ip_address=None):
         """
@@ -125,7 +144,7 @@ class IPUpdater(ThreadedUpdatable):
             ip_address = self.data.local_ip
 
         timeout_at = time() + IP_WRITE_TIMEOUT
-        if ip_address == NO_IP:
+        if ip_address is None:
             instruction = enqueue_instruction(self.serial_queue,
                                               "M552 P0.0.0.0")
         else:
@@ -136,5 +155,5 @@ class IPUpdater(ThreadedUpdatable):
 
     def stop(self):
         """Stops the module"""
-        self.send_ip_to_printer(NO_IP)
+        self.send_ip_to_printer(None)
         super().stop()
