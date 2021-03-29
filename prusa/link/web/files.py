@@ -1,6 +1,6 @@
 """/api/files endpoint handlers"""
 from os import makedirs
-from os.path import abspath, join, exists
+from os.path import abspath, join, exists, basename
 from base64 import decodebytes
 from datetime import datetime
 from hashlib import md5
@@ -8,15 +8,17 @@ from hashlib import md5
 import logging
 
 from poorwsgi import state
-from poorwsgi.response import JSONResponse, Response, FileResponse
+from poorwsgi.response import JSONResponse, Response, FileResponse, \
+        HTTPException
 from poorwsgi.results import hbytes
 
 from prusa.connect.printer.const import GCODE_EXTENSIONS
-from prusa.connect.printer.metadata import MetaData
+from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 
 from .lib.core import app
 from .lib.auth import check_api_digest
-from .lib.files import files_to_api, get_os_path
+from .lib.files import files_to_api, get_os_path, local_refs, sdcard_refs, \
+        gcode_analysis
 from .lib.response import ApiException
 
 from ..printer_adapter.command_handlers import JobInfo, StartPrint
@@ -137,24 +139,65 @@ def api_upload(req, location):
 @check_api_digest
 def api_start_print(req, target, path):
     """Start print if no print job is running"""
-    # pylint: disable=unused-argument
+    if target not in ('local', 'sdcard'):
+        raise ApiException(req, errors.PE_LOC_NOT_FOUND, state.HTTP_NOT_FOUND)
+
     command = req.json.get('command')
-    command_queue = app.daemon.prusa_link.command_queue
     job = Job.get_instance()
-    filename = ""
 
-    if job.data.job_state == JobState.IDLE:
-        if command == 'select':
-            if target == "local":
-                filename = join("Prusa Link gcodes", path)
-            elif target == "sdcard":
-                filename = join("SD Card", path)
+    if command == 'select':
+        if job.data.job_state == JobState.IDLE:
             job.deselect_file()
-            job.select_file(filename)
-        elif command == 'print':
-            command_queue.do_command(StartPrint(job.data.selected_file_path))
+            job.select_file(path)
 
-    return Response(status_code=state.HTTP_NO_CONTENT)
+            if req.json.get('print', False):
+                command_queue = app.daemon.prusa_link.command_queue
+                command_queue.do_command(
+                    StartPrint(job.data.selected_file_path))
+
+            return Response(status_code=state.HTTP_NO_CONTENT)
+
+        # job_state != IDLE
+        return Response(status_code=state.HTTP_CONFLICT)
+
+    # only select command is supported now
+    return Response(status_code=state.HTTP_BAD_REQUEST)
+
+
+@app.route('/api/files/<target>/<path:re:.+>')
+@check_api_digest
+def api_resources(req, target, path):
+    """Returns preview from cache file."""
+    # pylint: disable=unused-argument
+    if target not in ('local', 'sdcard'):
+        raise ApiException(req, errors.PE_LOC_NOT_FOUND, state.HTTP_NOT_FOUND)
+
+    path = '/' + path
+
+    result = {'origin': target, 'name': basename(path), 'path': path}
+
+    if path.endswith(GCODE_EXTENSIONS):
+        result['type'] = 'machinecode'
+        result['typePath'] = ['machinecode', 'gcode']
+    else:
+        result['type'] = None
+        result['typePath'] = None
+
+    if target == 'local':
+        os_path = get_os_path(path)
+        if not os_path or not exists(os_path):
+            raise HTTPException(state.HTTP_NOT_FOUND)
+
+        meta = get_metadata(os_path)
+        result['refs'] = local_refs(path, meta.thumbnails)
+
+    else:  # sdcard
+        meta = FDMMetaData(path)
+        meta.load_from_path(path)
+        result['refs'] = sdcard_refs(path)
+
+    result['gcodeAnalysis'] = gcode_analysis(meta)
+    return JSONResponse(**result)
 
 
 @app.route('/api/downloads/<path:re:.+>')
@@ -173,7 +216,7 @@ def api_downloads(req, path):
 def api_thumbnails(req, path):
     """Returns preview from cache file."""
     # pylint: disable=unused-argument
-    meta = MetaData(get_os_path('/' + path))
+    meta = FDMMetaData(get_os_path('/' + path))
     if not meta.is_cache_fresh():
         return Response(status_code=state.HTTP_NOT_FOUND)
 
