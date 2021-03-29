@@ -3,7 +3,7 @@
 from datetime import datetime
 from os.path import join
 
-from prusa.connect.printer.metadata import MetaData, estimated_to_seconds
+from prusa.connect.printer.metadata import FDMMetaData, estimated_to_seconds
 from prusa.connect.printer.const import GCODE_EXTENSIONS
 
 from ..lib.core import app
@@ -28,6 +28,45 @@ def get_os_path(abs_path):
     mount_name = abs_path.split(file_system.sep)[0]
     mount = file_system.mounts[mount_name]
     return file_.abs_path(mount.path_storage)
+
+
+def local_refs(path, thumbnails):
+    """Make refs structure for file on local storage."""
+    thumbnail = None
+    if thumbnails:
+        thumbnail = f"/api/thumbnails{path}.orig.png"
+    return {
+        'resource': f"/api/files/local{path}",
+        'download': f"/api/downloads/local{path}",
+        'thumbnailSmall': None,
+        'thumbnailBig': thumbnail,
+    }
+
+
+def sdcard_refs(path):
+    """Make refs structure for file on SD Card."""
+
+    return {
+        'resource': f"/api/files/sdcard{path}",
+        'download': None,
+        'thumbnailSmall': None,
+        'thumbnailBig': None
+    }
+
+
+def gcode_analysis(meta):
+    """Make gcodeAnalysis structure from metadata."""
+    estimated = estimated_to_seconds(
+        meta.data.get('estimated printing time (normal mode)', ''))
+
+    return {
+        'estimatedPrintTime': estimated,
+        'material': meta.data.get('filament_type'),
+        'layerHeight': meta.data.get('layer_height')
+        # filament struct
+        # dimensions
+        # printingArea
+    }
 
 
 def files_to_api(node, origin='local', path='/'):
@@ -111,49 +150,21 @@ def files_to_api(node, origin='local', path='/'):
         result['date'] = None
         result['hash'] = None
 
+        os_path = get_os_path(path)
+        meta = FDMMetaData(os_path or path)
+
         if origin != "sdcard":
             # get metadata only for files with cache
             os_path = get_os_path(path)
-            meta = MetaData(os_path)
             if os_path and meta.is_cache_fresh():
                 meta.load_cache()
+            result['refs'] = local_refs(path, meta.thumbnails)
 
-            estimated = estimated_to_seconds(
-                meta.data.get('estimated printing time (normal mode)', ''))
-
-            result['gcodeAnalysis'] = {
-                'estimatedPrintTime': estimated,
-                'material': meta.data.get('filament_type'),
-                'layerHeight': meta.data.get('layer_height')
-                # filament struct
-                # dimensions
-                # printingArea
-            }
-
-            thumbnail = None
-            if meta.thumbnails:
-                thumbnail = f"/api/thumbnails{path}.orig.png"
-            result['refs'] = {
-                # 'resource': f"/api/files/local{path}",
-                'resource': None,
-                'download': f"/api/downloads/local{path}",
-                'thumbnailSmall': None,
-                'thumbnailBig': thumbnail,
-            }
         else:
-            result['gcodeAnalysis'] = {
-                'estimatedPrintTime': None,
-                'material': None,
-                'layerHeight': None
-            }
+            meta.load_from_path(path)
+            result['refs'] = sdcard_refs(path)
 
-            result['refs'] = {
-                # 'resource': f"/api/files/local/{path}",
-                'resource': None,
-                'download': None,
-                'thumbnailSmall': None,
-                'thumbnailBig': None
-            }
+        result['gcodeAnalysis'] = gcode_analysis(meta)
 
     else:
         return {}  # not folder or allowed extension
