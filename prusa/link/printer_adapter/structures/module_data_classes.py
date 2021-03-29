@@ -68,9 +68,9 @@ class JobData(BaseModel):
 
 class IPUpdaterData(BaseModel):
     """Data of the IpUpdater class"""
-    local_ip: str
-    local_ip6: str
-    mac: str
+    local_ip: Optional[str]
+    local_ip6: Optional[str]
+    mac: Optional[str]
     is_wireless: bool
     update_ip_on: float
     ssid: Optional[str]
