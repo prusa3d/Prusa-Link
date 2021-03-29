@@ -7,7 +7,7 @@ import logging
 
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, EmptyResponse, FileResponse,\
-    Response
+    Response, HTTPException
 from poorwsgi.digest import check_digest
 
 from prusa.connect.printer import __version__ as sdk_version
@@ -18,10 +18,9 @@ from .. import __version__
 from .lib.core import app
 from .lib.auth import check_api_digest, check_config, REALM
 
-from ..printer_adapter.command_handlers import JobInfo
-from ..printer_adapter.informers.job import JobState
+from ..printer_adapter.informers.job import JobState, Job
 from ..printer_adapter.command_handlers import PausePrint, StopPrint,\
-    ResumePrint
+    ResumePrint, StartPrint
 
 log = logging.getLogger(__name__)
 
@@ -122,7 +121,10 @@ def api_printer(req):
     """Returns printer telemetry info"""
     # pylint: disable=unused-argument
     tel = app.daemon.prusa_link.model.last_telemetry
+    job = app.daemon.prusa_link.model.job
     sd_ready = app.daemon.prusa_link.sd_ready
+
+    pseudo_printing = tel.state == State.PRINTING or job.selected_file_path
 
     return JSONResponse(
         **{
@@ -144,7 +146,7 @@ def api_printer(req):
                 "flags": {
                     "operational": tel.state == State.READY,
                     "paused": tel.state == State.PAUSED,
-                    "printing": tel.state == State.PRINTING,
+                    "printing": pseudo_printing,
                     "cancelling": False,
                     "pausing": tel.state == State.PAUSED,
                     "sdReady": sd_ready,
@@ -188,20 +190,28 @@ def api_job(req):
     """Returns info about actual printing job"""
     # pylint: disable=unused-argument
     tel = app.daemon.prusa_link.model.last_telemetry
-    command_queue = app.daemon.prusa_link.command_queue
-    job = None
-    job_info = JobInfo()
-    if job_info.model.job.job_state == JobState.IN_PROGRESS:
-        job = command_queue.do_command(job_info)
+    job = app.daemon.prusa_link.model.job
 
-    if job:
-        timestamp = int(datetime(*job.get("m_time")).timestamp())
+    if job.job_state == JobState.IN_PROGRESS:
+        if job.selected_file_m_time:
+            timestamp = int(datetime(*job.selected_file_m_time).timestamp())
         file_ = {
-            'name': basename(job.get("file_path")),
-            'path': job.get("file_path"),
+            'name': basename(job.selected_file_path),
+            'path': job.selected_file_path,
             'date': timestamp,
-            'size': job.get("size"),
-            'origin': 'sdcard' if job.get("from_sd") else 'local'
+            'size': job.selected_file_size,
+            'origin': 'sdcard' if job.from_sd else 'local'
+        }
+    elif job.selected_file_path:
+        timestamp = None
+        if job.selected_file_m_time:
+            timestamp = int(datetime(*job.selected_file_m_time).timestamp())
+        file_ = {
+            'name': basename(job.selected_file_path),
+            'path': job.selected_file_path,
+            'date': timestamp,
+            'size': job.selected_file_size,
+            'origin': 'sdcard' if job.from_sd else 'local'
         }
     else:
         file_ = {
@@ -211,6 +221,7 @@ def api_job(req):
             'size': None,
             'origin': None
         }
+
     file_['display'] = file_['name']
 
     job_state = tel.state
@@ -246,14 +257,41 @@ def api_job(req):
 @check_api_digest
 def api_job_command(req):
     """Send command for job control"""
+    # pylint: disable=too-many-branches
+    job = Job.get_instance()
+    teldata = app.daemon.prusa_link.model.last_telemetry
+
     command = req.json.get("command")
     command_queue = app.daemon.prusa_link.command_queue
 
     if command == "pause":
-        command_queue.do_command(PausePrint())
+        print("job.state:", job.data.job_state)
+        if job.data.job_state != JobState.IN_PROGRESS:
+            raise HTTPException(state.HTTP_CONFLICT)
+
+        action = req.json.get("action")
+        if action == 'pause':
+            command_queue.do_command(PausePrint())
+        elif action == 'resume':
+            command_queue.do_command(ResumePrint())
+        elif action == 'toogle':
+            if teldata.state == State.PAUSED:
+                command_queue.do_command(ResumePrint())
+            elif teldata.state == State.PRINTING:
+                command_queue.do_command(PausePrint())
+
     elif command == "cancel":
-        command_queue.do_command(StopPrint())
-    elif command == "resume":
-        command_queue.do_command(ResumePrint())
+        if job.data.job_state == JobState.IN_PROGRESS:
+            command_queue.do_command(StopPrint())
+        elif job.data.job_state == JobState.IDLE:
+            job.deselect_file()
+        else:
+            raise HTTPException(state.HTTP_CONFLICT)
+
+    elif command == "start":
+        if job.data.job_state != JobState.IDLE:
+            raise HTTPException(state.HTTP_CONFLICT)
+        if job.data.selected_file_path:
+            command_queue.do_command(StartPrint(job.data.selected_file_path))
 
     return Response(status_code=state.HTTP_NO_CONTENT)
