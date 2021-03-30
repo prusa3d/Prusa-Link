@@ -1,5 +1,5 @@
 """/api/files endpoint handlers"""
-from os import makedirs
+from os import makedirs, unlink
 from os.path import abspath, join, exists, basename
 from base64 import decodebytes
 from datetime import datetime
@@ -81,14 +81,14 @@ def api_files(req):
                         free='%d %s' % hbytes(free))
 
 
-@app.route('/api/files/<location>', state.METHOD_POST)
+@app.route('/api/files/<target>', state.METHOD_POST)
 @check_api_digest
-def api_upload(req, location):
+def api_upload(req, target):
     """Function for uploading G-CODE."""
-    if location == 'sdcard':
+    if target == 'sdcard':
         raise ApiException(req, errors.PE_UPLOAD_SDCARD, state.HTTP_NOT_FOUND)
 
-    if location != 'local':
+    if target != 'local':
         raise ApiException(req, errors.PE_LOC_NOT_FOUND, state.HTTP_NOT_FOUND)
 
     if 'file' not in req.form or not req.form['file'].filename:
@@ -119,7 +119,7 @@ def api_upload(req, location):
             raise ApiException(req, errors.PE_UPLOAD_CONFLICT,
                                state.HTTP_CONFLICT)
 
-    log.info("Store file to %s::%s", location, filename)
+    log.info("Store file to %s::%s", target, filename)
     makedirs(foldername, exist_ok=True)
     with open(filename, 'w+b') as gcode:
         gcode.write(req.form['file'].file.read())
@@ -144,6 +144,7 @@ def api_start_print(req, target, path):
 
     command = req.json.get('command')
     job = Job.get_instance()
+    path = '/' + path
 
     if command == 'select':
         if job.data.job_state == JobState.IDLE:
@@ -200,6 +201,30 @@ def api_resources(req, target, path):
     return JSONResponse(**result)
 
 
+@app.route('/api/files/<target>/<path:re:.+>', method=state.METHOD_DELETE)
+@check_api_digest
+def api_delete(req, target, path):
+    """Delete file local target."""
+    # pylint: disable=unused-argument
+    if target not in ('local', 'sdcard'):
+        raise ApiException(req, errors.PE_LOC_NOT_FOUND, state.HTTP_NOT_FOUND)
+
+    if target != 'local':
+        raise HTTPException(state.HTTP_CONFLICT)
+
+    path = '/' + path
+    job = Job.get_instance()
+
+    if job.data.selected_file_path == path:
+        if job.data.job_state != JobState.IDLE:
+            raise HTTPException(state.HTTP_CONFLICT)
+        job.deselect_file()
+
+    os_path = get_os_path(path)
+    unlink(os_path)
+    return Response(status_code=state.HTTP_NO_CONTENT)
+
+
 @app.route('/api/downloads/<path:re:.+>')
 @check_api_digest
 def api_downloads(req, path):
@@ -216,6 +241,10 @@ def api_downloads(req, path):
 def api_thumbnails(req, path):
     """Returns preview from cache file."""
     # pylint: disable=unused-argument
+    os_path = get_os_path('/' + path)
+    if not os_path or not exists(os_path):
+        return Response(status_code=state.HTTP_NOT_FOUND)
+
     meta = FDMMetaData(get_os_path('/' + path))
     if not meta.is_cache_fresh():
         return Response(status_code=state.HTTP_NOT_FOUND)
