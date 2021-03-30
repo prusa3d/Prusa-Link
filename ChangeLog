@@ -66,6 +66,7 @@
     * File resource endpoint
     * working `start / stop / pause / resume` job
     * job info refactoring
+    * endpoint for deleting file
 
 0.2.0 (2020-12-14)
 
