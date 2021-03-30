@@ -67,6 +67,7 @@
     * working `start / stop / pause / resume` job
     * job info refactoring
     * endpoint for deleting file
+    * fix job get / set
 
 0.2.0 (2020-12-14)
 
