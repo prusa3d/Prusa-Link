@@ -9,7 +9,7 @@ from typing import Iterable
 
 from extendparser.get import Get
 
-CONNECT = 'test.connect.prusa3d.com'
+CONNECT = 'connect.prusa3d.com'
 
 LOG_FORMAT_FOREGROUND = \
     "%(asctime)s %(levelname)s {%(module)s.%(funcName)s():%(lineno)d} "\

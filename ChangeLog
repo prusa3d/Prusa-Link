@@ -1,6 +1,6 @@
 # ChangeLog
 
-0.3.0-dev
+0.3.0 (2021-03-30)
 
     * Fixed broken command resends
     * Fixed state changed handler
