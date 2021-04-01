@@ -1,5 +1,7 @@
 # ChangeLog
 
+0.4.0.dev0
+
 0.3.0 (2021-03-30)
 
     * Fixed broken command resends
