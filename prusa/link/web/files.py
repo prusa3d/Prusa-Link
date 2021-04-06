@@ -225,13 +225,15 @@ def api_delete(req, target, path):
     return Response(status_code=state.HTTP_NO_CONTENT)
 
 
-@app.route('/api/downloads/<path:re:.+>')
+@app.route('/api/downloads/<target>/<path:re:.+>')
 @check_api_digest
-def api_downloads(req, path):
-    """Returns preview from cache file."""
+def api_downloads(req, target, path):
+    """Downloads intended gcode."""
     # pylint: disable=unused-argument
-    os_path = get_os_path('/' + path)
-    if not exists(os_path):
+    if target != "local":
+        return Response(status_code=state.HTTP_NOT_FOUND)
+    os_path = get_os_path(f"/{path}")
+    if os_path is None:
         return Response(status_code=state.HTTP_NOT_FOUND)
     return FileResponse(os_path)
 
