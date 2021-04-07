@@ -1,7 +1,6 @@
 """Daemon class implementation."""
 import abc
 import logging
-from threading import Thread
 
 import ctypes
 import prctl  # type: ignore
@@ -9,6 +8,7 @@ import prctl  # type: ignore
 from .config import Config, Settings
 from .printer_adapter import prusa_link
 from .printer_adapter.prusa_link import PrusaLink
+from .printer_adapter.updatable import Thread
 from .web import run_http
 
 log = logging.getLogger(__name__)
