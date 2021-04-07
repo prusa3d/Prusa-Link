@@ -9,6 +9,7 @@ from grp import getgrnam
 from pwd import getpwnam
 from signal import SIGTERM, SIGKILL
 from time import time, sleep
+from cProfile import Profile
 
 from daemon import DaemonContext  # type: ignore
 from lockfile.pidlockfile import PIDLockFile  # type: ignore
@@ -16,6 +17,7 @@ from .printer_adapter.const import EXIT_TIMEOUT, QUIT_INTERVAL
 from .config import Config
 from .printer_adapter.interesting_logger import InterestingLogRotator, \
     InterestingLogger
+from .printer_adapter.updatable import Thread
 
 # pylint: disable=wrong-import-position, wrong-import-order
 # Pop this singleton into existence before importing prusa link
@@ -153,8 +155,17 @@ def main():
                         help="sets the log level of any submodule(s). "
                         "use <module_path>=<log_level>",
                         type=LogLevel)
+    parser.add_argument("--profile",
+                        action="store_true",
+                        help="Use cProfile for profiling application.")
 
     args = parser.parse_args()
+
+    profile = None
+    if args.profile:
+        profile = Profile()
+        profile.enable()
+        Thread.enable_profiling()
 
     # Restart on thread exceptions
     threading.excepthook = lambda exc_args: excepthook(exc_args, args)
@@ -232,7 +243,11 @@ def main():
         parser.error("%s" % exc)
         return 1
 
+    finally:
+        if profile:
+            profile.disable()
+            profile.dump_stats("prusalink-__main__.profile")
+
 
 if __name__ == "__main__":
-
     sys.exit(main())

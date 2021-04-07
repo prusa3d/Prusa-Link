@@ -4,7 +4,8 @@ There was an updatable without a thread, but it stopped being used
 
 Also contains a thread utility function
 """
-from threading import Thread, current_thread
+from threading import Thread as _Thread, current_thread
+from cProfile import Profile
 
 import prctl  # type: ignore
 
@@ -15,6 +16,29 @@ from .util import run_slowly_die_fast
 def prctl_name():
     """Set system thread name with python thread name."""
     prctl.set_name("prusal#%s" % current_thread().name)
+
+
+class Thread(_Thread):
+    """https://stackoverflow.com/a/1922945"""
+    def profile_run(self):
+        """run method for profiling"""
+        profiler = Profile()
+        profiler.enable()
+        try:
+            return profiler.runcall(_Thread.run, self)
+        finally:
+            profiler.disable()
+            profiler.dump_stats('prusalink-%s.profile' % self.name)
+
+    @staticmethod
+    def enable_profiling():
+        """Swap run method."""
+        Thread.run = Thread.profile_run
+
+    @staticmethod
+    def disable_profiling():
+        """Swap run method."""
+        Thread.run = _Thread.run
 
 
 class ThreadedUpdatable:

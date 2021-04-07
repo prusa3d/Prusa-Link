@@ -2,7 +2,7 @@
 
 import logging
 import os
-from threading import Thread, Event, enumerate as enumerate_threads
+from threading import Event, enumerate as enumerate_threads
 from time import time
 from typing import Dict, Any
 
@@ -39,7 +39,7 @@ from .structures.regular_expressions import \
     RESUME_PRINT_REGEX
 from .reporting_ensurer import ReportingEnsurer
 from .util import run_slowly_die_fast, make_fingerprint
-from .updatable import prctl_name
+from .updatable import prctl_name, Thread
 from ..config import Config, Settings
 from ..sdk_augmentation.printer import MyPrinter
 

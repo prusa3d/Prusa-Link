@@ -2,7 +2,6 @@
 from logging import getLogger
 from pathlib import Path
 from typing import Dict, Any
-from threading import Thread
 from time import sleep
 
 from prusa.connect.printer.const import Source
@@ -15,7 +14,7 @@ from ..printer_adapter.input_output.lcd_printer import LCDPrinter
 from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
 from ..printer_adapter.util import file_is_on_sd
-from ..printer_adapter.updatable import prctl_name
+from ..printer_adapter.updatable import prctl_name, Thread
 from .command_handler import CommandHandler
 from .. import errors, __version__
 

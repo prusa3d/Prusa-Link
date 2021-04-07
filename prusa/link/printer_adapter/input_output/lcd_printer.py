@@ -1,6 +1,5 @@
 """Contains implementation of the LCDPrinter class"""
 import logging
-from threading import Thread
 from time import time, sleep
 
 from ... import errors
@@ -11,7 +10,7 @@ from .serial.serial_queue import SerialQueue
 from .serial.serial_reader import SerialReader
 from ..structures.mc_singleton import MCSingleton
 from ..structures.regular_expressions import LCD_UPDATE_REGEX
-from ..updatable import prctl_name
+from ..updatable import prctl_name, Thread
 
 log = logging.getLogger(__name__)
 
