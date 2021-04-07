@@ -104,7 +104,8 @@ class IPUpdater(ThreadedUpdatable):
         try:
             new_ip = get_local_ip()
         except socket.error:
-            log.error("Failed getting the local IP, are we connected to LAN?")
+            log.warning(
+                "Failed getting the local IP, are we connected to LAN?")
 
             self.data.mac = None
             new_ip = None
@@ -123,7 +124,7 @@ class IPUpdater(ThreadedUpdatable):
         try:
             new_ip6 = get_local_ip6()
         except socket.error:
-            log.error("Failed getting the local IPv6")
+            log.debug("Failed getting the local IPv6")
             new_ip6 = None
         if new_ip6 is not None and new_ip6.startswith("fe80"):
             new_ip6 = None
