@@ -7,7 +7,7 @@ and instruction management
 import logging
 import re
 from collections import deque
-from threading import Lock, Thread
+from threading import Lock
 from time import time, sleep
 from typing import Optional, Deque, List
 
@@ -29,7 +29,7 @@ from ...const import PRINTER_BOOT_WAIT, \
     QUIT_INTERVAL, SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT, \
     RX_SIZE, HISTORY_LENGTH, MAX_INT
 from .... import errors
-from ...updatable import prctl_name
+from ...updatable import prctl_name, Thread
 
 log = logging.getLogger(__name__)
 

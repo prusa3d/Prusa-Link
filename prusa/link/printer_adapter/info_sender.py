@@ -1,6 +1,5 @@
 """Contains implementation of the InfoSender class"""
 import logging
-from threading import Thread
 from time import sleep
 
 from .const import SEND_INFO_RETRY, PRINTER_BOOT_WAIT
@@ -11,7 +10,7 @@ from .informers.getters import get_network_info, get_firmware_version, \
 from .input_output.lcd_printer import LCDPrinter
 from .input_output.serial.serial_queue import SerialQueue
 from .input_output.serial.serial_reader import SerialReader
-from .updatable import prctl_name
+from .updatable import prctl_name, Thread
 
 log = logging.getLogger(__name__)
 

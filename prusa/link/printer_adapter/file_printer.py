@@ -3,7 +3,6 @@ import logging
 import os
 import shutil
 from collections import deque
-from threading import Thread
 from time import sleep
 
 from blinker import Signal  # type: ignore
@@ -28,7 +27,7 @@ from .structures.regular_expressions import \
     PAUSED_REGEX, RESUMED_REGEX
 from .util import get_clean_path, ensure_directory, \
     get_gcode
-from .updatable import prctl_name
+from .updatable import prctl_name, Thread
 
 log = logging.getLogger(__name__)
 

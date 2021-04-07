@@ -1,7 +1,7 @@
 """Contains implementation of the Serial class"""
 import logging
 import termios
-from threading import Thread, Lock
+from threading import Lock
 from time import sleep
 
 import serial  # type: ignore
@@ -12,7 +12,7 @@ from .serial_reader import SerialReader
 from ...const import PRINTER_BOOT_WAIT, \
     SERIAL_REOPEN_TIMEOUT
 from ...structures.mc_singleton import MCSingleton
-from ...updatable import prctl_name
+from ...updatable import prctl_name, Thread
 from .... import errors
 
 log = logging.getLogger(__name__)

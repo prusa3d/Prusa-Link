@@ -5,11 +5,11 @@ withch are the queue members
 
 import logging
 from queue import Queue, Empty
-from threading import Thread, Event
+from threading import Event
 
 from .command import Command, CommandFailed
 from .const import QUIT_INTERVAL
-from .updatable import prctl_name
+from .updatable import prctl_name, Thread
 
 log = logging.getLogger(__name__)
 
