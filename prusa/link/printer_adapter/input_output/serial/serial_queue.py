@@ -17,7 +17,7 @@ from ...interesting_logger import InterestingLogRotator
 from ....config import Config
 from .serial import Serial
 from ...structures.regular_expressions import \
-    CONFIRMATION_REGEX, RESEND_REGEX, TEMPERATURE_REGEX, BUSY_REGEX, \
+    CONFIRMATION_REGEX, RESEND_REGEX, BUSY_REGEX, \
     ATTENTION_REGEX, HEATING_HOTEND_REGEX, HEATING_REGEX, \
     M110_REGEX
 from ...util import run_slowly_die_fast
@@ -316,26 +316,9 @@ class SerialQueue(metaclass=MCSingleton):
     # --- Static capture handlers ---
 
     def _confirmation_handler(self, sender, match: re.Match):
-        """
-        There is a special case, M105 prints "ok" on the same line as
-        output So if there is anything after ok, try if it isn't the temps
-        and capture them if we are expecting them
-        Temps aren't being polled anymore, so this is not used
-        So other than that it just calls confirm()
-        # """
+        """Used to do M105 parsing, but that is not supported anymore."""
         assert sender is not None
-        additional_output = match.group("extra")
-        capturing_regexps = None
-        if self.current_instruction is not None:
-            capturing_regexps = self.current_instruction.capturing_regexps
-
-            if additional_output and capturing_regexps is not None \
-                    and TEMPERATURE_REGEX in capturing_regexps:
-                temperature_match = TEMPERATURE_REGEX.match(additional_output)
-                if temperature_match:
-                    self.current_instruction.output_captured(
-                        None, match=temperature_match)
-
+        assert match is not None
         self._confirmed()
 
     def _resend_handler(self, sender, match: re.Match):
