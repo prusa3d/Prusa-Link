@@ -45,6 +45,17 @@ class IPUpdater(ThreadedUpdatable):
 
         super().__init__()
 
+    @staticmethod
+    def get_mac(card):
+        """
+        Pyric returns an error, but in that case, there probably is no mac
+        to be gotten, so None is the most fitting value to send
+        """
+        try:
+            return pyw.macget(card)
+        except pyric.error:
+            return None
+
     def update_additional_info(self, ip):
         """
         Updates the mac address and info about the network being wireless
@@ -64,8 +75,8 @@ class IPUpdater(ThreadedUpdatable):
                 pass
             else:
                 if ip in ips:
+                    mac = self.get_mac(card)
                     is_wireless = pyw.iswireless(nic)
-                    mac = pyw.macget(card)
                     if is_wireless:
                         card = pyw.getcard(nic)
                         try:
