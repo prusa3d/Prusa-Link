@@ -1,10 +1,11 @@
 # ChangeLog
 
-0.4.0.dev0
+0.4.0 (2021-04-13)
     * getting IP refactoring
     * fix firmware version reading
     * working download gcode endpoint
     * command argument for profiling application
+    * connection over VPN fix
 
 0.3.0 (2021-03-30)
 
