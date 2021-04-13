@@ -32,3 +32,6 @@ python3 -m prusa.link -f -s $HOME/ttyAMA0
 ```sh
 PRUSA_LINK_STATIC=./my_static python3 -m prusa.link -f
 ```
+
+**Communication debug**:
+prusa-link -f -I -i -l urllib3.connectionpool=DEBUG -l connect-printer=DEBUG
