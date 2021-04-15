@@ -1,4 +1,5 @@
 """/api/files endpoint handlers"""
+import time
 from os import makedirs, unlink
 from os.path import abspath, join, exists, basename
 from base64 import decodebytes
@@ -21,12 +22,13 @@ from .lib.files import files_to_api, get_os_path, local_refs, sdcard_refs, \
         gcode_analysis
 from .lib.response import ApiException
 
-from ..printer_adapter.command_handlers import JobInfo, StartPrint
+from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.informers.job import JobState, Job
 from .. import errors
 
 log = logging.getLogger(__name__)
 HEADER_DATETIME_FORMAT = "%a, %d %b %Y %X GMT"
+PRINT_TIMEOUT = 100
 
 
 @app.route('/api/files')
@@ -85,6 +87,7 @@ def api_files(req):
 @check_api_digest
 def api_upload(req, target):
     """Function for uploading G-CODE."""
+
     if target == 'sdcard':
         raise ApiException(req, errors.PE_UPLOAD_SDCARD, state.HTTP_NOT_FOUND)
 
@@ -107,15 +110,14 @@ def api_upload(req, target):
 
     if foldername.startswith('/'):
         foldername = '.' + foldername
+    print_path = join("/Prusa Link gcodes/", foldername, filename)
     foldername = abspath(join(app.cfg.printer.directories[0], foldername))
     filename = join(foldername, filename)
 
-    job_info = JobInfo()
-    if exists(filename) and \
-            job_info.model.job.job_state == JobState.IN_PROGRESS:
-        command_queue = app.daemon.prusa_link.command_queue
-        job = command_queue.do_command(job_info)
-        if job and get_os_path(job.get("file_path")) == filename:
+    job = Job.get_instance()
+
+    if exists(filename) and job.data.job_state == JobState.IN_PROGRESS:
+        if print_path == job.data.selected_file_path:
             raise ApiException(req, errors.PE_UPLOAD_CONFLICT,
                                state.HTTP_CONFLICT)
 
@@ -123,6 +125,20 @@ def api_upload(req, target):
     makedirs(foldername, exist_ok=True)
     with open(filename, 'w+b') as gcode:
         gcode.write(req.form['file'].file.read())
+
+        if _print and job.data.job_state == JobState.IDLE and exists(filename):
+            job.deselect_file()
+            t_end = PRINT_TIMEOUT
+            while job.printer.fs.get(print_path) is None:
+                time.sleep(0.1)
+                t_end -= 1
+                if t_end < 0:
+                    raise ApiException(req, errors.PE_UPLOAD_BAD,
+                                       state.HTTP_REQUEST_TIME_OUT)
+            job.select_file(print_path)
+            command_queue = app.daemon.prusa_link.command_queue
+            command_queue.do_command(
+                StartPrint(job.data.selected_file_path))
 
     if req.accept_json:
         data = app.daemon.prusa_link.printer.get_info()["files"]
