@@ -6,7 +6,7 @@ from os.path import join
 from prusa.connect.printer.metadata import FDMMetaData, estimated_to_seconds
 from prusa.connect.printer.const import GCODE_EXTENSIONS
 
-from ..lib.core import app
+from .core import app
 
 
 def get_os_path(abs_path):
