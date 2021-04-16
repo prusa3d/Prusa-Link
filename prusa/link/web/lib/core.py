@@ -25,10 +25,12 @@ class PrusaLink(Application):
     daemon = None
     wizard = None
     api_key = None
+    posting_data = False
 
 
 app = application = PrusaLink(__package__)
 app.keep_blank_values = 1
+app.auto_form = False  # only POST /api/files/<target> endpoints get HTML form
 app.document_root = STATIC_DIR
 
 app.secret_key = sha256(str(time()).encode()).hexdigest()

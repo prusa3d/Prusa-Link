@@ -1,14 +1,16 @@
 """/api/files endpoint handlers"""
-import time
-from os import makedirs, unlink
-from os.path import abspath, join, exists, basename
+from os import makedirs, unlink, replace
+from os.path import abspath, join, exists, basename, dirname
 from base64 import decodebytes
 from datetime import datetime
 from hashlib import md5
+from time import sleep
+from io import FileIO
 
 import logging
 
 from poorwsgi import state
+from poorwsgi.request import FieldStorage
 from poorwsgi.response import JSONResponse, Response, FileResponse, \
         HTTPException
 from poorwsgi.results import hbytes
@@ -28,7 +30,59 @@ from .. import errors
 
 log = logging.getLogger(__name__)
 HEADER_DATETIME_FORMAT = "%a, %d %b %Y %X GMT"
-PRINT_TIMEOUT = 100
+WAIT_TIMEOUT = 10  # in seconds
+
+
+def partfilepath(filename):
+    """Return file path for part file name."""
+    filename = '.' + filename + '.part'
+    return abspath(join(app.cfg.printer.directories[0], filename))
+
+
+class GCodeFile(FileIO):
+    """Own file class to control processing data when POST"""
+    def __init__(self, job_data, filepath):
+        app.posting_data = True
+        self.job_data = job_data
+        super().__init__(filepath, 'w+b')
+
+    def write(self, data):
+        if not self.job_data.from_sd \
+                and self.job_data.job_state == JobState.IN_PROGRESS:
+            sleep(0.01)
+        super().write(data)
+
+    def close(self):
+        app.posting_data = False
+        super().close()
+
+
+def gcode_callback(filename):
+    """Check filename and upload possibility.
+
+    When data can be accepted create and return file instance for writing
+    form data.
+    """
+    if not filename:
+        raise HTTPException(state.HTTP_BAD_REQUEST)
+
+    if not filename.endswith(GCODE_EXTENSIONS) or filename.startswith('.'):
+        raise HTTPException(state.HTTP_UNSUPPORTED_MEDIA_TYPE)
+
+    job = Job.get_instance()
+    return GCodeFile(job.data, partfilepath(filename))
+
+
+def wait_until_fs_path(printer, path):
+    """Wait until path was added to filesystem tree.py
+
+    Function waits WAIT_TIMEOUT for path or raises TIMOUT exception.
+    """
+    for i in range(WAIT_TIMEOUT * 10):  # pylint: disable=unused-variable
+        if printer.fs.get(path):
+            return
+        sleep(0.1)
+    raise HTTPException(state.HTTP_REQUEST_TIME_OUT)
 
 
 @app.route('/api/files')
@@ -94,50 +148,52 @@ def api_upload(req, target):
     if target != 'local':
         raise ApiException(req, errors.PE_LOC_NOT_FOUND, state.HTTP_NOT_FOUND)
 
-    if 'file' not in req.form or not req.form['file'].filename:
+    if app.posting_data:
+        # only one file can be posted at the same time
+        raise HTTPException(state.HTTP_SERVICE_UNAVAILABLE)
+
+    # TODO check req.content_length and freespace before accepting uploading
+    form = FieldStorage(req,
+                        keep_blank_values=app.keep_blank_values,
+                        strict_parsing=app.strict_parsing,
+                        file_callback=gcode_callback)
+
+    if 'file' not in form:
         raise ApiException(req, errors.PE_UPLOAD_BAD, state.HTTP_BAD_REQUEST)
 
-    filename = req.form['file'].filename
+    filename = form['file'].filename
 
-    if not filename.endswith(GCODE_EXTENSIONS):
-        raise ApiException(req, errors.PE_UPLOAD_UNSUPPORTED,
-                           state.HTTP_UNSUPPORTED_MEDIA_TYPE)
-
-    foldername = req.form.get('foldername', req.form.get('path', '/'))
-    select = req.form.getfirst('select') == 'true'
-    _print = req.form.getfirst('print') == 'true'
+    foldername = form.get('foldername', form.get('path', '/'))
+    select = form.getfirst('select') == 'true'
+    _print = form.getfirst('print') == 'true'
     log.debug('select=%s, print=%s', select, _print)
 
     if foldername.startswith('/'):
         foldername = '.' + foldername
     print_path = join("/Prusa Link gcodes/", foldername, filename)
     foldername = abspath(join(app.cfg.printer.directories[0], foldername))
-    filename = join(foldername, filename)
+    filepath = join(foldername, filename)
 
     job = Job.get_instance()
 
-    if exists(filename) and job.data.job_state == JobState.IN_PROGRESS:
+    if exists(filepath) and job.data.job_state == JobState.IN_PROGRESS:
         if print_path == job.data.selected_file_path:
+            unlink(partfilepath(filename))
             raise ApiException(req, errors.PE_UPLOAD_CONFLICT,
                                state.HTTP_CONFLICT)
 
-    log.info("Store file to %s::%s", target, filename)
+    log.info("Store file to %s::%s", target, filepath)
     makedirs(foldername, exist_ok=True)
-    with open(filename, 'w+b') as gcode:
-        gcode.write(req.form['file'].file.read())
+    print("print_path:", print_path)
+    wait_until_fs_path(job.printer, dirname(print_path))
+    replace(partfilepath(filename), filepath)
 
-        if _print and job.data.job_state == JobState.IDLE and exists(filename):
-            job.deselect_file()
-            t_end = PRINT_TIMEOUT
-            while job.printer.fs.get(print_path) is None:
-                time.sleep(0.1)
-                t_end -= 1
-                if t_end < 0:
-                    raise ApiException(req, errors.PE_UPLOAD_BAD,
-                                       state.HTTP_REQUEST_TIME_OUT)
-            job.select_file(print_path)
-            command_queue = app.daemon.prusa_link.command_queue
-            command_queue.do_command(StartPrint(job.data.selected_file_path))
+    if _print and job.data.job_state == JobState.IDLE:
+        job.deselect_file()
+        wait_until_fs_path(job.printer, print_path)
+        job.select_file(print_path)
+        command_queue = app.daemon.prusa_link.command_queue
+        command_queue.do_command(StartPrint(job.data.selected_file_path))
 
     if req.accept_json:
         data = app.daemon.prusa_link.printer.get_info()["files"]
