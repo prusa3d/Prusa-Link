@@ -196,15 +196,15 @@ def api_job(req):
     is_printing = job.job_state == JobState.IN_PROGRESS
 
     if job.selected_file_path:
-        if job.selected_file_m_time:
-            timestamp = int(datetime(*job.selected_file_m_time).timestamp())
         file_ = {
             'name': basename(job.selected_file_path),
             'path': job.selected_file_path,
-            'date': timestamp,
             'size': job.selected_file_size,
             'origin': 'sdcard' if job.from_sd else 'local'
         }
+        if job.selected_file_m_time:
+            timestamp = int(datetime(*job.selected_file_m_time).timestamp())
+            file_['date'] = timestamp
     else:
         file_ = {
             'name': None,
