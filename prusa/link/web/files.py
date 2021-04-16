@@ -18,8 +18,8 @@ from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 
 from .lib.core import app
 from .lib.auth import check_api_digest
-from .lib.files import files_to_api, get_os_path, local_refs, sdcard_refs, \
-        gcode_analysis
+from .lib.files import file_to_api, get_os_path, local_refs, sdcard_refs, \
+        gcode_analysis, sort_files
 from .lib.response import ApiException
 
 from ..printer_adapter.command_handlers import StartPrint
@@ -66,7 +66,7 @@ def api_files(req):
                             headers=headers)
 
     data = app.daemon.prusa_link.printer.get_info()["files"]
-    files = [files_to_api(child) for child in data.get("children", [])]
+    files = [file_to_api(child) for child in data.get("children", [])]
 
     file_system = app.daemon.prusa_link.printer.fs
     mount_path = ''
@@ -79,7 +79,7 @@ def api_files(req):
     free = mount.get_free_space() if mount else 0
 
     return JSONResponse(headers=headers,
-                        files=files,
+                        files=sort_files(files),
                         free='%d %s' % hbytes(free))
 
 
@@ -137,14 +137,14 @@ def api_upload(req, target):
                                        state.HTTP_REQUEST_TIME_OUT)
             job.select_file(print_path)
             command_queue = app.daemon.prusa_link.command_queue
-            command_queue.do_command(
-                StartPrint(job.data.selected_file_path))
+            command_queue.do_command(StartPrint(job.data.selected_file_path))
 
     if req.accept_json:
         data = app.daemon.prusa_link.printer.get_info()["files"]
-        files = [files_to_api(child) for child in data.get("children", [])]
+
+        files = [file_to_api(child) for child in data.get("children", [])]
         return JSONResponse(done=True,
-                            files=files,
+                            files=sort_files(files),
                             free=0,
                             total=0,
                             status_code=state.HTTP_CREATED)
