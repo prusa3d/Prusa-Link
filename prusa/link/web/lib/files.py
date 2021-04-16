@@ -69,7 +69,7 @@ def gcode_analysis(meta):
     }
 
 
-def files_to_api(node, origin='local', path='/'):
+def file_to_api(node, origin='local', path='/', sort_by='dir,m_time'):
     """Convert Prusa SDK Files tree for API.
 
     >>> from mock import Mock
@@ -90,7 +90,7 @@ def files_to_api(node, origin='local', path='/'):
     ...             {'type': 'FILE', 'name': 'b.gco'}]}]},
     ...     {'type': 'FILE', 'name': 'preview.png'}
     ... ]}
-    >>> api_files = files_to_api(files)
+    >>> api_files = file_to_api(files)
     >>> # /
     >>> api_files['type']
     'folder'
@@ -137,11 +137,11 @@ def files_to_api(node, origin='local', path='/'):
         result['typePath'] = ['folder']
         result['origin'] = origin
         result['refs'] = {"resource": None}
-
-        children = list(
-            files_to_api(child, origin, path)
-            for child in node.get("children", []))
-        result['children'] = list(child for child in children if child)
+        children = [
+            file_to_api(child, origin, path, sort_by)
+            for child in node.get("children", [])
+        ]
+        result['children'] = sort_files(children, sort_by)
 
     elif name.endswith(GCODE_EXTENSIONS):
         result['origin'] = origin
@@ -170,3 +170,23 @@ def files_to_api(node, origin='local', path='/'):
         return {}  # not folder or allowed extension
 
     return result
+
+
+def sort_files(files, sort_by='dir,m_time'):
+    """Sort and filter files
+    >>> files = sort_files([
+    ...    {'name':'a','m_time':[2020]},
+    ...    {'name':'b','m_time':[2021]},
+    ...    {'name':'c'},
+    ...    {'name':'d', 'type': 'DIR'},
+    ... ])
+    >>> [file['name'] for file in files]
+    ['d', 'b', 'a', 'c']
+    """
+    files = [file for file in files if file != {}]
+    if sort_by == "dir,m_time":
+
+        def sort_key(file):
+            return file.get('type') == 'DIR', file.get("m_time", [])
+
+    return sorted(files, key=sort_key, reverse=True)
