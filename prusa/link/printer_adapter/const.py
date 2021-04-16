@@ -72,7 +72,7 @@ BLACKLISTED_NAMES = [SD_MOUNT_NAME]
 SFN_TO_LFN_EXTENSIONS = {"GCO": "gcode", "G": "g"}
 
 RESET_PIN = 22  # RPi gpio pin for resetting printer
-SUPPORTED_FIRMWARE = "3.9.3"
+SUPPORTED_FIRMWARE = "3.10.0"
 MAX_INT = (2**31) - 1
 STATE_HISTORY_SIZE = 10
 
