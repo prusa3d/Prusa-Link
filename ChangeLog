@@ -13,6 +13,7 @@
     * working download gcode endpoint
     * command argument for profiling application
     * connection over VPN fix
+    * Added additional network info
 
 0.3.0 (2021-03-30)
 

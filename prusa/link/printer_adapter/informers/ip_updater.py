@@ -40,9 +40,12 @@ class IPUpdater(ThreadedUpdatable):
                                          local_ip6=None,
                                          is_wireless=False,
                                          update_ip_on=time(),
-                                         mac=None)
-        self.data = model.ip_updater
+                                         mac=None,
+                                         hostname=None,
+                                         username=None,
+                                         digest=None)
 
+        self.data = model.ip_updater
         super().__init__()
 
     @staticmethod

@@ -127,4 +127,8 @@ def get_network_info(model: Model):
             network_info.wifi_mac = None
             network_info.wifi_ssid = None
 
+        network_info.hostname = ip_data.hostname
+        network_info.username = ip_data.username
+        network_info.digest = ip_data.digest
+
     return network_info

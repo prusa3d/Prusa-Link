@@ -74,6 +74,9 @@ class IPUpdaterData(BaseModel):
     is_wireless: bool
     update_ip_on: float
     ssid: Optional[str]
+    hostname: Optional[str]
+    username: Optional[str]
+    digest: Optional[str]
 
 
 class SDCardData(BaseModel):
