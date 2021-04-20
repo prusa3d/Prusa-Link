@@ -52,6 +52,9 @@ class NetworkInfo(BaseModel):
     wifi_ipv6: Optional[str] = None  # not implemented yet
     wifi_mac: Optional[str] = None
     wifi_ssid: Optional[str] = None  # not implemented yet
+    hostname: Optional[str] = None
+    username: Optional[str] = None
+    digest: Optional[str] = None
 
 
 class FileTree(BaseModel):

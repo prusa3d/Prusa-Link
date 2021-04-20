@@ -168,6 +168,7 @@ class PrusaLink:
 
         # Update the bare minimum of things for initial info
         self.ip_updater.update()
+        self.network_info_update()
 
         # Before starting anything, let's send initial printer info to connect
         self.info_sender.initial_info()
@@ -192,7 +193,6 @@ class PrusaLink:
                                        name="telemetry_passer")
         self.telemetry_thread.start()
         self.printer.start()
-
         # Start this last, as it might start printing right away
         self.file_printer.start()
 
@@ -486,6 +486,13 @@ class PrusaLink:
         """
         assert sender is not None
         self.info_sender.try_sending_info()
+
+    def network_info_update(self):
+        """Provides informations about current user's network settings"""
+        network_info = self.ip_updater.data
+        network_info.hostname = self.settings.service_connect['hostname']
+        network_info.username = self.settings.service_local['username']
+        network_info.digest = self.settings.service_local['digest']
 
     def dir_mount(self, sender, path):
         """Connects a dir being mounted to Prusa Connect events"""
