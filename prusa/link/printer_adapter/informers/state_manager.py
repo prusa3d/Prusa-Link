@@ -146,7 +146,7 @@ class StateManager(metaclass=MCSingleton):
             CANCEL_REGEX: lambda sender, match: self.stopped_or_not_printing(),
             START_PRINT_REGEX: lambda sender, match: self.printing(),
             PRINT_DONE_REGEX: lambda sender, match: self.finished(),
-            ERROR_REGEX: lambda sender, match: self.error(),
+            ERROR_REGEX: self.error_handler,
             FAN_ERROR_REGEX: self.fan_error
         }
 
@@ -335,6 +335,19 @@ class StateManager(metaclass=MCSingleton):
         assert sender is not None
         self.fan_error_name = match.group("fan_name")
 
+    def error_handler(self, sender, match: re.Match):
+        """
+        Handle an error message. If thermal runawayis detected,
+        adds it as a reason
+        """
+        assert sender is not None
+        reason = match.group("reason").strip()
+        if reason:
+            self.expect_change(
+                StateChange(to_states={State.ERROR: Source.MARLIN},
+                            reason=reason))
+        self.error()
+
     # --- State changing methods ---
 
     def stopped_or_not_printing(self):
@@ -426,7 +439,7 @@ class StateManager(metaclass=MCSingleton):
         StateChange(to_states={State.READY: Source.MARLIN},
                     from_states={
                         State.ATTENTION: Source.USER,
-                        State.ERROR: Source.USER,
+                        State.ERROR: Source.MARLIN,
                         State.BUSY: Source.HW
                     }))
     def instruction_confirmed(self):
