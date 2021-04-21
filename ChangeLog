@@ -6,6 +6,7 @@
     * Sort files directory first, newest first
     * Faster checking and processing when uploading gcode
     * Static web update
+    * React to thermal runaway by going into the error state
 
 0.4.0 (2021-04-13)
     * getting IP refactoring
