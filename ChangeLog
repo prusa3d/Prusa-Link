@@ -5,6 +5,7 @@
     * Minimal suported firmware is 3.10.0
     * Sort files directory first, newest first
     * Faster checking and processing when uploading gcode
+    * Static web update
 
 0.4.0 (2021-04-13)
     * getting IP refactoring
