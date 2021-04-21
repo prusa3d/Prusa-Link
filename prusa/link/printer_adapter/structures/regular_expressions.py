@@ -25,7 +25,7 @@ SD_PRESENT_REGEX = re.compile(r"^echo:(?P<ok>SD card ok)|"
 SD_EJECTED_REGEX = re.compile(r"^(echo:SD card released)$")
 
 ANY_REGEX = re.compile(r".*")
-CONFIRMATION_REGEX = re.compile(r"^ok\s?(?P<extra>.*)$")  # highest priority
+CONFIRMATION_REGEX = re.compile(r"^ok.*$")  # highest priority
 FILE_OPEN_REGEX = re.compile(r"^echo:enqueing \"M23 (?P<sfn>[^\"]+)\"$")
 
 REJECTION_REGEX = re.compile(r"^(echo:Unknown command: (\"[^\"]*\"))|"
@@ -40,9 +40,7 @@ RESUMED_REGEX = re.compile("^// action:resumed$")
 CANCEL_REGEX = re.compile("^// action:cancel$")
 START_PRINT_REGEX = re.compile(r"^echo:enqueing \"M24\"$")
 PRINT_DONE_REGEX = re.compile(r"^Done printing file$")
-ERROR_REGEX = re.compile(
-    r"^Error:Printer stopped due to errors. Fix the error "
-    r"and use M999 to restart.*")
+ERROR_REGEX = re.compile(r"Error:(?P<reason>.*)")
 
 TEMPERATURE_REGEX = re.compile(
     r"^T:(?P<ntemp>-?\d+\.\d+) /(?P<set_ntemp>-?\d+\.\d+) "
