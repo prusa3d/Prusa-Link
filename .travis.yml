@@ -14,8 +14,8 @@ before_install:
 
 install:
  - pip3 install git+https://github.com/prusa3d/Prusa-Connect-SDK-Printer.git@0.4.0#egg=prusa.connect.sdk.printer
- - pip3 install -r requirements.txt
- - pip3 install pytest pytest-pylint pytest-doctestplus pytest-mypy mock
+ - pip3 install -U -r requirements.txt
+ - pip3 install -U pytest pytest-pylint pytest-doctestplus pytest-mypy mock
 
 script:
   - PYTHONPATH=`pwd` pytest -v --mypy --pylint --doctest-plus --doctest-rst
