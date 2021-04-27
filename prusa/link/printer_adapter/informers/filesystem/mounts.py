@@ -172,6 +172,7 @@ class FSMounts(Mounts):
         # which things are mounted, before beginning to only observe changes
         self.force_update = True
 
+        # pylint: disable=consider-using-with
         self.mtab = open("/etc/mtab", "r")
         self.epoll_obj = select.epoll(1)
         self.epoll_obj.register(self.mtab.fileno(), select.EPOLLOUT)
