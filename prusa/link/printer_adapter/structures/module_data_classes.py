@@ -15,7 +15,7 @@ from .model_classes import JobState, SDState
 
 class FilePrinterData(BaseModel):
     """Data of the FilePrinter class"""
-    tmp_file_path: str
+    file_path: str
     pp_file_path: str
     printing: bool
     paused: bool
