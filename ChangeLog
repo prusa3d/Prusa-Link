@@ -8,6 +8,7 @@
     * Static web update
     * React to thermal runaway by going into the error state
     * Use daemon type WSGI threads
+    * Removed temporary gcode copy for printing
 
 0.4.0 (2021-04-13)
     * getting IP refactoring

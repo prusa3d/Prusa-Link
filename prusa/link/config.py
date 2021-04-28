@@ -86,7 +86,6 @@ class Config(Get):
                 (
                     ("data_dir", str, ''),  # user home by default
                     ("pid_file", str, "./prusa-link.pid"),
-                    ("current_file", str, "./currently_printing.gcode"),
                     ("power_panic_file", str, "./power_panic"),
                     ("job_file", str, "./job_data.json"),
                     ("threshold_file", str, "./threshold.data"),
@@ -106,7 +105,7 @@ class Config(Get):
         if args.pidfile:
             self.daemon.pid_file = abspath(args.pidfile)
 
-        for file_ in ('pid_file', 'current_file', 'power_panic_file',
+        for file_ in ('pid_file', 'power_panic_file',
                       'job_file', 'threshold_file'):
             setattr(
                 self.daemon, file_,

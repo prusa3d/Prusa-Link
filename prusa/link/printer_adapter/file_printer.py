@@ -1,7 +1,6 @@
 """Contains implementation of the FilePrinter class"""
 import logging
 import os
-import shutil
 from collections import deque
 from time import sleep
 
@@ -25,8 +24,7 @@ from .structures.mc_singleton import MCSingleton
 from .structures.regular_expressions import \
     POWER_PANIC_REGEX, ERROR_REGEX, CANCEL_REGEX, \
     PAUSED_REGEX, RESUMED_REGEX
-from .util import get_clean_path, ensure_directory, \
-    get_gcode
+from .util import get_clean_path, get_gcode
 from .updatable import prctl_name, Thread
 
 log = logging.getLogger(__name__)
@@ -58,14 +56,12 @@ class FilePrinter(metaclass=MCSingleton):
             printing=False,
             paused=False,
             stopped_forcefully=False,
-            tmp_file_path=get_clean_path(cfg.daemon.current_file),
+            file_path="",
             pp_file_path=get_clean_path(cfg.daemon.power_panic_file),
             enqueued=deque(),
             line_number=0,
             gcode_number=0)
         self.data = self.model.file_printer
-
-        ensure_directory(os.path.dirname(self.data.tmp_file_path))
 
         self.serial_queue.serial_queue_failed.connect(
             lambda sender: self.stop_print(), weak=False)
@@ -100,32 +96,24 @@ class FilePrinter(metaclass=MCSingleton):
         """Checks whether a file created on power panic exists"""
         return os.path.exists(self.data.pp_file_path)
 
-    @property
-    def tmp_exists(self):
-        """Checks whether the print was stopped so abruptly we failed to clean
-        our temporary gcode file copy"""
-        return os.path.exists(self.data.tmp_file_path)
-
     def check_failed_print(self):
         """Not implemented, would try to resume after power panic or error"""
-        if self.tmp_exists and self.pp_exists:
-            # log.warning("There was a loss of power, let's try to recover")
-            if self.pp_exists:
-                os.remove(self.data.pp_file_path)
+        # log.warning("There was a loss of power, let's try to recover")
+        if self.pp_exists:
+            os.remove(self.data.pp_file_path)
 
     def print(self, os_path):
         """Starts a file print for the supplied path"""
         if self.data.printing:
             raise RuntimeError("Cannot print two things at once")
 
-        shutil.copy(os_path, self.data.tmp_file_path)
-
+        self.data.file_path = os_path
         self.thread = Thread(target=self._print, name="file_print")
         self.data.printing = True
         self.data.stopped_forcefully = False
         self.print_stats.start_time_segment()
         self.new_print_started_signal.send(self)
-        self.print_stats.track_new_print(self.data.tmp_file_path)
+        self.print_stats.track_new_print(self.data.file_path)
         self.thread.start()
 
     def _print(self, from_line=0):
@@ -135,8 +123,8 @@ class FilePrinter(metaclass=MCSingleton):
         """
 
         prctl_name()
-        total_size = os.path.getsize(self.data.tmp_file_path)
-        with open(self.data.tmp_file_path, "r") as tmp_file:
+        total_size = os.path.getsize(self.data.file_path)
+        with open(self.data.file_path, "r") as file:
             # Reset the line counter, printing a new file
             self.serial_queue.reset_message_number()
 
@@ -144,14 +132,14 @@ class FilePrinter(metaclass=MCSingleton):
             self.data.enqueued.clear()
             line_index = 0
             while True:
-                line = tmp_file.readline()
+                line = file.readline()
                 if line == "":
                     break
 
                 # This will make it PRINT_QUEUE_SIZE lines in front of what
                 # is being sent to the printer, which is another as much as
                 # 16 gcode commands in front of what's actually being printed.
-                current_byte = tmp_file.tell()
+                current_byte = file.tell()
                 self.byte_position_signal.send(self,
                                                current=current_byte,
                                                total=total_size)
@@ -177,7 +165,6 @@ class FilePrinter(metaclass=MCSingleton):
 
             log.debug("Print ended")
 
-            os.remove(self.data.tmp_file_path)
             if self.pp_exists:
                 os.remove(self.data.pp_file_path)
             self.data.printing = False
