@@ -9,6 +9,8 @@
     * React to thermal runaway by going into the error state
     * Use daemon type WSGI threads
     * Removed temporary gcode copy for printing
+    * Support the new M20 attributes and their order
+    * Fix progress equal to -1 not being supported
 
 0.4.0 (2021-04-13)
     * getting IP refactoring

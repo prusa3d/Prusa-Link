@@ -69,7 +69,7 @@ class InterestingLogRotator(metaclass=MCSingleton):
         Writes the message to the log, bumps its priority
         to warning and reports the original one in the text
         """
-        msg = f"Originally[{logging.getLevelName(level)}]: " + msg
+        msg = f"Originally[{logging.getLevelName(level)}]: " + str(msg)
         log.warning(msg, *args, **kwargs)
 
     @staticmethod
