@@ -144,3 +144,17 @@ def make_fingerprint(sn):
     don't have it
     """
     return sha256(sn.encode()).hexdigest()
+
+
+def fat_datetime_to_tuple(fat_datetime):
+    """
+    Converts datetime from FAT file header to touple of
+    (years, months, days, hours, minutes, seconds)
+    """
+    seconds = (0b11111 & fat_datetime) * 2
+    minutes = (0b111111 << 5 & fat_datetime) >> 5
+    hours = (0b11111 << 11 & fat_datetime) >> 11
+    days = (0b11111 << 16 & fat_datetime) >> 16
+    months = (0b1111 << 21 & fat_datetime) >> 21
+    years = 1980 + ((0b11111111 << 25 & fat_datetime) >> 25)
+    return years, months, days, hours, minutes, seconds
