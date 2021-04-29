@@ -24,9 +24,23 @@ from ...const import SD_INTERVAL, \
     SD_FILESCAN_INTERVAL, SD_MOUNT_NAME, SFN_TO_LFN_EXTENSIONS, \
     MAX_FILENAME_LENGTH, FLASH_AIR_INTERVAL
 from ...updatable import ThreadedUpdatable
+from ...util import fat_datetime_to_tuple
 from ....sdk_augmentation.file import SDFile
 
 log = logging.getLogger(__name__)
+
+
+class ParsingContext:
+    """
+    Holds state (context) throughout the parsing process
+    """
+    def __init__(self, tree):
+        self.tree = tree
+        self.current_dir = Path("/")
+        self.current_instruction = None
+        self.lfn_to_sfn_paths = {}
+        self.sfn_to_lfn_paths = {}
+        self.mixed_to_lfn_paths = {}
 
 
 class SDCard(ThreadedUpdatable):
@@ -137,9 +151,99 @@ class SDCard(ThreadedUpdatable):
         if match:
             self.data.is_flash_air = match.group("data") == "01"
 
+    def parse_dir(self, parsing_ctx, groups):
+        """Parses the dir info using the captured groups"""
+        long_dir_name = groups["ldn"]
+        short_dir_name = Path(groups["sdn"]).name
+
+        # Sanitize the dir name
+        too_long = len(long_dir_name) >= MAX_FILENAME_LENGTH
+        if too_long:
+            new_name = self.alternative_filename(long_dir_name, short_dir_name)
+            parsing_ctx.current_dir = parsing_ctx.current_dir.joinpath(
+                new_name)
+        else:
+            parsing_ctx.current_dir = parsing_ctx.current_dir.joinpath(
+                long_dir_name)
+
+        self.check_uniqueness(parsing_ctx.current_dir, parsing_ctx.tree)
+        # Add the dir to the tree
+        try:
+            parsing_ctx.tree.add_directory(parsing_ctx.current_dir.parent,
+                                           parsing_ctx.current_dir.name,
+                                           filename_too_long=too_long)
+        except FileNotFoundError as exception:
+            log.exception(exception)
+
+    def parse_file(self, parsing_ctx, groups):
+        """Parses the file listing using the captured groups"""
+        # pylint: disable=too-many-locals
+        short_path_string = groups["sfn"].lower()
+        if short_path_string[0] != "/":
+            short_path_string = "/" + short_path_string
+        short_filename = Path(short_path_string).name
+        short_dir_path = Path(short_path_string).parent
+        short_extension = groups["extension"]
+        long_extension = SFN_TO_LFN_EXTENSIONS[short_extension]
+        raw_long_filename: str = groups["lfn"]
+        str_size = groups["size"]
+        str_m_time = groups["m_time"]
+
+        if raw_long_filename is None:
+            return
+
+        # --- Parse the long file name ---
+
+        too_long = (len(raw_long_filename) >= MAX_FILENAME_LENGTH)
+
+        if too_long:
+            len_checked_long_filename = self.alternative_filename(
+                raw_long_filename, short_filename)
+        else:
+            len_checked_long_filename = raw_long_filename
+
+        long_file_name = self.ensure_extension(len_checked_long_filename,
+                                               long_extension, short_extension)
+
+        long_path = parsing_ctx.current_dir.joinpath(long_file_name)
+        self.check_uniqueness(long_path, parsing_ctx.tree)
+        long_path_string = str(long_path)
+
+        mixed_path = short_dir_path.joinpath(long_file_name)
+        mixed_path_string = str(mixed_path).lower()
+
+        # Add translation between the two
+        log.debug("Adding translation between %s and %s", long_path_string,
+                  short_path_string)
+        log.debug("Adding translation from %s to %s", mixed_path,
+                  long_path_string)
+        parsing_ctx.lfn_to_sfn_paths[long_path_string] = short_path_string
+        parsing_ctx.sfn_to_lfn_paths[short_path_string] = long_path_string
+        parsing_ctx.mixed_to_lfn_paths[mixed_path_string] = long_path_string
+
+        # --- parse additional properties ---
+
+        additional_properties = {}
+
+        if str_size is not None:
+            additional_properties["size"] = int(str_size)
+
+        if str_m_time is not None:
+            m_time = fat_datetime_to_tuple(int(str_m_time, 16))
+            additional_properties["m_time"] = m_time
+
+        # Add the file to the tree
+        try:
+            parsing_ctx.tree.add_file(parsing_ctx.current_dir,
+                                      long_file_name,
+                                      filename_too_long=too_long,
+                                      **additional_properties)
+        except FileNotFoundError as exception:
+            log.exception(exception)
+
     def construct_file_tree(self):
         """
-        Uses M20 L to get the list of paths.
+        Uses M20 LT to get the list of paths.
 
         Some shorthand terms need explaining here:
         SFN - short file name
@@ -157,107 +261,39 @@ class SDCard(ThreadedUpdatable):
         :return: The constructed file tree. Also the translation data for
         converting between all used path formats get saved at the end
         """
-        # pylint: disable=too-many-locals,too-many-statements
-        # TODO: Find a way to split this up
         if self.data.sd_state == SDState.ABSENT:
             return None
 
-        tree = self.get_root()
+        # We need to parse information from the captured output,
+        # as there is context (like the current directory we're in)
+        # that needs to be carried over from each step, let's put it into a
+        # structure ParsingContext and pass that between parsing methods
+        parsing_ctx = ParsingContext(self.get_root())
 
         instruction = enqueue_collecting(self.serial_queue,
-                                         "M20 L",
+                                         "M20 LT",
                                          begin_regex=BEGIN_FILES_REGEX,
                                          capture_regex=LFN_CAPTURE,
                                          end_regex=END_FILES_REGEX)
         wait_for_instruction(instruction, lambda: self.running)
 
         # Captured can be three distinct lines. Dir entry, exit or a file
-        # listing. We need to maintain the info about which dir we are
-        # currently in, as that doesn't repeat in the file listing lines
-        current_dir = Path("/")
-        lfn_to_sfn_paths = {}
-        sfn_to_lfn_paths = {}
-        mixed_to_lfn_paths = {}
+        # listing.
         for match in instruction.captured:
             groups = match.groupdict()
             if groups["dir_enter"] is not None:  # Dir entry
-                # Parse the dir info
-                long_dir_name = groups["ldn"]
-                short_dir_name = Path(groups["sdn"]).name
-
-                # Sanitize the dir name
-                too_long = len(long_dir_name) >= MAX_FILENAME_LENGTH
-                if too_long:
-                    new_name = self.alternative_filename(
-                        long_dir_name, short_dir_name)
-                    current_dir = current_dir.joinpath(new_name)
-                else:
-                    current_dir = current_dir.joinpath(long_dir_name)
-
-                self.check_uniqueness(current_dir, tree)
-                # Add the dir to the tree
-                try:
-                    tree.add_directory(current_dir.parent,
-                                       current_dir.name,
-                                       filename_too_long=too_long)
-                except FileNotFoundError as exception:
-                    log.exception(exception)
-
+                self.parse_dir(parsing_ctx, groups)
             elif groups["file"] is not None:  # The list item
-                # Parse the file listing
-                short_path_string = groups["sfn"].lower()
-                if short_path_string[0] != "/":
-                    short_path_string = "/" + short_path_string
-                short_filename = Path(short_path_string).name
-                short_dir_path = Path(short_path_string).parent
-                short_extension = groups["extension"]
-                long_extension = SFN_TO_LFN_EXTENSIONS[short_extension]
-                raw_long_filename: str = groups["lfn"]
-                size = int(groups["size"])
-
-                too_long = (len(raw_long_filename) >= MAX_FILENAME_LENGTH)
-
-                if too_long:
-                    len_checked_long_filename = self.alternative_filename(
-                        raw_long_filename, short_filename)
-                else:
-                    len_checked_long_filename = raw_long_filename
-
-                long_file_name = self.ensure_extension(
-                    len_checked_long_filename, long_extension, short_extension)
-
-                long_path = current_dir.joinpath(long_file_name)
-                self.check_uniqueness(long_path, tree)
-                long_path_string = str(long_path)
-
-                mixed_path = short_dir_path.joinpath(long_file_name)
-                mixed_path_string = str(mixed_path).lower()
-
-                # Add translation between the two
-                log.debug("Adding translation between %s and %s",
-                          long_path_string, short_path_string)
-                log.debug("Adding translation from %s to %s", mixed_path,
-                          long_path_string)
-                lfn_to_sfn_paths[long_path_string] = short_path_string
-                sfn_to_lfn_paths[short_path_string] = long_path_string
-                mixed_to_lfn_paths[mixed_path_string] = long_path_string
-                # Add the file to the tree
-                try:
-                    tree.add_file(current_dir,
-                                  long_file_name,
-                                  size=size,
-                                  filename_too_long=too_long)
-                except FileNotFoundError as exception:
-                    log.exception(exception)
+                self.parse_file(parsing_ctx, groups)
             elif groups["dir_exit"] is not None:  # Dir exit
-                current_dir = current_dir.parent
+                parsing_ctx.current_dir = parsing_ctx.current_dir.parent
 
         # Try to be as atomic as possible
-        self.data.lfn_to_sfn_paths = lfn_to_sfn_paths
-        self.data.sfn_to_lfn_paths = sfn_to_lfn_paths
+        self.data.lfn_to_sfn_paths = parsing_ctx.lfn_to_sfn_paths
+        self.data.sfn_to_lfn_paths = parsing_ctx.sfn_to_lfn_paths
         # 8.3/8.3/LFN format to LFN/LFN/LFN
-        self.data.mixed_to_lfn_paths = mixed_to_lfn_paths
-        return tree
+        self.data.mixed_to_lfn_paths = parsing_ctx.mixed_to_lfn_paths
+        return parsing_ctx.tree
 
     @staticmethod
     def alternative_filename(long_filename: str, short_filename: str):

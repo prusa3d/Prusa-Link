@@ -17,7 +17,8 @@ END_FILES_REGEX = re.compile(r"^End file list$")
 LFN_CAPTURE = re.compile(r"(?P<dir_enter>^DIR_ENTER: (?P<sdn>/[^ ]*/) "
                          r"\"(?P<ldn>[^\"]*)\"$)|"
                          r"(?P<file>^(?P<sfn>.*\.(?P<extension>GCO|G)) "
-                         r"\"(?P<lfn>[^\"]*)\" (?P<size>\d+)$)|"
+                         r"((0x(?P<m_time>[0-9a-fA-F]+) ?)|(?P<size>\d+ ?)|"
+                         r"(\"(?P<lfn>[^\"]*)\") ?)*$)|"
                          r"(?P<dir_exit>^DIR_EXIT$)")
 
 SD_PRESENT_REGEX = re.compile(r"^echo:(?P<ok>SD card ok)|"
@@ -67,7 +68,7 @@ M27_OUTPUT_REGEX = re.compile(
     r"(?P<byte_pos>SD printing byte (?P<current>\d+)/(?P<sum>\d+))|"
     r"(?P<printing_time>(?P<hours>\d+):(?P<minutes>\d{2}))$")
 PRINT_INFO_REGEX = re.compile(
-    r"^SILENT MODE: Percent done: (?P<progress>\d+); "
+    r"^SILENT MODE: Percent done: (?P<progress>-?\d+); "
     r"print time remaining in mins: (?P<time>-?\d+) ?.*$")
 HEATING_REGEX = re.compile(
     r"^T:(?P<ntemp>\d+\.\d+) E:\d+ B:(?P<btemp>\d+\.\d+)$")
