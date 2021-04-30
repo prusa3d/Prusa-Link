@@ -1,4 +1,5 @@
 """Contains functions that might be useful outside of their modules"""
+import datetime
 import logging
 import os
 import socket
@@ -150,6 +151,9 @@ def fat_datetime_to_tuple(fat_datetime):
     """
     Converts datetime from FAT file header to touple of
     (years, months, days, hours, minutes, seconds)
+
+    >>> assert fat_datetime_to_tuple(0x66a4d55) == \
+            (1983, 3, 10, 9, 42, 42)
     """
     seconds = (0b11111 & fat_datetime) * 2
     minutes = (0b111111 << 5 & fat_datetime) >> 5
@@ -157,4 +161,11 @@ def fat_datetime_to_tuple(fat_datetime):
     days = (0b11111 << 16 & fat_datetime) >> 16
     months = (0b1111 << 21 & fat_datetime) >> 21
     years = 1980 + ((0b11111111 << 25 & fat_datetime) >> 25)
+    # Date validation using the python standart library
+    datetime.datetime(year=years,
+                      month=months,
+                      day=days,
+                      hour=hours,
+                      minute=minutes,
+                      second=seconds)
     return years, months, days, hours, minutes, seconds
