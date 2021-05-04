@@ -137,7 +137,7 @@ def api_files(req):
                         free='%d %s' % hbytes(free))
 
 
-@app.route('/api/files/<target>', state.METHOD_POST)
+@app.route('/api/files/<target>', method=state.METHOD_POST)
 @check_api_digest
 def api_upload(req, target):
     """Function for uploading G-CODE."""
@@ -162,15 +162,15 @@ def api_upload(req, target):
         raise ApiException(req, errors.PE_UPLOAD_BAD, state.HTTP_BAD_REQUEST)
 
     filename = form['file'].filename
+    foldername = form.get('path', '/')
 
-    foldername = form.get('foldername', form.get('path', '/'))
     select = form.getfirst('select') == 'true'
     _print = form.getfirst('print') == 'true'
     log.debug('select=%s, print=%s', select, _print)
 
     if foldername.startswith('/'):
         foldername = '.' + foldername
-    print_path = join("/Prusa Link gcodes/", foldername, filename)
+    print_path = abspath(join("/Prusa Link gcodes/", foldername, filename))
     foldername = abspath(join(app.cfg.printer.directories[0], foldername))
     filepath = join(foldername, filename)
 
@@ -184,7 +184,6 @@ def api_upload(req, target):
 
     log.info("Store file to %s::%s", target, filepath)
     makedirs(foldername, exist_ok=True)
-    print("print_path:", print_path)
     wait_until_fs_path(job.printer, dirname(print_path))
     replace(partfilepath(filename), filepath)
 
