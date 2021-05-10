@@ -12,6 +12,7 @@
     * Support the new M20 attributes and their order
     * Fix progress equal to -1 not being supported
     * Fixed upload from local web
+    * SEND_INFO hostname fixed
 
 0.4.0 (2021-04-13)
     * getting IP refactoring

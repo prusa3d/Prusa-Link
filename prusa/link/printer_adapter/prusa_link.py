@@ -5,6 +5,7 @@ import os
 from threading import Event, enumerate as enumerate_threads
 from time import time
 from typing import Dict, Any
+from socket import gethostname
 
 from prusa.connect.printer import Command as SDKCommand
 from prusa.connect.printer.files import File
@@ -490,7 +491,7 @@ class PrusaLink:
     def network_info_update(self):
         """Provides informations about current user's network settings"""
         network_info = self.ip_updater.data
-        network_info.hostname = self.settings.service_connect['hostname']
+        network_info.hostname = gethostname()
         network_info.username = self.settings.service_local['username']
         network_info.digest = self.settings.service_local['digest']
 
