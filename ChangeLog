@@ -13,6 +13,7 @@
     * Fix progress equal to -1 not being supported
     * Fixed upload from local web
     * SEND_INFO hostname fixed
+    * Fixed SD Card file selection
 
 0.4.0 (2021-04-13)
     * getting IP refactoring

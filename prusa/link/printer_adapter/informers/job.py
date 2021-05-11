@@ -100,7 +100,6 @@ class Job(metaclass=MCSingleton):
         the same id
         """
         self.data.already_sent = False
-        self.data.from_sd = not self.model.file_printer.printing
         self.data.job_id += 1
         self.data.job_start_cmd_id = command_id
         # If we don't print from sd, we know this immediately
@@ -119,7 +118,6 @@ class Job(metaclass=MCSingleton):
         self.data.already_sent = False
         self.data.job_start_cmd_id = None
         self.data.path_incomplete = True
-        self.data.from_sd = None
         self.data.inbuilt_reporting = None
         self.change_state(JobState.IDLE)
         log.debug("Job ended")
@@ -204,7 +202,8 @@ class Job(metaclass=MCSingleton):
                     if 'size' in file_obj.attrs:
                         self.data.selected_file_size = \
                             file_obj.attrs["size"]
-
+            if path.startswith(os.path.join("/", SD_MOUNT_NAME)):
+                self.model.job.from_sd = True
             self.job_info_updated()
 
     def get_job_info_data(self, for_connect=False):
@@ -290,3 +289,4 @@ class Job(metaclass=MCSingleton):
         if self.data.job_state != JobState.IDLE:
             raise RuntimeError("Cannot deselect a file while printing it")
         self.data.selected_file_path = None
+        self.model.job.from_sd = None
