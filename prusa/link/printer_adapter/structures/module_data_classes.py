@@ -39,6 +39,7 @@ class StateManagerData(BaseModel):
     current_state: State
     state_history: Deque[State]
     error_count: int
+    awaiting_error_reason: bool
 
 
 class JobData(BaseModel):

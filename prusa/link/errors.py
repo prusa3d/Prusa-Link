@@ -3,7 +3,8 @@
 For more information see prusa-link_states.txt.
 """
 
-from prusa.connect.printer.errors import ErrorState, INTERNET, HTTP, TOKEN, API
+from prusa.connect.printer.errors import ErrorState, INTERNET, HTTP, TOKEN, \
+    API
 
 assert HTTP is not None
 assert TOKEN is not None
@@ -28,9 +29,11 @@ ID = ErrorState("ID", "Device is not a Prusa printer", prev=RPI_ENABLED)
 FW = ErrorState("Firmware", "Firmware is not up-to-date", prev=ID)
 SN = ErrorState("SN", "Serial number cannot be obtained", prev=FW)
 
+HW = ErrorState("HW", "Firmware detected a hardware issue")
+
 # first and last elements for all available error state chains
-HEADS = [SERIAL, DEVICE]
-TAILS = [SN, API]
+HEADS = [SERIAL, DEVICE, HW]
+TAILS = [SN, API, HW]
 
 
 def status():
@@ -60,7 +63,9 @@ def get_printer_error_states():
     """
     Proxy for getting errors that cause the printer to report
     being in an ERROR state"""
-    return get_error_states_for_head(SERIAL)
+    errors = get_error_states_for_head(SERIAL)
+    errors.extend(get_error_states_for_head(HW))
+    return errors
 
 
 def get_all_error_states():

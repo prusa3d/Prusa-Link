@@ -395,6 +395,7 @@ class SerialQueue(metaclass=MCSingleton):
 
                 self.current_instruction = None
         else:
+            InterestingLogRotator.trigger("instruction refusing confirmation.")
             log.debug(
                 "%s refused confirmation. Hopefully it has a reason "
                 "for that", self.current_instruction)

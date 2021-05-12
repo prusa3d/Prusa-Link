@@ -2,23 +2,24 @@
 import logging
 import re
 from collections import deque
-from threading import Lock
-from typing import Union, Dict
+from threading import Lock, Thread, Event
+from typing import Union, Dict, Optional
 
 from blinker import Signal  # type: ignore
 
 from prusa.connect.printer.const import State, Source
-from ..const import STATE_HISTORY_SIZE
+from ..const import STATE_HISTORY_SIZE, ERROR_REASON_TIMEOUT
 
 from ..input_output.serial.serial_reader import \
     SerialReader
+from ..interesting_logger import InterestingLogRotator
 from ..model import Model
 from ..structures.mc_singleton import MCSingleton
 from ..structures.module_data_classes import StateManagerData
 from ..structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, FAN_ERROR_REGEX
-from ...errors import get_printer_error_states
+from ...errors import get_printer_error_states, HW
 
 log = logging.getLogger(__name__)
 
@@ -114,7 +115,8 @@ class StateManager(metaclass=MCSingleton):
             current_state=State.BUSY,
             # Track how many errors we believe there are and don't
             # leave the error state until all are resolved
-            error_count=0)
+            error_count=0,
+            awaiting_error_reason=False)
         self.data = self.model.state_manager
 
         # Prevent multiple threads changing the state at once
@@ -138,6 +140,14 @@ class StateManager(metaclass=MCSingleton):
         # we are sure about not printing
         self.unsure_whether_printing = True
 
+        # Errors are a fun bunch, sometimes, the explanation of what has
+        # happened comes before and sometimes after the stop() or kill()
+        # call. Let's start a timer when an unexplained kill() or stop() comes
+        # and if an explanation comes, let's send that as reason, otherwise
+        # do the error state without a reason.
+        self.error_reason_thread: Optional[Thread] = None
+        self.error_reason_event = Event()
+
         regex_handlers = {
             BUSY_REGEX: lambda sender, match: self.busy(),
             ATTENTION_REGEX: lambda sender, match: self.attention(),
@@ -157,21 +167,24 @@ class StateManager(metaclass=MCSingleton):
         for state in error_states:
             if not state.ok:
                 self.data.error_count += 1
-            state.detected_cb = self.error_detected
-            state.resolved_cb = self.error_resolved
+            state.detected_cb = self.link_error_detected
+            state.resolved_cb = self.link_error_resolved
+        log.debug("error count = %s", self.data.error_count)
 
         super().__init__()
 
-    def error_detected(self):
+    def link_error_detected(self):
         """increments an error counter once an error gets detected"""
         self.data.error_count += 1
         log.debug("Error count increased to %s", self.data.error_count)
         self.error()
 
-    def error_resolved(self):
+    def link_error_resolved(self):
         """decrements an error counter once an error gets resolved"""
         self.data.error_count -= 1
         log.debug("Error count decreased to %s", self.data.error_count)
+        if self.data.error_count == 0:
+            self.error_resolved()
 
     def file_printer_started_printing(self):
         """
@@ -337,16 +350,76 @@ class StateManager(metaclass=MCSingleton):
 
     def error_handler(self, sender, match: re.Match):
         """
-        Handle an error message. If thermal runawayis detected,
-        adds it as a reason
+        Handle an error message. If generic, let's wait for an explanation
+        If specific, stop the explanation waiter and switch the state to ERROR
+        providing a reason why
         """
         assert sender is not None
-        reason = match.group("reason").strip()
-        if reason:
+        # End the previous reason waiting thread
+        self.error_reason_event.set()
+        self.error_reason_event.clear()
+        groups = match.groupdict()
+        if (groups["stop"] is not None or groups["kill"] is not None) and \
+                self.data.override_state != State.ERROR:
+            self.data.awaiting_error_reason = True
+            self.error_reason_thread = Thread(target=self.error_reason_waiter,
+                                              daemon=True)
+            self.error_reason_thread.start()
+        else:
+            reason = self.get_reason(groups)
             self.expect_change(
                 StateChange(to_states={State.ERROR: Source.MARLIN},
                             reason=reason))
-        self.error()
+            HW.ok = False
+
+    @staticmethod
+    def get_reason(groups):
+        """
+        Provided error parsed groups, put together a reason explaining
+        why it occurred
+        :param groups: re match group dictionary
+        :return: a reason string
+        """
+        reason = ""
+        if groups["temp"] is not None:
+            if groups["mintemp"] is not None:
+                reason += "Mintemp"
+            elif groups["maxtemp"] is not None:
+                reason += "Maxtemp"
+            reason += " triggered by the "
+            if groups["bed"] is not None:
+                reason += "heatbed thermistor."
+            else:
+                reason += "hotend thermistor."
+        elif groups["runaway"] is not None:
+            if groups["hotend_runaway"] is not None:
+                reason = "Hotend"
+            elif groups["heatbed_runaway"] is not None:
+                reason = "Heatbed"
+            elif groups["preheat_hotend"] is not None:
+                reason = "Hotend preheat"
+            elif groups["preheat_heatbed"] is not None:
+                reason = "Heatbed preheat"
+            reason += " thermal runaway."
+        elif groups["bed_levelling"]:
+            reason = "Bed leveling failed. Sensor didn't trigger. " \
+                     "Is there debris on the nozzle?"
+        reason += " Manual restart required!"
+        return reason
+
+    def error_reason_waiter(self):
+        """
+        Waits for an error reason to be provided
+        If it times out, it will warn the user and send "404 reason not found"
+        as the reason.
+        """
+        if not self.error_reason_event.wait(ERROR_REASON_TIMEOUT):
+            log.warning("Did not capture any explanation for the error state")
+            self.expect_change(
+                StateChange(to_states={State.ERROR: Source.MARLIN},
+                            reason="404 Reason not found"))
+            HW.ok = False
+        self.data.awaiting_error_reason = False
 
     # --- State changing methods ---
 
@@ -367,6 +440,7 @@ class StateManager(metaclass=MCSingleton):
         that as well
         :return:
         """
+        HW.ok = True
         self.busy()
         self.stopped_or_not_printing()
 
@@ -457,11 +531,8 @@ class StateManager(metaclass=MCSingleton):
             self.data.printing_state = None
 
         if (self.data.override_state is not None
-                and (self.data.override_state != State.ERROR
-                     or self.data.error_count == 0)):
-            # If we have override state, but it's not an error, or if it is,
-            # there are no more errors detected, then let'S lose the
-            # override state
+                and self.data.override_state != State.ERROR):
+            # If we have override state, but it's not an error, get rid of em
             log.debug("No longer having state %s", self.data.override_state)
             self.data.override_state = None
 
@@ -487,7 +558,16 @@ class StateManager(metaclass=MCSingleton):
     def error(self):
         """Sets the override state to ERROR"""
         log.debug("Overriding the state with ERROR")
+        InterestingLogRotator.trigger("the printer going into an error state.")
         self.data.override_state = State.ERROR
+
+    @state_influencer(StateChange(from_states={State.ERROR: Source.USER}))
+    def error_resolved(self):
+        """Removes the override ERROR state"""
+        if self.data.override_state == State.ERROR and \
+                self.data.error_count == 0:
+            log.debug("Cancelling the ERROR state override")
+            self.data.override_state = None
 
     @state_influencer(StateChange(to_states={State.ERROR: Source.SERIAL}))
     def serial_error(self):
