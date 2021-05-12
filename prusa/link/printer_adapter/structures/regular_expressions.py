@@ -41,7 +41,21 @@ RESUMED_REGEX = re.compile("^// action:resumed$")
 CANCEL_REGEX = re.compile("^// action:cancel$")
 START_PRINT_REGEX = re.compile(r"^echo:enqueing \"M24\"$")
 PRINT_DONE_REGEX = re.compile(r"^Done printing file$")
-ERROR_REGEX = re.compile(r"Error:(?P<reason>.*)")
+# This girthy regexp tries to capture all error messages requiring printer
+# reset using M999 or manual button, with connect, only manual reset shall
+# be accepted
+
+ERROR_REGEX = re.compile(
+    r"(Error:("
+    r"(?P<kill>Printer halted\. kill\(\) called!)|"
+    r"(?P<stop>Printer stopped due to errors\..*)|"
+    r"(?P<temp>(0: )?Heaters switched off\. "
+    r"M((?P<mintemp>IN)|(?P<maxtemp>AX))TEMP (?P<bed>BED )?triggered!)|"
+    r"(?P<runaway> ((?P<hotend_runaway>HOTEND)|(?P<heatbed_runaway>HEATBED))?"
+    r" THERMAL RUNAWAY( \( PREHEAT "
+    r"((?P<preheat_hotend>HOTEND)|(?P<preheat_heatbed>HEATBED))\))?)))|"
+    r"(?P<bed_levelling>Bed leveling failed\. Sensor didn't trigger\. "
+    r"Debris on nozzle\? Waiting for reset\.)")
 
 TEMPERATURE_REGEX = re.compile(
     r"^T:(?P<ntemp>-?\d+\.\d+) /(?P<set_ntemp>-?\d+\.\d+) "
