@@ -42,6 +42,7 @@ from .reporting_ensurer import ReportingEnsurer
 from .util import run_slowly_die_fast, make_fingerprint
 from .updatable import prctl_name, Thread
 from ..config import Config, Settings
+from ..errors import HW
 from ..sdk_augmentation.printer import MyPrinter
 
 log = logging.getLogger(__name__)
@@ -61,7 +62,7 @@ class PrusaLink:
         self.settings: Settings = settings
         self.running = True
         self.stopped_event = Event()
-
+        HW.ok = True
         self.model = Model()
         self.serial_reader = SerialReader()
 
@@ -576,6 +577,9 @@ class PrusaLink:
         if source is None:
             source = Source.WUI
             log.warning("State change had no source %s", to_state.value)
+
+        if to_state == State.ERROR:
+            self.file_printer.stop_print()
 
         extra_data = dict()
         if reason is not None:
