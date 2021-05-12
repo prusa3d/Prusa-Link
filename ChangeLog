@@ -13,8 +13,10 @@
     * Fix progress equal to -1 not being supported
     * Fixed upload from local web
     * SEND_INFO hostname fixed
-    * Fixed SD Card file selection
+    * Fix SD Card file selection
     * Log HTTP requests and errors over Python Logger
+    * Improve FW error message support
+    * Work around print head returning to the print after Stop print
 
 0.4.0 (2021-04-13)
     * getting IP refactoring
