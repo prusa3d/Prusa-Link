@@ -291,3 +291,6 @@ class FilePrinter(metaclass=MCSingleton):
             self.data.enqueued.clear()  # Ensure this gets cleared
             self.thread.join()
             self.data.paused = False
+            # This results in double stop on 3.10 hopefully will get changed
+            # Prevents the print head from stopping in the print
+            enqueue_instruction(self.serial_queue, "M603", to_front=True)
