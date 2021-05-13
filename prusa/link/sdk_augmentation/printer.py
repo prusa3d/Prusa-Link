@@ -9,6 +9,7 @@ from prusa.connect.printer.metadata import FDMMetaData
 from prusa.connect.printer.files import File
 from prusa.connect.printer import Printer as SDKPrinter, const
 from prusa.connect.printer import Command
+from prusa.connect.printer.download import Download
 
 from ..printer_adapter.input_output.lcd_printer import LCDPrinter
 from ..printer_adapter.model import Model
@@ -29,6 +30,8 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.lcd_printer = LCDPrinter.get_instance()
+        self.download_thread = Thread(target=self.download_loop,
+                                      name="download")
         self.model = Model.get_instance()
         self.nozzle_diameter = None
         self.command_handler = CommandHandler(self.command)
@@ -115,6 +118,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.__inotify_running = True
         self.loop_thread.start()
         self.inotify_thread.start()
+        self.download_thread.start()
 
     def stop(self):
         """Passes the stop request to all SDK related threads.
@@ -124,10 +128,12 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         * inotify
         """
         self.__inotify_running = False
+        self.download_mgr.stop_loop()
         self.stop_loop()
         self.command_handler.stop()
         self.inotify_thread.join()
         self.loop_thread.join()
+        self.download_thread.join()
 
     def loop(self):
         """SDKPrinter.loop with thread name."""
@@ -142,4 +148,10 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
                 self.inotify_handler()
                 sleep(0.2)
             except Exception:  # pylint: disable=broad-except
-                log.exception('Unhadled exception')
+                log.exception('Unhandled exception')
+
+    def download_loop(self):
+        """Handler for download loop"""
+        prctl_name()
+        Download.throttle = 0.01  # too much IO kills zero
+        self.download_mgr.loop()
