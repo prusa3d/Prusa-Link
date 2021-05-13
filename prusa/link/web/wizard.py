@@ -4,6 +4,7 @@ from functools import wraps
 
 from poorwsgi import state, redirect
 from poorwsgi.digest import hexdigest
+from poorwsgi.request import FieldStorage
 from prusa.connect.printer import Printer
 
 from .lib import try_int
@@ -61,10 +62,13 @@ def wizard_auth(req):
 @check_printer
 def wizard_auth_post(req):
     """Check and store values from wizard_auth page."""
-    app.wizard.username = req.form.get('username', '').strip()
-    app.wizard.password = req.form.get('password', '')
-    app.wizard.repassword = req.form.get('repassword', '')
-    app.wizard.api_key = req.form.get('api_key', '').strip()
+    form = FieldStorage(req,
+                        keep_blank_values=app.keep_blank_values,
+                        strict_parsing=app.strict_parsing)
+    app.wizard.username = form.get('username', '').strip()
+    app.wizard.password = form.get('password', '')
+    app.wizard.repassword = form.get('repassword', '')
+    app.wizard.api_key = form.get('api_key', '').strip()
     if not app.wizard.check_auth():
         redirect('/wizard/auth')
     redirect('/wizard/printer')
@@ -81,8 +85,11 @@ def wizard_printer(req):
 @check_step('auth')
 def wizard_printer_post(req):
     """Check and store values from wizard_printer page."""
-    app.wizard.printer_name = req.form.get('name', '').strip()
-    app.wizard.printer_location = req.form.get('location', '').strip()
+    form = FieldStorage(req,
+                        keep_blank_values=app.keep_blank_values,
+                        strict_parsing=app.strict_parsing)
+    app.wizard.printer_name = form.get('name', '').strip()
+    app.wizard.printer_location = form.get('location', '').strip()
     if not app.wizard.check_printer():
         redirect('/wizard/printer')
     redirect('/wizard/connect')
@@ -99,9 +106,12 @@ def wizard_connect(req):
 @check_step('printer')
 def wizard_connect_post(req):
     """Check and store values from wizard_connect page."""
-    app.wizard.connect_hostname = req.form.get('hostname', '').strip()
-    app.wizard.connect_tls = int('tls' in req.form)
-    app.wizard.connect_port = req.form.getfirst('port', 0, try_int)
+    form = FieldStorage(req,
+                        keep_blank_values=app.keep_blank_values,
+                        strict_parsing=app.strict_parsing)
+    app.wizard.connect_hostname = form.get('hostname', '').strip()
+    app.wizard.connect_tls = int('tls' in form)
+    app.wizard.connect_port = form.getfirst('port', 0, try_int)
     if not app.wizard.check_connect():
         redirect('/wizard/connect')
     redirect('/wizard/finish')
