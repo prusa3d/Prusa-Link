@@ -14,6 +14,7 @@
     * Fixed upload from local web
     * SEND_INFO hostname fixed
     * Fixed SD Card file selection
+    * Log HTTP requests and errors over Python Logger
 
 0.4.0 (2021-04-13)
     * getting IP refactoring

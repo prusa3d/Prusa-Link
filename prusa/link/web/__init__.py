@@ -7,7 +7,7 @@ import prctl  # type: ignore
 
 from .lib.core import app
 from .lib.auth import REALM
-from .lib.classes import ThreadingServer
+from .lib.classes import ThreadingServer, RequestHandler
 from .lib.wizard import Wizard
 from .link_info import link_info
 
@@ -56,12 +56,11 @@ def run_http(daemon, foreground=False):
     init(daemon)
     while True:
         try:
-            httpd = make_server(
-                daemon.cfg.http.address,
-                daemon.cfg.http.port,
-                app,
-                server_class=ThreadingServer,
-            )
+            httpd = make_server(daemon.cfg.http.address,
+                                daemon.cfg.http.port,
+                                app,
+                                server_class=ThreadingServer,
+                                handler_class=RequestHandler)
 
             httpd.timeout = 0.5
             httpd.serve_forever()
