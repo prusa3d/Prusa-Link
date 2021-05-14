@@ -217,8 +217,6 @@ def main():
                 return 1
 
         context = DaemonContext(pidfile=pid_file,
-                                stdout=daemon.stdout,
-                                stderr=daemon.stderr,
                                 signal_map={SIGTERM: daemon.sigterm})
 
         pid_dir = path.dirname(config.daemon.pid_file)
