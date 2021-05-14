@@ -1,46 +1,16 @@
 """Daemon class implementation."""
-import abc
 import logging
 
 import ctypes
 import prctl  # type: ignore
 
-from .config import Config, Settings
+from .config import Settings
 from .printer_adapter import prusa_link
 from .printer_adapter.prusa_link import PrusaLink
 from .printer_adapter.updatable import Thread
 from .web import run_http
 
 log = logging.getLogger(__name__)
-
-
-class DaemonLogger:
-    """
-    Adapt a syslog handled logger into a python file-like object
-    for use with DaemonContext as stdout and stderr args
-    """
-    def __init__(self, config: Config):
-        self.config = config
-
-    @abc.abstractmethod
-    def write(self, message):
-        """Send request message to log."""
-
-    def fileno(self):
-        """Return file number for daemon context."""
-        return self.config.configured_handler.socket.fileno()
-
-
-class STDOutLogger(DaemonLogger):  # TODO: use own http class
-    """for catching std::out"""
-    def write(self, message):
-        logging.root.info(message)
-
-
-class STDErrLogger(DaemonLogger):  # TODO: use own http class
-    """for catching std::err"""
-    def write(self, message):
-        logging.root.error(message)
 
 
 class ExThread(Thread):
@@ -73,10 +43,6 @@ class Daemon:
 
         self.cfg = config
         self.settings = None
-
-        # FIXME: http logs into stdout and stderr, let's not do that
-        self.stdout = STDOutLogger(config)
-        self.stderr = STDErrLogger(config)
 
         self.http = None
         self.prusa_link = None
