@@ -121,7 +121,7 @@ def file_to_api(node, origin='local', path='/', sort_by='dir,m_time'):
     name = node['name']
     path = join(path, name)
 
-    result = {'name': name, 'path': path, 'display': name}
+    result = {'name': name, 'path': path, 'display': name, 'date': None}
 
     if "m_time" in node:
         result["date"] = int(datetime(*node['m_time']).timestamp())
@@ -147,7 +147,6 @@ def file_to_api(node, origin='local', path='/', sort_by='dir,m_time'):
         result['origin'] = origin
         result['type'] = 'machinecode'
         result['typePath'] = ['machinecode', 'gcode']
-        result['date'] = None
         result['hash'] = None
 
         os_path = get_os_path(path)
