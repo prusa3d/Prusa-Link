@@ -133,7 +133,7 @@ def api_files(req):
     free = mount.get_free_space() if mount else 0
 
     return JSONResponse(headers=headers,
-                        files=sort_files(files),
+                        files=sort_files(filter(None, files)),
                         free='%d %s' % hbytes(free))
 
 
@@ -199,7 +199,7 @@ def api_upload(req, target):
 
         files = [file_to_api(child) for child in data.get("children", [])]
         return JSONResponse(done=True,
-                            files=sort_files(files),
+                            files=sort_files(filter(None, files)),
                             free=0,
                             total=0,
                             status_code=state.HTTP_CREATED)
