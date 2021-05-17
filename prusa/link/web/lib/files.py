@@ -69,7 +69,7 @@ def gcode_analysis(meta):
     }
 
 
-def file_to_api(node, origin='local', path='/', sort_by='dir,m_time'):
+def file_to_api(node, origin='local', path='/', sort_by='folder,date'):
     """Convert Prusa SDK Files tree for API.
 
     >>> from mock import Mock
@@ -141,7 +141,7 @@ def file_to_api(node, origin='local', path='/', sort_by='dir,m_time'):
             file_to_api(child, origin, path, sort_by)
             for child in node.get("children", [])
         ]
-        result['children'] = sort_files(children, sort_by)
+        result['children'] = sort_files(filter(None, children), sort_by)
 
     elif name.endswith(GCODE_EXTENSIONS):
         result['origin'] = origin
@@ -171,21 +171,21 @@ def file_to_api(node, origin='local', path='/', sort_by='dir,m_time'):
     return result
 
 
-def sort_files(files, sort_by='dir,m_time'):
+def sort_files(files, sort_by='folder,date'):
     """Sort and filter files
     >>> files = sort_files([
-    ...    {'name':'a','m_time':[2020]},
-    ...    {'name':'b','m_time':[2021]},
+    ...    {'name':'a','date': 1612348743, 'type': 'machinecode'},
+    ...    {'name':'b','date': 1612448743, 'type': 'machinecode'},
     ...    {'name':'c'},
-    ...    {'name':'d', 'type': 'DIR'},
+    ...    {'name':'d', 'type': 'folder'},
+    ...    {'name':'e', 'type': 'folder', 'date': 1614168237},
     ... ])
     >>> [file['name'] for file in files]
-    ['d', 'b', 'a', 'c']
+    ['e', 'd', 'b', 'a', 'c']
     """
-    files = [file for file in files if file != {}]
-    if sort_by == "dir,m_time":
+    if sort_by == "folder,date":
 
         def sort_key(file):
-            return file.get('type') == 'DIR', file.get("m_time", [])
+            return file.get('type') == 'folder', file.get("date") or 0
 
     return sorted(files, key=sort_key, reverse=True)
