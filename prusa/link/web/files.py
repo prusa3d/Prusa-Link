@@ -1,6 +1,6 @@
 """/api/files endpoint handlers"""
 from os import makedirs, unlink, replace
-from os.path import abspath, join, exists, basename, dirname
+from os.path import abspath, join, exists, basename, dirname, split
 from base64 import decodebytes
 from datetime import datetime
 from hashlib import md5
@@ -294,6 +294,35 @@ def api_delete(req, target, path):
     os_path = get_os_path(path)
     unlink(os_path)
     return Response(status_code=state.HTTP_NO_CONTENT)
+
+
+@app.route('/api/download/<target>', method=state.METHOD_POST)
+@check_api_digest
+def api_download(req, target):
+    """Download intended file from a given url"""
+    # pylint: disable=unused-argument
+    if target != "local":
+        return Response(status_code=state.HTTP_NOT_FOUND)
+    download_mgr = app.daemon.prusa_link.printer.download_mgr
+
+    url = req.json.get('url')
+    destination = req.json.get('destination', "/Prusa Link gcodes/Download")
+    to_select = req.json.get('to_select', False)
+    to_print = req.json.get('to_print', False)
+    log.debug('select=%s, print=%s', to_select, to_print)
+
+    filename = split(url)[1]
+    path = join(destination, filename)
+
+    job = Job.get_instance()
+
+    if job.data.job_state == JobState.IN_PROGRESS and \
+            path == job.data.selected_file_path:
+        raise ApiException(req, errors.PE_DOWNLOAD_CONFLICT,
+                           state.HTTP_CONFLICT)
+
+    download_mgr.start(url, path, to_print, to_select)
+    return Response(status_code=state.HTTP_CREATED)
 
 
 @app.route('/api/downloads/<target>/<path:re:.+>')
