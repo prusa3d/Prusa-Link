@@ -26,8 +26,7 @@ class Wizard:
 
         # auth
         self.username = app.settings.service_local.username
-        self.password = None
-        self.repassword = None
+        self.digest = None
         if app.api_key:
             self.api_key = app.api_key
         else:
@@ -54,19 +53,23 @@ class Wizard:
         self.errors = {}
         Wizard.instance = self
 
+    def set_digest(self, password):
+        """Set HTTP digest from password and self.username."""
+        self.digest = hexdigest(self.username, REALM, password)
+
     @property
     def serial_number(self):
         """Proxy property for daemon.prusa_link.printer.sn."""
         return self.daemon.prusa_link.printer.sn
 
-    def check_auth(self):
+    def check_auth(self, password, repassword):
         """Check if auth values are valid."""
         errors = {}
         if len(self.username) < 7:
             errors['username'] = True
-        if len(self.password) < 7:  # TODO: check password quality
+        if len(password) < 7:  # TODO: check password quality
             errors['password'] = True
-        if self.password != self.repassword:
+        if password != repassword:
             errors['repassword'] = True
         if len(self.api_key) < 7:
             errors['api_key'] = True
@@ -102,8 +105,7 @@ class Wizard:
     def write_settings(self, settings):
         """Write settings configuration."""
         # auth
-        digest = hexdigest(self.username, REALM, self.password)
-        settings.service_local.digest = digest
+        settings.service_local.digest = self.digest
         settings.service_local.api_key = self.api_key
         settings.service_local.username = self.username
 
