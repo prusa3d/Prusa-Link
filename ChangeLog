@@ -6,6 +6,9 @@
     * Sort files directory first, newest first
     * Faster checking and processing when uploading gcode
     * Static web update
+      - Upload gcode fixes
+      - File browser is available when printer printes
+      - Files are sort by printers API
     * React to thermal runaway by going into the error state
     * Use daemon type WSGI threads
     * Removed temporary gcode copy for printing
