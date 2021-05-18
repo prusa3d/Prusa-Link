@@ -3,7 +3,6 @@ import time
 from functools import wraps
 
 from poorwsgi import state, redirect
-from poorwsgi.digest import hexdigest
 from poorwsgi.request import FieldStorage
 from prusa.connect.printer import Printer
 
@@ -66,11 +65,12 @@ def wizard_auth_post(req):
                         keep_blank_values=app.keep_blank_values,
                         strict_parsing=app.strict_parsing)
     app.wizard.username = form.get('username', '').strip()
-    app.wizard.password = form.get('password', '')
-    app.wizard.repassword = form.get('repassword', '')
+    password = form.get('password', '')
+    repassword = form.get('repassword', '')
     app.wizard.api_key = form.get('api_key', '').strip()
-    if not app.wizard.check_auth():
+    if not app.wizard.check_auth(password, repassword):
         redirect('/wizard/auth')
+    app.wizard.set_digest(password)
     redirect('/wizard/printer')
 
 
@@ -139,9 +139,8 @@ def wizard_finish_post(req):
     wizard.write_settings(app.settings)
 
     # set authorization
-    digest = hexdigest(wizard.username, REALM, wizard.password)
     app.auth_map.clear()
-    app.auth_map.set(REALM, wizard.username, digest)
+    app.auth_map.set(REALM, wizard.username, wizard.digest)
     app.api_key = wizard.api_key
 
     # set connect connection
