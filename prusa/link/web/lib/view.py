@@ -24,6 +24,15 @@ def printer_type(type_):
     return "Unknown"
 
 
+def package_to_api(pkg):
+    """Convert pkg_resources.DistInfoDistribution to API."""
+    return {
+        'name': pkg.project_name,
+        'version': pkg.version,
+        'path': pkg.module_path
+    }
+
+
 def generate_page(request, template, **kwargs):
     """Return generated ouptut fromjinja template."""
 
