@@ -2,6 +2,7 @@
 from socket import gethostname
 from os.path import basename, join
 from datetime import datetime
+from sys import version
 
 import logging
 
@@ -9,6 +10,7 @@ from poorwsgi import state
 from poorwsgi.response import JSONResponse, EmptyResponse, FileResponse,\
     Response, HTTPException
 from poorwsgi.digest import check_digest
+from pkg_resources import working_set
 
 from prusa.connect.printer import __version__ as sdk_version
 from prusa.connect.printer.const import State
@@ -17,6 +19,7 @@ from .. import __version__
 
 from .lib.core import app
 from .lib.auth import check_api_digest, check_config, REALM
+from .lib.view import package_to_api
 
 from ..printer_adapter.informers.job import JobState, Job
 from ..printer_adapter.informers.state_manager import StateManager
@@ -66,15 +69,30 @@ def api_system_commands(req):
 @check_api_digest
 def api_version(req):
     """Return api version"""
-    log.debug(req.headers)
     prusa_link = app.daemon.prusa_link
-    return JSONResponse(api="0.1",
-                        server=__version__,
-                        original="PrusaLink %s" % __version__,
-                        text="OctoPrint 1.1.0",
-                        firmware=prusa_link.printer.firmware,
-                        sdk=sdk_version,
-                        hostname=gethostname())
+    retval = {
+        'api': "0.1",
+        'server': __version__,
+        'original': "PrusaLink %s" % __version__,
+        'text': "OctoPrint 1.1.0",
+        'firmware': prusa_link.printer.firmware,
+        'sdk': sdk_version,
+        'hostname': gethostname()
+    }
+
+    if req.args.get('system'):
+        # pylint: disable=not-an-iterable
+        retval['python'] = [package_to_api(pkg) for pkg in working_set]
+        retval['system'] = {'python': version}
+        try:
+            # pylint: disable=import-outside-toplevel
+            # default in Rasbian OS
+            import lsb_release  # type: ignore
+            lsb = lsb_release.get_distro_information()
+            retval['system'].update(lsb)
+        except ImportError:
+            pass
+    return JSONResponse(**retval)
 
 
 @app.route('/api/login', method=state.METHOD_POST)
