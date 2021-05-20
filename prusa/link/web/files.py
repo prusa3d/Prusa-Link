@@ -346,6 +346,16 @@ def api_download(req, target):
     return Response(status_code=state.HTTP_CREATED)
 
 
+@app.route('/api/download', method=state.METHOD_DELETE)
+@check_api_digest
+def api_download_abort(req):
+    """Aborts current download process"""
+    # pylint: disable=unused-argument
+    download_mgr = app.daemon.prusa_link.printer.download_mgr
+    download_mgr.stop()
+    return Response(status_code=state.HTTP_NO_CONTENT)
+
+
 @app.route('/api/downloads/<target>/<path:re:.+>')
 @check_api_digest
 def api_downloads(req, target, path):
