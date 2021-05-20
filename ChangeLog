@@ -23,6 +23,7 @@
     * Added endpoint for download file from url
     * Password in plain text form is not stored in memory
     * Added endpoint for gettting info about the file currently being downloaded
+    * Added endpoint for abort current download process
 
 0.4.0 (2021-04-13)
     * getting IP refactoring
