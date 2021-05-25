@@ -6,6 +6,7 @@ from threading import Lock, Thread, Event
 from typing import Union, Dict, Optional
 
 from blinker import Signal  # type: ignore
+from prusa.connect.printer import Printer
 
 from prusa.connect.printer.const import State, Source
 from ..const import STATE_HISTORY_SIZE, ERROR_REASON_TIMEOUT
@@ -19,6 +20,7 @@ from ..structures.module_data_classes import StateManagerData
 from ..structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, FAN_ERROR_REGEX
+from ...config import Config
 from ...errors import get_printer_error_states, HW
 
 log = logging.getLogger(__name__)
@@ -36,7 +38,8 @@ class StateChange:
                  to_states: Dict[State, Union[Source, None]] = None,
                  from_states: Dict[State, Union[Source, None]] = None,
                  default_source: Source = None,
-                 reason: str = None):
+                 reason: str = None,
+                 checked: bool = False):
 
         self.reason = reason
         self.to_states: Dict[State, Union[Source, None]] = {}
@@ -49,6 +52,7 @@ class StateChange:
 
         self.command_id = command_id
         self.default_source = default_source
+        self.checked = checked
 
 
 def state_influencer(state_change: StateChange = None):
@@ -90,10 +94,13 @@ class StateManager(metaclass=MCSingleton):
     """
 
     # pylint: disable=too-many-instance-attributes,too-many-public-methods
-    def __init__(self, serial_reader: SerialReader, model: Model):
+    def __init__(self, serial_reader: SerialReader, model: Model,
+                 sdk_printer: Printer, cfg: Config):
 
         self.serial_reader: SerialReader = serial_reader
         self.model: Model = model
+        self.sdk_printer: Printer = sdk_printer
+        self.cfg = cfg
 
         self.pre_state_change_signal = Signal()  # kwargs: command_id: int
         self.post_state_change_signal = Signal()
@@ -103,6 +110,7 @@ class StateManager(metaclass=MCSingleton):
         #                                           command_id: int,
         #                                           source: Sources
         #                                           reason: str
+        #                                           checked: bool
 
         self.model.state_manager = StateManagerData(
             # The ACTUAL states considered when reporting
@@ -194,20 +202,6 @@ class StateManager(metaclass=MCSingleton):
         if (self.model.file_printer.printing
                 and self.data.printing_state != State.PRINTING):
             self.printing()
-
-    def file_printer_finished_printing(self):
-        """
-        React to a serial printer finishing printing by changing our
-        state to FINISHED
-        """
-        self.finished()
-
-    def file_printer_stopped_printing(self):
-        """
-        React to a serial printer stopping a print by changing our
-        state to STOPPED
-        """
-        self.stopped()
 
     def get_state(self):
         """
@@ -309,6 +303,7 @@ class StateManager(metaclass=MCSingleton):
             command_id = None
             source = None
             reason = None
+            checked = False
 
             if self.data.printing_state is not None:
                 log.debug("We are printing - %s", self.data.printing_state)
@@ -324,6 +319,7 @@ class StateManager(metaclass=MCSingleton):
                     command_id = self.expected_state_change.command_id
                 source = self.get_expected_source()
                 reason = self.expected_state_change.reason
+                checked = self.expected_state_change.checked
                 if reason is not None:
                     log.debug("Reason for %s: %s", self.get_state(), reason)
             else:
@@ -337,7 +333,8 @@ class StateManager(metaclass=MCSingleton):
                                            to_state=self.data.current_state,
                                            command_id=command_id,
                                            source=source,
-                                           reason=reason)
+                                           reason=reason,
+                                           checked=checked)
             self.post_state_change_signal.send(self)
 
     def fan_error(self, sender, match: re.Match):
@@ -461,16 +458,17 @@ class StateManager(metaclass=MCSingleton):
                       self.data.base_state, self.data.printing_state)
 
     @state_influencer(
-        StateChange(
-            from_states={
-                State.PRINTING: Source.MARLIN,
-                State.PAUSED: Source.MARLIN,
-                State.FINISHED: Source.MARLIN
-            }))
+        StateChange(from_states={
+            State.PRINTING: Source.MARLIN,
+            State.PAUSED: Source.MARLIN,
+        }))
     def not_printing(self):
-        """Clears the printing state"""
+        """
+        We know we're not printing, keeps FINISHED and STOPPED because
+        the user needs to confirm those manually now
+        """
         self.unsure_whether_printing = False
-        if self.data.printing_state is not None:
+        if self.data.printing_state not in {State.FINISHED, State.STOPPED}:
             self.data.printing_state = None
 
     @state_influencer(StateChange(to_states={State.FINISHED: Source.MARLIN}))
@@ -514,8 +512,11 @@ class StateManager(metaclass=MCSingleton):
                     from_states={
                         State.ATTENTION: Source.USER,
                         State.ERROR: Source.MARLIN,
-                        State.BUSY: Source.HW
-                    }))
+                        State.BUSY: Source.HW,
+                        State.FINISHED: Source.MARLIN,
+                        State.STOPPED: Source.MARLIN,
+                    },
+                    checked=False))
     def instruction_confirmed(self):
         """
         Instruction confirmation shall clear all temporary states
@@ -527,8 +528,9 @@ class StateManager(metaclass=MCSingleton):
         if self.data.base_state == State.BUSY:
             self.data.base_state = State.READY
 
-        if self.data.printing_state in {State.FINISHED, State.STOPPED}:
-            self.data.printing_state = None
+        if not self.cfg.printer.M0_after_prints:
+            if self.data.printing_state in {State.STOPPED, State.FINISHED}:
+                self.data.printing_state = None
 
         if (self.data.override_state is not None
                 and self.data.override_state != State.ERROR):
@@ -536,10 +538,23 @@ class StateManager(metaclass=MCSingleton):
             log.debug("No longer having state %s", self.data.override_state)
             self.data.override_state = None
 
+    @state_influencer(
+        StateChange(to_states={State.READY: Source.MARLIN},
+                    from_states={
+                        State.FINISHED: Source.USER,
+                        State.STOPPED: Source.USER,
+                    },
+                    checked=True))
+    def printer_checked(self):
+        """Printer has been checked after being stopped or after """
+        if self.data.printing_state in {State.FINISHED, State.STOPPED}:
+            self.data.printing_state = None
+
     @state_influencer(StateChange(to_states={State.ATTENTION: Source.USER}))
     def attention(self):
         """
-        Sets the override state to ATTENTION.
+        Sets the override state to ATTENTION, if we haven't just sent an M0
+        for stopped or finished print.
         Includes a workaround for fan error info
         """
         if self.fan_error_name is not None:
@@ -551,8 +566,10 @@ class StateManager(metaclass=MCSingleton):
                             reason=f"{self.fan_error_name} fan error"))
             self.fan_error_name = None
 
-        log.debug("Overriding the state with ATTENTION")
-        self.data.override_state = State.ATTENTION
+        if self.data.printing_state not in {State.FINISHED, State.STOPPED}:
+            log.debug("Overriding the state with ATTENTION")
+            log.warning("State was %s", self.get_state())
+            self.data.override_state = State.ATTENTION
 
     @state_influencer(StateChange(to_states={State.ERROR: Source.WUI}))
     def error(self):
