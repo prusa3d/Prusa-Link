@@ -105,8 +105,8 @@ class Config(Get):
         if args.pidfile:
             self.daemon.pid_file = abspath(args.pidfile)
 
-        for file_ in ('pid_file', 'power_panic_file',
-                      'job_file', 'threshold_file'):
+        for file_ in ('pid_file', 'power_panic_file', 'job_file',
+                      'threshold_file'):
             setattr(
                 self.daemon, file_,
                 abspath(join(self.daemon.data_dir, getattr(self.daemon,
@@ -156,6 +156,7 @@ class Config(Get):
                     ("mountpoints", tuple, [], ':'),
                     # relative to HOME
                     ("directories", tuple, ("./Prusa Link gcodes", ), ':'),
+                    ("M0_after_prints", bool, True),
                 )))
         if args.serial_port:
             self.printer.port = args.serial_port
