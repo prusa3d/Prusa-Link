@@ -3,11 +3,15 @@
 For more information see prusa-link_states.txt.
 """
 
+import itertools
+
 from prusa.connect.printer.errors import ErrorState, INTERNET, HTTP, TOKEN, \
     API
 
 assert HTTP is not None
 assert TOKEN is not None
+
+OK_MSG = {"ok": True, "message": "OK"}
 
 DEVICE = ErrorState("Device",
                     "Eth|WLAN device does not exist",
@@ -46,6 +50,29 @@ def status():
             chain[current.name] = (current.ok, current.long_msg)
             current = current.next
         result.append(chain)
+    return result
+
+
+def printer_status():
+    """Returns a dict with representation of current printer error states"""
+    if TAILS[0].ok and TAILS[2].ok:
+        return OK_MSG
+    result = {}
+    printer = itertools.chain(HW, SERIAL)
+    for error in printer:
+        if not error.ok:
+            return {"ok": False, "message": error.long_msg}
+    return result
+
+
+def connect_status():
+    """Returns a dict with representation of current Connect error states"""
+    if TAILS[1].ok:
+        return OK_MSG
+    result = {}
+    for error in DEVICE:
+        if not error.ok:
+            return {"ok": False, "message": error.long_msg}
     return result
 
 
