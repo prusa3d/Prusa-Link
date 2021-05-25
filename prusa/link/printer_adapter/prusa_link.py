@@ -17,6 +17,8 @@ from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
 from .command_queue import CommandQueue
 from .informers.filesystem.sd_card import SDState
 from .informers.job import Job
+from .input_output.serial.helpers import enqueue_instruction, \
+    wait_for_instruction
 from .interesting_logger import InterestingLogRotator
 from .print_stats import PrintStats
 from .sn_reader import SNReader
@@ -26,7 +28,7 @@ from .informers.ip_updater import IPUpdater
 from .informers.state_manager import StateManager, StateChange
 from .informers.filesystem.storage_controller import StorageController
 from .informers.telemetry_gatherer import TelemetryGatherer
-from .informers.getters import get_printer_type
+from .informers.getters import get_printer_type, get_nozzle_diameter
 from .input_output.lcd_printer import LCDPrinter
 from .input_output.serial.serial_queue import MonitoredSerialQueue
 from .input_output.serial.serial import Serial
@@ -107,7 +109,8 @@ class PrusaLink:
         self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_reader,
                                       self.model)
         self.job = Job(self.serial_reader, self.model, self.cfg, self.printer)
-        self.state_manager = StateManager(self.serial_reader, self.model)
+        self.state_manager = StateManager(self.serial_reader, self.model,
+                                          self.printer, self.cfg)
         self.telemetry_gatherer = TelemetryGatherer(self.serial_reader,
                                                     self.serial_queue,
                                                     self.model)
@@ -263,6 +266,17 @@ class PrusaLink:
         for thread in enumerate_threads():
             log.debug(thread)
         self.stopped_event.set()
+
+    def check_printer(self, message: str, callback):
+        """Demand an encoder click from the poor user"""
+        log.warning("check printer")
+        # Let's get rid of a possible comms desync, by asking for a specific
+        # info instead of just OK
+        get_nozzle_diameter(self.serial_queue, lambda: self.running)
+        # Now we need attention
+        instruction = enqueue_instruction(self.serial_queue, f"M0 {message}")
+        wait_for_instruction(instruction)
+        callback()
 
     # --- Command handlers ---
 
@@ -445,12 +459,12 @@ class PrusaLink:
     def file_printer_stopped_printing(self, sender):
         """Connects file printer stopping with state manager"""
         assert sender is not None
-        self.state_manager.file_printer_stopped_printing()
+        self.state_manager.stopped()
 
     def file_printer_finished_printing(self, sender):
         """Connects file printer finishing a print with state manager"""
         assert sender is not None
-        self.state_manager.file_printer_finished_printing()
+        self.state_manager.finished()
 
     def serial_failed(self, sender):
         """Connects serial errors with state manager"""
@@ -569,7 +583,8 @@ class PrusaLink:
                       to_state,
                       source=None,
                       command_id=None,
-                      reason=None):
+                      reason=None,
+                      checked=False):
         """Connects the state manager state change to Prusa Connect"""
         assert sender is not None
         assert from_state is not None
@@ -580,6 +595,17 @@ class PrusaLink:
 
         if to_state == State.ERROR:
             self.file_printer.stop_print()
+        if self.cfg.printer.M0_after_prints:
+            if to_state == State.FINISHED:
+                Thread(target=self.check_printer,
+                       args=("Done, remove print",
+                             self.state_manager.printer_checked),
+                       daemon=True).start()
+            if to_state == State.STOPPED:
+                Thread(target=self.check_printer,
+                       args=("Stopped, clear sheet",
+                             self.state_manager.printer_checked),
+                       daemon=True).start()
 
         extra_data = dict()
         if reason is not None:
@@ -589,6 +615,7 @@ class PrusaLink:
                                command_id=command_id,
                                source=source,
                                job_id=self.model.job.get_job_id_for_api(),
+                               checked=checked,
                                **extra_data)
 
     def time_printing_updated(self, sender, time_printing):
