@@ -15,7 +15,7 @@ from pkg_resources import working_set
 from prusa.connect.printer import __version__ as sdk_version
 from prusa.connect.printer.const import State
 
-from .. import __version__
+from .. import errors, __version__
 
 from .lib.core import app
 from .lib.auth import check_api_digest, check_config, REALM
@@ -131,6 +131,10 @@ def api_connection(req):
                     "name": "Prusa MK3S"
                 }],
                 "autoconnect": True
+            },
+            "states": {
+                "printer": errors.printer_status(),
+                "connect": errors.connect_status()
             }
         })
 
