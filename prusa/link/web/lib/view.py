@@ -9,7 +9,7 @@ from prusa.connect.printer.const import PrinterType
 from .core import app
 
 TEMPL_PATH = (files('jinja2_template_info'),
-              join(files('prusa.link'), 'templates'))
+              join(str(files('prusa.link')), 'templates'))
 
 
 def printer_type(type_):
