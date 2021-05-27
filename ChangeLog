@@ -25,6 +25,7 @@
     * Added endpoint for gettting info about the file currently being downloaded
     * Added endpoint for abort current download process
     * Require user attention after each print, even failed ones (if enabled)
+    * Added checked and finished flags to api/printer
 
 0.4.0 (2021-04-13)
     * getting IP refactoring
