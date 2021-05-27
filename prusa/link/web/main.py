@@ -140,9 +140,11 @@ def api_connection(req):
 def api_printer(req):
     """Returns printer telemetry info"""
     # pylint: disable=unused-argument
-    tel = app.daemon.prusa_link.model.last_telemetry
-    job = app.daemon.prusa_link.model.job
-    sd_ready = app.daemon.prusa_link.sd_ready
+    prusa_link = app.daemon.prusa_link
+    tel = prusa_link.model.last_telemetry
+    job = prusa_link.model.job
+    sd_ready = prusa_link.sd_ready
+    printer = prusa_link.printer
 
     pseudo_printing = tel.state == State.PRINTING or job.selected_file_path
 
@@ -164,7 +166,7 @@ def api_printer(req):
             "state": {
                 "text": PRINTER_STATES[tel.state],
                 "flags": {
-                    "operational": tel.state == State.READY,
+                    "operational": tel.state in (State.READY, State.FINISHED),
                     "paused": tel.state == State.PAUSED,
                     "printing": pseudo_printing,
                     "cancelling": False,
@@ -172,7 +174,9 @@ def api_printer(req):
                     "sdReady": sd_ready,
                     "error": tel.state == State.ERROR,
                     "ready": tel.state == State.READY,
-                    "closedOrError": False
+                    "closedOrError": False,
+                    "finished": tel.state == State.FINISHED,
+                    "checked": printer.checked
                 }
             },
             "telemetry": {
