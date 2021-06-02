@@ -112,8 +112,12 @@ def api_login(req):
 def api_connection(req):
     """Returns printer connection info"""
     # pylint: disable=unused-argument
+    service_connect = app.daemon.settings.service_connect
     cfg = app.daemon.cfg
     tel = app.daemon.prusa_link.model.last_telemetry
+
+    # Token is available only after successful registration to Connect
+    is_registrated = len(service_connect.token) > 0
 
     return JSONResponse(
         **{
@@ -131,6 +135,12 @@ def api_connection(req):
                     "name": "Prusa MK3S"
                 }],
                 "autoconnect": True
+            },
+            "connect": {
+                "hostname": service_connect.hostname,
+                "port": service_connect.port,
+                "tls": bool(service_connect.tls),
+                "registrated": is_registrated
             },
             "states": {
                 "printer": errors.printer_status(),
