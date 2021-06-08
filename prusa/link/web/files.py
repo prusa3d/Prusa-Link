@@ -303,17 +303,18 @@ def api_download_info(req):
     # pylint: disable=unused-argument
     current = app.daemon.prusa_link.printer.download_mgr.current
     if current is not None:
-        return JSONResponse(**{
-            "url": current.url,
-            "target": "local",
-            "destination": current.destination,
-            "size": current.size,
-            "start_time": current.start_ts,
-            "progress": current.progress,
-            "remaining_time": current.time_remaining(),
-            "to_select": current.to_select,
-            "to_print": current.to_print
-        })
+        return JSONResponse(
+            **{
+                "url": current.url,
+                "target": "local",
+                "destination": current.destination,
+                "size": current.size,
+                "start_time": current.start_ts,
+                "progress": current.progress,
+                "remaining_time": current.time_remaining(),
+                "to_select": current.to_select,
+                "to_print": current.to_print
+            })
     return Response(status_code=state.HTTP_NO_CONTENT)
 
 
