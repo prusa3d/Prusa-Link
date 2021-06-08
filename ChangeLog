@@ -29,6 +29,7 @@
     * Added states structure to api/connection endpoint
     * Added Connect configuration info to api/connection endpoint
     * Added connection.py with api/connection GET, POST endpoints
+    * Added api/setting GET endpoint
 
 0.4.0 (2021-04-13)
     * getting IP refactoring
