@@ -15,7 +15,7 @@ from pkg_resources import working_set
 from prusa.connect.printer import __version__ as sdk_version
 from prusa.connect.printer.const import State
 
-from .. import errors, __version__
+from .. import __version__
 
 from .lib.core import app
 from .lib.auth import check_api_digest, check_config, REALM
@@ -105,48 +105,6 @@ def api_login(req):
                         admin=True,
                         user=True,
                         name='_api')
-
-
-@app.route('/api/connection')
-@check_api_digest
-def api_connection(req):
-    """Returns printer connection info"""
-    # pylint: disable=unused-argument
-    service_connect = app.daemon.settings.service_connect
-    cfg = app.daemon.cfg
-    tel = app.daemon.prusa_link.model.last_telemetry
-
-    # Token is available only after successful registration to Connect
-    is_registrated = len(service_connect.token) > 0
-
-    return JSONResponse(
-        **{
-            "current": {
-                "baudrate": cfg.printer.baudrate,
-                "port": cfg.printer.port,
-                "printerProfile": "_default",
-                "state": PRINTER_STATES[tel.state],
-            },
-            "options": {
-                "ports": [cfg.printer.port],
-                "baudrates": [cfg.printer.baudrate],
-                "printerProfiles": [{
-                    "id": "_default",
-                    "name": "Prusa MK3S"
-                }],
-                "autoconnect": True
-            },
-            "connect": {
-                "hostname": service_connect.hostname,
-                "port": service_connect.port,
-                "tls": bool(service_connect.tls),
-                "registrated": is_registrated
-            },
-            "states": {
-                "printer": errors.printer_status(),
-                "connect": errors.connect_status()
-            }
-        })
 
 
 @app.route('/api/printer')

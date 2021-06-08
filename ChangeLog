@@ -28,6 +28,7 @@
     * Added checked and finished flags to api/printer
     * Added states structure to api/connection endpoint
     * Added Connect configuration info to api/connection endpoint
+    * Added connection.py with api/connection GET, POST endpoints
 
 0.4.0 (2021-04-13)
     * getting IP refactoring
