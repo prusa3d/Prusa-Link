@@ -30,6 +30,7 @@
     * Added Connect configuration info to api/connection endpoint
     * Added connection.py with api/connection GET, POST endpoints
     * Added api/setting GET endpoint
+    * Added m_timestamp to SDCard files properties
 
 0.4.0 (2021-04-13)
     * getting IP refactoring

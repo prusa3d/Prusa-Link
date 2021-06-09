@@ -1,5 +1,6 @@
 """Contains implementation of the class for keeping track of the sd status
 and its files"""
+import calendar
 import logging
 import re
 from pathlib import Path
@@ -230,7 +231,9 @@ class SDCard(ThreadedUpdatable):
 
         if str_m_time is not None:
             m_time = fat_datetime_to_tuple(int(str_m_time, 16))
+            m_timestamp = calendar.timegm(m_time)
             additional_properties["m_time"] = m_time
+            additional_properties["m_timestamp"] = m_timestamp
 
         # Add the file to the tree
         try:
