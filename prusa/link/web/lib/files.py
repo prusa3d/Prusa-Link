@@ -1,6 +1,5 @@
 """Check and modify an input dictionary using recursion"""
 
-from datetime import datetime
 from os.path import join
 
 from prusa.connect.printer.metadata import FDMMetaData, estimated_to_seconds
@@ -123,8 +122,8 @@ def file_to_api(node, origin='local', path='/', sort_by='folder,date'):
 
     result = {'name': name, 'path': path, 'display': name, 'date': None}
 
-    if "m_time" in node:
-        result["date"] = int(datetime(*node['m_time']).timestamp())
+    if "m_timestamp" in node:
+        result["date"] = node["m_timestamp"]
 
     if 'size' in node:
         result['size'] = node['size']
