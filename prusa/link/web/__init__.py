@@ -18,7 +18,7 @@ __import__('main', globals=globals(), level=1)
 __import__('wizard', globals=globals(), level=1)
 __import__('files', globals=globals(), level=1)
 __import__('connection', globals=globals(), level=1)
-__import__('setting', globals=globals(), level=1)
+__import__('settings', globals=globals(), level=1)
 
 
 def init(daemon):
