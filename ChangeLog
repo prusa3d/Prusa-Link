@@ -110,6 +110,7 @@
     * endpoint for deleting file
     * fix job get / set
     * Implementation of gcode download endpoint
+    * Added api/logs endpoint
 
 0.2.0 (2020-12-14)
 
