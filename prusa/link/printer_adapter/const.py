@@ -80,3 +80,8 @@ STATE_HISTORY_SIZE = 10
 # --- Interesting_Logger ---
 LOG_BUFFER_SIZE = 200
 AFTERMATH_LOG_SIZE = 100
+
+# --- Selected log files---
+LOGS_PATH = "/var/log"
+LOGS_FILES = ("auth.log", "daemon.log", "kern.log", "messages", "syslog",
+              "user.log")

@@ -1,6 +1,7 @@
 """Main pages and core API"""
 from socket import gethostname
 from os.path import basename, join
+from os import listdir
 from datetime import datetime
 from sys import version
 
@@ -21,6 +22,7 @@ from .lib.core import app
 from .lib.auth import check_api_digest, check_config, REALM
 from .lib.view import package_to_api
 
+from ..printer_adapter.const import LOGS_PATH, LOGS_FILES
 from ..printer_adapter.informers.job import JobState, Job
 from ..printer_adapter.informers.state_manager import StateManager
 from ..printer_adapter.command import CommandFailed
@@ -63,6 +65,17 @@ def api_system_commands(req):
     """Return api version"""
     # pylint: disable=unused-argument
     return JSONResponse(core=[], custom=[])
+
+
+@app.route('/api/logs')
+@check_api_digest
+def api_logs(req):
+    """Returns list of log files in var/log folder"""
+    # pylint: disable=unused-argument
+    logs_list = sorted(file for file in listdir(LOGS_PATH)
+                       if file.startswith(LOGS_FILES))
+
+    return JSONResponse(logs=logs_list)
 
 
 @app.route('/api/version')
