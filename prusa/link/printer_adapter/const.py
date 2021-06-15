@@ -82,6 +82,7 @@ LOG_BUFFER_SIZE = 200
 AFTERMATH_LOG_SIZE = 100
 
 # --- Selected log files---
+GZ_SUFFIX = ".gz"
 LOGS_PATH = "/var/log"
 LOGS_FILES = ("auth.log", "daemon.log", "kern.log", "messages", "syslog",
               "user.log")
