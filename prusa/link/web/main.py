@@ -22,7 +22,7 @@ from .lib.core import app
 from .lib.auth import check_api_digest, check_config, REALM
 from .lib.view import package_to_api
 
-from ..printer_adapter.const import LOGS_PATH, LOGS_FILES
+from ..printer_adapter.const import LOGS_PATH, LOGS_FILES, GZ_SUFFIX
 from ..printer_adapter.informers.job import JobState, Job
 from ..printer_adapter.informers.state_manager import StateManager
 from ..printer_adapter.command import CommandFailed
@@ -74,8 +74,22 @@ def api_logs(req):
     # pylint: disable=unused-argument
     logs_list = sorted(file for file in listdir(LOGS_PATH)
                        if file.startswith(LOGS_FILES))
-
     return JSONResponse(logs=logs_list)
+
+
+@app.route('/api/logs/<filename>')
+@check_api_digest
+def api_log(req, filename):
+    """Returns content of intended log file"""
+    # pylint: disable=unused-argument
+    if not filename.startswith(LOGS_FILES):
+        return Response(status_code=state.HTTP_NOT_FOUND)
+
+    path_ = join(LOGS_PATH, filename)
+    headers_ = {}
+    if path_.endswith(GZ_SUFFIX):
+        headers_ = {"Content-Encoding": "gzip"}
+    return FileResponse(path_, content_type="text/plain", headers=headers_)
 
 
 @app.route('/api/version')
