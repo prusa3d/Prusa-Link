@@ -1,5 +1,5 @@
 """Original Prusa Link printer adapter."""
-__application__ = "Prusa-Link"
+__application__ = "PrusaLink"
 __vendor__ = "PrusaResearch"
 
 __version__ = "0.5.0.dev0"
