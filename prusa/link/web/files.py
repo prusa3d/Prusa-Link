@@ -15,7 +15,7 @@ from poorwsgi.response import JSONResponse, Response, FileResponse, \
         HTTPException
 from poorwsgi.results import hbytes
 
-from prusa.connect.printer.const import GCODE_EXTENSIONS
+from prusa.connect.printer.const import GCODE_EXTENSIONS, State
 from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 
 from .lib.core import app
@@ -41,14 +41,16 @@ def partfilepath(filename):
 
 class GCodeFile(FileIO):
     """Own file class to control processing data when POST"""
-    def __init__(self, job_data, filepath):
+    def __init__(self, filepath):
         app.posting_data = True
-        self.job_data = job_data
+        job = Job.get_instance()
+        self.job_data = job.data
+        self.printer = app.daemon.prusa_link.printer
         super().__init__(filepath, 'w+b')
 
     def write(self, data):
         if not self.job_data.from_sd \
-                and self.job_data.job_state == JobState.IN_PROGRESS:
+                and self.printer.state == State.PRINTING:
             sleep(0.01)
         super().write(data)
 
@@ -69,8 +71,7 @@ def gcode_callback(filename):
     if not filename.endswith(GCODE_EXTENSIONS) or filename.startswith('.'):
         raise HTTPException(state.HTTP_UNSUPPORTED_MEDIA_TYPE)
 
-    job = Job.get_instance()
-    return GCodeFile(job.data, partfilepath(filename))
+    return GCodeFile(partfilepath(filename))
 
 
 def wait_until_fs_path(printer, path):
