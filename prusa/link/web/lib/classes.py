@@ -25,7 +25,7 @@ class ThreadingServer(ThreadingMixIn, SingleServer):
 class LinkHandler(ServerHandler):
     """For custom log_exception method and server_sofware"""
 
-    server_software = __name__
+    server_software = __application__
     request_handler = None
 
     def log_exception(self, exc_info):
