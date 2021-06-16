@@ -51,9 +51,21 @@ def not_found(req):
 @app.http_state(503)
 def service_unavailable(req):
     """Error handler for 503 Service Unavailable."""
+    type_, error, traceback = exc_info()  # pylint: disable=unused-variable
+    traceback = format_tb(traceback)
+    log.error('\n%s%s', ''.join(traceback), repr(error))
+
     if req.accept_json:
         return JSONResponse(message="Prusa Link not finished initializing. "
                             "Please try again later",
                             status_code=503)
-    return make_response(generate_page(req, "error503.html", error=exc_info()),
+
+    kwargs = {}
+    if app.debug:
+        kwargs["traceback"] = traceback
+
+    return make_response(generate_page(req,
+                                       "error503.html",
+                                       error=repr(error),
+                                       **kwargs),
                          status_code=503)

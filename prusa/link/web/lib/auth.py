@@ -66,6 +66,7 @@ def check_config(func):
     def handler(req, *args, **kwargs):
         prusa_link = app.daemon.prusa_link
         if not prusa_link or not prusa_link.printer:
+            log.error('prusa_link or prusa_link.printer is not available')
             raise HTTPException(state.HTTP_SERVICE_UNAVAILABLE)
 
         if not app.auth_map:
