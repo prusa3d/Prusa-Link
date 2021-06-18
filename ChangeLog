@@ -112,6 +112,7 @@
     * Implementation of gcode download endpoint
     * Added api/logs endpoint
     * Added api/logs/<log_file> endpoint
+    * Added wizard/serial endpoints and page for setup S/N of the printer
 
 0.2.0 (2020-12-14)
 

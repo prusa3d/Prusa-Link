@@ -12,6 +12,8 @@ from .lib.core import app
 from .lib.view import generate_page
 
 from .. import errors
+from ..printer_adapter.input_output.serial.helpers import enqueue_instruction
+from ..printer_adapter.sn_reader import SNReader
 
 
 def check_printer(fun):
@@ -128,6 +130,53 @@ def wizard_finish(req):
                          "wizard_finish.html",
                          wizard=app.wizard,
                          connect_url=url)
+
+
+@app.route('/wizard/serial')
+def wizard_serial(req):
+    """Show template with S/N insertion"""
+
+    return generate_page(req, "wizard_serial.html", wizard=app.wizard)
+
+
+@app.route('/wizard/serial', method=state.METHOD_POST)
+def wizard_serial_set(req):
+    """Set given S/N to printer"""
+    wizard = app.wizard
+    serial_queue = app.daemon.prusa_link.serial_queue
+    sn_reader = SNReader(serial_queue)
+
+    form = FieldStorage(req,
+                        keep_blank_values=app.keep_blank_values,
+                        strict_parsing=app.strict_parsing)
+    wizard.serial = form.get('serial', '').strip()
+
+    if not app.wizard.check_serial():
+        redirect('/wizard/serial')
+
+    # Encode S/N to GCODE instruction
+    first = "X" + (
+        "".join([hex(letter)[2:]
+                 for letter in wizard.serial.encode("ascii")]) + "00")[:32]
+    last = "X" + (
+        "".join([hex(letter)[2:]
+                 for letter in wizard.serial.encode("ascii")]) + "00")[32:]
+
+    # Add correct prefix
+    gcode_first = f"D3 Ax0d15 C16 {first}"
+    gcode_last = f"D3 Ax0d25 C4 {last}"
+
+    # Send GCODE instructions to printer
+    enqueue_instruction(serial_queue, gcode_first, True)
+    enqueue_instruction(serial_queue, gcode_last, True)
+
+    # wait up to five second for S/N to be set
+    for i in range(50):  # pylint: disable=unused-variable
+        if sn_reader.read_sn():
+            redirect('/wizard/auth')
+        time.sleep(.1)
+    app.wizard.errors['serial']['not_obtained'] = True
+    redirect('/wizard/serial')
 
 
 @app.route('/wizard/finish-register', method=state.METHOD_POST)
