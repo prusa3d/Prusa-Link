@@ -1,0 +1,46 @@
+{# vim:set softtabstop=2: -#}
+{% set title = 'Wizard' -%}
+{#% set refresh = 15 %#}
+{% include "_header.html" %}
+{% set active="serial" %}
+
+<div class="container">
+  <div class="row">
+      <div class="col-md-12">
+          <h1>Serial Number</h1>
+            {% set errors = wizard.errors.get('serial', {}) %}
+            {% if not errors.get('not_obtained') %}
+          <form method="post" id="form">
+              <p>Serial Number of your printer cannot be obtained. Please fill in the S/N, starting with <b>CZP</b>, from the label on the back of your printer.</p>
+
+            <div class="form-group row">
+              <label for="serial" class="col-sm-2 col-form-label">S/N:</label>
+              <div class="col-sm-10">
+                <input type="text" class="form-control {{ 'is-invalid' if errors else '' }}" id="serial" name="serial" value="{{ wizard.serial or '' }}" required>
+                <div class="invalid-feedback">
+                  Please provide a valid S/N.
+                </div>
+              </div>
+            </div>
+
+            <div class="container navigation">
+              <div class="row">
+                  <div class="col">
+                    <a href="/wizard" class="btn btn-back btn-outline-light"><img src="../img/arrow-left.svg" height="16" /> BACK | Wizard</a>
+                  </div>
+                  <div class="col-xs-auto">
+                    <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Setup Authorization | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
+                  </div>
+              </div>
+            </div>
+          </form>
+          {% else %}
+          <div class="col" style="text-align: center;">Serial Number of your printer cannot be obtained, please contact our <a href="https://help.prusa3d.com/en/article/support_2287" target="_blank">Customer support</a>.</div>
+          {% endif %}
+
+        </div>{# /col-md-9 so end of content  #}
+      </div>{# /row #}
+    </div>{# /container #}
+
+    {% include "_wizard.html" %}
+    {% include "_footer.html" %}

@@ -12,6 +12,14 @@ from ..lib.auth import REALM
 log = logging.getLogger(__name__)
 
 
+def is_valid_sn(serial):
+    """Check serial number format."""
+    return (serial is not None and len(serial) == 19
+            and serial.startswith('CZPX') and serial[4:8].isdigit()
+            and serial[8] == 'X' and serial[9:12].isdigit()
+            and serial[12] == 'X' and serial[14:19].isdigit())
+
+
 class Wizard:
     """Configuration wizard singleton with validation methods."""
     instance = None
@@ -23,6 +31,9 @@ class Wizard:
         # locale
         # self.locale = app.settings.printer.locale
         # self.time_zone = None
+
+        # S/N
+        self.serial = None
 
         # auth
         self.username = app.settings.service_local.username
@@ -84,6 +95,14 @@ class Wizard:
         if not self.printer_location:
             errors['location'] = True
         self.errors['printer'] = errors
+        return not errors
+
+    def check_serial(self):
+        """Check S/N is valid."""
+        errors = {}
+        if not is_valid_sn(self.serial):
+            errors['not_valid'] = True
+        self.errors['serial'] = errors
         return not errors
 
     def check_connect(self):

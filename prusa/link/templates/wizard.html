@@ -39,7 +39,10 @@
                         After upgrading the firmware, run this wizard again.
                     </div>
                 {% elif not errors.SN.ok %}
-                    <div class="col" style="text-align: center;">We can't get <b>serial number</b> of your printer, please contact our <a href="https://help.prusa3d.com/en/article/support_2287" target="_blank">Customer support</a>.</div>
+                    <div class="col"><b>Great!</b> You can continue to set Serial Number</div>
+                    <div class="col-xs-auto">
+                        <a href="/wizard/serial" class="btn btn-outline-light">Serial Number | NEXT <img src="img/arrow-right.svg" height="16" /></a>
+                    </div>
                 {% else %}
                     <div class="col"><b>Great!</b> You can continue to Authorization</div>
                     <div class="col-xs-auto">
