@@ -7,7 +7,7 @@ OPEN_RESULT_REGEX = re.compile(
 
 PRINTER_TYPE_REGEX = re.compile(r"^(?P<code>\d{3,5})$")
 FW_REGEX = re.compile(r"^(?P<version>\d+\.\d+\.\d+-.*)$")
-SN_REGEX = re.compile(r"^(?P<sn>CZP.*)$")
+SN_REGEX = re.compile(r"^(?P<sn>^CZP.{16})$")
 NOZZLE_REGEX = re.compile(r"^(?P<size>\d\.\d+)$")
 PERCENT_REGEX = re.compile(r"^(?P<percent>\d{0,3})%$")
 
