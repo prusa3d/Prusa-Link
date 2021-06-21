@@ -29,13 +29,13 @@ sudo apt install git python3-pip python3-wheel pigpio libcap-dev
 sudo pip3 install git+ssh://git@github.com/prusa3d/Prusa-Link.git
 ```
 
-##Config
+## Config
 Prusa Link is configured using `/etc/Prusa-Link/prusa-link.ini`.
 
 Some legacy settings are stored in `/var/tmp/Prusa-Link/config.yaml`.
 
 
-##Usage
+## Usage
 The executable is called `prusa-link` and can be used to control the daemon, if you want to run it directly, use the -f option
 
 for more info about commandline options use:
