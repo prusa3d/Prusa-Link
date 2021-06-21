@@ -9,6 +9,7 @@
       - Upload gcode fixes
       - File browser is available when printer printes
       - Files are sort by printers API
+      - Printed file widget rework
     * React to thermal runaway by going into the error state
     * Use daemon type WSGI threads
     * Removed temporary gcode copy for printing
