@@ -77,8 +77,8 @@ class PrusaLink:
         MonitoredSerialQueue.get_instance().serial_queue_failed.connect(
             self.serial_queue_failed)
 
-        printer_type = get_printer_type(self.serial_queue)
-        self.printer = MyPrinter(printer_type)
+        self.printer = MyPrinter()
+        Thread(target=self.get_printer_type, name="type_getter").start()
 
         self.sn_reader = SNReader(self.serial_queue)
         self.sn_reader.updated_signal.connect(self.set_sn)
@@ -176,7 +176,9 @@ class PrusaLink:
         self.network_info_update()
 
         # Before starting anything, let's send initial printer info to connect
-        self.info_sender.initial_info()
+        # --self.info_sender.initial_info()
+        # quick non-blocking replacement
+        Thread(target=self.info_sender.fill_missing_info, daemon=True).start()
 
         # Bind this after the initial info is sent so it doesn't get
         # sent twice
@@ -205,7 +207,8 @@ class PrusaLink:
 
         debug = False
         if debug:
-            self.debug_shell()
+            Thread(target=self.debug_shell, name="debug_shell",
+                   daemon=True).start()
 
     def debug_shell(self):
         """
@@ -277,6 +280,15 @@ class PrusaLink:
         instruction = enqueue_instruction(self.serial_queue, f"M0 {message}")
         wait_for_instruction(instruction)
         callback()
+
+    def get_printer_type(self):
+        """
+        Gets and writes the printer type to SDK
+        Run in Thread
+        """
+        printer_type = get_printer_type(self.serial_queue,
+                                        lambda: self.running)
+        self.printer.type = printer_type
 
     # --- Command handlers ---
 
@@ -594,6 +606,8 @@ class PrusaLink:
             log.warning("State change had no source %s", to_state.value)
 
         if to_state == State.ERROR:
+            InterestingLogRotator.trigger(
+                "by the printer entering the ERROR state.")
             self.file_printer.stop_print()
         if self.cfg.printer.M0_after_prints:
             if to_state == State.FINISHED:
