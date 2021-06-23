@@ -34,8 +34,6 @@ class ReportingEnsurer(ThreadedUpdatable):
         self.last_seen_positions = time()
         self.last_seen_fans = time()
 
-        self.turn_reporting_on()
-
     def temps_recorded(self):
         """Resets the timeout for temperatures"""
         self.last_seen_temps = time()
