@@ -7,7 +7,6 @@ jinja2-template-info>=0.2.2
 lockfile
 PoorWSGI>=2.4.0
 pydantic
-pyserial
 python-daemon
 python-prctl
 PyYAML
