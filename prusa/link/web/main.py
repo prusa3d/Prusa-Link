@@ -135,11 +135,9 @@ def api_printer(req):
     # pylint: disable=unused-argument
     prusa_link = app.daemon.prusa_link
     tel = prusa_link.model.last_telemetry
-    job = prusa_link.model.job
     sd_ready = prusa_link.sd_ready
     printer = prusa_link.printer
-
-    pseudo_printing = tel.state == State.PRINTING or job.selected_file_path
+    operational = tel.state in (State.READY, State.FINISHED, State.STOPPED)
 
     return JSONResponse(
         **{
@@ -159,9 +157,9 @@ def api_printer(req):
             "state": {
                 "text": PRINTER_STATES[tel.state],
                 "flags": {
-                    "operational": tel.state in (State.READY, State.FINISHED),
+                    "operational": operational,
                     "paused": tel.state == State.PAUSED,
-                    "printing": pseudo_printing,
+                    "printing": tel.state == State.PRINTING,
                     "cancelling": False,
                     "pausing": tel.state == State.PAUSED,
                     "sdReady": sd_ready,
