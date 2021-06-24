@@ -43,6 +43,35 @@ PRINTER_STATES = {
     State.ATTENTION: "Error"
 }
 
+CONFIRM_TEXT = """
+    <p>This action may disrupt any ongoing print jobs (depending on your
+    printer's controller and general setup that might also apply to prints
+    run directly from your printer's internal storage)."""
+
+CMD_SHUTDOWN = dict(  # yapf bypass
+    action="shutdown",
+    name="Shutdown",
+    confirm="""<p><strong>You are about to shutdown the system.</strong></p>
+            """ + CONFIRM_TEXT,
+    source="core",
+    resource="/api/system/commands/core/shutdown")
+
+CMD_REBOOT = dict(  # yapf bypass
+    action="reboot",
+    name="Reboot",
+    confirm="""<p><strong>You are about to reboot the system.</strong></p>
+             """ + CONFIRM_TEXT,
+    source="core",
+    resource="/api/system/commands/core/reboot")
+
+CMD_RESTART = dict(  # yapf bypass
+    action="restart",
+    name="Restart PrusaLink",
+    confirm="""<p><strong>You are about to restart the PrusaLink server.
+            </strong></p>""" + CONFIRM_TEXT,
+    source="core",
+    resource="/api/system/commands/core/restart")
+
 
 @app.route('/')
 @check_config
@@ -313,42 +342,10 @@ def api_system_commands(req):
     """List all registered system commands"""
     # pylint: disable=unused-argument
 
-    return JSONResponse(**{"core": [{"action": "shutdown",
-                                     "name": "Shutdown",
-                                     "confirm": """<strong>You are about to
-                                     shutdown the system.</strong></p><p>This
-                                     action may disrupt any ongoing print jobs
-                                     (depending on your printer's controller
-                                     and general setup that might also apply
-                                     to prints run directly from your printer's
-                                      internal storage).""",
-                                     "source": "core",
-                                     "resource":
-                                     "http://example.com/api/system/commands/core/shutdown"},
-                                    {"action": "reboot",
-                                     "name": "Reboot",
-                                     "confirm": """<strong>You are about to
-                                     reboot the system.</strong></p><p>This
-                                     action may disrupt any ongoing print
-                                     jobs (depending on your printer's controller
-                                     and general setup that might also apply
-                                     to prints run directly from your
-                                     printer's internal storage).""",
-                                     "source": "core",
-                                     "resource":
-                                     "http://example.com/api/system/commands/core/reboot"},
-                                    {"action": "restart",
-                                     "name": "Restart PrusaLink",
-                                     "confirm": """<strong>You are about to restart
-                                      the PrusaLink server.</strong></p><p>This action
-                                      may disrupt any ongoing print jobs (depending on
-                                       your printer's controller and general setup that
-                                        might also apply to prints run directly from your
-                                        printer's internal storage).""",
-                                     "source": "core",
-                                     "resource":
-                                     "http://example.com/api/system/commands/core/restart"}],
-                           "custom": []})
+    return JSONResponse(**{
+        "core": [CMD_SHUTDOWN, CMD_REBOOT, CMD_RESTART],
+        "custom": []
+    })
 
 
 @app.route('/api/system/commands/<source>/<action>', method=state.METHOD_POST)
@@ -362,7 +359,7 @@ def api_system_commands_execute(req, source, action):
             return JSONResponse(status_code=state.HTTP_OK,
                                 message="Triggering system shutdown.")
         if action == 'reboot':
-            subprocess.Popen(['sudo', 'shutdown', '-r', 'now'])
+            subprocess.Popen(['sudo', 'reboot', '-f'])
             return JSONResponse(status_code=state.HTTP_OK,
                                 message="Triggering system reboot.")
         if action == 'restart':
@@ -371,16 +368,15 @@ def api_system_commands_execute(req, source, action):
             # those arguments are ignored. Not sure how is this thing
             # going to be used in production rpi's, so skipping it for now.
             # Just saving serial_port as it didn't worked with my rpi setup
-            # My mk3s is was at /dev/ttyACM0 and restart would come back up with /dev/ttyAMA0
-            # and fail.
+            # My mk3s is was at /dev/ttyACM0 and restart would come back up
+            # with /dev/ttyAMA0 and fail.
             serial_port = app.daemon.prusa_link.serial.port
 
             subprocess.Popen(['prusa-link', 'restart', '-s', serial_port],
                              start_new_session=True,
                              stdin=subprocess.DEVNULL,
                              stdout=subprocess.DEVNULL,
-                             stderr=subprocess.DEVNULL
-                             )
+                             stderr=subprocess.DEVNULL)
 
             return JSONResponse(status_code=state.HTTP_OK,
                                 message="Restarting Prusa-Link.")
