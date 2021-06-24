@@ -1,14 +1,12 @@
 """Contains implementation of the Serial class"""
 import logging
-import termios
 from threading import Lock
 from time import sleep
-
-import serial  # type: ignore
 
 from blinker import Signal  # type: ignore
 
 from .serial_reader import SerialReader
+from ...lib import serial
 from ...const import PRINTER_BOOT_WAIT, \
     SERIAL_REOPEN_TIMEOUT
 from ...structures.mc_singleton import MCSingleton
@@ -30,7 +28,6 @@ class Serial(metaclass=MCSingleton):
                  port="/dev/ttyAMA0",
                  baudrate=115200,
                  timeout=1,
-                 write_timeout=0,
                  connection_write_delay=10):
 
         # pylint: disable=too-many-arguments
@@ -38,7 +35,6 @@ class Serial(metaclass=MCSingleton):
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
-        self.write_timeout = write_timeout
 
         self.write_lock = Lock()
 
@@ -63,21 +59,9 @@ class Serial(metaclass=MCSingleton):
         if self.serial is not None and self.serial.is_open:
             self.serial.close()
 
-        # Prevent a hangup on serial close, this will make it,
-        # so the printer resets only on reboot or replug,
-        # not when prusa_link restarts
-        with open(self.port, encoding='utf-8') as serial_descriptor:
-            attrs = termios.tcgetattr(serial_descriptor)
-            log.debug("Serial attributes: %s", attrs)
-            # disable hangup
-            attrs[2] = attrs[2] & ~termios.HUPCL
-            # TCSAFLUSH set after everything is done
-            termios.tcsetattr(serial_descriptor, termios.TCSAFLUSH, attrs)
-
         self.serial = serial.Serial(port=self.port,
                                     baudrate=self.baudrate,
-                                    timeout=self.timeout,
-                                    write_timeout=self.write_timeout)
+                                    timeout=self.timeout)
 
         # Tried to predict, whether the printer was going to restart on serial
         # connect, but it proved unreliable
@@ -99,8 +83,9 @@ class Serial(metaclass=MCSingleton):
         while self.running:
             try:
                 self._reopen()
-            except (serial.SerialException, FileNotFoundError, OSError):
+            except (serial.SerialException, FileNotFoundError, OSError) as err:
                 errors.SERIAL.ok = False
+                log.debug(str(err))
                 log.warning("Opening of the serial port %s failed. Retrying",
                             self.port)
                 sleep(SERIAL_REOPEN_TIMEOUT)
@@ -160,7 +145,7 @@ class Serial(metaclass=MCSingleton):
             while not sent and self.running:
                 try:
                     self.serial.write(message)
-                except serial.SerialException:
+                except OSError:
                     log.error("Serial error when sending '%s' to the printer",
                               message)
                     self._renew_serial_connection()
