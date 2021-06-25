@@ -33,6 +33,7 @@
     * Added api/settings GET endpoint
     * Added m_timestamp to SDCard files properties
     * Added api/settings POST endpoint, fix settings.py name
+    * Fixed /api/printer flags
 
 0.4.0 (2021-04-13)
     * getting IP refactoring
