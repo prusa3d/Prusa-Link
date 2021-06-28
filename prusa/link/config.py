@@ -224,7 +224,7 @@ class Settings(Get):
         self.printer = Model(
             self.get_section('printer',
                              (('type', str, 'MK3'), ('name', str, ''),
-                              ('location', str, ''), ('M0_after_prints', int, 0))))
+                              ('location', str, ''), ('prompt_clean_sheet', int, 0))))
 
         if self.printer.type != 'MK3':
             raise ValueError("Settings file for different printer!")
