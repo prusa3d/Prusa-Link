@@ -110,7 +110,7 @@ class PrusaLink:
                                       self.model)
         self.job = Job(self.serial_reader, self.model, self.cfg, self.printer)
         self.state_manager = StateManager(self.serial_reader, self.model,
-                                          self.printer, self.cfg)
+                                          self.printer, self.cfg, self.settings)
         self.telemetry_gatherer = TelemetryGatherer(self.serial_reader,
                                                     self.serial_queue,
                                                     self.model)
@@ -609,7 +609,7 @@ class PrusaLink:
             InterestingLogRotator.trigger(
                 "by the printer entering the ERROR state.")
             self.file_printer.stop_print()
-        if self.cfg.printer.M0_after_prints:
+        if self.settings.printer.M0_after_prints:
             if to_state == State.FINISHED:
                 Thread(target=self.check_printer,
                        args=("Done, remove print",
