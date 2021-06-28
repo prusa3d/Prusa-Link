@@ -110,7 +110,8 @@ class PrusaLink:
                                       self.model)
         self.job = Job(self.serial_reader, self.model, self.cfg, self.printer)
         self.state_manager = StateManager(self.serial_reader, self.model,
-                                          self.printer, self.cfg, self.settings)
+                                          self.printer, self.cfg,
+                                          self.settings)
         self.telemetry_gatherer = TelemetryGatherer(self.serial_reader,
                                                     self.serial_queue,
                                                     self.model)
@@ -603,6 +604,7 @@ class PrusaLink:
         assert to_state is not None
         if source is None:
             source = Source.WUI
+            InterestingLogRotator.trigger("by an unexpected state change.")
             log.warning("State change had no source %s", to_state.value)
 
         if to_state == State.ERROR:

@@ -34,6 +34,7 @@
     * Added m_timestamp to SDCard files properties
     * Added api/settings POST endpoint, fix settings.py name
     * Fixed /api/printer flags
+    * Require two "Not SD printing" to work around a SD printing bug
 
 0.4.0 (2021-04-13)
     * getting IP refactoring
