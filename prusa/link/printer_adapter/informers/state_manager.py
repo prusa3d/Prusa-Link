@@ -93,7 +93,9 @@ class StateManager(metaclass=MCSingleton):
     to other PrusaLink components
     """
 
-    # pylint: disable=too-many-instance-attributes,too-many-public-methods,too-many-arguments
+    # pylint: disable=too-many-instance-attributes,
+    # pylint: disable=too-many-public-methods
+    # pylint: disable=too-many-arguments
     def __init__(self, serial_reader: SerialReader, model: Model,
                  sdk_printer: Printer, cfg: Config, settings: Settings):
 
@@ -156,6 +158,13 @@ class StateManager(metaclass=MCSingleton):
         # do the error state without a reason.
         self.error_reason_thread: Optional[Thread] = None
         self.error_reason_event = Event()
+
+        # Workaround for a bug, where on a start of a SD print from the LCD,
+        # the printer announces it will be printing a file, then says it's not
+        # printing anything and then announces printing the same file again
+        # This makes us ask the user to remove the print while printing
+        # Stopping on the first layer potentially damaging the build plate
+        self.believe_not_printing = False
 
         regex_handlers = {
             BUSY_REGEX: lambda sender, match: self.busy(),
@@ -293,6 +302,7 @@ class StateManager(metaclass=MCSingleton):
         # Did our internal state change cause our reported state to change?
         # If yes, update state stuff
         if self.get_state() != self.data.current_state:
+            self.believe_not_printing = False
             self.data.last_state = self.data.current_state
             self.data.current_state = self.get_state()
             self.data.state_history.append(self.data.current_state)
@@ -426,10 +436,13 @@ class StateManager(metaclass=MCSingleton):
         Depending on state, clears the printing state or sets the printing
         state to STOPPED
         """
-        if self.data.printing_state == State.PRINTING:
-            self.stopped()
+        if self.believe_not_printing:
+            if self.data.printing_state == State.PRINTING:
+                self.stopped()
+            else:
+                self.not_printing()
         else:
-            self.not_printing()
+            self.believe_not_printing = True
 
     def reset(self):
         """
