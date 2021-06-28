@@ -93,7 +93,7 @@ class StateManager(metaclass=MCSingleton):
     to other PrusaLink components
     """
 
-    # pylint: disable=too-many-instance-attributes,too-many-public-methods
+    # pylint: disable=too-many-instance-attributes,too-many-public-methods,too-many-arguments
     def __init__(self, serial_reader: SerialReader, model: Model,
                  sdk_printer: Printer, cfg: Config, settings: Settings):
 
@@ -529,7 +529,7 @@ class StateManager(metaclass=MCSingleton):
         if self.data.base_state == State.BUSY:
             self.data.base_state = State.READY
 
-        if not self.settings.printer.M0_after_prints:
+        if not self.settings.printer.prompt_clean_sheet:
             if self.data.printing_state in {State.STOPPED, State.FINISHED}:
                 self.data.printing_state = None
 

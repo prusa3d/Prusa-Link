@@ -609,7 +609,7 @@ class PrusaLink:
             InterestingLogRotator.trigger(
                 "by the printer entering the ERROR state.")
             self.file_printer.stop_print()
-        if self.settings.printer.M0_after_prints:
+        if self.settings.printer.prompt_clean_sheet:
             if to_state == State.FINISHED:
                 Thread(target=self.check_printer,
                        args=("Done, remove print",
