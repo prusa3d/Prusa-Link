@@ -1,6 +1,7 @@
 """/api/files endpoint handlers"""
 from os import makedirs, unlink, replace
-from os.path import abspath, join, exists, basename, dirname, split
+from os.path import abspath, join, exists, basename, dirname, split, getsize, \
+    getctime
 from base64 import decodebytes
 from datetime import datetime
 from hashlib import md5
@@ -263,6 +264,8 @@ def api_resources(req, target, path):
 
         meta = get_metadata(os_path)
         result['refs'] = local_refs(path, meta.thumbnails)
+        result['size'] = getsize(os_path)
+        result['date'] = getctime(os_path)
 
     else:  # sdcard
         meta = FDMMetaData(path)
