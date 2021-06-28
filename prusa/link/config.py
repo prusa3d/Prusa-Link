@@ -156,7 +156,6 @@ class Config(Get):
                     ("mountpoints", tuple, [], ':'),
                     # relative to HOME
                     ("directories", tuple, ("./Prusa Link gcodes", ), ':'),
-                    ("M0_after_prints", bool, True),
                 )))
         if args.serial_port:
             self.printer.port = args.serial_port
@@ -225,7 +224,8 @@ class Settings(Get):
         self.printer = Model(
             self.get_section('printer',
                              (('type', str, 'MK3'), ('name', str, ''),
-                              ('location', str, ''))))
+                              ('location', str, ''), ('M0_after_prints', int, 0))))
+
         if self.printer.type != 'MK3':
             raise ValueError("Settings file for different printer!")
 
