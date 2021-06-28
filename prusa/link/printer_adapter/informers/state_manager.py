@@ -20,7 +20,7 @@ from ..structures.module_data_classes import StateManagerData
 from ..structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, FAN_ERROR_REGEX
-from ...config import Config
+from ...config import Config, Settings
 from ...errors import get_printer_error_states, HW
 
 log = logging.getLogger(__name__)
@@ -95,12 +95,13 @@ class StateManager(metaclass=MCSingleton):
 
     # pylint: disable=too-many-instance-attributes,too-many-public-methods
     def __init__(self, serial_reader: SerialReader, model: Model,
-                 sdk_printer: Printer, cfg: Config):
+                 sdk_printer: Printer, cfg: Config, settings: Settings):
 
         self.serial_reader: SerialReader = serial_reader
         self.model: Model = model
         self.sdk_printer: Printer = sdk_printer
         self.cfg = cfg
+        self.settings = settings
 
         self.pre_state_change_signal = Signal()  # kwargs: command_id: int
         self.post_state_change_signal = Signal()
@@ -528,7 +529,7 @@ class StateManager(metaclass=MCSingleton):
         if self.data.base_state == State.BUSY:
             self.data.base_state = State.READY
 
-        if not self.cfg.printer.M0_after_prints:
+        if not self.settings.printer.M0_after_prints:
             if self.data.printing_state in {State.STOPPED, State.FINISHED}:
                 self.data.printing_state = None
 
