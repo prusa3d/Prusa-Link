@@ -34,7 +34,13 @@
     * Added m_timestamp to SDCard files properties
     * Added api/settings POST endpoint, fix settings.py name
     * Fixed /api/printer flags
+    * Implementation of gcode download endpoint
+    * Added api/logs endpoint
+    * Added api/logs/<log_file> endpoint
+    * Added wizard/serial endpoints and page for setup S/N of the printer
+    * Updated metadata for selected file
     * Require two "Not SD printing" to work around a SD printing bug
+    * Added username and password change functionality to api/settings POST, fixed ChangeLog
 
 0.4.0 (2021-04-13)
     * getting IP refactoring
@@ -112,11 +118,6 @@
     * job info refactoring
     * endpoint for deleting file
     * fix job get / set
-    * Implementation of gcode download endpoint
-    * Added api/logs endpoint
-    * Added api/logs/<log_file> endpoint
-    * Added wizard/serial endpoints and page for setup S/N of the printer
-    * Updated metadata for selected file
 
 0.2.0 (2020-12-14)
 
