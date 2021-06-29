@@ -6,7 +6,7 @@ import logging
 from poorwsgi import state
 from poorwsgi.response import Response, HTTPException, redirect
 from poorwsgi.session import check_token
-from poorwsgi.digest import check_credentials
+from poorwsgi.digest import check_credentials, hexdigest
 
 from .core import app
 
@@ -74,3 +74,42 @@ def check_config(func):
         return func(req, *args, **kwargs)
 
     return handler
+
+
+def set_digest(username, password):
+    """Set HTTP digest from password and self.username."""
+    return hexdigest(username, REALM, password)
+
+
+def valid_credentials(username, new_password, new_repassword, errors):
+    """Check if auth credentials are valid."""
+    _errors = {}
+    if len(username) < 7:
+        _errors['username'] = True
+    if new_password:
+        if len(new_password) < 7:
+            _errors['password'] = True
+        if new_password != new_repassword:
+            _errors['repassword'] = True
+    if _errors:
+        errors['user'] = _errors
+    return not _errors
+
+
+def valid_digests(digest, old_digest, new_digest, errors):
+    """Check auth credentials and compare to current ones.
+    :param digest: current digest, saved in system
+    :param old_digest: digest made from old password and old username
+    :param new_digest: digest made from new password and new username
+    :param errors: object with current errors
+    check, if OLD password is same as current one (old_digest),
+    check if NEW password is NOT same as current one (new_digest)
+    """
+    _errors = {}
+    if old_digest != digest:
+        _errors['old_digest'] = True
+    if old_digest == new_digest:
+        _errors['same_digest'] = True
+    if _errors:
+        errors['user'] = _errors
+    return not _errors
