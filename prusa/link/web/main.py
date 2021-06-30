@@ -23,7 +23,7 @@ from .. import __version__
 from .lib.core import app
 from .lib.auth import check_api_digest, check_config, REALM
 from .lib.view import package_to_api
-from .lib.files import get_os_path, gcode_analysis
+from .lib.files import get_os_path, gcode_analysis, gcode_analysis_sd
 
 from ..printer_adapter.const import LOGS_PATH, LOGS_FILES, GZ_SUFFIX
 from ..printer_adapter.informers.job import JobState, Job
@@ -237,6 +237,7 @@ def api_job(req):
     # pylint: disable=unused-argument
     tel = app.daemon.prusa_link.model.last_telemetry
     job = app.daemon.prusa_link.model.job
+    printer = app.daemon.prusa_link.printer
     is_printing = job.job_state == JobState.IN_PROGRESS
     estimated_from_gcode = 0
 
@@ -248,8 +249,12 @@ def api_job(req):
             'origin': 'sdcard' if job.from_sd else 'local'
         }
 
-        meta = get_metadata(get_os_path(job.selected_file_path))
-        estimated_from_gcode = gcode_analysis(meta)['estimatedPrintTime']
+        if file_['origin'] == 'local':
+            meta = get_metadata(get_os_path(job.selected_file_path))
+            estimated_from_gcode = gcode_analysis(meta)['estimatedPrintTime']
+        else:
+            meta = printer.from_path(job.selected_file_path)
+            estimated_from_gcode = gcode_analysis_sd(meta)['estimatedPrintTime']
 
         if job.selected_file_m_time:
             timestamp = int(datetime(*job.selected_file_m_time).timestamp())
