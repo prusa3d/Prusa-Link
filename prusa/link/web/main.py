@@ -3,7 +3,7 @@ from socket import gethostname
 from os.path import basename, join
 from os import listdir
 from datetime import datetime
-import subprocess
+from subprocess import Popen
 from sys import version
 
 import logging
@@ -254,7 +254,8 @@ def api_job(req):
             estimated_from_gcode = gcode_analysis(meta)['estimatedPrintTime']
         else:
             meta = printer.from_path(job.selected_file_path)
-            estimated_from_gcode = gcode_analysis_sd(meta)['estimatedPrintTime']
+            estimated_from_gcode = gcode_analysis_sd(meta).get(
+                'estimatedPrintTime')
 
         if job.selected_file_m_time:
             timestamp = int(datetime(*job.selected_file_m_time).timestamp())
@@ -368,29 +369,17 @@ def api_system_commands_execute(req, source, action):
     # pylint: disable=unused-argument
     if source == 'core':
         if action == 'shutdown':
-            subprocess.Popen(['sudo', 'shutdown', '-h', 'now'])
+            with Popen(['sudo', 'shutdown', '-h', 'now']):
+                pass
             return JSONResponse(status_code=state.HTTP_OK,
                                 message="Triggering system shutdown.")
         if action == 'reboot':
-            subprocess.Popen(['sudo', 'reboot', '-f'])
+            with Popen(['sudo', 'reboot', '-f']):
+                pass
             return JSONResponse(status_code=state.HTTP_OK,
                                 message="Triggering system reboot.")
         if action == 'restart':
-            # args from original prusa-link start call are not preserved here.
-            # So if the user called with -d -i -I or serial port
-            # those arguments are ignored. Not sure how is this thing
-            # going to be used in production rpi's, so skipping it for now.
-            # Just saving serial_port as it didn't worked with my rpi setup
-            # My mk3s is was at /dev/ttyACM0 and restart would come back up
-            # with /dev/ttyAMA0 and fail.
-            serial_port = app.daemon.prusa_link.serial.port
-
-            subprocess.Popen(['prusa-link', 'restart', '-s', serial_port],
-                             start_new_session=True,
-                             stdin=subprocess.DEVNULL,
-                             stdout=subprocess.DEVNULL,
-                             stderr=subprocess.DEVNULL)
-
+            app.daemon.restart(app.daemon.argv)
             return JSONResponse(status_code=state.HTTP_OK,
                                 message="Restarting Prusa-Link.")
 
