@@ -8,6 +8,7 @@ from typing import Dict, Any
 from socket import gethostname
 
 from prusa.connect.printer import Command as SDKCommand
+
 from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType, State
 from prusa.connect.printer.const import Source
@@ -74,8 +75,6 @@ class PrusaLink:
 
         self.serial_queue = MonitoredSerialQueue(self.serial,
                                                  self.serial_reader, self.cfg)
-        MonitoredSerialQueue.get_instance().serial_queue_failed.connect(
-            self.serial_queue_failed)
 
         self.printer = MyPrinter()
         Thread(target=self.get_printer_type, name="type_getter").start()
@@ -128,6 +127,10 @@ class PrusaLink:
         self.command_queue = CommandQueue()
 
         # Bind signals
+        self.serial_queue.serial_queue_failed.connect(self.serial_queue_failed)
+        self.serial_queue.stuck_signal.connect(self.stuck_serial)
+        self.serial_queue.unstuck_signal.connect(self.unstuck_serial)
+
         self.serial.failed_signal.connect(self.serial_failed)
         self.serial.renewed_signal.connect(self.serial_renewed)
         self.serial_queue.instruction_confirmed_signal.connect(
@@ -650,6 +653,16 @@ class PrusaLink:
         except Exception:  # pylint: disable=broad-except
             log.exception("Failed to reset the printer. Oh my god... "
                           "my attempt at safely failing has failed.")
+
+    def stuck_serial(self, sender):
+        """Passes on the signal about a stuck serial"""
+        assert sender is not None
+        self.state_manager.serial_error()
+
+    def unstuck_serial(self, sender):
+        """Passes on the signal about the serial getting unstuck"""
+        assert sender is not None
+        self.state_manager.serial_error_resolved()
 
     # --- Telemetry sending ---
 
