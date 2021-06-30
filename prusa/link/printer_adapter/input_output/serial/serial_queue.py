@@ -532,6 +532,10 @@ class MonitoredSerialQueue(SerialQueue):
                  rx_size=128):
         super().__init__(serial, serial_reader, cfg, rx_size)
 
+        self.stuck_counter = 0
+        self.stuck_signal = Signal()
+        self.unstuck_signal = Signal()
+
         self.serial_reader.add_handler(
             BUSY_REGEX, lambda sender, match: self._renew_timeout())
         self.serial_reader.add_handler(
@@ -577,8 +581,12 @@ class MonitoredSerialQueue(SerialQueue):
             log.info("Timed out waiting for confirmation of %s after %ssec.",
                      self.current_instruction, SERIAL_QUEUE_TIMEOUT)
             log.debug("Assuming the printer yeeted our RX buffer")
+            self.stuck_counter += 1
+            if self.stuck_counter > 2:
+                self.stuck_signal.send(self)
             InterestingLogRotator.trigger("a stuck instruction")
             self._rx_got_yeeted()
+            self._renew_timeout(unstuck=False)
 
     def stop(self):
         """Stops the monitoring thread"""
@@ -586,16 +594,15 @@ class MonitoredSerialQueue(SerialQueue):
         self.is_planner_fed.save()
         self.monitoring_thread.join()
 
-    def _send(self):
-        """Adds a timeout renewal onto an instruction send"""
-        self._renew_timeout()
-        super()._send()
-
     def _confirmed(self, force=False):
         """Adds a timeout renewal onto an instruction confirmation"""
         self._renew_timeout()
         super()._confirmed(force=force)
 
-    def _renew_timeout(self):
+    def _renew_timeout(self, unstuck=True):
         """Renews the instruction confirmation """
         self.last_event_on = time()
+        if self.stuck_counter > 1 and unstuck:
+            self.unstuck_signal.send(self)
+        if unstuck:
+            self.stuck_counter = 0
