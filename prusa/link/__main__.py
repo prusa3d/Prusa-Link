@@ -1,6 +1,5 @@
 """main() command line function."""
 import logging
-import subprocess
 import threading
 import sys
 from argparse import ArgumentParser, ArgumentTypeError
@@ -33,7 +32,7 @@ log = logging.getLogger(__name__)
 CONFIG_FILE = '/etc/Prusa-Link/prusa-link.ini'
 
 
-def excepthook(exception_arguments, args):
+def excepthook(exception_arguments, args, argv):
     """If running as a daemon, restarts the app on unhandled exceptions"""
     InterestingLogRotator.trigger("exception in a thread")
     log.error(exception_arguments.exc_value)
@@ -44,7 +43,7 @@ def excepthook(exception_arguments, args):
                   "because we're running in the foreground mode")
     else:
         log.warning("Caught unhandled exception, restarting Prusa Link")
-        subprocess.Popen(["prusa-link", "restart"], stdin=sys.stdin)
+        Daemon.restart(argv)
     # excepthook has the global exception set, besides even if we failed
     # here, it will literally affect nothing
     # pylint: disable=misplaced-bare-raise
@@ -159,6 +158,7 @@ def main():
                         action="store_true",
                         help="Use cProfile for profiling application.")
 
+    argv = list(arg for arg in sys.argv[1:] if arg not in ('start', 'restart'))
     args = parser.parse_args()
 
     profile = None
@@ -168,7 +168,7 @@ def main():
         Thread.enable_profiling()
 
     # Restart on thread exceptions
-    threading.excepthook = lambda exc_args: excepthook(exc_args, args)
+    threading.excepthook = lambda exc_args: excepthook(exc_args, args, argv)
 
     try:
         config = Config(args)
@@ -204,7 +204,7 @@ def main():
             parser.error("Unknown command %s")
             return 1
 
-        daemon = Daemon(config)
+        daemon = Daemon(config, argv)
         if args.foreground:
             log.info("Starting service on foreground.")
             return daemon.run(False)

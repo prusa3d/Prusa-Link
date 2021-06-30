@@ -1,5 +1,9 @@
 """Daemon class implementation."""
+from subprocess import Popen
+from typing import List
+
 import logging
+import sys
 
 import ctypes
 import prctl  # type: ignore
@@ -37,11 +41,12 @@ class Daemon:
     instance = None
 
     # pylint: disable=too-few-public-methods
-    def __init__(self, config):
+    def __init__(self, config, argv: List):
         if Daemon.instance:
             raise RuntimeError("Daemon can be only one.")
 
         self.cfg = config
+        self.argv = argv
         self.settings = None
 
         self.http = None
@@ -84,6 +89,16 @@ class Daemon:
             adapter_logger.exception("Unknown Exception")
             self.http.raise_exception(KeyboardInterrupt)
             return 1
+
+    @staticmethod
+    def restart(argv: List):
+        """Restart prusa link by command line tool."""
+        with Popen(['prusa-link', 'restart'] + argv,
+                   start_new_session=True,
+                   stdin=sys.stdin,
+                   stdout=sys.stdout,
+                   stderr=sys.stderr):
+            pass
 
     def sigterm(self, signum, frame):
         """Raise KeyboardInterrupt exceptions in threads."""
