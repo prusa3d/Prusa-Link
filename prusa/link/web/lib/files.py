@@ -68,6 +68,21 @@ def gcode_analysis(meta):
     }
 
 
+def gcode_analysis_sd(meta):
+    """Make gcodeAnalysis structure from SD metadata."""
+    estimated = estimated_to_seconds(
+        meta.get('estimated printing time (normal mode)', ''))
+
+    return {
+        'estimatedPrintTime': estimated,
+        'material': meta.get('filament_type'),
+        'layerHeight': meta.get('layer_height')
+        # filament struct
+        # dimensions
+        # printingArea
+    }
+
+
 def file_to_api(node, origin='local', path='/', sort_by='folder,date'):
     """Convert Prusa SDK Files tree for API.
 
