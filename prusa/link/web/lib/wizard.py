@@ -115,7 +115,8 @@ class Wizard:
         url = Printer.connect_url(self.connect_hostname,
                                   bool(self.connect_tls), self.connect_port)
         try:
-            urlopen(f'{url}/info')
+            with urlopen(f'{url}/info'):
+                pass
         except Exception:  # pylint: disable=broad-except
             errors['connection'] = True
         self.errors['connect'] = errors
