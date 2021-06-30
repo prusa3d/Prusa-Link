@@ -10,6 +10,12 @@
       - File browser is available when printer printes
       - Files are sort by printers API
       - Printed file widget rework
+      - Fixed progress bar behaviour when printing is finished
+      - Fixed error handling for periodic requests
+      - Page heading is sticky now
+      - Telemetry sidebar is sticky now
+      - Added frontend version to the Settings page
+      - Fixed 'undefined' error pop up heading in some cases
     * React to thermal runaway by going into the error state
     * Use daemon type WSGI threads
     * Removed temporary gcode copy for printing
