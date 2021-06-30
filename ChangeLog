@@ -41,6 +41,7 @@
     * Updated metadata for selected file
     * Require two "Not SD printing" to work around a SD printing bug
     * Added username and password change functionality to api/settings POST, fixed ChangeLog
+    * Fixed SD Card metadata read
 
 0.4.0 (2021-04-13)
     * getting IP refactoring
