@@ -265,7 +265,7 @@ def api_resources(req, target, path):
         meta = get_metadata(os_path)
         result['refs'] = local_refs(path, meta.thumbnails)
         result['size'] = getsize(os_path)
-        result['date'] = getctime(os_path)
+        result['date'] = int(getctime(os_path))
 
     else:  # sdcard
         meta = FDMMetaData(path)
