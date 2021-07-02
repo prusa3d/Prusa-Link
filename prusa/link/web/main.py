@@ -251,11 +251,12 @@ def api_job(req):
 
         if file_['origin'] == 'local':
             meta = get_metadata(get_os_path(job.selected_file_path))
-            estimated_from_gcode = gcode_analysis(meta)['estimatedPrintTime']
+            analysis = gcode_analysis(meta)
         else:
             meta = printer.from_path(job.selected_file_path)
-            estimated_from_gcode = gcode_analysis_sd(meta).get(
-                'estimatedPrintTime')
+            analysis = gcode_analysis_sd(meta)
+
+        estimated_from_gcode = analysis.get('estimatedPrintTime')
 
         if job.selected_file_m_time:
             timestamp = int(datetime(*job.selected_file_m_time).timestamp())
