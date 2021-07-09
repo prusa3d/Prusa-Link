@@ -1,4 +1,5 @@
 """/api/settings endpoint handlers"""
+from secrets import token_urlsafe
 from poorwsgi import state
 from poorwsgi.response import JSONResponse
 from poorwsgi.digest import check_digest
@@ -91,3 +92,16 @@ def api_settings_set(req):
         status = state.HTTP_BAD_REQUEST
 
     return JSONResponse(status_code=status, **errors)
+
+
+@app.route('/api/settings/apikey')
+@check_api_digest
+def regenerate_api_key(req):
+    """Regenerate api key and save it to settings and config file"""
+    # pylint: disable=unused-argument
+    api_key = token_urlsafe(10)
+    app.daemon.settings.service_local.api_key = api_key
+    app.daemon.settings.update_sections()
+    save_settings()
+
+    return JSONResponse(status_code=state.HTTP_OK)
