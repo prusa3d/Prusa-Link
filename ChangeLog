@@ -49,6 +49,7 @@
     * Added username and password change functionality to api/settings POST, fixed ChangeLog
     * Fixed SD Card metadata read
     * Go into the ERROR state when the printer stops responding for aprox. one minute
+    * Added endpoint for regenerate api-key
 
 0.4.0 (2021-04-13)
     * getting IP refactoring
