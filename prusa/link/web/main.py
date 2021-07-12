@@ -99,7 +99,7 @@ def api_logs(req):
     logs_list = sorted(file for file in listdir(LOGS_PATH)
                        if file.startswith(LOGS_FILES))
 
-    return JSONResponse(logs=logs_list)
+    return JSONResponse(files=logs_list)
 
 
 @app.route('/api/logs/<filename>')
