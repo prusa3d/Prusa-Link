@@ -96,8 +96,11 @@ def websocket(req):
 def api_logs(req):
     """Returns list of log files in var/log folder"""
     # pylint: disable=unused-argument
-    logs_list = sorted(file for file in listdir(LOGS_PATH)
-                       if file.startswith(LOGS_FILES))
+    logs_list = []
+
+    for file in listdir(LOGS_PATH):
+        if file.startswith(LOGS_FILES):
+            logs_list.append({"name": file})
 
     return JSONResponse(files=logs_list)
 
