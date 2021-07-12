@@ -13,7 +13,6 @@ from .lib.view import generate_page
 
 from .. import errors
 from ..printer_adapter.input_output.serial.helpers import enqueue_instruction
-from ..printer_adapter.sn_reader import SNReader
 
 
 def check_printer(fun):
@@ -144,7 +143,6 @@ def wizard_serial_set(req):
     """Set given S/N to printer"""
     wizard = app.wizard
     serial_queue = app.daemon.prusa_link.serial_queue
-    sn_reader = SNReader(serial_queue)
 
     form = FieldStorage(req,
                         keep_blank_values=app.keep_blank_values,
@@ -171,8 +169,10 @@ def wizard_serial_set(req):
     enqueue_instruction(serial_queue, gcode_last, True)
 
     # wait up to five second for S/N to be set
+    sn_reader = app.daemon.prusa_link.sn_reader
+    sn_reader.try_getting_sn()
     for i in range(50):  # pylint: disable=unused-variable
-        if sn_reader.read_sn():
+        if not sn_reader.interested_in_sn:  # sn was read
             redirect('/wizard/auth')
         time.sleep(.1)
     app.wizard.errors['serial']['not_obtained'] = True
