@@ -16,6 +16,9 @@
       - Telemetry sidebar is sticky now
       - Added frontend version to the Settings page
       - Fixed 'undefined' error pop up heading in some cases
+      - Log viewer
+      - Login and password can be changed in settings
+      - Printer name and location can be changed in settings
     * React to thermal runaway by going into the error state
     * Use daemon type WSGI threads
     * Removed temporary gcode copy for printing
