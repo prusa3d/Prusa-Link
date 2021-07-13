@@ -76,7 +76,7 @@ class Wizard:
     def check_auth(self, password, repassword):
         """Check if auth values are valid."""
         errors = {}
-        if len(self.username) < 7:
+        if len(self.username) < 2 or ':' in self.username:
             errors['username'] = True
         if len(password) < 7:  # TODO: check password quality
             errors['password'] = True
