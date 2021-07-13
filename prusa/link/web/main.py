@@ -101,6 +101,7 @@ def api_logs(req):
     for file in listdir(LOGS_PATH):
         if file.startswith(LOGS_FILES):
             logs_list.append({"name": file})
+    logs_list = sorted(logs_list, key=lambda key: key['name'])
 
     return JSONResponse(files=logs_list)
 
