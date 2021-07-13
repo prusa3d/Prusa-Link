@@ -14,6 +14,13 @@ log = logging.getLogger(__name__)
 
 REALM = 'Administrator'
 
+# --- Errors ---
+USERNAME = "Username is shorter than 2 characters or in invalid format"
+PASSWORD = "New password is shorter than 7 characters or in invalid format"
+REPASSWORD = "New passwords are not same"
+OLD_DIGEST = "Password is not correct"
+SAME_DIGEST = "Nothing to change. All credentials are same as old ones"
+
 
 def check_digest(req):
     """Check HTTP Digest.
@@ -84,13 +91,13 @@ def set_digest(username, password):
 def valid_credentials(username, new_password, new_repassword, errors):
     """Check if auth credentials are valid."""
     _errors = {}
-    if len(username) < 7:
-        _errors['username'] = True
+    if len(username) < 2 or ':' in username:
+        _errors['username'] = USERNAME
     if new_password:
         if len(new_password) < 7:
-            _errors['password'] = True
+            _errors['password'] = PASSWORD
         if new_password != new_repassword:
-            _errors['repassword'] = True
+            _errors['repassword'] = REPASSWORD
     if _errors:
         errors['user'] = _errors
     return not _errors
@@ -107,9 +114,9 @@ def valid_digests(digest, old_digest, new_digest, errors):
     """
     _errors = {}
     if old_digest != digest:
-        _errors['old_digest'] = True
+        _errors['old_digest'] = OLD_DIGEST
     if old_digest == new_digest:
-        _errors['same_digest'] = True
+        _errors['same_digest'] = SAME_DIGEST
     if _errors:
         errors['user'] = _errors
     return not _errors
