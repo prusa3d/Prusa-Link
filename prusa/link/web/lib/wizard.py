@@ -8,6 +8,7 @@ from poorwsgi.digest import hexdigest
 from prusa.connect.printer import Printer
 
 from ..lib.auth import REALM
+from ...printer_adapter.input_output.serial.helpers import enqueue_instruction
 
 log = logging.getLogger(__name__)
 
@@ -18,6 +19,23 @@ def is_valid_sn(serial):
             and serial.startswith('CZPX') and serial[4:8].isdigit()
             and serial[8] == 'X' and serial[9:12].isdigit()
             and serial[12] == 'X' and serial[14:19].isdigit())
+
+
+def execute_sn_gcode(serial_number, serial_queue):
+    """Encode S/N to GCODE instruction and execute it"""
+    first = "X" + (
+        "".join([hex(letter)[2:]
+                 for letter in serial_number.encode("ascii")]) + "00")[:32]
+    last = "X" + (
+        "".join([hex(letter)[2:]
+                 for letter in serial_number.encode("ascii")]) + "00")[32:]
+    # Add correct prefix
+    gcode_first = f"D3 Ax0d15 C16 {first}"
+    gcode_last = f"D3 Ax0d25 C4 {last}"
+
+    # Send GCODE instructions to printer
+    enqueue_instruction(serial_queue, gcode_first, True)
+    enqueue_instruction(serial_queue, gcode_last, True)
 
 
 class Wizard:

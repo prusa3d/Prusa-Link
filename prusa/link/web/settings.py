@@ -1,4 +1,5 @@
 """/api/settings endpoint handlers"""
+from time import sleep
 from secrets import token_urlsafe
 from poorwsgi import state
 from poorwsgi.response import JSONResponse
@@ -7,6 +8,9 @@ from poorwsgi.digest import check_digest
 from .lib.core import app
 from .lib.auth import check_api_digest, set_digest, valid_credentials, \
     valid_digests, REALM
+from .lib.wizard import is_valid_sn, execute_sn_gcode
+
+from .. import errors
 
 PRINTER_MISSING_CREDENTIALS = "Both name and location credentials are required"
 PRINTER_INVALID_CREDENTIALS = "Name or location cointains invalid characters"
@@ -40,7 +44,6 @@ def api_settings(req):
     # pylint: disable=unused-argument
     service_local = app.daemon.settings.service_local
     printer_settings = app.daemon.settings.printer
-
     return JSONResponse(
         **{
             "api-key": service_local.api_key,
@@ -58,7 +61,7 @@ def api_settings_set(req):
     status = state.HTTP_OK
     printer = req.json.get('printer')
     user = req.json.get('user')
-    errors = {}
+    errors_ = {}
     kwargs = {}
 
     # printer settings
@@ -67,10 +70,10 @@ def api_settings_set(req):
         location = printer.get('location')
         for character in INVALID_CHARACTERS:
             if character in name or character in location:
-                errors['printer'] = \
+                errors_['printer'] = \
                     {'invalid_credentials': PRINTER_INVALID_CREDENTIALS}
         if not name or not location:
-            errors['printer'] = \
+            errors_['printer'] = \
                 {'missing_credentials': PRINTER_MISSING_CREDENTIALS}
 
     # user settings
@@ -82,16 +85,16 @@ def api_settings_set(req):
         new_password = user.get('new_password', password)
         new_repassword = user.get('new_repassword', password)
 
-        if valid_credentials(username, new_password, new_repassword, errors):
+        if valid_credentials(username, new_password, new_repassword, errors_):
             # old_digest is for check if inserted old_password is correct
             old_digest = set_digest(req.user, password)
             # Create new_digest for compare with old_digest
             new_digest = set_digest(username, new_password)
             user['new_digest'] = new_digest
             valid_digests(app.daemon.settings.service_local.digest, old_digest,
-                          new_digest, errors)
+                          new_digest, errors_)
 
-    if not errors:
+    if not errors_:
         if printer:
             set_settings_printer(printer['name'], printer['location'])
         if user:
@@ -99,7 +102,7 @@ def api_settings_set(req):
         app.daemon.settings.update_sections()
         save_settings()
     else:
-        kwargs = {'errors': errors}
+        kwargs = {'errors': errors_}
         status = state.HTTP_BAD_REQUEST
 
     return JSONResponse(status_code=status, **kwargs)
@@ -116,3 +119,33 @@ def regenerate_api_key(req):
     save_settings()
 
     return JSONResponse(status_code=state.HTTP_OK)
+
+
+@app.route('/api/settings/sn', method=state.METHOD_POST)
+@check_api_digest
+def api_sn(req):
+    """If printer is in SN error, user can insert new SN"""
+    # pylint: disable=unused-argument
+    serial_queue = app.daemon.prusa_link.serial_queue
+    status = state.HTTP_CONFLICT
+    message = "Printer already has a valid S/N"
+
+    if not errors.SN.ok:
+        serial = req.json.get('serial')
+        if is_valid_sn(serial):
+            execute_sn_gcode(serial, serial_queue)
+
+            # wait up to five second for S/N to be set
+            sn_reader = app.daemon.prusa_link.sn_reader
+            sn_reader.try_getting_sn()
+            for i in range(50):  # pylint: disable=unused-variable
+                if not sn_reader.interested_in_sn:  # sn was read
+                    return JSONResponse(status_code=state.HTTP_OK)
+                sleep(.1)
+
+            status = state.HTTP_INSUFFICIENT_STORAGE
+            message = "S/N was not successfully written to printer"
+        else:
+            status = state.HTTP_BAD_REQUEST
+            message = "Please provide a valid S/N"
+    return JSONResponse(status_code=status, message=message)

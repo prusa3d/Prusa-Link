@@ -53,6 +53,7 @@
     * Fixed SD Card metadata read
     * Go into the ERROR state when the printer stops responding for aprox. one minute
     * Added endpoint for regenerate api-key
+    * Added api/settings/sn endpoint for setup S/N of the printer
 
 0.4.0 (2021-04-13)
     * getting IP refactoring
