@@ -1,7 +1,6 @@
 """Wizard endpoints"""
-import time
+from time import sleep
 from functools import wraps
-
 from poorwsgi import state, redirect
 from poorwsgi.request import FieldStorage
 from prusa.connect.printer import Printer
@@ -10,9 +9,9 @@ from .lib import try_int
 from .lib.auth import REALM
 from .lib.core import app
 from .lib.view import generate_page
+from .lib.wizard import execute_sn_gcode
 
 from .. import errors
-from ..printer_adapter.input_output.serial.helpers import enqueue_instruction
 
 
 def check_printer(fun):
@@ -152,21 +151,7 @@ def wizard_serial_set(req):
     if not app.wizard.check_serial():
         redirect('/wizard/serial')
 
-    # Encode S/N to GCODE instruction
-    first = "X" + (
-        "".join([hex(letter)[2:]
-                 for letter in wizard.serial.encode("ascii")]) + "00")[:32]
-    last = "X" + (
-        "".join([hex(letter)[2:]
-                 for letter in wizard.serial.encode("ascii")]) + "00")[32:]
-
-    # Add correct prefix
-    gcode_first = f"D3 Ax0d15 C16 {first}"
-    gcode_last = f"D3 Ax0d25 C4 {last}"
-
-    # Send GCODE instructions to printer
-    enqueue_instruction(serial_queue, gcode_first, True)
-    enqueue_instruction(serial_queue, gcode_last, True)
+    execute_sn_gcode(wizard.serial, serial_queue)
 
     # wait up to five second for S/N to be set
     sn_reader = app.daemon.prusa_link.sn_reader
@@ -174,7 +159,8 @@ def wizard_serial_set(req):
     for i in range(50):  # pylint: disable=unused-variable
         if not sn_reader.interested_in_sn:  # sn was read
             redirect('/wizard/auth')
-        time.sleep(.1)
+        sleep(.1)
+
     app.wizard.errors['serial']['not_obtained'] = True
     redirect('/wizard/serial')
 
@@ -200,7 +186,7 @@ def wizard_finish_post(req):
     for i in range(10):  # pylint: disable=unused-variable
         if printer.sn:
             break
-        time.sleep(.1)
+        sleep(.1)
 
     # register printer
     if app.settings.service_connect.token:
