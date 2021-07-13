@@ -8,6 +8,10 @@ from .lib.core import app
 from .lib.auth import check_api_digest, set_digest, valid_credentials, \
     valid_digests, REALM
 
+PRINTER_MISSING_CREDENTIALS = "Both name and location credentials are required"
+PRINTER_INVALID_CREDENTIALS = "Name or location cointains invalid characters"
+INVALID_CHARACTERS = ['\'', '\"']
+
 
 def set_settings_printer(name, location):
     """Set new values to printer settings"""
@@ -51,18 +55,23 @@ def api_settings(req):
 @check_digest(REALM)
 def api_settings_set(req):
     """Sets new printer and/or user settings and writes it to ini file"""
-    local = app.daemon.settings.service_local
     status = state.HTTP_OK
     printer = req.json.get('printer')
     user = req.json.get('user')
     errors = {}
+    kwargs = {}
 
     # printer settings
     if printer:
         name = printer.get('name')
         location = printer.get('location')
+        for character in INVALID_CHARACTERS:
+            if character in name or character in location:
+                errors['printer'] = \
+                    {'invalid_credentials': PRINTER_INVALID_CREDENTIALS}
         if not name or not location:
-            errors['printer'] = {'missing_credentials': True}
+            errors['printer'] = \
+                {'missing_credentials': PRINTER_MISSING_CREDENTIALS}
 
     # user settings
     if user:
@@ -79,7 +88,8 @@ def api_settings_set(req):
             # Create new_digest for compare with old_digest
             new_digest = set_digest(username, new_password)
             user['new_digest'] = new_digest
-            valid_digests(local.digest, old_digest, new_digest, errors)
+            valid_digests(app.daemon.settings.service_local.digest, old_digest,
+                          new_digest, errors)
 
     if not errors:
         if printer:
@@ -89,9 +99,10 @@ def api_settings_set(req):
         app.daemon.settings.update_sections()
         save_settings()
     else:
+        kwargs = {'errors': errors}
         status = state.HTTP_BAD_REQUEST
 
-    return JSONResponse(status_code=status, **errors)
+    return JSONResponse(status_code=status, **kwargs)
 
 
 @app.route('/api/settings/apikey')
