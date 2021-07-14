@@ -1,7 +1,7 @@
 """Wizard endpoints"""
 from time import sleep
 from functools import wraps
-from poorwsgi import state, redirect
+from poorwsgi import state, redirect, abort
 from poorwsgi.request import FieldStorage
 from prusa.connect.printer import Printer
 
@@ -203,11 +203,11 @@ def wizard_finish_post(req):
         redirect(f'{url}/add-printer/connect/{type_}/{code}/{name}/{location}')
 
 
-# @app.before_request()
+@app.before_request()
 def check_wizard_access(req):
     """Check if wizard can be shown."""
-    if req.path.startwith('/wizard') and app.auth_map:
-        redirect('/')  # auth map is configured, wizard is denied
+    if app.auth_map and req.path.startswith('/wizard'):
+        abort(410)  # auth map is configured, wizard is denied
 
-    if not req.path.startwith('/wizard') and not app.auth_map:
+    if not app.auth_map and not req.path == '/':
         redirect('/wizard')

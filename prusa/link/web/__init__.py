@@ -42,7 +42,8 @@ def init(daemon):
     else:
         log.info("No Api-Key was set.")
 
-    app.wizard = Wizard(app)
+    if not app.auth_map and not service_local.api_key:
+        app.wizard = Wizard(app)
 
     if app.cfg.http.link_info:
         log.warning('Page /link-info is enabled!')

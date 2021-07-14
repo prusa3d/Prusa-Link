@@ -48,6 +48,13 @@ def not_found(req):
                          status_code=404)
 
 
+@app.http_state(410)
+def gone(req):
+    """Error handler for 410 Gone."""
+    return make_response(generate_page(req, "error410.html", error=exc_info()),
+                         status_code=410)
+
+
 @app.http_state(503)
 def service_unavailable(req):
     """Error handler for 503 Service Unavailable."""
