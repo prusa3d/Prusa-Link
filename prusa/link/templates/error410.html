@@ -1,0 +1,21 @@
+{# vim:set softtabstop=2: -#}
+{% set title = '410 Gone' -%}
+{#% set refresh = 15 %#}
+{% include "_header.html" %}
+
+    <div class="container">
+      <div class="jumbotron http-error">
+        <h1>{{ title }}</h1>
+        <p>
+          Target resource <code>{{ this_uri }}</code> is no longer available
+          on this server.
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="footer mt-auto py-3">
+      <div class="container">
+
+{% include "_footer.html" %}
