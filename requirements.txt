@@ -5,7 +5,7 @@ extendparser
 importlib_resources
 jinja2-template-info>=0.2.2
 lockfile
-PoorWSGI>=2.3.2
+PoorWSGI>=2.4.0
 pydantic
 pyserial
 python-daemon
