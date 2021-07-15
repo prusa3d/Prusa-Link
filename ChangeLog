@@ -18,7 +18,11 @@
       - Fixed 'undefined' error pop up heading in some cases
       - Log viewer
       - Login and password can be changed in settings
+      - All not available project properties are hidden
+      - Toaster messages are now sticky to window bottom
+      - Fixed printing time estimations missmatching
       - Printer name and location can be changed in settings
+      - Files with size above 100MB won't be loaded into textarea
     * React to thermal runaway by going into the error state
     * Use daemon type WSGI threads
     * Removed temporary gcode copy for printing
