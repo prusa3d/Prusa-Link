@@ -86,3 +86,12 @@ GZ_SUFFIX = ".gz"
 LOGS_PATH = "/var/log"
 LOGS_FILES = ("auth.log", "daemon.log", "kern.log", "messages", "syslog",
               "user.log")
+
+# --- Hardware limits for commands ---
+
+# Speed - %
+SPEED = {'MIN': 10, 'MAX': 999}
+# Feedrate - mm/min
+FEEDRATE = {'MIN': 0, 'MAX': 2700}
+
+COORDINATES = {'MIN': 0, 'MAX_X': 250, 'MAX_Y': 210, 'MAX_Z': 210}

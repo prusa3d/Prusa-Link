@@ -55,6 +55,7 @@
     * Added endpoint for regenerate api-key
     * Added api/settings/sn endpoint for setup S/N of the printer
     * Wizard is locked after successful configuration
+    * Added endpoint for control of printhead movement
 
 0.4.0 (2021-04-13)
     * getting IP refactoring
