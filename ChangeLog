@@ -2,7 +2,7 @@
 
 0.6.0.dev0
 
-0.5.0 (2021-07-15)
+0.5.1 (2021-07-16)
     * Implementation of print after upload endpoint
     * Minimal suported firmware is 3.10.0
     * Sort files directory first, newest first
