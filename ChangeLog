@@ -1,6 +1,6 @@
 # ChangeLog
 
-0.5.0
+0.5.1
     * Implementation of print after upload endpoint
     * Minimal suported firmware is 3.10.0
     * Sort files directory first, newest first
