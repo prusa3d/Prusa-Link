@@ -47,7 +47,7 @@ def api_settings(req):
     return JSONResponse(
         **{
             "api-key": service_local.api_key,
-            "link": {
+            "printer": {
                 "name": printer_settings.name,
                 "location": printer_settings.location
             }
