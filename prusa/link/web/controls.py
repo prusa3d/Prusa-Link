@@ -4,9 +4,11 @@ from poorwsgi.response import JSONResponse
 from prusa.connect.printer.const import State
 
 from .lib.core import app
+from .lib.auth import check_api_digest
 
 from ..printer_adapter.input_output.serial.helpers import enqueue_instruction
-from ..printer_adapter.const import SPEED, COORDINATES, FEEDRATE
+from ..printer_adapter.const import SPEED, FEEDRATE, MAX_FEEDRATE_E, FLOWRATE,\
+    COORDINATES, MIN_EXTRUSION_TEMP
 
 
 def jog(req, serial_queue):
@@ -14,6 +16,11 @@ def jog(req, serial_queue):
     # pylint: disable=too-many-branches
     absolute = req.json.get('absolute')
     feedrate = req.json.get('feedrate')
+
+    # Compatibility with OctoPrint, OP speed == Prusa feedrate in mm/min
+    if not feedrate:
+        feedrate = req.json.get('speed')
+
     axes = []
 
     if not feedrate or \
@@ -79,11 +86,53 @@ def set_speed(req, serial_queue):
         factor = SPEED['MIN']
     elif factor > SPEED['MAX']:
         factor = SPEED['MAX']
+
     gcode = f'M220 S{factor}'
     enqueue_instruction(serial_queue, gcode)
 
 
+def set_target_temperature(req, serial_queue):
+    """Target temperature set command"""
+    targets = req.json.get('targets')
+
+    # Compability with OctoPrint, which uses more tools, here only tool0
+    tool = targets['tool0']
+
+    gcode = f'M104 S{tool}'
+    enqueue_instruction(serial_queue, gcode)
+
+
+def extrude(req, serial_queue):
+    """Extrude given amount of filament in mm, negative value will retract"""
+    amount = req.json.get('amount')
+    feedrate = req.json.get('feedrate')
+
+    # Compatibility with OctoPrint, OP speed == Prusa feedrate in mm/min
+    if not feedrate:
+        # If feedrate is not defined, use maximum value for E axis
+        feedrate = req.json.get('speed', MAX_FEEDRATE_E)
+
+    # M83 - relative movement for axis E
+    enqueue_instruction(serial_queue, 'M83')
+
+    gcode = f'G1 F{feedrate} E{amount}'
+    enqueue_instruction(serial_queue, gcode)
+
+
+def set_flowrate(req, serial_queue):
+    """Set flow rate factor to apply to extrusion of the tool"""
+    factor = req.json.get('factor')
+    if factor < FLOWRATE['MIN']:
+        factor = FLOWRATE['MIN']
+    elif factor > FLOWRATE['MAX']:
+        factor = FLOWRATE['MAX']
+
+    gcode = f'M221 S{factor}'
+    enqueue_instruction(serial_queue, gcode)
+
+
 @app.route('/api/printer/printhead', method=state.METHOD_POST)
+@check_api_digest
 def api_printhead(req):
     """Control the printhead movement in XYZ axes"""
     serial_queue = app.daemon.prusa_link.serial_queue
@@ -107,8 +156,33 @@ def api_printhead(req):
     elif command == 'speed':
         set_speed(req, serial_queue)
 
-    # Compatibility with OctoPrint, feedrate == speed in %
+    # Compatibility with OctoPrint, OP feedrate == Prusa speed in %
     elif command == 'feedrate':
         set_speed(req, serial_queue)
+
+    return JSONResponse(status_code=status)
+
+
+@app.route('/api/printer/tool', method=state.METHOD_POST)
+@check_api_digest
+def api_tool(req):
+    """Control the extruder, including E axis"""
+    serial_queue = app.daemon.prusa_link.serial_queue
+    tel = app.daemon.prusa_link.model.last_telemetry
+    command = req.json.get('command')
+    status = state.HTTP_NO_CONTENT
+
+    if command == 'target':
+        set_target_temperature(req, serial_queue)
+
+    elif command == 'extrude':
+        if tel.state is not State.PRINTING and \
+                tel.temp_nozzle >= MIN_EXTRUSION_TEMP:
+            extrude(req, serial_queue)
+        else:
+            status = state.HTTP_CONFLICT
+
+    elif command == 'flowrate':
+        set_flowrate(req, serial_queue)
 
     return JSONResponse(status_code=status)

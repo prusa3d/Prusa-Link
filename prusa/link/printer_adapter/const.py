@@ -94,4 +94,11 @@ SPEED = {'MIN': 10, 'MAX': 999}
 # Feedrate - mm/min
 FEEDRATE = {'MIN': 0, 'MAX': 2700}
 
+MAX_FEEDRATE_E = 100
+
+# Flow - %
+FLOWRATE = {'MIN': 75, 'MAX': 125}
+
+MIN_EXTRUSION_TEMP = 160
+
 COORDINATES = {'MIN': 0, 'MAX_X': 250, 'MAX_Y': 210, 'MAX_Z': 210}
