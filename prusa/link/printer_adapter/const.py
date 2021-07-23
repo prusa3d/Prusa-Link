@@ -7,7 +7,7 @@ from typing import List
 from prusa.connect.printer.const import State
 
 BASE_STATES = {State.READY, State.BUSY}
-PRINTING_STATES = {State.PRINTING, State.PAUSED, State.FINISHED, State.STOPPED}
+PRINTING_STATES = {State.PRINTING, State.PAUSED}
 
 JOB_ONGOING_STATES = {State.PRINTING, State.PAUSED}
 JOB_ENDING_STATES = BASE_STATES.union(

@@ -17,7 +17,7 @@ from prusa.connect.printer.const import State, Source, Event as EventConst
 from .command import Command
 from .informers.state_manager import StateChange
 from .const import STATE_CHANGE_TIMEOUT, QUIT_INTERVAL, RESET_PIN, \
-    PRINTER_BOOT_WAIT, SERIAL_QUEUE_TIMEOUT
+    PRINTER_BOOT_WAIT, SERIAL_QUEUE_TIMEOUT, PRINTING_STATES
 from .input_output.serial.helpers import enqueue_list_from_str
 from .structures.model_classes import JobState
 from .structures.regular_expressions import REJECTION_REGEX, \
@@ -169,7 +169,7 @@ class StartPrint(Command):
 
         # No new print jobs while already printing
         # or when there is an Error/Attention state
-        if self.model.state_manager.printing_state is not None:
+        if self.model.state_manager.printing_state in PRINTING_STATES:
             self.failed("Already printing")
             return
 

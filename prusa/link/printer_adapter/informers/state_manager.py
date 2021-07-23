@@ -9,7 +9,7 @@ from blinker import Signal  # type: ignore
 from prusa.connect.printer import Printer
 
 from prusa.connect.printer.const import State, Source
-from ..const import STATE_HISTORY_SIZE, ERROR_REASON_TIMEOUT
+from ..const import STATE_HISTORY_SIZE, ERROR_REASON_TIMEOUT, PRINTING_STATES
 
 from ..input_output.serial.serial_reader import \
     SerialReader
@@ -316,7 +316,7 @@ class StateManager(metaclass=MCSingleton):
             reason = None
             checked = False
 
-            if self.data.printing_state is not None:
+            if self.data.printing_state not in PRINTING_STATES:
                 log.debug("We are printing - %s", self.data.printing_state)
 
             if self.data.override_state is not None:
@@ -497,6 +497,10 @@ class StateManager(metaclass=MCSingleton):
         if self.data.base_state == State.READY:
             self.data.base_state = State.BUSY
 
+        # FIXME: Hack, uech
+        if self.data.printing_state in {State.STOPPED, State.FINISHED}:
+            self.data.printing_state = None
+
     # Cannot distinguish pauses from the user and the gcode
     @state_influencer(StateChange(to_states={State.PAUSED: Source.USER}))
     def paused(self):
@@ -542,10 +546,6 @@ class StateManager(metaclass=MCSingleton):
         if self.data.base_state == State.BUSY:
             self.data.base_state = State.READY
 
-        if not self.settings.printer.prompt_clean_sheet:
-            if self.data.printing_state in {State.STOPPED, State.FINISHED}:
-                self.data.printing_state = None
-
         if (self.data.override_state is not None
                 and self.data.override_state != State.ERROR):
             # If we have override state, but it's not an error, get rid of em
@@ -560,7 +560,10 @@ class StateManager(metaclass=MCSingleton):
                     },
                     checked=True))
     def printer_checked(self):
-        """Printer has been checked after being stopped or after """
+        """
+        Printer has been checked after being stopped
+        or after finishing the print
+        """
         if self.data.printing_state in {State.FINISHED, State.STOPPED}:
             self.data.printing_state = None
 
@@ -580,14 +583,20 @@ class StateManager(metaclass=MCSingleton):
                             reason=f"{self.fan_error_name} fan error"))
             self.fan_error_name = None
 
-        if self.data.printing_state not in {State.FINISHED, State.STOPPED}:
-            log.debug("Overriding the state with ATTENTION")
-            log.warning("State was %s", self.get_state())
-            self.data.override_state = State.ATTENTION
+        # FIXME: Part of a hack, uech
+        # if self.data.printing_state not in {State.FINISHED, State.STOPPED}:
+        log.debug("Overriding the state with ATTENTION")
+        log.warning("State was %s", self.get_state())
+        self.data.override_state = State.ATTENTION
 
     @state_influencer(StateChange(to_states={State.ERROR: Source.WUI}))
     def error(self):
         """Sets the override state to ERROR"""
+
+        # FIXME: Hack, uech
+        if self.data.printing_state in {State.STOPPED, State.FINISHED}:
+            self.data.printing_state = None
+
         log.debug("Overriding the state with ERROR")
         InterestingLogRotator.trigger("the printer going into an error state.")
         self.data.override_state = State.ERROR
