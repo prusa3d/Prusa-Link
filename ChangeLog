@@ -1,5 +1,8 @@
 # ChangeLog
 
+0.5.2
+    * Fix wizard LCD message
+
 0.5.1
     * Implementation of print after upload endpoint
     * Minimal suported firmware is 3.10.0
