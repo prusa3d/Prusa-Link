@@ -80,7 +80,7 @@ class LCDPrinter(metaclass=MCSingleton):
             if all_ok:
                 msg = "OK: " + self.get_ip()
             # If wizard is not completed, show GO: <IP> msg on LCD
-            elif self.get_ip() is None and errors.TAILS[1].ok is None:
+            elif self.get_ip() and errors.TAILS[1].ok is None:
                 msg = "GO: " + self.get_ip()
             else:
                 for chain in errors.HEADS:
