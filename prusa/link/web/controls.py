@@ -186,3 +186,18 @@ def api_tool(req):
         set_flowrate(req, serial_queue)
 
     return JSONResponse(status_code=status)
+
+
+@app.route('/api/printer/bed', method=state.METHOD_POST)
+@check_api_digest
+def api_bed(req):
+    """Control the heatbed temperature"""
+    serial_queue = app.daemon.prusa_link.serial_queue
+    command = req.json.get('command')
+    target = req.json.get('target')
+
+    if command == 'target':
+        gcode = f'M140 S{target}'
+        enqueue_instruction(serial_queue, gcode)
+
+    return JSONResponse(status_code=state.HTTP_NO_CONTENT)

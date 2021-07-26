@@ -2,6 +2,7 @@
 
 0.6.0.dev0
     * Added endpoint for control of extruder
+    * Added endpoint for heatbed temperature control
 
 0.5.1 (2021-07-16)
     * Implementation of print after upload endpoint
