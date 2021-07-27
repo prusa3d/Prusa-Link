@@ -3,6 +3,10 @@
 0.6.0.dev0
     * Added endpoint for control of extruder
     * Added endpoint for heatbed temperature control
+    * Static web update
+      - Add debug outputs to investigate project picture collision
+      - Removed unnecessary colon after hostname in Dashboard
+      - Switched from data.link to data.printer for settings end point
 
 0.5.1 (2021-07-16)
     * Implementation of print after upload endpoint
