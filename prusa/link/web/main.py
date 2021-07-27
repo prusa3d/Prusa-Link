@@ -1,6 +1,6 @@
 """Main pages and core API"""
 from socket import gethostname
-from os.path import basename, join
+from os.path import basename, join, getsize, getmtime
 from os import listdir
 from datetime import datetime
 from subprocess import Popen
@@ -100,7 +100,12 @@ def api_logs(req):
 
     for file in listdir(LOGS_PATH):
         if file.startswith(LOGS_FILES):
-            logs_list.append({"name": file})
+            path = join(LOGS_PATH, file)
+            logs_list.append({
+                'name': file,
+                'size': getsize(path),
+                'date': int(getmtime(path))
+            })
     logs_list = sorted(logs_list, key=lambda key: key['name'])
 
     return JSONResponse(files=logs_list)
