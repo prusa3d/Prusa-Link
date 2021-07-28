@@ -152,7 +152,7 @@ def api_upload(req, target):
 
     if app.posting_data:
         # only one file can be posted at the same time
-        raise HTTPException(state.HTTP_SERVICE_UNAVAILABLE)
+        raise ApiException(req, errors.PE_UPLOAD_MULTI, state.HTTP_CONFLICT)
 
     # TODO check req.content_length and freespace before accepting uploading
     form = FieldStorage(req,

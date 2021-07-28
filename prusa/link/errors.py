@@ -129,6 +129,8 @@ PE_UPLOAD_UNSUPPORTED = PrusaError(
 PE_UPLOAD_CONFLICT = PrusaError(
     '024xx', 'CURRENTLY PRINTED',
     'Uploaded file is the same as currently printed')
+PE_UPLOAD_MULTI = PrusaError('024xx', 'ALREADY UPLOADING',
+                             'Only one file at time can be uploaded')
 PE_DOWNLOAD_CONFLICT = PrusaError(
     '024xx', 'CURRENTLY PRINTED',
     'Downloaded file is the same as currently printed')
