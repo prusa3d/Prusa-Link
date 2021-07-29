@@ -31,6 +31,7 @@ from .. import errors
 
 log = logging.getLogger(__name__)
 HEADER_DATETIME_FORMAT = "%a, %d %b %Y %X GMT"
+FORBIDDEN_CHARACTERS = ('\\', '?', '"', '%', '¯', '°', '#', 'ˇ')
 WAIT_TIMEOUT = 10  # in seconds
 
 
@@ -67,6 +68,10 @@ def gcode_callback(filename):
     form data.
     """
     if not filename:
+        raise HTTPException(state.HTTP_BAD_REQUEST)
+
+    # File name cannot contain any of forbidden characters e.g. '\'
+    if any(character in filename for character in FORBIDDEN_CHARACTERS):
         raise HTTPException(state.HTTP_BAD_REQUEST)
 
     if not filename.endswith(GCODE_EXTENSIONS) or filename.startswith('.'):
