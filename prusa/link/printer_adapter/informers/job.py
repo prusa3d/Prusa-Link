@@ -47,9 +47,6 @@ class Job(metaclass=MCSingleton):
         self.model: Model = model
         self.model.job = JobData(already_sent=False,
                                  job_start_cmd_id=None,
-                                 printing_file_path=None,
-                                 printing_file_m_time=None,
-                                 printing_file_size=None,
                                  path_incomplete=True,
                                  from_sd=None,
                                  inbuilt_reporting=None,
@@ -196,9 +193,9 @@ class Job(metaclass=MCSingleton):
             if not path_incomplete:
                 file_obj = self.printer.fs.get(self.data.selected_file_path)
                 if file_obj:
-                    if "m_time" in file_obj.attrs:
-                        self.data.selected_file_m_time = \
-                            file_obj.attrs["m_time"]
+                    if "m_timestamp" in file_obj.attrs:
+                        self.data.selected_file_m_timestamp = \
+                            file_obj.attrs["m_timestamp"]
                     if 'size' in file_obj.attrs:
                         self.data.selected_file_size = \
                             file_obj.attrs["size"]
@@ -219,8 +216,8 @@ class Job(metaclass=MCSingleton):
             data["start_cmd_id"] = self.data.job_start_cmd_id
         if self.data.selected_file_path is not None:
             data["file_path"] = self.data.selected_file_path
-        if self.data.selected_file_m_time is not None:
-            data["m_time"] = self.data.selected_file_m_time
+        if self.data.selected_file_m_timestamp is not None:
+            data["m_timestamp"] = self.data.selected_file_m_timestamp
         if self.data.selected_file_size is not None:
             data["size"] = self.data.selected_file_size
         if self.data.from_sd is not None:
