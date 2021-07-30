@@ -47,7 +47,7 @@ class JobData(BaseModel):
     already_sent: Optional[bool]
     job_start_cmd_id: Optional[int]
     selected_file_path: Optional[str]
-    selected_file_m_time: Optional[str]
+    selected_file_m_timestamp: Optional[int]
     selected_file_size: Optional[str]
     printing_file_byte: Optional[int]
     path_incomplete: Optional[bool]

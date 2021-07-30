@@ -1,6 +1,5 @@
 """Contains implementation of the class for keeping track of the sd status
 and its files"""
-import calendar
 import logging
 import re
 from pathlib import Path
@@ -25,7 +24,6 @@ from ...const import SD_INTERVAL, \
     SD_FILESCAN_INTERVAL, SD_MOUNT_NAME, SFN_TO_LFN_EXTENSIONS, \
     MAX_FILENAME_LENGTH, FLASH_AIR_INTERVAL
 from ...updatable import ThreadedUpdatable
-from ...util import fat_datetime_to_tuple
 from ....sdk_augmentation.file import SDFile
 
 log = logging.getLogger(__name__)
@@ -188,7 +186,7 @@ class SDCard(ThreadedUpdatable):
         long_extension = SFN_TO_LFN_EXTENSIONS[short_extension]
         raw_long_filename: str = groups["lfn"]
         str_size = groups["size"]
-        str_m_time = groups["m_time"]
+        str_m_timestamp = groups["m_timestamp"]
 
         if raw_long_filename is None:
             return
@@ -229,10 +227,8 @@ class SDCard(ThreadedUpdatable):
         if str_size is not None:
             additional_properties["size"] = int(str_size)
 
-        if str_m_time is not None:
-            m_time = fat_datetime_to_tuple(int(str_m_time, 16))
-            m_timestamp = calendar.timegm(m_time)
-            additional_properties["m_timestamp"] = m_timestamp
+        if str_m_timestamp is not None:
+            additional_properties["m_timestamp"] = int(str_m_timestamp)
 
         # Add the file to the tree
         try:

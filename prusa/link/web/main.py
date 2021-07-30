@@ -267,8 +267,8 @@ def api_job(req):
 
         estimated_from_gcode = analysis.get('estimatedPrintTime')
 
-        if job.selected_file_m_time:
-            timestamp = int(datetime(*job.selected_file_m_time).timestamp())
+        if job.selected_file_m_timestamp:
+            timestamp = int(datetime(*job.selected_file_m_timestamp).timestamp())
             file_['date'] = timestamp
     else:
         file_ = {
