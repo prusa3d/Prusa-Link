@@ -47,9 +47,6 @@ class Job(metaclass=MCSingleton):
         self.model: Model = model
         self.model.job = JobData(already_sent=False,
                                  job_start_cmd_id=None,
-                                 printing_file_path=None,
-                                 printing_file_m_time=None,
-                                 printing_file_size=None,
                                  path_incomplete=True,
                                  from_sd=None,
                                  inbuilt_reporting=None,

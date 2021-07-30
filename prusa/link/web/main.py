@@ -2,7 +2,6 @@
 from socket import gethostname
 from os.path import basename, join, getsize, getmtime
 from os import listdir
-from datetime import datetime
 from subprocess import Popen
 from sys import version
 
@@ -268,8 +267,7 @@ def api_job(req):
         estimated_from_gcode = analysis.get('estimatedPrintTime')
 
         if job.selected_file_m_timestamp:
-            timestamp = int(datetime(*job.selected_file_m_timestamp).timestamp())
-            file_['date'] = timestamp
+            file_['date'] = job.selected_file_m_timestamp
     else:
         file_ = {
             'name': None,
