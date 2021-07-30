@@ -8,6 +8,7 @@
       - Removed unnecessary colon after hostname in Dashboard
       - Switched from data.link to data.printer for settings end point
     * Added size and date attributes to api/logs GET endpoint
+    * Removed m_time file attribute
 
 0.5.1 (2021-07-16)
     * Implementation of print after upload endpoint
