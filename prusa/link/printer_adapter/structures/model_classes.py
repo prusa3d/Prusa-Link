@@ -4,13 +4,11 @@ Pydantic makes a great tool for cleanly serializing simple python objects,
 while enforcing their type
 """
 from enum import Enum
-from typing import Optional, List
+from typing import Optional
 
 from pydantic import BaseModel
 
 from prusa.connect.printer.const import State
-
-from ... import __version__
 
 
 class Telemetry(BaseModel):
@@ -55,42 +53,6 @@ class NetworkInfo(BaseModel):
     hostname: Optional[str] = None
     username: Optional[str] = None
     digest: Optional[str] = None
-
-
-class FileTree(BaseModel):
-    """The File Tree model"""
-
-    type: Optional[str] = None
-    name: Optional[str] = None
-    ro: Optional[bool] = None
-    size: Optional[int] = None
-    m_date: Optional[int] = None
-    m_time: Optional[int] = None
-    children: Optional[List["FileTree"]] = None
-
-
-FileTree.update_forward_refs()
-
-
-class PrinterInfo(BaseModel):
-    """The printer Info model"""
-
-    type: Optional[int] = None
-    version: Optional[int] = None
-    subversion: Optional[int] = None
-    firmware: Optional[str] = None
-    wui: Optional[str] = __version__
-    network_info: Optional[NetworkInfo] = None
-    sn: Optional[str] = None
-    uuid: Optional[str] = None
-    appendix: Optional[bool] = None
-    state: Optional[str] = None
-    files: Optional[FileTree] = None
-    nozzle_diameter: Optional[float] = None
-
-    def set_printer_model_info(self, data):
-        """Setter expanding a tuple into model fields"""
-        self.type, self.version, self.subversion = data
 
 
 class FileType(Enum):
