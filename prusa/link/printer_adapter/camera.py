@@ -15,6 +15,7 @@ class Camera:
 
     def capture(self, stream):
         """Captures a camera frame and saves it into stream."""
+        assert self.camera is not None
         self.camera.capture(stream, 'jpeg')
 
 
