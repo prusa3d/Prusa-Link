@@ -46,8 +46,8 @@ try:
             if "Pi" in model_file.read():
                 fill_requires("requirements-pi.txt")
 except Exception:  # pylint: disable=broad-except
-    print("This is not a Raspberry Pi -> wiringpi installation won't be "
-          "attempted!")
+    print("This is not a Raspberry Pi -> platform dependent packages"
+              "won't be installed!")
 
 
 def doc():
