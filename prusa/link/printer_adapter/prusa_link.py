@@ -5,7 +5,6 @@ import os
 from threading import Event, enumerate as enumerate_threads
 from time import time
 from typing import Dict, Any
-from socket import gethostname
 
 from prusa.connect.printer import Command as SDKCommand
 
@@ -21,10 +20,9 @@ from .informers.job import Job
 from .input_output.serial.helpers import enqueue_instruction, \
     wait_for_instruction
 from .interesting_logger import InterestingLogRotator
+from .mk3_info import MK3Info
 from .print_stats import PrintStats
-from .sn_reader import SNReader
 from .file_printer import FilePrinter
-from .info_sender import InfoSender
 from .informers.ip_updater import IPUpdater
 from .informers.state_manager import StateManager, StateChange
 from .informers.filesystem.storage_controller import StorageController
@@ -77,11 +75,6 @@ class PrusaLink:
                                                  self.serial_reader, self.cfg)
 
         self.printer = MyPrinter()
-        Thread(target=self.get_printer_type, name="type_getter").start()
-
-        self.sn_reader = SNReader(self.serial_queue)
-        self.sn_reader.updated_signal.connect(self.set_sn)
-        self.sn_reader.try_getting_sn()
 
         self.printer.register_handler = self.printer_registered
         self.printer.set_connect(settings)
@@ -117,13 +110,11 @@ class PrusaLink:
         self.print_stats = PrintStats(self.model)
         self.file_printer = FilePrinter(self.serial_queue, self.serial_reader,
                                         self.model, self.cfg, self.print_stats)
-        self.info_sender = InfoSender(self.serial_queue, self.serial_reader,
-                                      self.printer, self.model,
-                                      self.lcd_printer)
         self.storage = StorageController(cfg, self.serial_queue,
                                          self.serial_reader,
                                          self.state_manager, self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
+        self.mk3_info = MK3Info(self.serial_queue, self.printer, self.model)
         self.command_queue = CommandQueue()
 
         # Bind signals
@@ -177,12 +168,6 @@ class PrusaLink:
 
         # Update the bare minimum of things for initial info
         self.ip_updater.update()
-        self.network_info_update()
-
-        # Before starting anything, let's send initial printer info to connect
-        # --self.info_sender.initial_info()
-        # quick non-blocking replacement
-        Thread(target=self.info_sender.fill_missing_info, daemon=True).start()
 
         # Bind this after the initial info is sent so it doesn't get
         # sent twice
@@ -194,6 +179,7 @@ class PrusaLink:
 
         # Start individual informer threads after updating manually, so nothing
         # will race with itself
+        self.mk3_info.start()
         self.telemetry_gatherer.start()
         self.storage.start()
         self.ip_updater.start()
@@ -255,8 +241,8 @@ class PrusaLink:
         self.command_queue.stop()
         self.printer.stop_loop()
         self.printer.stop()
+        self.mk3_info.stop()
         self.telemetry_thread.join()
-        self.sn_reader.stop()
         self.storage.stop()
         self.lcd_printer.stop()
         self.telemetry_gatherer.stop()
@@ -276,7 +262,6 @@ class PrusaLink:
 
     def check_printer(self, message: str, callback):
         """Demand an encoder click from the poor user"""
-        log.warning("check printer")
         # Let's get rid of a possible comms desync, by asking for a specific
         # info instead of just OK
         get_nozzle_diameter(self.serial_queue, lambda: self.running)
@@ -493,7 +478,9 @@ class PrusaLink:
         self.state_manager.serial_error_resolved()
 
     def set_sn(self, sender, serial_number):
-        """Set serial number and fingerprint"""
+        """
+        Set serial number and fingerprint
+        """
         assert sender is not None
         # Only do it if the serial number is missing
         # Setting it for a second time raises an error for some reason
@@ -517,14 +504,7 @@ class PrusaLink:
         On every ip change from ip updater sends a new info
         """
         assert sender is not None
-        self.info_sender.try_sending_info()
-
-    def network_info_update(self):
-        """Provides informations about current user's network settings"""
-        network_info = self.ip_updater.data
-        network_info.hostname = gethostname()
-        network_info.username = self.settings.service_local['username']
-        network_info.digest = self.settings.service_local['digest']
+        self.mk3_info.invalidate("network_info")
 
     def dir_mount(self, sender, path):
         """Connects a dir being mounted to Prusa Connect events"""
@@ -567,8 +547,7 @@ class PrusaLink:
 
         # file printer stop print needs to happen before this
         self.state_manager.reset()
-        self.sn_reader.try_getting_sn()
-        self.info_sender.try_sending_info()
+        self.mk3_info.invalidate_printer_info()
         self.ip_updater.send_ip_to_printer()
 
     @property
@@ -614,6 +593,14 @@ class PrusaLink:
             InterestingLogRotator.trigger(
                 "by the printer entering the ERROR state.")
             self.file_printer.stop_print()
+
+        # The states should be completely re-done i'm told. So this janky
+        # stuff is what we're going to deal with for now
+        if to_state in {State.PRINTING, State.ATTENTION, State.ERROR}:
+            self.mk3_info.polling_not_ok()
+        if to_state not in {State.PRINTING, State.ATTENTION, State.ERROR}:
+            self.mk3_info.polling_ok()
+
         if self.settings.printer.prompt_clean_sheet:
             if to_state == State.FINISHED:
                 Thread(target=self.check_printer,
