@@ -11,6 +11,8 @@ def link_info(req):
     """Return link-info page."""
     prusa_link = app.daemon.prusa_link
     printer = prusa_link.printer if prusa_link else None
+    download = printer.download_mgr.current
+    upload = app.posting_data
     return generate_page(req,
                          "link_info.html",
                          daemon=app.daemon,
@@ -19,4 +21,6 @@ def link_info(req):
                          app=app,
                          version=__version__,
                          sdk_version=sdk_version,
-                         errors=errors.status())
+                         errors=errors.status(),
+                         download=download,
+                         upload=upload)
