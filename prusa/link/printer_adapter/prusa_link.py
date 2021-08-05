@@ -20,7 +20,7 @@ from .informers.job import Job
 from .input_output.serial.helpers import enqueue_instruction, \
     wait_for_instruction
 from .interesting_logger import InterestingLogRotator
-from .mk3_info import MK3Info
+from .mk3_info import MK3Item
 from .print_stats import PrintStats
 from .file_printer import FilePrinter
 from .informers.ip_updater import IPUpdater
@@ -114,7 +114,7 @@ class PrusaLink:
                                          self.serial_reader,
                                          self.state_manager, self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
-        self.mk3_info = MK3Info(self.serial_queue, self.printer, self.model)
+        self.mk3_info = MK3Item(self.serial_queue, self.printer, self.model)
         self.command_queue = CommandQueue()
 
         # Bind signals
