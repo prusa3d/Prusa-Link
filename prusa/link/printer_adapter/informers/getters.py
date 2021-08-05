@@ -5,6 +5,7 @@ import logging
 from distutils.version import StrictVersion
 
 from prusa.connect.printer.const import PrinterType
+from ..input_output.serial.instruction import MatchableInstruction
 
 from ... import errors
 from ..const import SUPPORTED_FIRMWARE
@@ -14,7 +15,7 @@ from ..input_output.serial.helpers import enqueue_matchable, \
     wait_for_instruction, enqueue_instruction
 from ..structures.model_classes import NetworkInfo
 from ..structures.regular_expressions import \
-    PRINTER_TYPE_REGEX, FW_REGEX, NOZZLE_REGEX
+    PRINTER_TYPE_REGEX, FW_REGEX, NOZZLE_REGEX, SN_REGEX
 
 log = logging.getLogger(__name__)
 
@@ -132,3 +133,17 @@ def get_network_info(model: Model):
         network_info.digest = ip_data.digest
 
     return network_info
+
+
+def get_serial_number(serial_queue: SerialQueue, should_wait=lambda: True):
+    """Read SN from serial line and if valid, return it"""
+
+    instruction = MatchableInstruction("PRUSA SN", capture_matching=SN_REGEX)
+    serial_queue.enqueue_one(instruction, to_front=True)
+    wait_for_instruction(instruction, should_wait)
+    match = instruction.match()
+    if match is None:
+        raise ValueError("Failed reading serial number")
+    result = match.group("sn")
+    log.debug("Got serial %s", result)
+    return result
