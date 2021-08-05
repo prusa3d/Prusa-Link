@@ -14,14 +14,14 @@ from .informers.getters import get_printer_type, \
 from .input_output.serial.serial_queue import \
     SerialQueue
 from .model import Model
-from .structures.info_updater import InfoUpdater, \
-    WatchedValue, WatchedGroup
+from .structures.info_updater import ItemUpdater, \
+    WatchedItem, WatchedGroup
 from .util import make_fingerprint
 
 log = logging.getLogger(__name__)
 
 
-class MK3Info(InfoUpdater):
+class MK3Item(ItemUpdater):
     """
     Sets up the tracked values for info_updater
     """
@@ -38,46 +38,46 @@ class MK3Info(InfoUpdater):
 
         self.initialized = False
 
-        network_info = WatchedValue(
+        network_info = WatchedItem(
             "network_info",
             gather_function=lambda: get_network_info(self.model),
             write_function=self._set_network_info)
-        self.tracked_items["network_info"] = network_info
+        self.add_watched_item(network_info)
 
-        printer_type = WatchedValue(
+        printer_type = WatchedItem(
             "printer_type",
             gather_function=lambda: get_printer_type(self.serial_queue, lambda:
                                                      self.running),
             write_function=self._set_printer_type,
             validation_function=self._validate_printer_type)
-        self.tracked_items["printer_type"] = printer_type
+        self.add_watched_item(printer_type)
 
-        firmware_version = WatchedValue(
+        firmware_version = WatchedItem(
             "firmware_version",
             gather_function=lambda: get_firmware_version(
                 self.serial_queue, lambda: self.running),
             write_function=self._set_firmware_version)
-        self.tracked_items["firmware_version"] = firmware_version
+        self.add_watched_item(firmware_version)
 
-        nozzle_diameter = WatchedValue(
+        nozzle_diameter = WatchedItem(
             "nozzle_diameter",
             gather_function=lambda: get_nozzle_diameter(
                 self.serial_queue, lambda: self.running),
             write_function=self._set_nozzle_diameter)
         nozzle_diameter.interval = 10
-        self.tracked_items["nozzle_diameter"] = nozzle_diameter
+        self.add_watched_item(nozzle_diameter)
 
-        serial_number = WatchedValue(
+        serial_number = WatchedItem(
             "serial_number",
             gather_function=self._get_serial_number,
             write_function=self._set_serial_number,
             validation_function=self._validate_serial_number)
         serial_number.timeout = 25
         serial_number.became_valid_signal.connect(
-            lambda item: self._set_sn_error(True))
+            lambda item: self._set_sn_error(True), weak=False)
         serial_number.val_err_timeout_signal.connect(
-            lambda item: self._set_sn_error(False))
-        self.tracked_items["serial_number"] = serial_number
+            lambda item: self._set_sn_error(False), weak=False)
+        self.add_watched_item(serial_number)
 
         self.printer_info = WatchedGroup([
             network_info, printer_type, firmware_version, nozzle_diameter,
@@ -85,24 +85,25 @@ class MK3Info(InfoUpdater):
         ])
 
         for item in self.printer_info:
-            item.value_changed_signal.connect(lambda sender: self._send_info())
+            item.value_changed_signal.connect(lambda sender: self._send_info(),
+                                              weak=False)
 
-        for item in self.tracked_items.values():
+        for item in self.watched_items.values():
             self.invalidate(item)
 
     def invalidate_printer_info(self):
         """Invalidates all of printer info related watched values"""
-        self.invalidate(self.printer_info)
+        self.invalidate_group(self.printer_info)
 
     def polling_not_ok(self):
         """Stops polling of some values"""
-        self.tracked_items["nozzle_diameter"].interval = None
+        self.watched_items["nozzle_diameter"].interval = None
 
         self.cancel_scheduled_invalidation("nozzle_diameter")
 
     def polling_ok(self):
         """Re-starts polling of some values"""
-        self.tracked_items["nozzle_diameter"].interval = 10
+        self.watched_items["nozzle_diameter"].interval = 10
 
         self.schedule_invalidation("nozzle_diameter")
 
@@ -140,34 +141,34 @@ class MK3Info(InfoUpdater):
         return True
 
     # -- Write --
-    def _set_network_info(self, item):
+    def _set_network_info(self, value):
         """Sets network info"""
-        self.printer.network_info = item.value
+        self.printer.network_info = value
 
-    def _set_printer_type(self, item):
+    def _set_printer_type(self, value):
         """
         Do not try and overwrite the printer type, that would
         raise an error
         """
         if self.printer.type is None:
-            self.printer.type = item.value
+            self.printer.type = value
 
-    def _set_firmware_version(self, item):
+    def _set_firmware_version(self, value):
         """
         It's a setter, what am I expected to write here?
         Sets the firmware version duh
         """
-        self.printer.firmware_version = item.value
+        self.printer.firmware_version = value
 
-    def _set_nozzle_diameter(self, item):
+    def _set_nozzle_diameter(self, value):
         """Sets the nozzle diameter"""
-        self.printer.nozzle_diameter = item.value
+        self.printer.nozzle_diameter = value
 
-    def _set_serial_number(self, item):
+    def _set_serial_number(self, value):
         """Set serial number and fingerprint"""
         if self.printer.sn is None:
-            self.printer.sn = item.value
-            self.printer.fingerprint = make_fingerprint(item.value)
+            self.printer.sn = value
+            self.printer.fingerprint = make_fingerprint(value)
 
     # -- Signal handlers --
 
