@@ -132,7 +132,7 @@ def get_network_info(model: Model):
         network_info.username = ip_data.username
         network_info.digest = ip_data.digest
 
-    return network_info
+    return network_info.dict()
 
 
 def get_serial_number(serial_queue: SerialQueue, should_wait=lambda: True):

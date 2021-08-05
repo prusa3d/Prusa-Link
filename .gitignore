@@ -7,3 +7,5 @@ dist
 *.egg-info
 *.orig
 .hypothesis
+*.coverage
+htmlcov
