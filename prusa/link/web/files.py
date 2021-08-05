@@ -319,7 +319,8 @@ def api_download_info(req):
                 "destination": current.destination,
                 "size": current.size,
                 "start_time": int(current.start_ts),
-                "progress": current.progress and round(current.progress/100, 4),
+                "progress": current.progress and round(current.progress /
+                                                       100, 4),
                 "remaining_time": current.time_remaining(),
                 "to_select": current.to_select,
                 "to_print": current.to_print

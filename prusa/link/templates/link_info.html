@@ -103,6 +103,31 @@
         {% endif %}
         </ul>
 
+
+        {% if download %}
+        <h2 class="align-center">Download</h2>
+        <ul>
+            <li>URL: <span class="white">{{ download.url }}</span></li>
+            <li>Target: <span class="white">local</span></li>
+            <li>Destination: <span class="white">{{ download.destination }}</span></li>
+            <li>Size: <span class="white">{{ download.size }}</span></li>
+            <li>Start time: <span class="white">{{ download.start_ts|int }}</span></li>
+            <li>Progress: <span class="white">{{ download.progress and (download.progress/100)|round(4) }}</span></li>
+            <li>Remaining time: <span class="white">{{ download.time_remaining() }}</span></li>
+            <li>To select: <span class="white">{{ download.to_select }}</span></li>
+            <li>To print: <span class="white">{{ download.to_print }}</span></li>
+        </ul>
+        {% endif %}
+
+
+        {% if upload %}
+        <h2 class="align-center">Upload</h2>
+        <ul>
+            <li>In progress: <span class="white">{{ upload }}</span></li>
+        </ul>
+        {% endif %}
+
+
         <h2 class="align-center">Files</h2>
         {% if printer %}
         <pre>
