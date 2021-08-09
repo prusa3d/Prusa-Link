@@ -7,8 +7,8 @@ from .lib.core import app
 from .lib.auth import check_api_digest
 
 from ..printer_adapter.input_output.serial.helpers import enqueue_instruction
-from ..printer_adapter.const import SPEED, FEEDRATE, MAX_FEEDRATE_E, FLOWRATE,\
-    COORDINATES, MIN_EXTRUSION_TEMP
+from ..printer_adapter.const import FEEDRATE_XY, FEEDRATE_E, POSITION_X, \
+    POSITION_Y, POSITION_Z, MIN_TEMP_NOZZLE_E, PRINT_SPEED, PRINT_FLOW
 
 
 def jog(req, serial_queue):
@@ -23,9 +23,11 @@ def jog(req, serial_queue):
 
     axes = []
 
-    if not feedrate or \
-            feedrate < FEEDRATE['MIN'] or feedrate > FEEDRATE['MAX']:
-        feedrate = FEEDRATE['MIN']
+    if not feedrate or feedrate > FEEDRATE_XY['max']:
+        feedrate = FEEDRATE_XY['max']
+
+    if feedrate < FEEDRATE_XY['min']:
+        feedrate = FEEDRATE_XY['min']
 
     # --- Coordinates ---
     x_axis = req.json.get('x')
@@ -34,26 +36,26 @@ def jog(req, serial_queue):
 
     if x_axis is not None:
         if absolute:
-            if x_axis < COORDINATES['MIN']:
-                x_axis = COORDINATES['MIN']
-            elif x_axis > COORDINATES['MAX_X']:
-                x_axis = COORDINATES['MAX_X']
+            if x_axis < POSITION_X['min']:
+                x_axis = POSITION_X['min']
+            elif x_axis > POSITION_X['max']:
+                x_axis = POSITION_X['max']
         axes.append(f'X{x_axis}')
 
     if y_axis is not None:
         if absolute:
-            if y_axis < COORDINATES['MIN']:
-                y_axis = COORDINATES['MIN']
-            elif y_axis > COORDINATES['MAX_Y']:
-                y_axis = COORDINATES['MAX_Y']
+            if y_axis < POSITION_Y['min']:
+                y_axis = POSITION_Y['min']
+            elif y_axis > POSITION_Y['max']:
+                y_axis = POSITION_Y['max']
         axes.append(f'Y{y_axis}')
 
     if z_axis is not None:
         if absolute:
-            if z_axis < COORDINATES['MIN']:
-                z_axis = COORDINATES['MIN']
-            elif z_axis > COORDINATES['MAX_Z']:
-                z_axis = COORDINATES['MAX_Z']
+            if z_axis < POSITION_Z['min']:
+                z_axis = POSITION_Z['min']
+            elif z_axis > POSITION_Z['max']:
+                z_axis = POSITION_Z['max']
         axes.append(f'Z{z_axis}')
 
     if absolute:
@@ -82,10 +84,10 @@ def set_speed(req, serial_queue):
     factor = req.json.get('factor')
     if not factor:
         factor = 100
-    elif factor < SPEED['MIN']:
-        factor = SPEED['MIN']
-    elif factor > SPEED['MAX']:
-        factor = SPEED['MAX']
+    elif factor < PRINT_SPEED['min']:
+        factor = PRINT_SPEED['min']
+    elif factor > PRINT_SPEED['max']:
+        factor = PRINT_SPEED['max']
 
     gcode = f'M220 S{factor}'
     enqueue_instruction(serial_queue, gcode)
@@ -110,7 +112,7 @@ def extrude(req, serial_queue):
     # Compatibility with OctoPrint, OP speed == Prusa feedrate in mm/min
     if not feedrate:
         # If feedrate is not defined, use maximum value for E axis
-        feedrate = req.json.get('speed', MAX_FEEDRATE_E)
+        feedrate = req.json.get('speed', FEEDRATE_E['max'])
 
     # M83 - relative movement for axis E
     enqueue_instruction(serial_queue, 'M83')
@@ -122,10 +124,10 @@ def extrude(req, serial_queue):
 def set_flowrate(req, serial_queue):
     """Set flow rate factor to apply to extrusion of the tool"""
     factor = req.json.get('factor')
-    if factor < FLOWRATE['MIN']:
-        factor = FLOWRATE['MIN']
-    elif factor > FLOWRATE['MAX']:
-        factor = FLOWRATE['MAX']
+    if factor < PRINT_FLOW['min']:
+        factor = PRINT_FLOW['min']
+    elif factor > PRINT_FLOW['max']:
+        factor = PRINT_FLOW['max']
 
     gcode = f'M221 S{factor}'
     enqueue_instruction(serial_queue, gcode)
@@ -177,7 +179,7 @@ def api_tool(req):
 
     elif command == 'extrude':
         if tel.state is not State.PRINTING and \
-                tel.temp_nozzle >= MIN_EXTRUSION_TEMP:
+                tel.temp_nozzle >= MIN_TEMP_NOZZLE_E:
             extrude(req, serial_queue)
         else:
             status = state.HTTP_CONFLICT
