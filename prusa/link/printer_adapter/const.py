@@ -3,6 +3,7 @@ Contains almost every constant for the printer communication part of
 Prusa Link
 """
 from typing import List
+from json import load
 
 from prusa.connect.printer.const import State
 
@@ -88,17 +89,21 @@ LOGS_FILES = ("auth.log", "daemon.log", "kern.log", "messages", "syslog",
               "user.log")
 
 # --- Hardware limits for commands ---
+with open("limits.json", "r") as file:
+    limits = load(file)
+    limits_mk3 = limits['printer_types'][6]['parameters']
 
-# Speed - %
-SPEED = {'MIN': 10, 'MAX': 999}
-# Feedrate - mm/min
-FEEDRATE = {'MIN': 0, 'MAX': 2700}
-
-MAX_FEEDRATE_E = 100
-
-# Flow - %
-FLOWRATE = {'MIN': 75, 'MAX': 125}
-
-MIN_EXTRUSION_TEMP = 160
-
-COORDINATES = {'MIN': 0, 'MAX_X': 250, 'MAX_Y': 210, 'MAX_Z': 210}
+FEEDRATE_X = limits_mk3['feedrate_x']
+FEEDRATE_Y = limits_mk3['feedrate_y']
+FEEDRATE_Z = limits_mk3['feedrate_z']
+FEEDRATE_E = limits_mk3['feedrate_e']
+FEEDRATE_XY = FEEDRATE_X
+MIN_TEMP_NOZZLE_E = limits_mk3['min_temp_nozzle_e']
+POSITION_X = limits_mk3['position_x']
+POSITION_Y = limits_mk3['position_y']
+POSITION_Z = limits_mk3['position_z']
+PRINT_FLOW = limits_mk3['print_flow']
+PRINT_SPEED = limits_mk3['print_speed']
+TEMP_BED = limits_mk3['temp_bed']
+TEMP_NOZZLE = limits_mk3['temp_nozzle']
+EXTRUSION = limits_mk3['extrusion']
