@@ -338,7 +338,8 @@ def api_download(req, target):
     download_mgr = app.daemon.prusa_link.printer.download_mgr
 
     url = req.json.get('url')
-    destination = req.json.get('destination', "/Prusa Link gcodes/Download")
+    destination_name = req.json.get('destination')
+    destination = join('/Prusa Link gcodes', destination_name)
     to_select = req.json.get('to_select', False)
     to_print = req.json.get('to_print', False)
     log.debug('select=%s, print=%s', to_select, to_print)
