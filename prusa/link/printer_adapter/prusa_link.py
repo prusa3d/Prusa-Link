@@ -675,6 +675,5 @@ class PrusaLink:
         """
         if self.printer.queue.empty():
             telemetry = self.model.get_and_reset_telemetry()
-            state = telemetry.state
             kwargs = telemetry.dict(exclude={"state"}, exclude_none=True)
-            self.printer.telemetry(state=state, **kwargs)
+            self.printer.telemetry(**kwargs)
