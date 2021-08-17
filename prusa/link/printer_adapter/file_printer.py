@@ -133,6 +133,8 @@ class FilePrinter(metaclass=MCSingleton):
             line_index = 0
             while True:
                 line = file.readline()
+
+                # Recognise the end of the file
                 if line == "":
                     break
 
@@ -156,6 +158,7 @@ class FilePrinter(metaclass=MCSingleton):
                 gcode = get_gcode(line)
                 if gcode:
                     self.print_gcode(gcode)
+                    self.wait_for_queue()
                     self.react_to_gcode(gcode)
 
                 line_index += 1
@@ -196,7 +199,20 @@ class FilePrinter(metaclass=MCSingleton):
                                           to_front=True,
                                           to_checksum=True)
         self.data.enqueued.append(instruction)
-        if len(self.data.enqueued) >= PRINT_QUEUE_SIZE:
+
+    def wait_for_queue(self):
+        """Gets rid of already confirmed messages and waits for any
+        unconfirmed surplus"""
+        # Pop all already confirmed instructions from the queue
+        while True:
+            instruction = self.data.enqueued.popleft()
+            if not instruction.is_confirmed():
+                self.data.enqueued.appendleft(instruction)
+                break
+            log.debug("Throwing out trash %s", instruction.message)
+        # If there are more than allowed and yet unconfirmed messages
+        # Wait for all of the surplus ones
+        while len(self.data.enqueued) >= PRINT_QUEUE_SIZE:
             wait_for: Instruction = self.data.enqueued.popleft()
             wait_for_instruction(wait_for, lambda: self.data.printing)
 
@@ -240,7 +256,7 @@ class FilePrinter(metaclass=MCSingleton):
         instruction = enqueue_instruction(self.serial_queue,
                                           stat_command,
                                           to_front=True)
-        wait_for_instruction(instruction, lambda: self.data.printing)
+        self.data.enqueued.append(instruction)
 
     def to_print_stats(self, gcode_number):
         """
