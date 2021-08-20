@@ -2,10 +2,18 @@
 Contains almost every constant for the printer communication part of
 Prusa Link
 """
+from os import path
 from typing import List
 from json import load
 
+try:
+    from importlib.resources import files  # type: ignore
+except ImportError:
+    from importlib_resources import files  # 3.9 has native resources
+
 from prusa.connect.printer.const import State
+
+DATA_PATH = path.abspath(path.join(str(files('prusa.link')), 'data'))
 
 BASE_STATES = {State.READY, State.BUSY}
 PRINTING_STATES = {State.PRINTING, State.PAUSED, State.FINISHED, State.STOPPED}
@@ -89,7 +97,7 @@ LOGS_FILES = ("auth.log", "daemon.log", "kern.log", "messages", "syslog",
               "user.log")
 
 # --- Hardware limits for commands ---
-with open("limits.json", "r") as file:
+with open(path.join(DATA_PATH, "limits.json"), "r") as file:
     limits = load(file)
     limits_mk3 = limits['printer_types'][6]['parameters']
 
