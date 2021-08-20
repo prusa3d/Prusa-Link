@@ -441,6 +441,7 @@ class SerialQueue(metaclass=MCSingleton):
         should be stopping when this is called.
         """
         with self.write_lock:
+            InterestingLogRotator.trigger("flushing of the serial queue.")
             new_queue = deque()
             for instruction in self.priority_queue:
                 if not instruction.to_checksum:

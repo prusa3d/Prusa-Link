@@ -74,7 +74,8 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         errors.TOKEN.ok = True
 
     def get_file_info(self, caller: Command) -> Dict[str, Any]:
-        """Return file info for a given file, if it exists."""
+        """Return file info for a given file
+        sometimes only when it exists"""
         # pylint: disable=unused-argument
         if not caller.args:
             raise ValueError("SEND_FILE_INFO requires args")
@@ -94,7 +95,6 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
     def from_path(self, path: Path):
         """Parses SD file metadata from its name only"""
         string_path = str(path)
-        file: File = self.fs.get(string_path)
 
         meta = FDMMetaData(string_path)
         meta.load_from_path(string_path)
@@ -104,9 +104,10 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
                     event=const.Event.FILE_INFO,
                     path=string_path)
 
-        data.update(file.attrs)
+        file: File = self.fs.get(string_path)
+        if file is not None:
+            data.update(file.attrs)
         data.update(meta.data)
-
         return data
 
     def start(self):
