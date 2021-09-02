@@ -21,7 +21,7 @@ REQUIRES = []
 
 def fill_requires(filename):
     """Fill REQUIRES lists."""
-    with open(filename, "r") as requirements:
+    with open(filename, "r", encoding='utf-8') as requirements:
         for line in requirements:
             line = line.strip()
             if RE_GIT.match(line):
@@ -42,7 +42,7 @@ def fill_requires(filename):
 fill_requires("requirements.txt")
 try:
     if os.path.exists(RPI_MODEL_PATH):
-        with open(RPI_MODEL_PATH) as model_file:
+        with open(RPI_MODEL_PATH, encoding='utf-8') as model_file:
             if "Pi" in model_file.read():
                 fill_requires("requirements-pi.txt")
 except Exception:  # pylint: disable=broad-except
@@ -52,7 +52,7 @@ except Exception:  # pylint: disable=broad-except
 
 def doc():
     """Return README.md content."""
-    with open('README.md', 'r') as readme:
+    with open('README.md', 'r', encoding='utf-8') as readme:
         return readme.read().strip()
 
 

@@ -97,7 +97,7 @@ LOGS_FILES = ("auth.log", "daemon.log", "kern.log", "messages", "syslog",
               "user.log")
 
 # --- Hardware limits for commands ---
-with open(path.join(DATA_PATH, "limits.json"), "r") as file:
+with open(path.join(DATA_PATH, "limits.json"), "r", encoding='utf-8') as file:
     limits = load(file)
     limits_mk3 = limits['printer_types'][6]['parameters']
 

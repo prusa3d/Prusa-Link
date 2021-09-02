@@ -33,7 +33,7 @@ def set_settings_user(new_username, new_digest):
 
 def save_settings():
     """Save new settings to file"""
-    with open(app.daemon.cfg.printer.settings, 'w') as ini:
+    with open(app.daemon.cfg.printer.settings, 'w', encoding='utf-8') as ini:
         app.daemon.settings.write(ini)
 
 

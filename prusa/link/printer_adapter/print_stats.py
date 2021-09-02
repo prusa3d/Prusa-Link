@@ -36,7 +36,7 @@ class PrintStats:
         self.data.print_time = 0
         self.data.has_inbuilt_stats = False
 
-        with open(file_path) as gcode_file:
+        with open(file_path, encoding='utf-8') as gcode_file:
             for line in gcode_file:
                 gcode = get_gcode(line)
                 if gcode:
