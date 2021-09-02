@@ -68,7 +68,8 @@ class IsPlannerFed:
             self.default_threshold = DEFAULT_THRESHOLD
         else:
             try:
-                with open(self.threshold_path) as threshold_file:
+                with open(self.threshold_path,
+                          encoding='utf-8') as threshold_file:
                     self.default_threshold = float(threshold_file.read())
             except (FileNotFoundError, ValueError):
                 self.default_threshold = DEFAULT_THRESHOLD
@@ -204,5 +205,6 @@ class IsPlannerFed:
         it doesn't rely on the default threshold anymore
         """
         if self.item_count >= self.times_queue.maxlen:
-            with open(self.threshold_path, "w") as threshold_file:
+            with open(self.threshold_path, "w",
+                      encoding='utf-8') as threshold_file:
                 threshold_file.write(str(self.get_dynamic_threshold()))

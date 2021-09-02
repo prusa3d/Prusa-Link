@@ -38,10 +38,10 @@ class Job(metaclass=MCSingleton):
         self.job_path = get_clean_path(cfg.daemon.job_file)
         ensure_directory(os.path.dirname(self.job_path))
 
-        loaded_data: Dict[str, Any] = dict()
+        loaded_data: Dict[str, Any] = {}
 
         if os.path.exists(self.job_path):
-            with open(self.job_path, "r") as job_file:
+            with open(self.job_path, "r", encoding='utf-8') as job_file:
                 loaded_data = json.loads(job_file.read())
 
         self.model: Model = model
@@ -151,7 +151,7 @@ class Job(metaclass=MCSingleton):
         """
         data = dict(job_id=self.data.job_id)
 
-        with open(self.job_path, "w") as job_file:
+        with open(self.job_path, "w", encoding='utf-8') as job_file:
             job_file.write(json.dumps(data))
             job_file.flush()
             os.fsync(job_file.fileno())
@@ -208,7 +208,7 @@ class Job(metaclass=MCSingleton):
         if for_connect:
             self.data.already_sent = True
 
-        data = dict()
+        data = {}
 
         if self.data.path_incomplete:
             data["path_incomplete"] = self.data.path_incomplete

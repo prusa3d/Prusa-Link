@@ -496,7 +496,7 @@ class PrusaLink:
         """Store settings with updated token when printer was registered."""
         self.settings.service_connect.token = token
         self.settings.update_sections()
-        with open(self.cfg.printer.settings, 'w') as ini:
+        with open(self.cfg.printer.settings, 'w', encoding='utf-8') as ini:
             self.settings.write(ini)
 
     def ip_updated(self, sender):
@@ -613,7 +613,7 @@ class PrusaLink:
                              self.state_manager.printer_checked),
                        daemon=True).start()
 
-        extra_data = dict()
+        extra_data = {}
         if reason is not None:
             extra_data["reason"] = reason
 
