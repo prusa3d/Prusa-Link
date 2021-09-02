@@ -173,7 +173,7 @@ class FSMounts(Mounts):
         self.force_update = True
 
         # pylint: disable=consider-using-with
-        self.mtab = open("/etc/mtab", "r")
+        self.mtab = open("/etc/mtab", "r", encoding='utf-8')
         self.epoll_obj = select.epoll(1)
         self.epoll_obj.register(self.mtab.fileno(), select.EPOLLOUT)
 

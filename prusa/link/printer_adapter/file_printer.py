@@ -124,7 +124,7 @@ class FilePrinter(metaclass=MCSingleton):
 
         prctl_name()
         total_size = os.path.getsize(self.data.file_path)
-        with open(self.data.file_path, "r") as file:
+        with open(self.data.file_path, "r", encoding='utf-8') as file:
             # Reset the line counter, printing a new file
             self.serial_queue.reset_message_number()
 
@@ -237,7 +237,8 @@ class FilePrinter(metaclass=MCSingleton):
             self.pause()
             self.serial_queue.closed = True
             log.warning("POWER PANIC!")
-            with open(self.data.pp_file_path, "w") as pp_file:
+            with open(self.data.pp_file_path, "w",
+                      encoding='utf-8') as pp_file:
                 pp_file.write(f"{self.data.line_number}")
                 pp_file.flush()
                 os.fsync(pp_file.fileno())

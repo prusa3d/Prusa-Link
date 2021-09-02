@@ -160,5 +160,5 @@ class Wizard:
         settings.service_connect.port = self.connect_port
 
         settings.update_sections()
-        with open(self.cfg.printer.settings, 'w') as ini:
+        with open(self.cfg.printer.settings, 'w', encoding='utf-8') as ini:
             settings.write(ini)
