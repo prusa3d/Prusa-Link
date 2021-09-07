@@ -214,7 +214,10 @@ def api_printer(req):
                 "temp-nozzle": tel.temp_nozzle,
                 "material": " - ",
                 "z-height": tel.axis_z,
-                "print-speed": tel.speed
+                "print-speed": tel.speed,
+                "axis_x": tel.axis_x,
+                "axis_y": tel.axis_y,
+                "axis_z": tel.axis_z
             }
         })
 
