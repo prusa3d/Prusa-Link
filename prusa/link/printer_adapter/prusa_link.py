@@ -1,5 +1,4 @@
 """Implements the PrusaLink class"""
-
 import logging
 import os
 from threading import Event, enumerate as enumerate_threads
@@ -13,7 +12,8 @@ from prusa.connect.printer.const import Command as CommandType, State
 from prusa.connect.printer.const import Source
 
 from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
-    ResetPrinter, ResumePrint, StartPrint, StopPrint
+    ResetPrinter, ResumePrint, StartPrint, StopPrint, LoadFilamentMK3, \
+    UnloadFilamentMK3
 from .command_queue import CommandQueue
 from .informers.filesystem.sd_card import SDState
 from .informers.job import Job
@@ -87,6 +87,9 @@ class PrusaLink:
         self.printer.set_handler(CommandType.START_PRINT, self.start_print)
         self.printer.set_handler(CommandType.STOP_PRINT, self.stop_print)
         self.printer.set_handler(CommandType.SEND_JOB_INFO, self.job_info)
+        self.printer.set_handler(CommandType.LOAD_FILAMENT, self.load_filament)
+        self.printer.set_handler(CommandType.UNLOAD_FILAMENT,
+                                 self.unload_filament)
 
         self.serial_reader.add_handler(
             PAUSE_PRINT_REGEX,
@@ -332,6 +335,32 @@ class PrusaLink:
         Connects the command to send job info from CONNECT with its handler
         """
         command = JobInfo(command_id=caller.command_id)
+        return self.command_queue.do_command(command)
+
+    def load_filament(self, caller: SDKCommand):
+        """
+        Load filament
+        """
+        telemetry = self.model.last_telemetry
+        if telemetry.state == State.PRINTING:
+            raise RuntimeError("Can't load filament while printing")
+
+        command = LoadFilamentMK3(parameters=caller.args,
+                                  telemetry=telemetry,
+                                  command_id=caller.command_id)
+        return self.command_queue.do_command(command)
+
+    def unload_filament(self, caller: SDKCommand):
+        """
+        Unload filament
+        """
+        telemetry = self.model.last_telemetry
+        if telemetry.state == State.PRINTING:
+            raise RuntimeError("Can't unload filament while printing")
+
+        command = UnloadFilamentMK3(parameters=caller.args,
+                                    telemetry=telemetry,
+                                    command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
     # --- FW Command handlers ---
