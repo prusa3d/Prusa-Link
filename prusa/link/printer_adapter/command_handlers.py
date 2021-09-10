@@ -11,6 +11,7 @@ from pathlib import Path
 from re import Match
 from threading import Event
 from time import time, sleep
+from typing import Any, List, Optional
 
 from prusa.connect.printer.const import State, Source, Event as EventConst
 
@@ -23,6 +24,8 @@ from .structures.model_classes import JobState
 from .structures.regular_expressions import REJECTION_REGEX, \
     OPEN_RESULT_REGEX, PRINTER_BOOT_REGEX
 from .util import file_is_on_sd
+
+from ..printer_adapter.input_output.serial.helpers import enqueue_instruction
 
 log = logging.getLogger(__name__)
 
@@ -93,6 +96,67 @@ class TryUntilState(Command):
     @abc.abstractmethod
     def _run_command(self):
         ...
+
+
+def prepare_temperatures(parameters, serial_queue, telemetry):
+    """Set temperatures for load/unload filament"""
+    target_nozzle_print = parameters[1]
+    target_bed = parameters[2]
+
+    # Extrusion temperature = 90% of target nozzle temperature
+    target_nozzle_extrude = target_nozzle_print * 0.9
+
+    gcode_bed_temperature = f'M140 S{target_bed}'
+
+    # Nozzle temperatures for extrude and print
+    gcode_extrude_temperature = f'M109 S{target_nozzle_extrude}'
+    gcode_print_temperature = f'M104 S{target_nozzle_print}'
+
+    enqueue_instruction(serial_queue, gcode_bed_temperature)
+
+    # This is hack, because M109 waits for heating and cooling, regardless
+    # parameters - Marlin issue: "Parameters S and R are treated identically."
+    if telemetry.temp_nozzle < target_nozzle_extrude:
+        enqueue_instruction(serial_queue, gcode_extrude_temperature)
+    enqueue_instruction(serial_queue, gcode_print_temperature)
+
+
+class LoadFilamentMK3(Command):
+    """Class for load filament command"""
+
+    command_name = "load_filament"
+
+    def __init__(self, parameters: Optional[List[Any]], telemetry, **kwargs):
+        super().__init__(**kwargs)
+        self.parameters = parameters
+        self.telemetry = telemetry
+
+    def _run_command(self):
+        """
+        Set target temperature according given material and load filament
+        """
+        prepare_temperatures(self.parameters, self.serial_queue,
+                             self.telemetry)
+        enqueue_instruction(self.serial_queue, "M701")
+
+
+class UnloadFilamentMK3(Command):
+    """Class for unload filament command"""
+
+    command_name = "unload_filament"
+
+    def __init__(self, parameters: Optional[List[Any]], telemetry, **kwargs):
+        super().__init__(**kwargs)
+        self.parameters = parameters
+        self.telemetry = telemetry
+
+    def _run_command(self):
+        """
+        Set target temperature according given material and unload filament
+        """
+        prepare_temperatures(self.parameters, self.serial_queue,
+                             self.telemetry)
+        enqueue_instruction(self.serial_queue, "M702")
 
 
 class StopPrint(TryUntilState):
