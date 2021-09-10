@@ -78,11 +78,11 @@ def get_firmware_version(serial_queue: SerialQueue, should_wait=lambda: True):
     match = instruction.match()
     if match is None:
         raise RuntimeError("Printer responded with something unexpected")
-    firmware_version = match.group("version")
-    without_buildnumber = firmware_version.split("-")[0]
+    firmware = match.group("version")
+    without_buildnumber = firmware.split("-")[0]
     errors.FW.ok = StrictVersion(without_buildnumber) >= MINIMAL_FIRMWARE
 
-    return firmware_version
+    return firmware
 
 
 def get_nozzle_diameter(serial_queue: SerialQueue, should_wait=lambda: True):

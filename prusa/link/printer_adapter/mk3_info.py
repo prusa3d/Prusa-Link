@@ -52,12 +52,12 @@ class MK3Item(ItemUpdater):
             validation_function=self._validate_printer_type)
         self.add_watched_item(printer_type)
 
-        firmware_version = WatchedItem(
-            "firmware_version",
+        firmware = WatchedItem(
+            "firmware",
             gather_function=lambda: get_firmware_version(
                 self.serial_queue, lambda: self.running),
             write_function=self._set_firmware_version)
-        self.add_watched_item(firmware_version)
+        self.add_watched_item(firmware)
 
         nozzle_diameter = WatchedItem(
             "nozzle_diameter",
@@ -80,7 +80,7 @@ class MK3Item(ItemUpdater):
         self.add_watched_item(serial_number)
 
         self.printer_info = WatchedGroup([
-            network_info, printer_type, firmware_version, nozzle_diameter,
+            network_info, printer_type, firmware, nozzle_diameter,
             serial_number
         ])
 
@@ -158,7 +158,7 @@ class MK3Item(ItemUpdater):
         It's a setter, what am I expected to write here?
         Sets the firmware version duh
         """
-        self.printer.firmware_version = value
+        self.printer.firmware = value
 
     def _set_nozzle_diameter(self, value):
         """Sets the nozzle diameter"""

@@ -14,6 +14,7 @@
     * Added download and basic upload info to link-info page
     * Added and implemented JSON file with HW limits
     * Added api/printer/printhead GET endpoint
+    * Changed variable firmware_version to firmware
 
 0.5.1 (2021-07-16)
     * Implementation of print after upload endpoint
