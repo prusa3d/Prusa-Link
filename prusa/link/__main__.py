@@ -114,7 +114,7 @@ def main():
                         "--config",
                         default=CONFIG_FILE,
                         type=str,
-                        help="path to config file (default: %s)" % CONFIG_FILE,
+                        help=f"path to config file (default: {CONFIG_FILE})",
                         metavar="<file>")
     parser.add_argument("-p",
                         "--pidfile",
@@ -238,7 +238,7 @@ def main():
     except Exception as exc:  # pylint: disable=broad-except
         log.info("%s", args)
         log.exception("Unhandled exception reached the top level")
-        parser.error("%s" % exc)
+        parser.error(f"{exc}")
         return 1
 
     finally:

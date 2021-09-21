@@ -27,7 +27,7 @@ def fill_requires(filename):
             if RE_GIT.match(line):
                 match = RE_EGG.search(line)
                 if match:
-                    REQUIRES.append("%s @ %s" % (match.groups()[0], line))
+                    REQUIRES.append(f"{match.groups()[0]} @ {line}")
                 else:
                     print(
                         'Dependency to a git repository must have the format:',
@@ -99,8 +99,8 @@ class BuildStatic(Command):
 
         cwd = os.path.abspath(os.path.join(os.curdir, 'prusa-connect-local'))
         args = ('docker', 'run', '-t', '--rm', '-u',
-                '%d:%d' % (os.getuid(), getgrnam('docker').gr_gid), '-w', cwd,
-                '-v', '%s:%s' % (cwd, cwd), 'node:latest', 'sh', '-c',
+                f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd,
+                '-v', f"{cwd}:{cwd}", 'node:latest', 'sh', '-c',
                 'npm install && npm run build:mk3')
         if call(args):
             raise IOError(1, 'docker failed')

@@ -37,13 +37,13 @@ def get_log_level_dict(log_levels: Iterable[str]):
 def check_log_level(value):
     """Check valid log level."""
     if value not in ("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"):
-        raise ValueError("Invalid value %s" % value)
+        raise ValueError(f"Invalid value {value}")
 
 
 def check_server_type(value):
     """Check valid server class"""
     if value not in ("single", "threading", "forking"):
-        raise ValueError("Invalid value %s" % value)
+        raise ValueError(f"Invalid value {value}")
 
 
 class Model(dict):

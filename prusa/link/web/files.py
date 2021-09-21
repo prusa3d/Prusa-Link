@@ -105,7 +105,7 @@ def api_files(req):
             last_updated = mount.last_updated
     last_modified = datetime.utcfromtimestamp(last_updated)
     last_modified_str = last_modified.strftime(HEADER_DATETIME_FORMAT)
-    etag = 'W/"%s"' % md5(last_modified_str.encode()).hexdigest()[:10]
+    etag = f'W/"{md5(last_modified_str.encode()).hexdigest()[:10]}"'
 
     headers = {
         'Last-Modified': last_modified_str,
@@ -137,11 +137,11 @@ def api_files(req):
             break
 
     mount = file_system.mounts.get(mount_path)
-    free = mount.get_free_space() if mount else 0
+    free = hbytes(mount.get_free_space()) if mount else (0, "B")
 
     return JSONResponse(headers=headers,
                         files=sort_files(filter(None, files)),
-                        free='%d %s' % hbytes(free))
+                        free=f"{int(free[0])} {free[1]}")
 
 
 @app.route('/api/files/<target>', method=state.METHOD_POST)
