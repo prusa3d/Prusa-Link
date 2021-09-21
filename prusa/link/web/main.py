@@ -133,7 +133,7 @@ def api_version(req):
     retval = {
         'api': "0.1",
         'server': __version__,
-        'original': "PrusaLink %s" % __version__,
+        'original': f"PrusaLink {__version__}",
         'text': "OctoPrint 1.1.0",
         'firmware': prusa_link.printer.firmware,
         'sdk': sdk_version,

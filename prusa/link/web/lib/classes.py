@@ -35,7 +35,7 @@ class LinkHandler(ServerHandler):
 
 class RequestHandler(WSGIRequestHandler):
     """For custom handle, log_message and log_error methods."""
-    server_version = "%s/%s" % (__application__, __version__)
+    server_version = f"{__application__}/{__version__}"
 
     # pylint: disable=redefined-builtin
     def log_message(self, format, *args):
