@@ -15,7 +15,7 @@ from .util import run_slowly_die_fast
 
 def prctl_name():
     """Set system thread name with python thread name."""
-    prctl.set_name("prusal#%s" % current_thread().name)
+    prctl.set_name(f"prusal#{current_thread().name}")
 
 
 class Thread(_Thread):
@@ -28,7 +28,7 @@ class Thread(_Thread):
             return profiler.runcall(_Thread.run, self)
         finally:
             profiler.disable()
-            profiler.dump_stats('prusalink-%s.profile' % self.name)
+            profiler.dump_stats(f'prusalink-{self.name}.profile')
 
     @staticmethod
     def enable_profiling():
