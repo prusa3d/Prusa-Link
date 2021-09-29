@@ -93,6 +93,12 @@ def set_speed(req, serial_queue):
     enqueue_instruction(serial_queue, gcode)
 
 
+def disable_steppers(serial_queue):
+    """Disable steppers command"""
+    gcode = 'M84'
+    enqueue_instruction(serial_queue, gcode)
+
+
 def set_target_temperature(req, serial_queue):
     """Target temperature set command"""
     targets = req.json.get('targets')
@@ -161,6 +167,9 @@ def api_printhead(req):
     # Compatibility with OctoPrint, OP feedrate == Prusa speed in %
     elif command == 'feedrate':
         set_speed(req, serial_queue)
+
+    elif command == "disable_steppers":
+        disable_steppers(serial_queue)
 
     return JSONResponse(status_code=status)
 
