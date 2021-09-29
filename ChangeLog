@@ -17,6 +17,7 @@
     * Added api/printer/printhead GET endpoint
     * Changed variable firmware_version to firmware
     * Added LOAD/UNLOAD filament commands
+    * Added disable_steppers command to api/printer/printhead
 
 0.5.1 (2021-07-16)
     * Implementation of print after upload endpoint
