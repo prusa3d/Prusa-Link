@@ -59,6 +59,8 @@ def api_settings(req):
 @check_digest(REALM)
 def api_settings_set(req):
     """Sets new printer and/or user settings and writes it to ini file"""
+    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-branches
     status = state.HTTP_OK
     printer = req.json.get('printer')
     user = req.json.get('user')

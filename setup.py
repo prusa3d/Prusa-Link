@@ -99,8 +99,8 @@ class BuildStatic(Command):
 
         cwd = os.path.abspath(os.path.join(os.curdir, 'prusa-connect-local'))
         args = ('docker', 'run', '-t', '--rm', '-u',
-                f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd,
-                '-v', f"{cwd}:{cwd}", 'node:latest', 'sh', '-c',
+                f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd, '-v',
+                f"{cwd}:{cwd}", 'node:latest', 'sh', '-c',
                 'npm install && npm run build:mk3')
         if call(args):
             raise IOError(1, 'docker failed')

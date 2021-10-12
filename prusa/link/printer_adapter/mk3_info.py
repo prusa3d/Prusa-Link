@@ -52,11 +52,10 @@ class MK3Item(ItemUpdater):
             validation_function=self._validate_printer_type)
         self.add_watched_item(printer_type)
 
-        firmware = WatchedItem(
-            "firmware",
-            gather_function=lambda: get_firmware_version(
-                self.serial_queue, lambda: self.running),
-            write_function=self._set_firmware_version)
+        firmware = WatchedItem("firmware",
+                               gather_function=lambda: get_firmware_version(
+                                   self.serial_queue, lambda: self.running),
+                               write_function=self._set_firmware_version)
         self.add_watched_item(firmware)
 
         nozzle_diameter = WatchedItem(
