@@ -49,7 +49,8 @@ def api_settings(req):
             "api-key": service_local.api_key,
             "printer": {
                 "name": printer_settings.name,
-                "location": printer_settings.location
+                "location": printer_settings.location,
+                "farm_mode": printer_settings.farm_mode
             }
         })
 
@@ -61,6 +62,7 @@ def api_settings_set(req):
     status = state.HTTP_OK
     printer = req.json.get('printer')
     user = req.json.get('user')
+    farm_mode = req.json.get('farm_mode')
     errors_ = {}
     kwargs = {}
 
@@ -99,8 +101,14 @@ def api_settings_set(req):
             set_settings_printer(printer['name'], printer['location'])
         if user:
             set_settings_user(user['username'], user['new_digest'])
-        app.daemon.settings.update_sections()
-        save_settings()
+        if farm_mode is not None:
+            app.daemon.settings.printer.farm_mode = farm_mode
+
+        if printer or user or farm_mode is not None:
+            app.daemon.settings.update_sections()
+            save_settings()
+        else:
+            status = state.HTTP_NO_CONTENT
     else:
         kwargs = {'errors': errors_}
         status = state.HTTP_BAD_REQUEST
