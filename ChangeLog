@@ -19,6 +19,10 @@
     * Added LOAD/UNLOAD filament commands
     * Added disable_steppers command to api/printer/printhead
     * Implementation of farm_mode into api/settings endpoints
+    * New Upload errors
+      - check Content-Length header
+      - check if file is uploaded complete
+      - check storage free space first
 
 0.5.1 (2021-07-16)
     * Implementation of print after upload endpoint

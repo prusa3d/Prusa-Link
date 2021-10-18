@@ -1,5 +1,5 @@
 """/api/files endpoint handlers"""
-from os import makedirs, unlink, replace
+from os import makedirs, unlink, replace, statvfs
 from os.path import abspath, join, exists, basename, dirname, split, getsize, \
     getctime
 from base64 import decodebytes
@@ -41,43 +41,78 @@ def partfilepath(filename):
     return abspath(join(app.cfg.printer.directories[0], filename))
 
 
+def get_local_free_space(path):
+    """Return local storage free space."""
+    if exists(path):
+        path_ = statvfs(path)
+        free_space = path_.f_bavail * path_.f_bsize
+        return free_space
+    return None
+
+
 class GCodeFile(FileIO):
     """Own file class to control processing data when POST"""
-    def __init__(self, filepath):
+    def __init__(self, filepath, size):
         app.posting_data = True
         job = Job.get_instance()
+        self.size = size
+        self.filepath = filepath
+        self.__uploaded = 0
         self.job_data = job.data
         self.printer = app.daemon.prusa_link.printer
         super().__init__(filepath, 'w+b')
 
+    @property
+    def is_complete(self):
+        """Return True if file is complete."""
+        return self.__uploaded == self.size
+
     def write(self, data):
-        if not self.job_data.from_sd \
-                and self.printer.state == State.PRINTING:
+        if self.printer.state == State.PRINTING \
+                and not self.job_data.from_sd:
             sleep(0.01)
-        super().write(data)
+        self.__uploaded += super().write(data)
+        if self.__uploaded > self.size:
+            raise HTTPException(state.HTTP_BAD_REQUEST,
+                                error="File size mismatch.")
 
     def close(self):
-        app.posting_data = False
         super().close()
+        app.posting_data = False
 
 
-def gcode_callback(filename):
-    """Check filename and upload possibility.
+def callback_factory(req):
+    """Factory for creating file_callback."""
+    file_length = req.content_length
+    if file_length <= 0:
+        raise HTTPException(state.HTTP_LENGTH_REQUIRED,
+                            error="Missing content length or no content")
 
-    When data can be accepted create and return file instance for writing
-    form data.
-    """
-    if not filename:
-        raise HTTPException(state.HTTP_BAD_REQUEST)
+    def gcode_callback(filename):
+        """Check filename and upload possibility.
 
-    # File name cannot contain any of forbidden characters e.g. '\'
-    if any(character in filename for character in FORBIDDEN_CHARACTERS):
-        raise HTTPException(state.HTTP_BAD_REQUEST)
+        When data can be accepted create and return file instance for writing
+        form data.
+        """
+        if not filename:
+            raise HTTPException(state.HTTP_BAD_REQUEST)
 
-    if not filename.endswith(GCODE_EXTENSIONS) or filename.startswith('.'):
-        raise HTTPException(state.HTTP_UNSUPPORTED_MEDIA_TYPE)
+        part_path = partfilepath(filename)
 
-    return GCodeFile(partfilepath(filename))
+        # File name cannot contain any of forbidden characters e.g. '\'
+        if any(character in filename for character in FORBIDDEN_CHARACTERS):
+            raise HTTPException(state.HTTP_BAD_REQUEST)
+
+        if not filename.endswith(GCODE_EXTENSIONS) or filename.startswith('.'):
+            raise HTTPException(state.HTTP_UNSUPPORTED_MEDIA_TYPE)
+
+        if get_local_free_space(dirname(part_path)) <= file_length:
+            raise HTTPException(state.HTTP_REQUEST_ENTITY_TOO_LARGE,
+                                error="Not enough space in storage.")
+
+        return GCodeFile(part_path, file_length)
+
+    return gcode_callback
 
 
 def wait_until_fs_path(printer, path):
@@ -159,16 +194,23 @@ def api_upload(req, target):
         # only one file can be posted at the same time
         raise ApiException(req, errors.PE_UPLOAD_MULTI, state.HTTP_CONFLICT)
 
-    # TODO check req.content_length and freespace before accepting uploading
     form = FieldStorage(req,
                         keep_blank_values=app.keep_blank_values,
                         strict_parsing=app.strict_parsing,
-                        file_callback=gcode_callback)
+                        file_callback=callback_factory(req))
 
     if 'file' not in form:
         raise ApiException(req, errors.PE_UPLOAD_BAD, state.HTTP_BAD_REQUEST)
 
     filename = form['file'].filename
+    part_path = partfilepath(filename)
+
+    if not form['file'].file.is_complete:
+        log.error("File uploading not complete")
+        unlink(part_path)
+        raise HTTPException(state.HTTP_BAD_REQUEST,
+                            error="File uploading not complete.")
+
     foldername = form.get('path', '/')
 
     select = form.getfirst('select') == 'true'
@@ -185,14 +227,14 @@ def api_upload(req, target):
 
     if exists(filepath) and job.data.job_state == JobState.IN_PROGRESS:
         if print_path == job.data.selected_file_path:
-            unlink(partfilepath(filename))
+            unlink(part_path)
             raise ApiException(req, errors.PE_UPLOAD_CONFLICT,
                                state.HTTP_CONFLICT)
 
     log.info("Store file to %s::%s", target, filepath)
     makedirs(foldername, exist_ok=True)
     wait_until_fs_path(job.printer, dirname(print_path))
-    replace(partfilepath(filename), filepath)
+    replace(part_path, filepath)
 
     if _print and job.data.job_state == JobState.IDLE:
         job.deselect_file()
