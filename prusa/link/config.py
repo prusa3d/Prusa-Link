@@ -225,7 +225,8 @@ class Settings(Get):
             self.get_section('printer',
                              (('type', str, 'MK3'), ('name', str, ''),
                               ('location', str, ''),
-                              ('prompt_clean_sheet', int, 0))))
+                              ('prompt_clean_sheet', int, 0),
+                              ('farm_mode', bool, False))))
 
         if self.printer.type != 'MK3':
             raise ValueError("Settings file for different printer!")
