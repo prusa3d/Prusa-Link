@@ -4,10 +4,11 @@ from sys import exc_info
 
 from traceback import format_tb, format_exc
 
-from poorwsgi.response import make_response, JSONResponse
+from poorwsgi.response import make_response, JSONResponse, TextResponse
 
 from .lib.view import generate_page
 from .lib.core import app
+from ..errors import LinkError
 
 log = logging.getLogger(__name__)
 
@@ -34,15 +35,6 @@ def internal_server_error(req):
         return "500 - Service Unavailable", 500
 
 
-@app.http_state(400)
-def bad_request(req, error=None):
-    """Bad request handler"""
-    assert req
-    if error:
-        log.error("%s", error)
-    return make_response("Bad Request", status_code=400)
-
-
 @app.http_state(403)
 def forbidden(req):
     """Error handler 403 forbidden."""
@@ -62,24 +54,6 @@ def gone(req):
     """Error handler for 410 Gone."""
     return make_response(generate_page(req, "error410.html", error=exc_info()),
                          status_code=410)
-
-
-@app.http_state(411)
-def length_required(req, error=None):
-    """Bad request handler"""
-    assert req
-    if error:
-        log.error("%s", error)
-    return make_response("length required", status_code=411)
-
-
-@app.http_state(413)
-def payload_too_large(req, error=None):
-    """Bad request handler"""
-    assert req
-    if error:
-        log.error("%s", error)
-    return make_response("Payload Too Large", status_code=413)
 
 
 @app.http_state(503)
@@ -103,3 +77,21 @@ def service_unavailable(req):
                                        error=repr(error),
                                        **kwargs),
                          status_code=503)
+
+
+@app.error_handler(LinkError)
+def link_error_handler(req, error):
+    """Handle LinkError exception and generate right response."""
+    url = req.construct_url(error.path)
+    headers = {'Content-Location': url}
+    if req.accept_json:
+        return JSONResponse(status_code=error.status_code,
+                            headers=headers,
+                            title=error.title,
+                            text=error.text,
+                            url=url)
+
+    # pylint: disable=consider-using-f-string
+    return TextResponse("%s\n%s" % (error.title, error.text),
+                        status_code=error.status_code,
+                        headers=headers)
