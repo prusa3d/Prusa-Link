@@ -7,13 +7,13 @@ from datetime import datetime
 from hashlib import md5
 from time import sleep
 from io import FileIO
+from functools import wraps
 
 import logging
 
 from poorwsgi import state
 from poorwsgi.request import FieldStorage
-from poorwsgi.response import JSONResponse, Response, FileResponse, \
-        HTTPException
+from poorwsgi.response import JSONResponse, Response, FileResponse
 from poorwsgi.results import hbytes
 
 from prusa.connect.printer.const import GCODE_EXTENSIONS, State
@@ -23,7 +23,6 @@ from .lib.core import app
 from .lib.auth import check_api_digest
 from .lib.files import file_to_api, get_os_path, local_refs, sdcard_refs, \
         gcode_analysis, sort_files
-from .lib.response import ApiException
 
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.informers.job import JobState, Job
@@ -73,8 +72,7 @@ class GCodeFile(FileIO):
             sleep(0.01)
         self.__uploaded += super().write(data)
         if self.__uploaded > self.size:
-            raise HTTPException(state.HTTP_BAD_REQUEST,
-                                error="File size mismatch.")
+            raise errors.FileSizeMismatch()
 
     def close(self):
         super().close()
@@ -85,8 +83,7 @@ def callback_factory(req):
     """Factory for creating file_callback."""
     file_length = req.content_length
     if file_length <= 0:
-        raise HTTPException(state.HTTP_LENGTH_REQUIRED,
-                            error="Missing content length or no content")
+        raise errors.LengthRequired()
 
     def gcode_callback(filename):
         """Check filename and upload possibility.
@@ -95,20 +92,19 @@ def callback_factory(req):
         form data.
         """
         if not filename:
-            raise HTTPException(state.HTTP_BAD_REQUEST)
+            raise errors.NoFileInRequest()
 
         part_path = partfilepath(filename)
 
         # File name cannot contain any of forbidden characters e.g. '\'
         if any(character in filename for character in FORBIDDEN_CHARACTERS):
-            raise HTTPException(state.HTTP_BAD_REQUEST)
+            raise errors.ForbiddenCharacters()
 
         if not filename.endswith(GCODE_EXTENSIONS) or filename.startswith('.'):
-            raise HTTPException(state.HTTP_UNSUPPORTED_MEDIA_TYPE)
+            raise errors.UnsupportedMediaError()
 
         if get_local_free_space(dirname(part_path)) <= file_length:
-            raise HTTPException(state.HTTP_REQUEST_ENTITY_TOO_LARGE,
-                                error="Not enough space in storage.")
+            raise errors.EntityTooLarge()
 
         return GCodeFile(part_path, file_length)
 
@@ -124,7 +120,21 @@ def wait_until_fs_path(printer, path):
         if printer.fs.get(path):
             return
         sleep(0.1)
-    raise HTTPException(state.HTTP_REQUEST_TIME_OUT)
+    raise errors.RequestTimeout()
+
+
+def check_target(func):
+    """Check target from request."""
+    @wraps(func)
+    def handler(req, target, *args, **kwargs):
+        if target == 'sdcard':
+            raise errors.SDCardNotSupoorted()
+        if target != 'local':
+            raise errors.LocationNotFound(target)
+
+        return func(req, target, *args, **kwargs)
+
+    return handler
 
 
 @app.route('/api/files')
@@ -181,18 +191,12 @@ def api_files(req):
 
 @app.route('/api/files/<target>', method=state.METHOD_POST)
 @check_api_digest
+@check_target
 def api_upload(req, target):
     """Function for uploading G-CODE."""
-
-    if target == 'sdcard':
-        raise ApiException(req, errors.PE_UPLOAD_SDCARD, state.HTTP_NOT_FOUND)
-
-    if target != 'local':
-        raise ApiException(req, errors.PE_LOC_NOT_FOUND, state.HTTP_NOT_FOUND)
-
     if app.posting_data:
         # only one file can be posted at the same time
-        raise ApiException(req, errors.PE_UPLOAD_MULTI, state.HTTP_CONFLICT)
+        raise errors.TransferConflict()
 
     form = FieldStorage(req,
                         keep_blank_values=app.keep_blank_values,
@@ -200,7 +204,7 @@ def api_upload(req, target):
                         file_callback=callback_factory(req))
 
     if 'file' not in form:
-        raise ApiException(req, errors.PE_UPLOAD_BAD, state.HTTP_BAD_REQUEST)
+        raise errors.NoFileInRequest()
 
     filename = form['file'].filename
     part_path = partfilepath(filename)
@@ -208,8 +212,7 @@ def api_upload(req, target):
     if not form['file'].file.is_complete:
         log.error("File uploading not complete")
         unlink(part_path)
-        raise HTTPException(state.HTTP_BAD_REQUEST,
-                            error="File uploading not complete.")
+        raise errors.FileSizeMismatch()
 
     foldername = form.get('path', '/')
 
@@ -228,8 +231,7 @@ def api_upload(req, target):
     if exists(filepath) and job.data.job_state == JobState.IN_PROGRESS:
         if print_path == job.data.selected_file_path:
             unlink(part_path)
-            raise ApiException(req, errors.PE_UPLOAD_CONFLICT,
-                               state.HTTP_CONFLICT)
+            raise errors.FileCurrentlyPrinted()
 
     log.info("Store file to %s::%s", target, filepath)
     makedirs(foldername, exist_ok=True)
@@ -260,7 +262,7 @@ def api_upload(req, target):
 def api_start_print(req, target, path):
     """Start print if no print job is running"""
     if target not in ('local', 'sdcard'):
-        raise ApiException(req, errors.PE_LOC_NOT_FOUND, state.HTTP_NOT_FOUND)
+        raise errors.LocationNotFound(target)
 
     command = req.json.get('command')
     job = Job.get_instance()
@@ -279,7 +281,7 @@ def api_start_print(req, target, path):
             return Response(status_code=state.HTTP_NO_CONTENT)
 
         # job_state != IDLE
-        return Response(status_code=state.HTTP_CONFLICT)
+        raise errors.CurrentlyPrinting()
 
     # only select command is supported now
     return Response(status_code=state.HTTP_BAD_REQUEST)
@@ -288,10 +290,10 @@ def api_start_print(req, target, path):
 @app.route('/api/files/<target>/<path:re:.+>')
 @check_api_digest
 def api_resources(req, target, path):
-    """Returns preview from cache file."""
+    """Returns metadata from cache file."""
     # pylint: disable=unused-argument
     if target not in ('local', 'sdcard'):
-        raise ApiException(req, errors.PE_LOC_NOT_FOUND, state.HTTP_NOT_FOUND)
+        raise errors.LocationNotFound(target)
 
     path = '/' + path
 
@@ -307,7 +309,7 @@ def api_resources(req, target, path):
     if target == 'local':
         os_path = get_os_path(path)
         if not os_path or not exists(os_path):
-            raise HTTPException(state.HTTP_NOT_FOUND)
+            raise errors.FileNotFound()
 
         meta = get_metadata(os_path)
         result['refs'] = local_refs(path, meta.thumbnails)
@@ -325,21 +327,16 @@ def api_resources(req, target, path):
 
 @app.route('/api/files/<target>/<path:re:.+>', method=state.METHOD_DELETE)
 @check_api_digest
+@check_target
 def api_delete(req, target, path):
     """Delete file local target."""
     # pylint: disable=unused-argument
-    if target not in ('local', 'sdcard'):
-        raise ApiException(req, errors.PE_LOC_NOT_FOUND, state.HTTP_NOT_FOUND)
-
-    if target != 'local':
-        raise HTTPException(state.HTTP_CONFLICT)
-
     path = '/' + path
     job = Job.get_instance()
 
     if job.data.selected_file_path == path:
         if job.data.job_state != JobState.IDLE:
-            raise HTTPException(state.HTTP_CONFLICT)
+            raise errors.FileCurrentlyPrinted()
         job.deselect_file()
 
     os_path = get_os_path(path)
@@ -372,11 +369,10 @@ def api_download_info(req):
 
 @app.route('/api/download/<target>', method=state.METHOD_POST)
 @check_api_digest
+@check_target
 def api_download(req, target):
     """Download intended file from a given url"""
     # pylint: disable=unused-argument
-    if target != "local":
-        return Response(status_code=state.HTTP_NOT_FOUND)
     download_mgr = app.daemon.prusa_link.printer.download_mgr
 
     url = req.json.get('url')
@@ -393,8 +389,7 @@ def api_download(req, target):
 
     if job.data.job_state == JobState.IN_PROGRESS and \
             path == job.data.selected_file_path:
-        raise ApiException(req, errors.PE_DOWNLOAD_CONFLICT,
-                           state.HTTP_CONFLICT)
+        raise errors.FileCurrentlyPrinted()
 
     download_mgr.start(url, path, to_print, to_select)
     return Response(status_code=state.HTTP_CREATED)
@@ -412,14 +407,13 @@ def api_download_abort(req):
 
 @app.route('/api/downloads/<target>/<path:re:.+>')
 @check_api_digest
+@check_target
 def api_downloads(req, target, path):
     """Downloads intended gcode."""
     # pylint: disable=unused-argument
-    if target != "local":
-        return Response(status_code=state.HTTP_NOT_FOUND)
     os_path = get_os_path(f"/{path}")
     if os_path is None:
-        return Response(status_code=state.HTTP_NOT_FOUND)
+        raise errors.FileNotFound()
     return FileResponse(os_path)
 
 
@@ -430,15 +424,15 @@ def api_thumbnails(req, path):
     # pylint: disable=unused-argument
     os_path = get_os_path('/' + path)
     if not os_path or not exists(os_path):
-        return Response(status_code=state.HTTP_NOT_FOUND)
+        raise errors.FileNotFound()
 
     meta = FDMMetaData(get_os_path('/' + path))
     if not meta.is_cache_fresh():
-        return Response(status_code=state.HTTP_NOT_FOUND)
+        raise errors.FileNotFound()
 
     meta.load_cache()
     if not meta.thumbnails:
-        return Response(status_code=state.HTTP_NOT_FOUND)
+        raise errors.FileNotFound()
 
     biggest = b''
     for data in meta.thumbnails.values():

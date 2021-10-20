@@ -9,7 +9,7 @@ import logging
 
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, EmptyResponse, FileResponse,\
-    Response, HTTPException
+    Response
 from poorwsgi.digest import check_digest
 from pkg_resources import working_set
 
@@ -17,7 +17,7 @@ from prusa.connect.printer import __version__ as sdk_version
 from prusa.connect.printer.const import State
 from prusa.connect.printer.metadata import get_metadata
 
-from .. import __version__
+from .. import __version__, errors
 
 from .lib.core import app
 from .lib.auth import check_api_digest, check_config, REALM
@@ -325,7 +325,7 @@ def api_job_command(req):
     try:
         if command == "pause":
             if job.data.job_state != JobState.IN_PROGRESS:
-                raise HTTPException(state.HTTP_CONFLICT)
+                raise errors.NotPrinting()
 
             action = req.json.get("action")
             if action == 'pause' and manager.get_state() == State.PRINTING:
@@ -344,11 +344,11 @@ def api_job_command(req):
             elif job.data.job_state == JobState.IDLE:
                 job.deselect_file()
             else:
-                raise HTTPException(state.HTTP_CONFLICT)
+                raise errors.NotPrinting()
 
         elif command == "start":
             if job.data.job_state != JobState.IDLE:
-                raise HTTPException(state.HTTP_CONFLICT)
+                raise errors.CurrentlyPrinting()
             if job.data.selected_file_path:
                 command_queue.do_command(
                     StartPrint(job.data.selected_file_path))
