@@ -48,6 +48,7 @@ def generate_page(request, template, **kwargs):
         env.add_extension(TemplateInfoExtension)
         env.globals['template_info'].data = kwargs.copy()
         env.globals['template_info'].template = template
+        kwargs['debug'] = True
 
     kwargs['this_uri'] = request.uri
     tmpl = env.get_template(template)
