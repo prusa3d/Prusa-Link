@@ -5,7 +5,9 @@ For more information see prusa-link_states.txt.
 
 import itertools
 
+from typing import Optional
 from poorwsgi import state
+from poorwsgi.response import JSONResponse, TextResponse
 
 from prusa.connect.printer.errors import ErrorState, INTERNET, HTTP, TOKEN, \
     API
@@ -109,12 +111,42 @@ class LinkError(RuntimeError):
     """Link error structure."""
     title: str
     text: str
-    id: str
+    id: Optional[str] = None
     status_code: int
+    path: Optional[str] = None
+    url: str = ''
 
     def __init__(self):
-        self.path = '/error/' + self.id
+        if self.id:
+            self.path = '/error/' + self.id
+        # pylint: disable=consider-using-f-string
+        self.template = 'error%s.html' % self.status_code
         super().__init__(self.text)
+
+    def set_url(self, req):
+        """Set url from request and self.path."""
+        self.url = req.construct_url(self.path) if self.path else ''
+
+    def gen_headers(self):
+        """Return headers with Content-Location if id was set."""
+        return {'Content-Location': self.url} if self.url else {}
+
+    def json_response(self):
+        """Return JSONResponse for error."""
+        kwargs = dict(title=self.title, text=self.text)
+        if self.url:
+            kwargs['url'] = self.url
+        return JSONResponse(status_code=self.status_code,
+                            headers=self.gen_headers(),
+                            **kwargs)
+
+    def text_response(self):
+        """Return TextResponse for error."""
+        url = "\n\nSee: " + self.url if self.url else ''
+        # pylint: disable=consider-using-f-string
+        return TextResponse("%s\n%s%s" % (self.title, self.text, url),
+                            status_code=self.status_code,
+                            headers=self.gen_headers())
 
 
 class BadRequestError(LinkError):
@@ -123,47 +155,57 @@ class BadRequestError(LinkError):
 
 
 class NoFileInRequest(BadRequestError):
-    """File not found in request payload."""
+    """400 File not found in request payload."""
     title = "Missing file in payload."
     text = "File is not send in request payload or it hasn't right name."
     id = "no-file-in-request"
 
 
 class FileSizeMismatch(BadRequestError):
-    """File size mismatch."""
+    """400 File size mismatch."""
     title = "File Size Mismatch"
     text = "You sent more or less data than is in Content-Length header."
     id = "file-size-mismatch"
 
 
 class ForbiddenCharacters(BadRequestError):
-    """Forbidden Characters."""
+    """400 Forbidden Characters."""
     title = "Forbidden Characters"
-    text = "Forbidden vharacters in file name."
+    text = "Forbidden characters in file name."
     id = "forbidden-characters"
+
+
+class ForbiddenError(LinkError):
+    """403 Forbidden"""
+    title = "Forbidden"
+    text = "You don not have permission to access this."
+    status_code = state.HTTP_FORBIDDEN
+    id = "forbidden"
 
 
 class NotFoundError(LinkError):
     """404 Not Found error"""
+    title = "Not Found"
+    text = "Resource you want not found."
     status_code = state.HTTP_NOT_FOUND
+    id = "not-found"
 
 
 class FileNotFound(NotFoundError):
-    """File Not Found"""
+    """404 File Not Found"""
     title = "File Not Found"
     text = "File you want was not found."
-    id = "file-not-found"
 
 
 class SDCardNotSupoorted(NotFoundError):
-    """Some operations are not possible on SDCard."""
+    """404 Some operations are not possible on SDCard."""
     title = "SDCard is not Suppported"
     text = "Location `sdcard` is not supported, use local."
     id = "sdcard-not-supported"
 
 
 class LocationNotFound(NotFoundError):
-    """Location from url not found."""
+    """404 Location from url not found."""
     title = "Location Not Found"
     text = "Location `{location}` is not found, use local."
     id = "location-not-found"
@@ -173,15 +215,8 @@ class LocationNotFound(NotFoundError):
         super().__init__()
 
 
-class RequestTimeout(LinkError):
-    """408 Request Timeout"""
-    title = "Request Timeout"
-    text = "Request Timeout"
-    status_code = state.HTTP_REQUEST_TIME_OUT
-
-
 class ConflictError(LinkError):
-    """409 Conflict error"""
+    """409 Conflict error."""
     status_code = state.HTTP_CONFLICT
 
 
@@ -189,14 +224,12 @@ class CurrentlyPrinting(ConflictError):
     """409 Printer is currently printing"""
     title = "Printer is currently printing"
     text = "Printer is currently printing."
-    id = "currently-printing"
 
 
 class NotPrinting(ConflictError):
     """409 Printer is not printing"""
     title = "Printer Is Not Printing"
     text = "Operation you want can be do only when printer is printing."
-    id = "not-printing"
 
 
 class FileCurrentlyPrinted(ConflictError):
@@ -209,7 +242,7 @@ class FileCurrentlyPrinted(ConflictError):
 class TransferConflict(ConflictError):
     """409 Already in transfer process."""
     title = "Already in transfer process"
-    text = ("Only one file at time can be transferred.")
+    text = "Only one file at time can be transferred."
     id = "transfer-conflict"
 
 
@@ -230,8 +263,32 @@ class EntityTooLarge(LinkError):
 
 
 class UnsupportedMediaError(LinkError):
-    """415 Unsupported media type"""
+    """415 Unsupported Media Type"""
     title = "Unsupported Media Type"
     text = "Only G-Code for FDM printer can be uploaded."
     id = "unsupported-media-type"
     status_code = state.HTTP_UNSUPPORTED_MEDIA_TYPE
+
+
+class InternalServerError(LinkError):
+    """500 Internal Server Error."""
+    title = "Internal Server Error"
+    text = ("We're sorry, but there is a error in service. "
+            "Please try again later.")
+    id = "internal-server-error"
+    status_code = state.HTTP_INTERNAL_SERVER_ERROR
+
+
+class RequestTimeout(InternalServerError):
+    """500 Response Timeout"""
+    title = "Response Timeout"
+    text = "There is some problem on PrusaLink."
+    id = "response-timeout"
+
+
+class PrinterUnavailable(LinkError):
+    """503 Printer Unavailable."""
+    title = "Printer Unavailable."
+    text = "PrusaLink not finished initializing or Printer not connected."
+    id = "printer-unavailable"
+    status_code = state.HTTP_SERVICE_UNAVAILABLE

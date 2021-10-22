@@ -51,10 +51,9 @@ def get_local_free_space(path):
 
 class GCodeFile(FileIO):
     """Own file class to control processing data when POST"""
-    def __init__(self, filepath, size):
+    def __init__(self, filepath):
         app.posting_data = True
         job = Job.get_instance()
-        self.size = size
         self.filepath = filepath
         self.__uploaded = 0
         self.job_data = job.data
@@ -62,17 +61,15 @@ class GCodeFile(FileIO):
         super().__init__(filepath, 'w+b')
 
     @property
-    def is_complete(self):
-        """Return True if file is complete."""
-        return self.__uploaded == self.size
+    def uploaded(self):
+        """Return uploaded file size."""
+        return self.__uploaded
 
     def write(self, data):
         if self.printer.state == State.PRINTING \
                 and not self.job_data.from_sd:
             sleep(0.01)
         self.__uploaded += super().write(data)
-        if self.__uploaded > self.size:
-            raise errors.FileSizeMismatch()
 
     def close(self):
         super().close()
@@ -81,8 +78,7 @@ class GCodeFile(FileIO):
 
 def callback_factory(req):
     """Factory for creating file_callback."""
-    file_length = req.content_length
-    if file_length <= 0:
+    if req.content_length <= 0:
         raise errors.LengthRequired()
 
     def gcode_callback(filename):
@@ -103,10 +99,11 @@ def callback_factory(req):
         if not filename.endswith(GCODE_EXTENSIONS) or filename.startswith('.'):
             raise errors.UnsupportedMediaError()
 
-        if get_local_free_space(dirname(part_path)) <= file_length:
+        # Content-Length is not file-size but it is good limit
+        if get_local_free_space(dirname(part_path)) <= req.content_length:
             raise errors.EntityTooLarge()
 
-        return GCodeFile(part_path, file_length)
+        return GCodeFile(part_path)
 
     return gcode_callback
 
@@ -209,7 +206,7 @@ def api_upload(req, target):
     filename = form['file'].filename
     part_path = partfilepath(filename)
 
-    if not form['file'].file.is_complete:
+    if form.bytes_read != req.content_length:
         log.error("File uploading not complete")
         unlink(part_path)
         raise errors.FileSizeMismatch()

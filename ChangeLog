@@ -24,6 +24,7 @@
       - check if file is uploaded complete
       - check storage free space first
       - errors refactoring
+      - simple html errors
 
 0.5.1 (2021-07-16)
     * Implementation of print after upload endpoint
