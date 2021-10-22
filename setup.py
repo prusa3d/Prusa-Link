@@ -5,7 +5,7 @@ import re
 from sys import stderr
 from subprocess import call
 from grp import getgrnam
-from shutil import copytree
+from shutil import copytree, copyfile
 from distutils import log
 from distutils.core import Command
 
@@ -97,11 +97,15 @@ class BuildStatic(Command):
         if call(['docker', 'pull', 'node:latest']):
             raise IOError(1, "Can't get last node docker.")
 
-        cwd = os.path.abspath(os.path.join(os.curdir, 'prusa-connect-local'))
+        cwd = os.path.abspath(os.path.join(os.curdir, 'Prusa-Link-Web'))
+
+        copyfile(os.path.join(os.curdir, 'config.custom.js'),
+                 os.path.join(cwd, 'config.custom.js'))
+
         args = ('docker', 'run', '-t', '--rm', '-u',
                 f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd, '-v',
                 f"{cwd}:{cwd}", 'node:latest', 'sh', '-c',
-                'npm install && npm run build:mk3')
+                'npm install && npm run build:custom')
         if call(args):
             raise IOError(1, 'docker failed')
 
