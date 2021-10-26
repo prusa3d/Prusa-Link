@@ -11,7 +11,7 @@ from pathlib import Path
 from re import Match
 from threading import Event
 from time import time, sleep
-from typing import Any, List, Optional
+from typing import Optional, Dict
 
 from prusa.connect.printer.const import State, Source, Event as EventConst
 
@@ -100,8 +100,8 @@ class TryUntilState(Command):
 
 def prepare_temperatures(parameters, serial_queue, telemetry):
     """Set temperatures for load/unload filament"""
-    target_nozzle_print = parameters[1]
-    target_bed = parameters[2]
+    target_nozzle_print = parameters["nozzle_temperature"]
+    target_bed = parameters["bed_temperature"]
 
     # Extrusion temperature = 90% of target nozzle temperature
     target_nozzle_extrude = target_nozzle_print * 0.9
@@ -126,7 +126,7 @@ class LoadFilamentMK3(Command):
 
     command_name = "load_filament"
 
-    def __init__(self, parameters: Optional[List[Any]], telemetry, **kwargs):
+    def __init__(self, parameters: Optional[Dict], telemetry, **kwargs):
         super().__init__(**kwargs)
         self.parameters = parameters
         self.telemetry = telemetry
@@ -145,7 +145,7 @@ class UnloadFilamentMK3(Command):
 
     command_name = "unload_filament"
 
-    def __init__(self, parameters: Optional[List[Any]], telemetry, **kwargs):
+    def __init__(self, parameters: Optional[Dict], telemetry, **kwargs):
         super().__init__(**kwargs)
         self.parameters = parameters
         self.telemetry = telemetry
