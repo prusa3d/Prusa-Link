@@ -30,6 +30,7 @@ from .informers.state_manager import StateManager, StateChange
 from .informers.filesystem.storage_controller import StorageController
 from .informers.telemetry_gatherer import TelemetryGatherer
 from .informers.getters import get_printer_type, get_nozzle_diameter
+from .input_output.camera import Camera
 from .input_output.lcd_printer import LCDPrinter
 from .input_output.serial.serial_queue import MonitoredSerialQueue
 from .input_output.serial.serial import Serial
@@ -105,6 +106,7 @@ class PrusaLink:
                                          name="fw_resume_print").start())
 
         # Init components first, so they all exist for signal binding stuff
+        self.camera = Camera()
         self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_reader,
                                       self.model)
         self.job = Job(self.serial_reader, self.model, self.cfg, self.printer)
@@ -235,6 +237,10 @@ class PrusaLink:
             elif command.startswith("print"):
                 result = self.command_queue.do_command(
                     StartPrint(command.split(" ", 1)[1]))
+            elif command.startswith("camera"):
+                self.camera.setup({})
+                with open('image.jpg', 'wb') as f:
+                    self.camera.capture(f)
             elif command.startswith("trigger"):
                 InterestingLogRotator.trigger("a debugging command")
 
