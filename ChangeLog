@@ -25,6 +25,7 @@
       - check storage free space first
       - errors refactoring
       - simple html errors
+    * Changed args to kwargs for high level commands
 
 0.5.1 (2021-07-16)
     * Implementation of print after upload endpoint

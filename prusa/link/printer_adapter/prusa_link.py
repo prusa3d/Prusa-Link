@@ -298,8 +298,9 @@ class PrusaLink:
         """
         Connects the command to start print from CONNECT with its handler
         """
-        assert caller.args
-        command = StartPrint(path=caller.args[0], command_id=caller.command_id)
+        assert caller.kwargs
+        command = StartPrint(path=caller.kwargs["path"],
+                             command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
     def pause_print(self, caller: SDKCommand):
@@ -344,8 +345,7 @@ class PrusaLink:
         telemetry = self.model.last_telemetry
         if telemetry.state == State.PRINTING:
             raise RuntimeError("Can't load filament while printing")
-
-        command = LoadFilamentMK3(parameters=caller.args,
+        command = LoadFilamentMK3(parameters=caller.kwargs,
                                   telemetry=telemetry,
                                   command_id=caller.command_id)
         return self.command_queue.do_command(command)
@@ -358,7 +358,7 @@ class PrusaLink:
         if telemetry.state == State.PRINTING:
             raise RuntimeError("Can't unload filament while printing")
 
-        command = UnloadFilamentMK3(parameters=caller.args,
+        command = UnloadFilamentMK3(parameters=caller.kwargs,
                                     telemetry=telemetry,
                                     command_id=caller.command_id)
         return self.command_queue.do_command(command)
