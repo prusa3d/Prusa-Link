@@ -73,7 +73,9 @@ def jog(req, serial_queue):
 def home(req, serial_queue):
     """XYZ homing command"""
     axes = req.json.get('axes')
-    if not axes:
+    if axes:
+        axes = list(map(str.upper, axes))
+    else:
         axes = ['X', 'Y', 'Z']
     gcode = f'G28 {axes}'
     enqueue_instruction(serial_queue, gcode)
