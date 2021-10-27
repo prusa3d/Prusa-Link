@@ -59,7 +59,6 @@ def internal_server_error(req):
 @app.route('/error/forbidden')
 def forbidden(req):
     """Error handler 403 forbidden."""
-    print(">>> Forbidden voe")
     return response_error(req, errors.ForbiddenError())
 
 
@@ -77,7 +76,9 @@ def gone(req):
     This handler is called only when wizard is done and someone try to
     access it.
     """
-    return make_response(generate_page(req, "error410.html", error=exc_info()),
+    return make_response(generate_page(req,
+                                       "error-gone.html",
+                                       error=exc_info()),
                          status_code=410)
 
 
