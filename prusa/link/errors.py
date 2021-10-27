@@ -120,7 +120,7 @@ class LinkError(RuntimeError):
         if self.id:
             self.path = '/error/' + self.id
         # pylint: disable=consider-using-f-string
-        self.template = 'error%s.html' % self.status_code
+        self.template = 'error-%s.html' % self.id
         super().__init__(self.text)
 
     def set_url(self, req):
