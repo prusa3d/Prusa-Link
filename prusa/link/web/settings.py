@@ -131,6 +131,14 @@ def regenerate_api_key(req):
     return JSONResponse(status_code=state.HTTP_OK)
 
 
+@app.route('/api/settings/sn')
+@check_api_digest
+def get_api_sn(req):
+    """Get current S/N of the printer"""
+    # pylint: disable=unused-argument
+    return JSONResponse(**{"S/N": app.daemon.prusa_link.printer.sn})
+
+
 @app.route('/api/settings/sn', method=state.METHOD_POST)
 @check_api_digest
 def api_sn(req):
