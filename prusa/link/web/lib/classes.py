@@ -8,18 +8,20 @@ from socketserver import ThreadingMixIn
 
 from ... import __application__, __version__
 
+MAX_REQUEST_SIZE = 2048
 log = logging.getLogger(__name__)
 
 
-class SingleServer(WSGIServer):
-    """WSGIServer with handler error."""
+class ThreadingServer(ThreadingMixIn, WSGIServer):
+    """WSGIServer which run request in thread.
+
+    * additional error handler
+    """
+    daemon_threads = True
+    multithread = True
+
     def handle_error(self, request, client_address):
         log.exception("Error for client %s", client_address[0])
-
-
-class ThreadingServer(ThreadingMixIn, SingleServer):
-    """WSGIServer which run request in thread."""
-    daemon_threads = True
 
 
 class LinkHandler(ServerHandler):
@@ -49,8 +51,8 @@ class RequestHandler(WSGIRequestHandler):
     def handle(self):
         """Handle a single HTTP request"""
 
-        self.raw_requestline = self.rfile.readline(65537)
-        if len(self.raw_requestline) > 65536:
+        self.raw_requestline = self.rfile.readline(MAX_REQUEST_SIZE)
+        if len(self.raw_requestline) > MAX_REQUEST_SIZE:
             self.requestline = ''
             self.request_version = ''
             self.command = ''

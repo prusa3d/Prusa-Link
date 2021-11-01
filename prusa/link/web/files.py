@@ -69,7 +69,9 @@ class GCodeFile(FileIO):
         if self.printer.state == State.PRINTING \
                 and not self.job_data.from_sd:
             sleep(0.01)
-        self.__uploaded += super().write(data)
+        size = super().write(data)
+        self.__uploaded += size
+        return size
 
     def close(self):
         super().close()
