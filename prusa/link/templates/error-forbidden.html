@@ -1,12 +1,11 @@
 {# vim:set softtabstop=2: -#}
 {% set wx = True %}
-{% set title = '403 Forbidden' -%}
 {#% set refresh = 15 %#}
 {% include "_header.html" %}
 
-           <h1>{{ title }}</h1>
+           <h1>{{ status_code }} {{ title }}</h1>
             <p>
-              You don not have permission to access this.
+              {{ text }}
             </p>
 
 {% include "_footer.html" %}

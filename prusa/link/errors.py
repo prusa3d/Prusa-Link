@@ -207,12 +207,8 @@ class SDCardNotSupoorted(NotFoundError):
 class LocationNotFound(NotFoundError):
     """404 Location from url not found."""
     title = "Location Not Found"
-    text = "Location `{location}` is not found, use local."
+    text = "Location not found, use local."
     id = "location-not-found"
-
-    def __init__(self, location):
-        self.text = LocationNotFound.text.format(location)
-        super().__init__()
 
 
 class ConflictError(LinkError):
@@ -279,7 +275,7 @@ class InternalServerError(LinkError):
     status_code = state.HTTP_INTERNAL_SERVER_ERROR
 
 
-class RequestTimeout(InternalServerError):
+class ResponseTimeout(InternalServerError):
     """500 Response Timeout"""
     title = "Response Timeout"
     text = "There is some problem on PrusaLink."
