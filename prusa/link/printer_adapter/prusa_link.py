@@ -288,8 +288,8 @@ class PrusaLink:
         """
         Connects the command to exectue gcode from CONNECT with its handler
         """
-        assert caller.args
-        command = ExecuteGcode(gcode=caller.args[0],
+        assert caller.kwargs
+        command = ExecuteGcode(gcode=caller.kwargs["gcode"],
                                force=caller.force,
                                command_id=caller.command_id)
         return self.command_queue.do_command(command)
