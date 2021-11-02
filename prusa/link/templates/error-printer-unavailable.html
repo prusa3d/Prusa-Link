@@ -1,13 +1,11 @@
 {# vim:set softtabstop=2: -#}
 {% set wx = True %}
-{% set title = '503 Service Unavailable' -%}
 {#% set refresh = 15 %#}
 {% include "_header.html" %}
 
-        <h1>{{ title }}</h1>
+        <h1>{{ status_code }} {{ title }}</h1>
         <p>
-          PrusaLink not finished initializing or Printer not connected.
-          Please try again later.
+          {{ text }}
         </p>
 
 {% include "_footer.html" %}
