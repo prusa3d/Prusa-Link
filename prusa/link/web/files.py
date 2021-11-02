@@ -117,7 +117,7 @@ def wait_until_fs_path(printer, path):
         if printer.fs.get(path):
             return
         sleep(0.1)
-    raise errors.RequestTimeout()
+    raise errors.ResponseTimeout()
 
 
 def check_target(func):
@@ -127,7 +127,7 @@ def check_target(func):
         if target == 'sdcard':
             raise errors.SDCardNotSupoorted()
         if target != 'local':
-            raise errors.LocationNotFound(target)
+            raise errors.LocationNotFound()
 
         return func(req, target, *args, **kwargs)
 
@@ -259,7 +259,7 @@ def api_upload(req, target):
 def api_start_print(req, target, path):
     """Start print if no print job is running"""
     if target not in ('local', 'sdcard'):
-        raise errors.LocationNotFound(target)
+        raise errors.LocationNotFound()
 
     command = req.json.get('command')
     job = Job.get_instance()
@@ -290,7 +290,7 @@ def api_resources(req, target, path):
     """Returns metadata from cache file."""
     # pylint: disable=unused-argument
     if target not in ('local', 'sdcard'):
-        raise errors.LocationNotFound(target)
+        raise errors.LocationNotFound()
 
     path = '/' + path
 
