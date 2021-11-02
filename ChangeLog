@@ -28,6 +28,7 @@
     * Changed args to kwargs for high level commands
     * HTTP Request handling improvement
     * own Serial class implementation (speed improvement)
+    * Changed args to kwargs for execute_gcode command
 
 0.5.1 (2021-07-16)
     * Implementation of print after upload endpoint
