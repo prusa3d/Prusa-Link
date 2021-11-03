@@ -2,7 +2,6 @@
 from os.path import join
 from importlib_resources import files  # 3.9 has native resources
 from jinja2 import Environment, FileSystemLoader
-from distutils import log
 from jinja2_template_info import TemplateInfoExtension
 
 from prusa.connect.printer.const import PrinterType
