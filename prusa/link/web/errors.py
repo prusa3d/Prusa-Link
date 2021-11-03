@@ -20,7 +20,7 @@ def response_error(req, error: errors.LinkError):
         return error.json_response()
     if req.accept_html:
         return make_response(generate_page(req, error.template, title=error.title,
-                             text=error.text, status_code=error.status_code), 
+                             text=error.text, status_code=error.status_code),
                              status_code=error.status_code)
     return error.text_response()
 
@@ -71,70 +71,70 @@ def not_found(req):
 
 @app.http_state(400)
 @app.route('/error/no-file-in-request')
-def not_found(req):
+def no_file_in_request(req):
     """Error handler for 400 File not found in request payload."""
     return response_error(req, errors.NoFileInRequest())
 
 
 @app.http_state(400)
 @app.route('/error/file-size-mismatch')
-def not_found(req):
+def file_size_mismatch(req):
     """Error handler for 400 File size mismatch."""
     return response_error(req, errors.FileSizeMismatch())
 
 
 @app.http_state(400)
 @app.route('/error/forbidden-characters')
-def not_found(req):
+def forbidden_characters(req):
     """Error handler for 400 Forbidden Characters."""
     return response_error(req, errors.ForbiddenCharacters())
 
 
 @app.http_state(404)
 @app.route('/error/sdcard-not-supported')
-def not_found(req):
+def sdcard_not_supported(req):
     """Error handler for 404 Some operations are not possible on SDCard."""
     return response_error(req, errors.SDCardNotSupoorted())
 
 
 @app.http_state(404)
 @app.route('/error/location-not-found')
-def not_found(req):
+def location_not_found(req):
     """Error handler for 404 Location from url not found."""
     return response_error(req, errors.LocationNotFound())
 
 
 @app.http_state(409)
 @app.route('/error/file-currently-printed')
-def not_found(req):
+def file_currently_printed(req):
     """Error handler for 409 File is currently printed."""
     return response_error(req, errors.FileCurrentlyPrinted())
 
 
 @app.http_state(409)
 @app.route('/error/transfer-conflict')
-def not_found(req):
+def transfer_conflict(req):
     """Error handler for 409 Already in transfer process."""
     return response_error(req, errors.TransferConflict())
 
 
 @app.http_state(413)
 @app.route('/error/entity-too-large')
-def not_found(req):
+def entity_too_large(req):
     """Error handler for 413 Payload Too Large"""
     return response_error(req, errors.EntityTooLarge())
 
 
 @app.http_state(415)
 @app.route('/error/unsupported-media-type')
-def not_found(req):
+def unsupported_media_type(req):
     """Error handler for 415 Unsupported Media Type"""
     return response_error(req, errors.UnsupportedMediaError())
 
 
 @app.http_state(500)
 @app.route('/error/response-timeout')
-def not_found(req):
+def response_timeout(req):
     """Error handler for 500 Response Timeout"""
     return response_error(req, errors.ResponseTimeout())
 
