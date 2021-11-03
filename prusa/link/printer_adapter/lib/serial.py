@@ -2,8 +2,12 @@
 
 import os
 import termios
+import fcntl
+import struct
 
-from select import select
+from select import poll, POLLIN
+
+TIOCM_DTR_str = struct.pack('I', termios.TIOCM_DTR)
 
 
 class SerialException(RuntimeError):
@@ -26,7 +30,7 @@ class Serial:
         self.timeout = timeout
 
         # pylint: disable=invalid-name
-        self.fd = os.open(port, os.O_RDWR)
+        self.fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
         tty = termios.tcgetattr(self.fd)
 
         # cflag
@@ -67,17 +71,22 @@ class Serial:
         termios.tcsetattr(self.fd, termios.TCSAFLUSH, tty)
 
         self.__buffer = b''
+        self.__poll = poll()
+        self.__poll.register(self.fd, POLLIN)
+
+        self.__dtr = False
 
     def close(self):
         """Close the port."""
+        self.__poll.unregister(self.fd)
         os.close(self.fd)
         self.fd = None
 
     def __read(self):
         """Fill internal buffer by read from file descriptor."""
         try:
-            ready = select([self.fd], [], [], self.timeout)
-            if ready[0]:
+            ready = self.__poll.poll(self.timeout * 1000)
+            if ready and self.fd:
                 self.__buffer = os.read(self.fd, 1024)
                 return
             raise SerialException('No data read from device')
@@ -109,3 +118,16 @@ class Serial:
     def is_open(self):
         """Return true if port is open."""
         return self.fd is not None
+
+    @property
+    def dtr(self):
+        """Data Terminal Ready State"""
+        return self.__dtr
+
+    @dtr.setter
+    def dtr(self, value: bool):
+        self.__dtr = value
+        if value:
+            fcntl.ioctl(self.fd, termios.TIOCMBIS, TIOCM_DTR_str)
+        else:
+            fcntl.ioctl(self.fd, termios.TIOCMBIC, TIOCM_DTR_str)

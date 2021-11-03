@@ -27,11 +27,9 @@ class Serial(metaclass=MCSingleton):
                  serial_reader: SerialReader,
                  port="/dev/ttyAMA0",
                  baudrate=115200,
-                 timeout=1,
-                 connection_write_delay=10):
+                 timeout=2):
 
         # pylint: disable=too-many-arguments
-        self.connection_write_delay = connection_write_delay
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
@@ -111,8 +109,8 @@ class Serial(metaclass=MCSingleton):
                 raw_line = self.serial.readline()
                 line = raw_line.decode("ASCII").strip()
             except serial.SerialException:
-                log.error("Failed when reading from the printer. "
-                          "Trying to re-open")
+                log.exception("Failed when reading from the printer. "
+                              "Trying to re-open")
 
                 with self.write_lock:  # Let's lock the writing
                     # if the serial is broken
