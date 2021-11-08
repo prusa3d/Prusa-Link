@@ -12,8 +12,8 @@ from .input_output.serial.instruction import \
     Instruction
 from .input_output.serial.serial_queue import \
     SerialQueue
-from .input_output.serial.serial_reader import \
-    SerialReader
+from .input_output.serial.serial_parser import \
+    SerialParser
 from .input_output.serial.helpers import \
     enqueue_instruction, wait_for_instruction
 from .model import Model
@@ -38,10 +38,10 @@ class FilePrinter(metaclass=MCSingleton):
     """
 
     # pylint: disable=too-many-arguments
-    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
+    def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
                  model: Model, cfg: Config, print_stats: PrintStats):
         self.serial_queue = serial_queue
-        self.serial_reader = serial_reader
+        self.serial_parser = serial_parser
         self.print_stats = print_stats
         self.model = model
 
@@ -66,15 +66,15 @@ class FilePrinter(metaclass=MCSingleton):
         self.serial_queue.serial_queue_failed.connect(
             lambda sender: self.stop_print(), weak=False)
 
-        self.serial_reader.add_handler(
+        self.serial_parser.add_handler(
             POWER_PANIC_REGEX, lambda sender, match: self.power_panic())
-        self.serial_reader.add_handler(
+        self.serial_parser.add_handler(
             ERROR_REGEX, lambda sender, match: self.printer_error())
-        self.serial_reader.add_handler(CANCEL_REGEX,
+        self.serial_parser.add_handler(CANCEL_REGEX,
                                        lambda sender, match: self.stop_print())
-        self.serial_reader.add_handler(PAUSED_REGEX,
+        self.serial_parser.add_handler(PAUSED_REGEX,
                                        lambda sender, match: self.pause())
-        self.serial_reader.add_handler(RESUMED_REGEX,
+        self.serial_parser.add_handler(RESUMED_REGEX,
                                        lambda sender, match: self.resume())
 
         self.thread = None

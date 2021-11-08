@@ -14,7 +14,7 @@ from .mounts import FSMounts, DirMounts
 from .sd_card import SDCard
 from ..state_manager import StateManager
 from ...input_output.serial.serial_queue import SerialQueue
-from ...input_output.serial.serial_reader import SerialReader
+from ...input_output.serial.serial_parser import SerialParser
 from ...model import Model
 from ....sdk_augmentation.file import SDFile
 
@@ -29,19 +29,19 @@ class StorageController:
 
     # pylint: disable=too-many-arguments
     def __init__(self, cfg, serial_queue: SerialQueue,
-                 serial_reader: SerialReader, state_manager: StateManager,
+                 serial_parser: SerialParser, state_manager: StateManager,
                  model: Model):
         self.dir_mounted_signal = Signal()
         self.dir_unmounted_signal = Signal()
         self.sd_mounted_signal = Signal()
         self.sd_unmounted_signal = Signal()
 
-        self.serial_reader = serial_reader
+        self.serial_parser = serial_parser
         self.serial_queue: SerialQueue = serial_queue
         self.state_manager = state_manager
         self.model = model
 
-        self.sd_card = SDCard(self.serial_queue, self.serial_reader,
+        self.sd_card = SDCard(self.serial_queue, self.serial_parser,
                               self.state_manager, self.model)
         self.sd_card.sd_mounted_signal.connect(self.sd_mounted)
         self.sd_card.sd_unmounted_signal.connect(self.sd_unmounted)

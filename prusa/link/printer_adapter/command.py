@@ -9,11 +9,11 @@ from prusa.connect.printer.const import Source
 from .file_printer import FilePrinter
 from .informers.job import Job
 from .informers.state_manager import StateManager
-from .input_output.serial.serial import Serial
+from .input_output.serial.serial_adapter import SerialAdapter
 from .input_output.serial.serial_queue import \
     MonitoredSerialQueue
-from .input_output.serial.serial_reader import \
-    SerialReader
+from .input_output.serial.serial_parser import \
+    SerialParser
 from .input_output.serial.helpers import \
     wait_for_instruction, enqueue_matchable, enqueue_instruction
 from .model import Model
@@ -39,8 +39,8 @@ class Command:
     def __init__(self, command_id=None, source=Source.CONNECT):
         self.serial_queue: MonitoredSerialQueue = \
             MonitoredSerialQueue.get_instance()
-        self.serial: Serial = Serial.get_instance()
-        self.serial_reader: SerialReader = SerialReader.get_instance()
+        self.serial_adapter: SerialAdapter = SerialAdapter.get_instance()
+        self.serial_parser: SerialParser = SerialParser.get_instance()
         self.model: Model = Model.get_instance()
         self.printer: MyPrinter = MyPrinter.get_instance()
         self.state_manager: StateManager = StateManager.get_instance()

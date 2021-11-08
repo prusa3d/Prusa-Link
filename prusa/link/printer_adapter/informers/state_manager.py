@@ -11,8 +11,8 @@ from prusa.connect.printer import Printer
 from prusa.connect.printer.const import State, Source
 from ..const import STATE_HISTORY_SIZE, ERROR_REASON_TIMEOUT
 
-from ..input_output.serial.serial_reader import \
-    SerialReader
+from ..input_output.serial.serial_parser import \
+    SerialParser
 from ..interesting_logger import InterestingLogRotator
 from ..model import Model
 from ..structures.mc_singleton import MCSingleton
@@ -96,10 +96,10 @@ class StateManager(metaclass=MCSingleton):
     # pylint: disable=too-many-instance-attributes,
     # pylint: disable=too-many-public-methods
     # pylint: disable=too-many-arguments
-    def __init__(self, serial_reader: SerialReader, model: Model,
+    def __init__(self, serial_parser: SerialParser, model: Model,
                  sdk_printer: Printer, cfg: Config, settings: Settings):
 
-        self.serial_reader: SerialReader = serial_reader
+        self.serial_parser: SerialParser = serial_parser
         self.model: Model = model
         self.sdk_printer: Printer = sdk_printer
         self.cfg = cfg
@@ -179,7 +179,7 @@ class StateManager(metaclass=MCSingleton):
         }
 
         for regex, handler in regex_handlers.items():
-            self.serial_reader.add_handler(regex, handler)
+            self.serial_parser.add_handler(regex, handler)
 
         error_states = get_printer_error_states()
         for state in error_states:

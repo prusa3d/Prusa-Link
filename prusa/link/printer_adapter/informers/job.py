@@ -10,7 +10,7 @@ from prusa.connect.printer import Printer
 
 from ..structures.module_data_classes import JobData
 from ...config import Config
-from ..input_output.serial.serial_reader import SerialReader
+from ..input_output.serial.serial_parser import SerialParser
 from ..model import Model
 from ..const import PRINTING_STATES, \
     JOB_ENDING_STATES, BASE_STATES, JOB_ONGOING_STATES, SD_MOUNT_NAME
@@ -24,12 +24,12 @@ log = logging.getLogger(__name__)
 
 class Job(metaclass=MCSingleton):
     """Keeps track of print jobs and their properties"""
-    def __init__(self, serial_reader: SerialReader, model: Model, cfg: Config,
+    def __init__(self, serial_parser: SerialParser, model: Model, cfg: Config,
                  printer: Printer):
         # Sent every time the job id should disappear, appear or update
         self.printer = printer
-        self.serial_reader = serial_reader
-        self.serial_reader.add_handler(OPEN_RESULT_REGEX, self.file_opened)
+        self.serial_parser = serial_parser
+        self.serial_parser.add_handler(OPEN_RESULT_REGEX, self.file_opened)
 
         # Unused
         self.job_id_updated_signal = Signal()  # kwargs: job_id: int

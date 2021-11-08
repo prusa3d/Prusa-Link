@@ -392,7 +392,7 @@ class ResetPrinter(Command):
             assert match is not None
             event.set()
 
-        self.serial_reader.add_handler(PRINTER_BOOT_REGEX, waiter)
+        self.serial_parser.add_handler(PRINTER_BOOT_REGEX, waiter)
 
         self.state_manager.expect_change(
             StateChange(default_source=self.source,
@@ -411,13 +411,13 @@ class ResetPrinter(Command):
             wiringpi.digitalWrite(RESET_PIN, wiringpi.LOW)
         else:
             # Maybe use an import error, or something from within wiringpi
-            self.serial.blip_dtr()
+            self.serial_adapter.blip_dtr()
 
         while self.running and time() < times_out_at:
             if event.wait(QUIT_INTERVAL):
                 break
 
-        self.serial_reader.remove_handler(PRINTER_BOOT_REGEX, waiter)
+        self.serial_parser.remove_handler(PRINTER_BOOT_REGEX, waiter)
 
         if time() > times_out_at:
             self.failed("Your printer has ignored the reset signal, your RPi "

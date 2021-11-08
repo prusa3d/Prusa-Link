@@ -7,7 +7,7 @@ from ..const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL
 from ..model import Model
 from .serial.helpers import enqueue_instruction, wait_for_instruction
 from .serial.serial_queue import SerialQueue
-from .serial.serial_reader import SerialReader
+from .serial.serial_parser import SerialParser
 from ..structures.mc_singleton import MCSingleton
 from ..structures.regular_expressions import LCD_UPDATE_REGEX
 from ..updatable import prctl_name, Thread
@@ -19,17 +19,17 @@ class LCDPrinter(metaclass=MCSingleton):
     """Reports Prusa Link status on the printer LCD whenever possible"""
     MESSAGE_DURATION = 5
 
-    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
+    def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
                  model: Model):
         self.serial_queue = serial_queue
-        self.serial_reader = serial_reader
+        self.serial_parser = serial_parser
         self.model = model
 
         self.last_updated = time()
         # When printing from our queue, the "LCD status updated gets printed
         # lets try to ignore those
         self.ignore = 0
-        self.serial_reader.add_handler(LCD_UPDATE_REGEX, self.lcd_updated)
+        self.serial_parser.add_handler(LCD_UPDATE_REGEX, self.lcd_updated)
 
         self.running = True
         self.display_thread: Thread = Thread(target=self.show_status,
