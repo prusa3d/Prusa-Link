@@ -9,7 +9,7 @@ from ..const import PRINTING_STATES, \
     TELEMETRY_INTERVAL, SLOW_TELEMETRY
 from ..input_output.serial.instruction import MandatoryMatchableInstruction
 from ..input_output.serial.serial_queue import SerialQueue
-from ..input_output.serial.serial_reader import SerialReader
+from ..input_output.serial.serial_parser import SerialParser
 from ..input_output.serial.helpers import \
     wait_for_instruction, enqueue_matchable
 from ..model import Model
@@ -29,7 +29,7 @@ class TelemetryGatherer(ThreadedUpdatable):
     thread_name = "telemetry"
     update_interval = TELEMETRY_INTERVAL
 
-    def __init__(self, serial_reader: SerialReader, serial_queue: SerialQueue,
+    def __init__(self, serial_parser: SerialParser, serial_queue: SerialQueue,
                  model: Model):
 
         self.updated_signal = Signal()  # kwargs: telemetry: Telemetry
@@ -49,7 +49,7 @@ class TelemetryGatherer(ThreadedUpdatable):
         #                                               total: int
 
         self.model = model
-        self.serial_reader = serial_reader
+        self.serial_parser = serial_parser
         self.serial_queue = serial_queue
         self.current_telemetry = Telemetry()
 
@@ -78,7 +78,7 @@ class TelemetryGatherer(ThreadedUpdatable):
         }
 
         for regex, handler in regex_handlers.items():
-            self.serial_reader.add_handler(regex, handler)
+            self.serial_parser.add_handler(regex, handler)
 
         super().__init__()
 

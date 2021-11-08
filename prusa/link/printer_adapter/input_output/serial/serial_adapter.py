@@ -5,7 +5,7 @@ from time import sleep
 
 from blinker import Signal  # type: ignore
 
-from .serial_reader import SerialReader
+from .serial_parser import SerialParser
 from ...lib import serial
 from ...const import PRINTER_BOOT_WAIT, \
     SERIAL_REOPEN_TIMEOUT
@@ -16,7 +16,7 @@ from .... import errors
 log = logging.getLogger(__name__)
 
 
-class Serial(metaclass=MCSingleton):
+class SerialAdapter(metaclass=MCSingleton):
     """
     Class handling the basic serial management, opening, re-opening,
     writing and reading.
@@ -24,7 +24,7 @@ class Serial(metaclass=MCSingleton):
     It also can reset the connected device using DTR - works only with USB
     """
     def __init__(self,
-                 serial_reader: SerialReader,
+                 serial_parser: SerialParser,
                  port="/dev/ttyAMA0",
                  baudrate=115200,
                  timeout=2):
@@ -37,7 +37,7 @@ class Serial(metaclass=MCSingleton):
         self.write_lock = Lock()
 
         self.serial = None
-        self.serial_reader = serial_reader
+        self.serial_parser = serial_parser
 
         self.failed_signal = Signal()
         self.renewed_signal = Signal()
@@ -107,7 +107,7 @@ class Serial(metaclass=MCSingleton):
                        "so stuff doesn't break"
             try:
                 raw_line = self.serial.readline()
-                line = raw_line.decode("ASCII").strip()
+                line = raw_line.decode("ASCII").strip().strip('\x00')
             except serial.SerialException:
                 log.exception("Failed when reading from the printer. "
                               "Trying to re-open")
@@ -124,7 +124,7 @@ class Serial(metaclass=MCSingleton):
                     # at the same time? IDK, but if something weird starts
                     # happening, i'll re-enable this
                     log.debug("Printer says: '%s'", line)
-                    self.serial_reader.decide(line)
+                    self.serial_parser.decide(line)
 
     def write(self, message: bytes):
         """

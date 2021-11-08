@@ -12,7 +12,7 @@ from prusa.connect.printer.const import State
 
 from ..state_manager import StateManager
 from ...input_output.serial.serial_queue import SerialQueue
-from ...input_output.serial.serial_reader import SerialReader
+from ...input_output.serial.serial_parser import SerialParser
 from ...input_output.serial.helpers import \
     wait_for_instruction, enqueue_matchable, enqueue_collecting
 from ...model import Model
@@ -68,7 +68,7 @@ class SDCard(ThreadedUpdatable):
     # Cycle fast, but re-scan only on events or in big intervals
     update_interval = SD_INTERVAL
 
-    def __init__(self, serial_queue: SerialQueue, serial_reader: SerialReader,
+    def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
                  state_manager: StateManager, model: Model):
 
         self.tree_updated_signal = Signal()  # kwargs: tree: FileTree
@@ -76,9 +76,9 @@ class SDCard(ThreadedUpdatable):
         self.sd_mounted_signal = Signal()  # kwargs: files: SDFile
         self.sd_unmounted_signal = Signal()
 
-        self.serial_reader = serial_reader
-        self.serial_reader.add_handler(SD_PRESENT_REGEX, self.sd_inserted)
-        self.serial_reader.add_handler(SD_EJECTED_REGEX, self.sd_ejected)
+        self.serial_parser = serial_parser
+        self.serial_parser.add_handler(SD_PRESENT_REGEX, self.sd_inserted)
+        self.serial_parser.add_handler(SD_EJECTED_REGEX, self.sd_ejected)
         self.serial_queue: SerialQueue = serial_queue
         self.state_manager = state_manager
         self.model = model

@@ -2,7 +2,7 @@
 from time import time
 
 from .input_output.serial.serial_queue import SerialQueue
-from .input_output.serial.serial_reader import SerialReader
+from .input_output.serial.serial_parser import SerialParser
 from .input_output.serial.helpers import \
         enqueue_instruction, wait_for_instruction
 from .const import REPORTING_TIMEOUT
@@ -19,15 +19,15 @@ class ReportingEnsurer(ThreadedUpdatable):
     thread_name = "temp_ensurer"
     update_interval = 10
 
-    def __init__(self, serial_reader: SerialReader, serial_queue: SerialQueue):
+    def __init__(self, serial_parser: SerialParser, serial_queue: SerialQueue):
         super().__init__()
-        self.serial_reader = serial_reader
+        self.serial_parser = serial_parser
         self.serial_queue = serial_queue
-        self.serial_reader.add_handler(
+        self.serial_parser.add_handler(
             TEMPERATURE_REGEX, lambda sender, match: self.temps_recorded())
-        self.serial_reader.add_handler(
+        self.serial_parser.add_handler(
             POSITION_REGEX, lambda sender, match: self.positions_recorded())
-        self.serial_reader.add_handler(
+        self.serial_parser.add_handler(
             FAN_REGEX, lambda sender, match: self.fans_recorded())
 
         self.last_seen_temps = time()

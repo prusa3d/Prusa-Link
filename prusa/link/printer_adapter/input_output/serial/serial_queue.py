@@ -15,7 +15,7 @@ from blinker import Signal  # type: ignore
 
 from ...interesting_logger import InterestingLogRotator
 from ....config import Config
-from .serial import Serial
+from .serial_adapter import SerialAdapter
 from ...structures.regular_expressions import \
     CONFIRMATION_REGEX, RESEND_REGEX, BUSY_REGEX, \
     ATTENTION_REGEX, HEATING_HOTEND_REGEX, HEATING_REGEX, \
@@ -23,7 +23,7 @@ from ...structures.regular_expressions import \
 from ...util import run_slowly_die_fast
 from .instruction import Instruction
 from .is_planner_fed import IsPlannerFed
-from .serial_reader import SerialReader
+from .serial_parser import SerialParser
 from ...structures.mc_singleton import MCSingleton
 from ...const import PRINTER_BOOT_WAIT, \
     QUIT_INTERVAL, SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT, \
@@ -44,12 +44,12 @@ class SerialQueue(metaclass=MCSingleton):
     as deterministic of a serial connection to a Prusa printer as possible
     """
     def __init__(self,
-                 serial: Serial,
-                 serial_reader: SerialReader,
+                 serial_adapter: SerialAdapter,
+                 serial_parser: SerialParser,
                  cfg: Config,
                  rx_size=RX_SIZE):
-        self.serial = serial
-        self.serial_reader = serial_reader
+        self.serial_adapter = serial_adapter
+        self.serial_parser = serial_parser
 
         # When the serial_queue cannot re-establish communication with the
         # printer, let's signal this to other modules
@@ -95,10 +95,10 @@ class SerialQueue(metaclass=MCSingleton):
         self.m110_workaround_slot = None
         self.worked_around_m110 = False
 
-        self.serial_reader.add_handler(CONFIRMATION_REGEX,
+        self.serial_parser.add_handler(CONFIRMATION_REGEX,
                                        self._confirmation_handler,
                                        priority=float("inf"))
-        self.serial_reader.add_handler(RESEND_REGEX, self._resend_handler)
+        self.serial_parser.add_handler(RESEND_REGEX, self._resend_handler)
 
         self.is_planner_fed = IsPlannerFed(cfg)
 
@@ -207,7 +207,7 @@ class SerialQueue(metaclass=MCSingleton):
         handlers necessary
         """
         for regexp in self.current_instruction.capturing_regexps:
-            self.serial_reader.add_handler(
+            self.serial_parser.add_handler(
                 regexp,
                 self.current_instruction.output_captured,
                 priority=time())
@@ -218,7 +218,7 @@ class SerialQueue(metaclass=MCSingleton):
         and not preventing garbage collection
         """
         for regexp in self.current_instruction.capturing_regexps:
-            self.serial_reader.remove_handler(
+            self.serial_parser.remove_handler(
                 regexp, self.current_instruction.output_captured)
 
     def _send(self):
@@ -269,7 +269,7 @@ class SerialQueue(metaclass=MCSingleton):
         self.current_instruction.sent()
 
         log.debug("%s sent", instruction.data.decode('ASCII'))
-        self.serial.write(self.current_instruction.data)
+        self.serial_adapter.write(self.current_instruction.data)
 
     def _enqueue(self, instruction: Instruction, to_front=False):
         """Internal method for enqueuing when already locked"""
@@ -527,23 +527,23 @@ class SerialQueue(metaclass=MCSingleton):
 class MonitoredSerialQueue(SerialQueue):
     """Separates the queue monitoring into a different class."""
     def __init__(self,
-                 serial: Serial,
-                 serial_reader: SerialReader,
+                 serial_adapter: SerialAdapter,
+                 serial_parser: SerialParser,
                  cfg: Config,
                  rx_size=128):
-        super().__init__(serial, serial_reader, cfg, rx_size)
+        super().__init__(serial_adapter, serial_parser, cfg, rx_size)
 
         self.stuck_counter = 0
         self.stuck_signal = Signal()
         self.unstuck_signal = Signal()
 
-        self.serial_reader.add_handler(
+        self.serial_parser.add_handler(
             BUSY_REGEX, lambda sender, match: self._renew_timeout())
-        self.serial_reader.add_handler(
+        self.serial_parser.add_handler(
             ATTENTION_REGEX, lambda sender, match: self._renew_timeout())
-        self.serial_reader.add_handler(
+        self.serial_parser.add_handler(
             HEATING_REGEX, lambda sender, match: self._renew_timeout())
-        self.serial_reader.add_handler(
+        self.serial_parser.add_handler(
             HEATING_HOTEND_REGEX, lambda sender, match: self._renew_timeout())
 
         # Remember when the last write or confirmation happened
