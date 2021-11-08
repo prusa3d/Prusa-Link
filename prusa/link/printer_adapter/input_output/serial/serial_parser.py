@@ -1,5 +1,5 @@
 """
-Contains implementation of the SerialReader and Regex pairing classes
+Contains implementation of the SerialParser and Regex pairing classes
 The latter is used by the former for tracking which regular expressions
 have which handlers
 """
@@ -39,7 +39,7 @@ class RegexPairing:
         return self.__str__()
 
 
-class SerialReader(metaclass=MCSingleton):
+class SerialParser(metaclass=MCSingleton):
     """
     It's job is to try and find an appropriate handler for every line that
     we receive from the printer
@@ -58,7 +58,7 @@ class SerialReader(metaclass=MCSingleton):
         signal_list = []
 
         with self.lock:
-            log.debug("Deciding on handlers for line: %s", line)
+            log.debug("Deciding on handlers for line: %s", repr(line))
             for pairing in self.pattern_list:
                 match = pairing.regexp.match(line)
                 if match:

@@ -30,8 +30,8 @@ from .informers.telemetry_gatherer import TelemetryGatherer
 from .informers.getters import get_printer_type, get_nozzle_diameter
 from .input_output.lcd_printer import LCDPrinter
 from .input_output.serial.serial_queue import MonitoredSerialQueue
-from .input_output.serial.serial import Serial
-from .input_output.serial.serial_reader import SerialReader
+from .input_output.serial.serial_adapter import SerialAdapter
+from .input_output.serial.serial_parser import SerialParser
 from .model import Model
 from .structures.model_classes import Telemetry
 from .const import PRINTING_STATES, TELEMETRY_IDLE_INTERVAL, \
@@ -65,14 +65,14 @@ class PrusaLink:
         self.stopped_event = Event()
         HW.ok = True
         self.model = Model()
-        self.serial_reader = SerialReader()
+        self.serial_parser = SerialParser()
 
-        self.serial = Serial(self.serial_reader,
-                             port=cfg.printer.port,
-                             baudrate=cfg.printer.baudrate)
+        self.serial = SerialAdapter(self.serial_parser,
+                                    port=cfg.printer.port,
+                                    baudrate=cfg.printer.baudrate)
 
         self.serial_queue = MonitoredSerialQueue(self.serial,
-                                                 self.serial_reader, self.cfg)
+                                                 self.serial_parser, self.cfg)
 
         self.printer = MyPrinter()
 
@@ -91,30 +91,30 @@ class PrusaLink:
         self.printer.set_handler(CommandType.UNLOAD_FILAMENT,
                                  self.unload_filament)
 
-        self.serial_reader.add_handler(
+        self.serial_parser.add_handler(
             PAUSE_PRINT_REGEX,
             lambda sender, match: Thread(target=self.fw_pause_print,
                                          name="fw_pause_print").start())
-        self.serial_reader.add_handler(
+        self.serial_parser.add_handler(
             RESUME_PRINT_REGEX,
             lambda sender, match: Thread(target=self.fw_resume_print,
                                          name="fw_resume_print").start())
 
         # Init components first, so they all exist for signal binding stuff
-        self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_reader,
+        self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_parser,
                                       self.model)
-        self.job = Job(self.serial_reader, self.model, self.cfg, self.printer)
-        self.state_manager = StateManager(self.serial_reader, self.model,
+        self.job = Job(self.serial_parser, self.model, self.cfg, self.printer)
+        self.state_manager = StateManager(self.serial_parser, self.model,
                                           self.printer, self.cfg,
                                           self.settings)
-        self.telemetry_gatherer = TelemetryGatherer(self.serial_reader,
+        self.telemetry_gatherer = TelemetryGatherer(self.serial_parser,
                                                     self.serial_queue,
                                                     self.model)
         self.print_stats = PrintStats(self.model)
-        self.file_printer = FilePrinter(self.serial_queue, self.serial_reader,
+        self.file_printer = FilePrinter(self.serial_queue, self.serial_parser,
                                         self.model, self.cfg, self.print_stats)
         self.storage = StorageController(cfg, self.serial_queue,
-                                         self.serial_reader,
+                                         self.serial_parser,
                                          self.state_manager, self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
         self.mk3_info = MK3Item(self.serial_queue, self.printer, self.model)
@@ -129,9 +129,9 @@ class PrusaLink:
         self.serial.renewed_signal.connect(self.serial_renewed)
         self.serial_queue.instruction_confirmed_signal.connect(
             self.instruction_confirmed)
-        self.serial_reader.add_handler(START_PRINT_REGEX,
+        self.serial_parser.add_handler(START_PRINT_REGEX,
                                        self.sd_print_start_observed)
-        self.serial_reader.add_handler(PRINTER_BOOT_REGEX, self.printer_reset)
+        self.serial_parser.add_handler(PRINTER_BOOT_REGEX, self.printer_reset)
         self.job.job_info_updated_signal.connect(self.job_info_updated)
         self.job.job_id_updated_signal.connect(self.job_id_updated)
         self.state_manager.pre_state_change_signal.connect(
@@ -176,7 +176,7 @@ class PrusaLink:
         # sent twice
         self.ip_updater.updated_signal.connect(self.ip_updated)
 
-        self.reporting_ensurer = ReportingEnsurer(self.serial_reader,
+        self.reporting_ensurer = ReportingEnsurer(self.serial_parser,
                                                   self.serial_queue)
         self.reporting_ensurer.start()
 
