@@ -48,13 +48,19 @@ PRINT_DONE_REGEX = re.compile(r"^Done printing file$")
 ERROR_REGEX = re.compile(
     r"(Error:("
     r"(?P<kill>Printer halted\. kill\(\) called!)|"
-    r"(?P<stop>Printer stopped due to errors\..*)|"
+    r"(?P<stop>Printer stopped due to errors\..*)))")
+
+ERROR_REASON_REGEX = re.compile(
+    r"(Error:("
     r"(?P<temp>(0: )?Heaters switched off\. "
     r"M((?P<mintemp>IN)|(?P<maxtemp>AX))TEMP (?P<bed>BED )?triggered!)|"
-    r"(?P<runaway> ((?P<hotend_runaway>HOTEND)|(?P<heatbed_runaway>HEATBED))?"
+    r"(?P<runaway>( ((?P<hotend_runaway>HOTEND)|(?P<heatbed_runaway>HEATBED)))?"
     r" THERMAL RUNAWAY( \( PREHEAT "
-    r"((?P<preheat_hotend>HOTEND)|(?P<preheat_heatbed>HEATBED))\))?)))|"
-    r"(?P<bed_levelling>Bed leveling failed\. Sensor didn't trigger\. "
+    r"((?P<preheat_hotend>HOTEND)|(?P<preheat_heatbed>HEATBED))\))?))?)")
+
+ATTENTION_REASON_REGEX = re.compile(
+    r"(?P<mbl_too_high>Bed leveling failed. Sensor triggered too high)|"
+    r"(?P<mbl_didnt_trigger>Bed leveling failed\. Sensor didn't trigger\. "
     r"Debris on nozzle\? Waiting for reset\.)")
 
 TEMPERATURE_REGEX = re.compile(

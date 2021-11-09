@@ -19,7 +19,8 @@ from ..structures.mc_singleton import MCSingleton
 from ..structures.module_data_classes import StateManagerData
 from ..structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
-    START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, FAN_ERROR_REGEX
+    START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, FAN_ERROR_REGEX, \
+    ERROR_REASON_REGEX, ATTENTION_REASON_REGEX
 from ...config import Config, Settings
 from ...errors import get_printer_error_states, HW
 
@@ -174,7 +175,9 @@ class StateManager(metaclass=MCSingleton):
             CANCEL_REGEX: lambda sender, match: self.stopped_or_not_printing(),
             START_PRINT_REGEX: lambda sender, match: self.printing(),
             PRINT_DONE_REGEX: lambda sender, match: self.finished(),
-            ERROR_REGEX: self.error_handler,
+            ERROR_REGEX: lambda sender, match: self.error_handler(),
+            ERROR_REASON_REGEX: self.error_reason_handler,
+            ATTENTION_REASON_REGEX: self.attention_reason_handler,
             FAN_ERROR_REGEX: self.fan_error
         }
 
@@ -356,32 +359,54 @@ class StateManager(metaclass=MCSingleton):
         assert sender is not None
         self.fan_error_name = match.group("fan_name")
 
-    def error_handler(self, sender, match: re.Match):
+    def error_handler(self):
         """
-        Handle an error message. If generic, let's wait for an explanation
-        If specific, stop the explanation waiter and switch the state to ERROR
-        providing a reason why
+        Handle a generic error message. Start waiting for a reason an error
+        was raised. If that times out, sets just a generic error
         """
-        assert sender is not None
-        # End the previous reason waiting thread
-        self.error_reason_event.set()
-        self.error_reason_event.clear()
-        groups = match.groupdict()
-        if (groups["stop"] is not None or groups["kill"] is not None) and \
-                self.data.override_state != State.ERROR:
+        if self.data.override_state != State.ERROR:
             self.data.awaiting_error_reason = True
             self.error_reason_thread = Thread(target=self.error_reason_waiter,
                                               daemon=True)
             self.error_reason_thread.start()
-        else:
-            reason = self.get_reason(groups)
-            self.expect_change(
-                StateChange(to_states={State.ERROR: Source.MARLIN},
-                            reason=reason))
-            HW.ok = False
+
+    def error_reason_handler(self, sender, match: re.Match):
+        """
+        Handle a specific error, which requires printer reset
+        """
+        assert sender is not None
+        groups = match.groupdict()
+        # End the previous reason waiting thread
+        self.error_reason_event.set()
+        self.error_reason_event.clear()
+
+        reason = self.parse_error_reason(groups)
+        self.expect_change(
+            StateChange(to_states={State.ERROR: Source.MARLIN},
+                        reason=reason))
+
+        HW.ok = False
+
+    def attention_reason_handler(self, sender, match: re.Match):
+        """
+        Handle a message, that is sure to cause an ATTENTION state
+        use it as the reason for going into that state
+        """
+        assert sender is not None
+        groups = match.groupdict()
+
+        if groups["mbl_didnt_trigger"]:
+            reason = "Bed leveling failed. Sensor didn't trigger. " \
+                     "Is there debris on the nozzle?"
+        elif groups["mbl_too_high"]:
+            reason = "Bed leveling failed. Sensor triggered too high. "
+
+        self.expect_change(
+            StateChange(to_states={State.ATTENTION: Source.MARLIN},
+                        reason=reason))
 
     @staticmethod
-    def get_reason(groups):
+    def parse_error_reason(groups):
         """
         Provided error parsed groups, put together a reason explaining
         why it occurred
@@ -409,9 +434,6 @@ class StateManager(metaclass=MCSingleton):
             elif groups["preheat_heatbed"] is not None:
                 reason = "Heatbed preheat"
             reason += " thermal runaway."
-        elif groups["bed_levelling"]:
-            reason = "Bed leveling failed. Sensor didn't trigger. " \
-                     "Is there debris on the nozzle?"
         reason += " Manual restart required!"
         return reason
 

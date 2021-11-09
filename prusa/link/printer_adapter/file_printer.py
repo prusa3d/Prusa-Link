@@ -22,7 +22,7 @@ from .const import STATS_EVERY, \
     PRINT_QUEUE_SIZE, TAIL_COMMANDS, QUIT_INTERVAL
 from .structures.mc_singleton import MCSingleton
 from .structures.regular_expressions import \
-    POWER_PANIC_REGEX, ERROR_REGEX, CANCEL_REGEX, \
+    POWER_PANIC_REGEX, ERROR_REGEX, ERROR_REASON_REGEX, CANCEL_REGEX, \
     PAUSED_REGEX, RESUMED_REGEX
 from .util import get_clean_path, get_gcode
 from .updatable import prctl_name, Thread
@@ -70,6 +70,8 @@ class FilePrinter(metaclass=MCSingleton):
             POWER_PANIC_REGEX, lambda sender, match: self.power_panic())
         self.serial_parser.add_handler(
             ERROR_REGEX, lambda sender, match: self.printer_error())
+        self.serial_parser.add_handler(
+            ERROR_REASON_REGEX, lambda sender, match: self.printer_error())
         self.serial_parser.add_handler(CANCEL_REGEX,
                                        lambda sender, match: self.stop_print())
         self.serial_parser.add_handler(PAUSED_REGEX,
