@@ -4,10 +4,11 @@ import termios
 import fcntl
 import struct
 
-from select import poll, POLLIN
+from select import select
 from time import time
 
 TIOCM_DTR_str = struct.pack('I', termios.TIOCM_DTR)
+TIOCM_RTS_str = struct.pack('I', termios.TIOCM_RTS)
 
 
 class SerialException(RuntimeError):
@@ -45,19 +46,23 @@ class Serial:
         tty[3] &= ~termios.ECHO
         tty[3] &= ~termios.ECHOE
         tty[3] &= ~termios.ECHONL
+        tty[3] &= ~termios.ECHOK
         tty[3] &= ~termios.ISIG
+        tty[3] &= ~termios.IEXTEN
 
         # iflag
         tty[0] &= ~(termios.IXON | termios.IXOFF | termios.IXANY)
-        tty[0] &= ~(termios.IGNBRK | termios.BRKINT | termios.ISTRIP
+        tty[0] &= ~(termios.IGNBRK | termios.ISTRIP
                     | termios.INLCR | termios.IGNCR | termios.ICRNL)
+        tty[0] &= ~(termios.IUCLC | termios.PARMRK)
 
         # oflag
         tty[1] &= ~termios.OPOST
         tty[1] &= ~termios.ONLCR
+        tty[1] &= ~termios.OCRNL
 
         # cc
-        tty[6][termios.VTIME] = 1000
+        tty[6][termios.VTIME] = 0  # can be timout*10
         tty[6][termios.VMIN] = 0
 
         # ispeed
@@ -68,27 +73,29 @@ class Serial:
         termios.tcsetattr(self.fd, termios.TCSANOW, tty)
         # TCSAFLUSH set after everything is done
         termios.tcsetattr(self.fd, termios.TCSAFLUSH, tty)
+        # clear input buffer
+        termios.tcflush(self.fd, termios.TCIFLUSH)
+        # Data Terminal Ready
+        fcntl.ioctl(self.fd, termios.TIOCMBIS, TIOCM_DTR_str)
+        # Request To Send
+        fcntl.ioctl(self.fd, termios.TIOCMBIS, TIOCM_RTS_str)
 
         self.__buffer = b''
-        self.__poll = poll()
-        self.__poll.register(self.fd, POLLIN)
 
         self.__dtr = False
 
     def close(self):
         """Close the port."""
-        self.__poll.unregister(self.fd)
         os.close(self.fd)
         self.fd = None
 
     def __read(self, timeout):
         """Fill internal buffer by read from file descriptor."""
         try:
-            ready = self.__poll.poll(timeout * 1000)
-            if ready and self.fd:
+            ready = select([self.fd], [], [], timeout)
+            if ready[0] and self.fd:
                 read_bytes = os.read(self.fd, 1024)
                 self.__buffer += read_bytes
-                return
         except (BlockingIOError, InterruptedError) as err:
             self.close()
             raise SerialException(f"read failed: {err}") from err

@@ -216,7 +216,12 @@ def main():
                 print("Service is already running")
                 return 1
 
+        files_preserve = []
+        for handler in logging.root.handlers:
+            if hasattr(handler, "socket"):
+                files_preserve.append(handler.socket.fileno())
         context = DaemonContext(pidfile=pid_file,
+                                files_preserve=files_preserve,
                                 signal_map={SIGTERM: daemon.sigterm})
 
         pid_dir = path.dirname(config.daemon.pid_file)
