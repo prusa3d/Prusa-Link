@@ -92,13 +92,9 @@ class PrusaLink:
                                  self.unload_filament)
 
         self.serial_parser.add_handler(
-            PAUSE_PRINT_REGEX,
-            lambda sender, match: Thread(target=self.fw_pause_print,
-                                         name="fw_pause_print").start())
+            PAUSE_PRINT_REGEX, lambda sender, match: self.fw_pause_print())
         self.serial_parser.add_handler(
-            RESUME_PRINT_REGEX,
-            lambda sender, match: Thread(target=self.fw_resume_print,
-                                         name="fw_resume_print").start())
+            RESUME_PRINT_REGEX, lambda sender, match: self.fw_resume_print())
 
         # Init components first, so they all exist for signal binding stuff
         self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_parser,
@@ -373,7 +369,7 @@ class PrusaLink:
         # FIXME: The source is wrong for the LCD pause
         prctl_name()
         command = PausePrint(source=Source.FIRMWARE)
-        return self.command_queue.do_command(command)
+        self.command_queue.enqueue_command(command)
 
     def fw_resume_print(self):
         """
@@ -382,7 +378,7 @@ class PrusaLink:
         """
         prctl_name()
         command = ResumePrint(source=Source.USER)
-        return self.command_queue.do_command(command)
+        self.command_queue.enqueue_command(command)
 
     # --- Signal handlers ---
 
