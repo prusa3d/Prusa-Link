@@ -20,7 +20,6 @@ from ..util import get_local_ip, get_local_ip6
 from ... import errors
 
 log = logging.getLogger(__name__)
-log.setLevel("INFO")
 
 
 class IPUpdater(ThreadedUpdatable):
@@ -46,6 +45,7 @@ class IPUpdater(ThreadedUpdatable):
                                          digest=None)
 
         self.data = model.ip_updater
+        self.first_update = True
         super().__init__()
 
     @staticmethod
@@ -105,6 +105,7 @@ class IPUpdater(ThreadedUpdatable):
         if old_ip != self.data.local_ip or old_ip6 != self.data.local_ip6:
             self.update_additional_info(self.data.local_ip)
             self.updated_signal.send(self)
+        self.first_update = False
 
     def update_ip(self):
         """
@@ -138,7 +139,8 @@ class IPUpdater(ThreadedUpdatable):
         try:
             new_ip6 = get_local_ip6()
         except socket.error:
-            log.debug("Failed getting the local IPv6")
+            if self.data.local_ip6 is not None or self.first_update:
+                log.debug("Failed getting the local IPv6")
             new_ip6 = None
         if new_ip6 is not None and new_ip6.startswith("fe80"):
             new_ip6 = None
