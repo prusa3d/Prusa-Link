@@ -154,6 +154,10 @@ class FilePrinter(metaclass=MCSingleton):
                 if self.data.paused:
                     log.debug("Pausing USB print")
                     self.wait_for_unpause()
+
+                    if not self.data.printing:
+                        break
+
                     log.debug("Resuming USB print")
 
                 self.data.line_number = line_index + 1
@@ -283,7 +287,7 @@ class FilePrinter(metaclass=MCSingleton):
         Loops until some other thread flips a flag back, to resume the
         print
         """
-        while self.data.printing and self.data.paused:
+        while self.data.paused:
             sleep(QUIT_INTERVAL)
 
     def pause(self):
@@ -306,10 +310,10 @@ class FilePrinter(metaclass=MCSingleton):
         if self.data.printing:
             self.data.stopped_forcefully = True
             self.data.printing = False
+            self.data.paused = False
+            self.thread.join()
             self.serial_queue.flush_print_queue()
             self.data.enqueued.clear()  # Ensure this gets cleared
-            self.thread.join()
-            self.data.paused = False
             # This results in double stop on 3.10 hopefully will get changed
             # Prevents the print head from stopping in the print
             enqueue_instruction(self.serial_queue, "M603", to_front=True)
