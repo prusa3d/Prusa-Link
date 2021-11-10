@@ -2,7 +2,7 @@
 import logging
 import re
 from collections import deque
-from threading import Lock, Thread, Event
+from threading import Thread, Event, RLock
 from typing import Union, Dict, Optional
 
 from blinker import Signal  # type: ignore
@@ -132,7 +132,7 @@ class StateManager(metaclass=MCSingleton):
         self.data = self.model.state_manager
 
         # Prevent multiple threads changing the state at once
-        self.state_lock = Lock()
+        self.state_lock = RLock()
 
         # Another anti-ideal thing is, that with this observational
         # approach to state detection we cannot correlate actions with
@@ -233,68 +233,72 @@ class StateManager(metaclass=MCSingleton):
         Pairing state changes with events that could've caused them
         is done through expected state changes. This method sets it
         """
-        self.expected_state_change = change
+        with self.state_lock:
+            self.expected_state_change = change
 
     def stop_expecting_change(self):
         """Resets the expected state change"""
-        self.expected_state_change = None
+        with self.state_lock:
+            self.expected_state_change = None
 
     def is_expected(self):
         """Figure out if the state change we are experiencing was expected"""
-        state_change = self.expected_state_change
-        expecting_change = state_change is not None
-        if expecting_change:
-            expected_to = self.data.current_state in state_change.to_states
-            expected_from = self.data.last_state in state_change.from_states
-            has_default_source = state_change.default_source is not None
-            return expected_to or expected_from or has_default_source
-        return False
+        with self.state_lock:
+            state_change = self.expected_state_change
+            expecting_change = state_change is not None
+            if expecting_change:
+                expected_to = self.data.current_state in state_change.to_states
+                expected_from = self.data.last_state in state_change.from_states
+                has_default_source = state_change.default_source is not None
+                return expected_to or expected_from or has_default_source
+            return False
 
     def get_expected_source(self):
         """
         Figures out who or what could have caused the state change
         :return:
         """
-        # No change expected,
-        if self.expected_state_change is None:
-            return None
+        with self.state_lock:
+            # No change expected,
+            if self.expected_state_change is None:
+                return None
 
-        state_change = self.expected_state_change
+            state_change = self.expected_state_change
 
-        # Get the expected sources
-        source_from = None
-        source_to = None
-        if self.data.last_state in state_change.from_states:
-            source_from = state_change.from_states[self.data.last_state]
-        if self.data.current_state in state_change.to_states:
-            source_to = state_change.to_states[self.data.current_state]
+            # Get the expected sources
+            source_from = None
+            source_to = None
+            if self.data.last_state in state_change.from_states:
+                source_from = state_change.from_states[self.data.last_state]
+            if self.data.current_state in state_change.to_states:
+                source_to = state_change.to_states[self.data.current_state]
 
-        # If there are conflicting sources, pick the one, paired with
-        # from_state as this is useful for leaving states like
-        # ATTENTION and ERROR
-        if (source_from is not None and source_to is not None
-                and source_to != source_from):
-            source = source_from
-        else:
-            # no conflict here, the sources are the same,
-            # or one or both of them are None
-            try:
-                # make a list throwing out Nones and get the next item
-                # (the first one)
-                source = next(item for item in [source_from, source_to]
-                              if item is not None)
-            except StopIteration:  # tried to get next from an empty list
-                source = None
+            # If there are conflicting sources, pick the one, paired with
+            # from_state as this is useful for leaving states like
+            # ATTENTION and ERROR
+            if (source_from is not None and source_to is not None
+                    and source_to != source_from):
+                source = source_from
+            else:
+                # no conflict here, the sources are the same,
+                # or one or both of them are None
+                try:
+                    # make a list throwing out Nones and get the next item
+                    # (the first one)
+                    source = next(item for item in [source_from, source_to]
+                                  if item is not None)
+                except StopIteration:  # tried to get next from an empty list
+                    source = None
 
-        if source is None:
-            source = state_change.default_source
+            if source is None:
+                source = state_change.default_source
 
-        log.debug(
-            "Source has been determined to be %s. Default was: %s, "
-            "from: %s, to: %s", source, state_change.default_source,
-            source_from, source_to)
+            log.debug(
+                "Source has been determined to be %s. Default was: %s, "
+                "from: %s, to: %s", source, state_change.default_source,
+                source_from, source_to)
 
-        return source
+            return source
 
     def state_may_have_changed(self):
         """
@@ -302,54 +306,57 @@ class StateManager(metaclass=MCSingleton):
         state change changed the external reported state, updates the state
         history and lets everyone know the state change details.
         """
-        # Did our internal state change cause our reported state to change?
-        # If yes, update state stuff
-        if self.get_state() != self.data.current_state:
-            self.believe_not_printing = False
-            self.data.last_state = self.data.current_state
-            self.data.current_state = self.get_state()
-            self.data.state_history.append(self.data.current_state)
-            log.debug("Changing state from %s to %s", self.data.last_state,
-                      self.data.current_state)
+        with self.state_lock:
+            # Did our internal state change cause a reported state change?
+            # If yes, update state stuff
+            if self.get_state() != self.data.current_state:
+                self.believe_not_printing = False
+                self.data.last_state = self.data.current_state
+                self.data.current_state = self.get_state()
+                self.data.state_history.append(self.data.current_state)
+                log.debug("Changing state from %s to %s",
+                          self.data.last_state, self.data.current_state)
 
-            # Now let's find out if the state change was expected
-            # and what parameters can we deduce from that
-            command_id = None
-            source = None
-            reason = None
-            checked = False
+                # Now let's find out if the state change was expected
+                # and what parameters can we deduce from that
+                command_id = None
+                source = None
+                reason = None
+                checked = False
 
-            if self.data.printing_state is not None:
-                log.debug("We are printing - %s", self.data.printing_state)
+                if self.data.printing_state is not None:
+                    log.debug("We are printing - %s",
+                              self.data.printing_state)
 
-            if self.data.override_state is not None:
-                log.debug("State is overridden by %s",
-                          self.data.override_state)
+                if self.data.override_state is not None:
+                    log.debug("State is overridden by %s",
+                              self.data.override_state)
 
-            # If the state changed to something expected,
-            # then send the information about it
-            if self.is_expected():
-                if self.expected_state_change.command_id is not None:
-                    command_id = self.expected_state_change.command_id
-                source = self.get_expected_source()
-                reason = self.expected_state_change.reason
-                checked = self.expected_state_change.checked
-                if reason is not None:
-                    log.debug("Reason for %s: %s", self.get_state(), reason)
-            else:
-                log.debug("Unexpected state change. This is weird")
-            self.expected_state_change = None
+                # If the state changed to something expected,
+                # then send the information about it
+                if self.is_expected():
+                    if self.expected_state_change.command_id is not None:
+                        command_id = self.expected_state_change.command_id
+                    source = self.get_expected_source()
+                    reason = self.expected_state_change.reason
+                    checked = self.expected_state_change.checked
+                    if reason is not None:
+                        log.debug("Reason for %s: %s",
+                                  self.get_state(), reason)
+                else:
+                    log.debug("Unexpected state change. This is weird")
+                self.expected_state_change = None
 
-            self.pre_state_change_signal.send(self, command_id=command_id)
+                self.pre_state_change_signal.send(self, command_id=command_id)
 
-            self.state_changed_signal.send(self,
-                                           from_state=self.data.last_state,
-                                           to_state=self.data.current_state,
-                                           command_id=command_id,
-                                           source=source,
-                                           reason=reason,
-                                           checked=checked)
-            self.post_state_change_signal.send(self)
+                self.state_changed_signal.send(self,
+                                               from_state=self.data.last_state,
+                                               to_state=self.data.current_state,
+                                               command_id=command_id,
+                                               source=source,
+                                               reason=reason,
+                                               checked=checked)
+                self.post_state_change_signal.send(self)
 
     def fan_error(self, sender, match: re.Match):
         """
