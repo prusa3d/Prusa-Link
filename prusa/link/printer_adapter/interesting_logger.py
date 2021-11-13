@@ -1,5 +1,8 @@
 """Implements the InterestingLogRotator and InterestingLogger classes"""
 import logging
+import sys
+import threading
+import traceback
 from collections import deque
 from copy import copy
 from logging import Logger, NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -93,6 +96,11 @@ class InterestingLogRotator(metaclass=MCSingleton):
             while self.log_buffer:
                 level, msg, args, kwargs = self.log_buffer.pop()
                 self._log(level, msg, *args, **kwargs)
+
+            # Print where all the threads are
+            for th in threading.enumerate():
+                log.warning(th)
+                log.warning(traceback.extract_stack(sys._current_frames()[th.ident]))
 
 
 class InterestingLogger(Logger):
