@@ -107,7 +107,7 @@ class SerialAdapter(metaclass=MCSingleton):
                        "so stuff doesn't break"
             try:
                 raw_line = self.serial.readline()
-                line = raw_line.decode("ASCII").strip().strip('\x00')
+                line = raw_line.decode("ASCII").strip().replace('\x00', '')
             except serial.SerialException:
                 log.exception("Failed when reading from the printer. "
                               "Trying to re-open")
@@ -133,10 +133,10 @@ class SerialAdapter(metaclass=MCSingleton):
 
         :param message: the message to be sent
         """
-        log.debug("Sending to printer: %s", message)
 
         sent = False
         if not self.serial:
+            log.warning("No serial to send '%s' to", message)
             return
 
         with self.write_lock:
@@ -149,6 +149,7 @@ class SerialAdapter(metaclass=MCSingleton):
                     self._renew_serial_connection()
                 else:
                     sent = True
+                    log.debug("Sent to printer: %s", message)
 
     def blip_dtr(self):
         """Pulses the DTR to reset the connected device. Work only over USB"""
