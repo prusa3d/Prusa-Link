@@ -11,7 +11,7 @@ from multiprocessing import Lock
 from .const import LOG_BUFFER_SIZE, AFTERMATH_LOG_SIZE
 from .structures.mc_singleton import MCSingleton
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("interesting_logger")
 
 
 class DecoySrcfile:
@@ -72,7 +72,7 @@ class InterestingLogRotator(metaclass=MCSingleton):
         Writes the message to the log, bumps its priority
         to warning and reports the original one in the text
         """
-        msg = f"Originally[{logging.getLevelName(level)}]: " + str(msg)
+        msg = f"Was[{logging.getLevelName(level)}]: " + str(msg)
         log.warning(msg, *args, **kwargs)
 
     @staticmethod
@@ -97,10 +97,18 @@ class InterestingLogRotator(metaclass=MCSingleton):
                 level, msg, args, kwargs = self.log_buffer.pop()
                 self._log(level, msg, *args, **kwargs)
 
+            frames = sys._current_frames()
             # Print where all the threads are
-            for th in threading.enumerate():
-                log.warning(th)
-                log.warning(traceback.extract_stack(sys._current_frames()[th.ident]))
+            for thread in threading.enumerate():
+                if thread.ident is None:
+                    continue
+                current_frame = frames[thread.ident]
+                stack = traceback.extract_stack(current_frame)
+                traceback_strings = stack.format()
+                log.warning("Thread %s is executing this right now:",
+                            thread.name)
+                for frame in traceback_strings:
+                    log.warning(frame)
 
 
 class InterestingLogger(Logger):
