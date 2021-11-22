@@ -17,17 +17,14 @@ from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
 from .command_queue import CommandQueue
 from .informers.filesystem.sd_card import SDState
 from .informers.job import Job
-from .input_output.serial.helpers import enqueue_instruction, \
-    wait_for_instruction
 from .interesting_logger import InterestingLogRotator
-from .mk3_info import MK3Item
+from .mk3_polling import MK3Polling
 from .print_stats import PrintStats
 from .file_printer import FilePrinter
 from .informers.ip_updater import IPUpdater
 from .informers.state_manager import StateManager, StateChange
 from .informers.filesystem.storage_controller import StorageController
 from .informers.telemetry_gatherer import TelemetryGatherer
-from .informers.getters import get_printer_type, get_nozzle_diameter
 from .input_output.lcd_printer import LCDPrinter
 from .input_output.serial.serial_queue import MonitoredSerialQueue
 from .input_output.serial.serial_adapter import SerialAdapter
@@ -113,7 +110,7 @@ class PrusaLink:
                                          self.serial_parser,
                                          self.state_manager, self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
-        self.mk3_info = MK3Item(self.serial_queue, self.printer, self.model)
+        self.mk3_polling = MK3Polling(self.serial_queue, self.printer, self.model)
         self.command_queue = CommandQueue()
 
         # Bind signals
@@ -178,7 +175,7 @@ class PrusaLink:
 
         # Start individual informer threads after updating manually, so nothing
         # will race with itself
-        self.mk3_info.start()
+        self.mk3_polling.start()
         self.telemetry_gatherer.start()
         self.storage.start()
         self.ip_updater.start()
@@ -240,7 +237,7 @@ class PrusaLink:
         self.command_queue.stop()
         self.printer.stop_loop()
         self.printer.stop()
-        self.mk3_info.stop()
+        self.mk3_polling.stop()
         self.telemetry_thread.join()
         self.storage.stop()
         self.lcd_printer.stop()
@@ -261,22 +258,15 @@ class PrusaLink:
 
     def check_printer(self, message: str, callback):
         """Demand an encoder click from the poor user"""
+        log.error("DEPRECATED / needs re-implementation")
+        # FIXME: Get rid of this, or make it official
         # Let's get rid of a possible comms desync, by asking for a specific
         # info instead of just OK
-        get_nozzle_diameter(self.serial_queue, lambda: self.running)
+        # get_nozzle_diameter(self.serial_queue, lambda: self.running)
         # Now we need attention
-        instruction = enqueue_instruction(self.serial_queue, f"M0 {message}")
-        wait_for_instruction(instruction)
+        # instruction = enqueue_instruction(self.serial_queue, f"M0 {message}")
+        # wait_for_instruction(instruction)
         callback()
-
-    def get_printer_type(self):
-        """
-        Gets and writes the printer type to SDK
-        Run in Thread
-        """
-        printer_type = get_printer_type(self.serial_queue,
-                                        lambda: self.running)
-        self.printer.type = printer_type
 
     # --- Command handlers ---
 
@@ -529,7 +519,7 @@ class PrusaLink:
         On every ip change from ip updater sends a new info
         """
         assert sender is not None
-        self.mk3_info.invalidate("network_info")
+        self.mk3_polling.invalidate_network_info()
 
     def dir_mount(self, sender, path):
         """Connects a dir being mounted to Prusa Connect events"""
@@ -572,7 +562,7 @@ class PrusaLink:
 
         # file printer stop print needs to happen before this
         self.state_manager.reset()
-        self.mk3_info.invalidate_printer_info()
+        self.mk3_polling.invalidate_printer_info()
         self.ip_updater.send_ip_to_printer()
 
     @property
@@ -622,9 +612,9 @@ class PrusaLink:
         # The states should be completely re-done i'm told. So this janky
         # stuff is what we're going to deal with for now
         if to_state in {State.PRINTING, State.ATTENTION, State.ERROR}:
-            self.mk3_info.polling_not_ok()
+            self.mk3_polling.polling_not_ok()
         if to_state not in {State.PRINTING, State.ATTENTION, State.ERROR}:
-            self.mk3_info.polling_ok()
+            self.mk3_polling.polling_ok()
 
         if self.settings.printer.prompt_clean_sheet:
             if to_state == State.FINISHED:

@@ -15,6 +15,13 @@ from ..updatable import prctl_name
 log = logging.getLogger(__name__)
 
 
+class SideEffectOnly(Exception):
+    """An exception to raise in a gatherer that has nothing to return,
+    but its side effects succeeded in setting a balue or
+    have otherwise ensured that the value would be received eventually"""
+    ...
+
+
 class Watchable:
     """Encapsulates the common stuff between watched values and groups"""
     def __init__(self):
@@ -36,8 +43,8 @@ class WatchedItem(Watchable):
     # pylint: disable=too-many-arguments
     def __init__(self,
                  name,
-                 gather_function: Callable[[], Any],
-                 write_function: Callable[[Any], None],
+                 gather_function: Callable[[], Any] = None,
+                 write_function: Callable[[Any], None] = None,
                  validation_function: Optional[Callable[[Any], bool]] = None,
                  interval=None,
                  timeout=None,
@@ -57,18 +64,25 @@ class WatchedItem(Watchable):
         self.invalidate_at = inf
         self.times_out_at = inf
 
-        # A function that return a value, even None, or throws an error
-        self.gather_function: Callable[[], Any] = gather_function
-
-        # If valid, returns Ture, if not, throws an error or returns False
-
         # pylint: disable=unused-argument
         def _default_validation(value):
             return True
 
+        # pylint: disable=unused-argument
+        def _default_write(value):
+            ...
+
         if validation_function is None:
             validation_function = _default_validation
 
+        if write_function is None:
+            write_function = _default_write
+
+        # A function that returns a value, or throws an error
+        # If it returns None, The value is not written and the item gets
+        # re-scheduled
+        self.gather_function: Optional[Callable[[], Any]] = gather_function
+        # If valid, returns Ture, if not, throws an error or returns False
         self.validation_function: Callable[[Any], bool] = validation_function
         # Takes care of putting the value in the right places
         # Shall not throw anything EVER!
@@ -78,8 +92,8 @@ class WatchedItem(Watchable):
 
         self.timed_out_signal = Signal()
         self.error_refreshing_signal = Signal()
-        self.validation_error_signal = Signal()
-        self.value_changed_signal = Signal()
+        self.validation_error_signal = Signal()  # kwargs: validation exception
+        self.value_changed_signal = Signal()  # sender is the value
         # Combined gather error signal
         self.val_err_timeout_signal = Signal()
 
@@ -150,13 +164,10 @@ class ItemUpdater:
     Variables can be validated
     On validation or read error, variable refresh can be re-scheduled
     automatically on a timer
-
-
-
     """
-    quit_interval = 0.2
+    def __init__(self, quit_interval=0.2):
+        self.quit_interval = quit_interval
 
-    def __init__(self):
         self.running = True
 
         self.invalidate_timers = PriorityQueue()
@@ -247,11 +258,15 @@ class ItemUpdater:
                 if not item.validation_function(value):
                     raise ValueError(f"Invalid value for {item.name}: {value}")
             # pylint: disable=broad-except
-            except Exception:
-                log.exception("Validation of item %s has failed", item.name)
-                item.validation_error_signal.send(item)
+            except Exception as exception:
+                log.debug("Validation of item %s has failed", item.name)
+                item.validation_error_signal.send(item, exception=exception)
                 item.val_err_timeout_signal.send(item)
-                self._gather_error_reschedule(item)
+
+                # If the item is valid, do not schedule a gather, as this
+                # probably was a setter from the outside with a bad value
+                if not item.valid:
+                    self._gather_error_reschedule(item)
             else:
                 log.debug("Value of item %s has been determined to be %s",
                           item.name, value)
@@ -338,8 +353,9 @@ class ItemUpdater:
         if isinstance(ambiguous_item, WatchedItem):
             if ambiguous_item.name not in self.watched_items or \
                     self.watched_items[ambiguous_item.name] != ambiguous_item:
-                raise ValueError("This item is not tracked by this "
-                                 "ItemUpdater instance.")
+                raise ValueError(
+                    f"Item {ambiguous_item.name} is not tracked "
+                    f"by this ItemUpdater instance.", )
             return ambiguous_item
         raise TypeError("Supply a WatchedItem or its name")
 
@@ -354,10 +370,26 @@ class ItemUpdater:
         if item.valid:
             return
 
+        # Items without gather functions have no point in spinning,
+        # something else needs to take care of them
+        if item.gather_function is None:
+            return
+
         log.debug("Gathering new value for item %s", item.name)
         try:
             value = item.gather_function()
         # pylint: disable=broad-except
+        except SideEffectOnly:
+            # Special case for gatherers with just side effects
+            # Useful for when the value is autoreported and gather needs
+            # to only turn the reporting on
+
+            # If the gatherer sets its own items value, then let's not
+            # re-schedule anything
+            if not item.valid:
+                # Counting on set_item cancelling the re-schedule
+                self._gather_error_reschedule(item)
+
         except Exception:
             with item.lock:
                 log.exception("Gather of %s has failed", item.name)
@@ -400,7 +432,7 @@ class ItemUpdater:
             if was_invalid:
                 item.became_valid_signal.send(item)
             if changed:
-                item.value_changed_signal.send(item)
+                item.value_changed_signal.send(value)
 
     def _enqueue_refresh(self, item):
         """
