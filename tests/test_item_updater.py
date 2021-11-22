@@ -10,7 +10,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from prusa.link.printer_adapter.structures.info_updater import (  # type:ignore
+from prusa.link.printer_adapter.structures.item_updater import (  # type:ignore
     ItemUpdater, WatchedItem, WatchedGroup)
 
 logging.basicConfig(level="DEBUG")
@@ -36,9 +36,10 @@ class WaitingMock(Mock):
             raise AttributeError("Do not provide a side effect to this mock, "
                                  "it has its own waiting one")
 
-        super().__init__(*args,
-                         side_effect=lambda: waiter(self.event),
-                         **kwargs)
+        super().__init__(
+            *args,
+            side_effect=lambda *args, **kwargs: waiter(self.event),
+            **kwargs)
         self.event = Event()
 
 
@@ -52,7 +53,7 @@ class EventSetMock(Mock):
                                  "it has its own waiting one")
 
         super().__init__(*args,
-                         side_effect=lambda item=None: self.event.set(),
+                         side_effect=lambda *args, **kwargs: self.event.set(),
                          **kwargs)
         self.event = Event()
 
@@ -76,15 +77,6 @@ def validator():
         return value == 42
 
     return inner
-
-
-def get_waiting_mock(event_to_wait_for, return_value):
-    """
-    Returns a mock, that waits for a given event indefinitely and returns
-    a given value
-    """
-    return Mock(side_effect=lambda: waiter(event_to_wait_for),
-                return_value=return_value)
 
 
 def test_basics(updater_instance: ItemUpdater):
@@ -373,7 +365,7 @@ def test_validation(updater_instance: ItemUpdater, validator):
     valid_valid.assert_called_once_with(valid_item)
     valid_errored.assert_not_called()
     invalid_valid.assert_not_called()
-    invalid_errored.assert_called_once_with(invalid_item)
+    invalid_errored.assert_called_once()
 
 
 def test_gather_error(updater_instance: ItemUpdater):

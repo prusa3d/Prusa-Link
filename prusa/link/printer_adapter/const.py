@@ -2,6 +2,7 @@
 Contains almost every constant for the printer communication part of
 Prusa Link
 """
+from distutils.version import StrictVersion
 from os import path
 from typing import List
 from json import load
@@ -11,7 +12,14 @@ try:
 except ImportError:
     from importlib_resources import files  # 3.9 has native resources
 
-from prusa.connect.printer.const import State
+from prusa.connect.printer.const import State, PrinterType
+
+PRINTER_TYPES = {
+    300: PrinterType.I3MK3,
+    20300: PrinterType.I3MK3,
+    302: PrinterType.I3MK3S,
+    20302: PrinterType.I3MK3S,
+}
 
 DATA_PATH = path.abspath(path.join(str(files('prusa.link')), 'data'))
 
@@ -83,6 +91,7 @@ SFN_TO_LFN_EXTENSIONS = {"GCO": "gcode", "G": "g"}
 
 RESET_PIN = 22  # RPi gpio pin for resetting printer
 SUPPORTED_FIRMWARE = "3.10.0"
+MINIMAL_FIRMWARE = StrictVersion(SUPPORTED_FIRMWARE)  # TODO: Firmware release
 MAX_INT = (2**31) - 1
 STATE_HISTORY_SIZE = 10
 
