@@ -8,6 +8,8 @@ from typing import Any, Dict
 from blinker import Signal  # type: ignore
 from prusa.connect.printer import Printer
 
+from ..input_output.serial.helpers import enqueue_instruction
+from ..input_output.serial.serial_queue import SerialQueue
 from ..structures.module_data_classes import JobData
 from ...config import Config
 from ..input_output.serial.serial_parser import SerialParser
@@ -24,11 +26,12 @@ log = logging.getLogger(__name__)
 
 class Job(metaclass=MCSingleton):
     """Keeps track of print jobs and their properties"""
-    def __init__(self, serial_parser: SerialParser, model: Model, cfg: Config,
+    def __init__(self, serial_parser: SerialParser, serial_queue: SerialQueue, model: Model, cfg: Config,
                  printer: Printer):
         # Sent every time the job id should disappear, appear or update
         self.printer = printer
         self.serial_parser = serial_parser
+        self.serial_queue = serial_queue
         self.serial_parser.add_handler(OPEN_RESULT_REGEX, self.file_opened)
 
         # Unused
@@ -38,12 +41,6 @@ class Job(metaclass=MCSingleton):
         self.job_path = get_clean_path(cfg.daemon.job_file)
         ensure_directory(os.path.dirname(self.job_path))
 
-        loaded_data: Dict[str, Any] = {}
-
-        if os.path.exists(self.job_path):
-            with open(self.job_path, "r", encoding='utf-8') as job_file:
-                loaded_data = json.loads(job_file.read())
-
         self.model: Model = model
         self.model.job = JobData(already_sent=False,
                                  job_start_cmd_id=None,
@@ -52,7 +49,8 @@ class Job(metaclass=MCSingleton):
                                  inbuilt_reporting=None,
                                  selected_file=None,
                                  job_state=JobState.IDLE,
-                                 job_id=int(loaded_data.get("job_id", 0)))
+                                 job_id=None,
+                                 job_id_offset=0)
         self.data = self.model.job
 
         self.job_id_updated_signal.send(self,
@@ -97,7 +95,10 @@ class Job(metaclass=MCSingleton):
         the same id
         """
         self.data.already_sent = False
-        self.data.job_id += 1
+        if self.data.job_id is None:
+            self.data.job_id_offset += 1
+        else:
+            self.data.job_id += 1
         self.data.job_start_cmd_id = command_id
         # If we don't print from sd, we know this immediately
         # If not, let's leave it None, it will get filled later
@@ -145,16 +146,14 @@ class Job(metaclass=MCSingleton):
         self.data.job_state = state
 
     def write(self):
-        """
-        This one was writing everything job related,
-        now it only keeps track of the job_id
-        """
-        data = dict(job_id=self.data.job_id)
+        """Writes_the job_id into the printer EEPROM"""
+        # Cannot block
+        if self.data.job_id is None:
+            return
 
-        with open(self.job_path, "w", encoding='utf-8') as job_file:
-            job_file.write(json.dumps(data))
-            job_file.flush()
-            os.fsync(job_file.fileno())
+        enqueue_instruction(self.serial_queue,
+                            f"D3 Ax0D05 X{self.data.job_id:08x}",
+                            to_front=True)
 
     def set_file_path(self, path, path_incomplete, prepend_sd_mountpoint):
         """
@@ -262,7 +261,8 @@ class Job(metaclass=MCSingleton):
         # to send the job info, when it'll just fail instantly
         if self.data.job_state == JobState.IN_PROGRESS \
                 and self.data.selected_file_path is not None \
-                and self.data.already_sent:
+                and self.data.already_sent \
+                and self.data.job_id is not None:
             self.job_info_updated_signal.send(self)
 
     def select_file(self, path):
@@ -287,3 +287,15 @@ class Job(metaclass=MCSingleton):
             raise RuntimeError("Cannot deselect a file while printing it")
         self.data.selected_file_path = None
         self.model.job.from_sd = None
+
+    def job_id_from_eeprom(self, job_id):
+        """Sets the job id read from the printer EEPROM"""
+        if self.data.job_id is not None:
+            return
+
+        self.data.job_id = job_id
+        if self.data.job_id_offset > 0:
+            self.data.job_id += self.data.job_id_offset
+            self.data.job_id_offset = 0
+            self.write()
+            self.job_info_updated()

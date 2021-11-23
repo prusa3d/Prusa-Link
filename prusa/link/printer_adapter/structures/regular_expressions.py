@@ -102,4 +102,4 @@ LCD_UPDATE_REGEX = re.compile(r"^LCD status changed$")
 M110_REGEX = re.compile(r"^(N\d+)? *M110 N(?P<cmd_number>-?\d*)$")
 FAN_ERROR_REGEX = re.compile(
     r"^(?P<fan_name>Extruder|Print) fan speed is lower than expected$")
-D3_C1_OUTPUT_REGEX = re.compile(r"^(?P<address>\w{2,}) {2}(?P<data>\w{2})$")
+D3_OUTPUT_REGEX = re.compile(r"^(?P<address>\w{2,}) {2}(?P<data>([0-9a-fA-F]{2} ?)+)$")

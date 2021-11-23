@@ -7,11 +7,12 @@ from distutils.version import StrictVersion
 
 from prusa.connect.printer import Printer
 
+from .informers.job import Job
 from .input_output.serial.helpers import wait_for_instruction, \
     enqueue_matchable, enqueue_instruction
 from .structures.model_classes import NetworkInfo
 from .structures.regular_expressions import SN_REGEX, PRINTER_TYPE_REGEX, \
-    FW_REGEX, NOZZLE_REGEX
+    FW_REGEX, NOZZLE_REGEX, D3_OUTPUT_REGEX
 from .. import errors
 from .const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE
 from .input_output.serial.serial_queue import \
@@ -33,13 +34,14 @@ class MK3Polling:
 
     # pylint: disable=too-many-statements
     def __init__(self, serial_queue: SerialQueue, printer: Printer,
-                 model: Model):
+                 model: Model, job: Job):
         super().__init__()
         self.item_updater = ItemUpdater()
 
         self.serial_queue = serial_queue
         self.printer = printer
         self.model = model
+        self.job = job
 
         # Printer info (for init and SEND_INFO)
 
@@ -96,6 +98,17 @@ class MK3Polling:
             self.nozzle_diameter, self.serial_number
         ])
 
+        self.job_id = WatchedItem(
+            "job_id",
+            gather_function=self._get_job_id,
+            write_function=self._set_job_id,
+        )
+        self.job_id.became_valid_signal.connect(
+            lambda item: self._set_job_id_error(True), weak=False)
+        self.job_id.val_err_timeout_signal.connect(
+            lambda item: self._set_job_id_error(False), weak=False)
+        self.item_updater.add_watched_item(self.job_id)
+
         # TODO: Put this outside
         for item in self.printer_info:
             item.value_changed_signal.connect(lambda value: self._send_info(),
@@ -127,6 +140,23 @@ class MK3Polling:
         self.item_updater.watched_items["nozzle_diameter"].interval = 10
 
         self.item_updater.schedule_invalidation("nozzle_diameter")
+
+    def ensure_job_id(self):
+        """
+        This is an oddball, I don't have anything able to ensure the job_id
+        stays in sync, I cannot wait for it, that would block the read thread
+        I cannot just write it either, I wouldn't know if it failed.
+        """
+        def job_became_valid(item):
+            self.job_id.became_valid_signal.disconnect(job_became_valid)
+            if self.model.job.job_id != item.value:
+                log.warning("Job id on the printer: %s differs from the local"
+                            " one: %s!", item.value, self.model.job.job_id)
+                self.job.write()
+                self.ensure_job_id()
+
+        self.item_updater.schedule_invalidation(ambiguous_item=self.job_id, interval=1)
+        self.job_id.became_valid_signal.connect(job_became_valid)
 
     # -- Gather --
     def should_wait(self):
@@ -199,6 +229,11 @@ class MK3Polling:
         """Returns the SN regex match"""
         match = self.do_matcheble("PRUSA SN", SN_REGEX, to_front=True)
         return match.group("sn")
+
+    def _get_job_id(self):
+        """Gets the current job_id from the printer"""
+        match = self.do_matcheble("D3 Ax0D05 C4", D3_OUTPUT_REGEX, to_front=True)
+        return int(match.group("data").replace(" ", ""), base=16)
 
     # -- Validate --
 
@@ -274,6 +309,10 @@ class MK3Polling:
             self.printer.sn = value
             self.printer.fingerprint = make_fingerprint(value)
 
+    def _set_job_id(self, value):
+        """Set the job id"""
+        self.job.job_id_from_eeprom(value)
+
     # -- Signal handlers --
 
     @staticmethod
@@ -290,6 +329,11 @@ class MK3Polling:
     def _set_fw_error(value):
         """Needs to exist because we cannot assign in lambdas"""
         errors.FW.ok = value
+
+    @staticmethod
+    def _set_job_id_error(value):
+        """Needs to exist because we cannot assign in lambdas"""
+        errors.JOB_ID.ok = value
 
     def _printer_type_validation_error(self, item, exception):
         """Failed when getting printer type, let's notify the user"""

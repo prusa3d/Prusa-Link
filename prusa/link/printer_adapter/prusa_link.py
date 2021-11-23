@@ -17,6 +17,7 @@ from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
 from .command_queue import CommandQueue
 from .informers.filesystem.sd_card import SDState
 from .informers.job import Job
+from .input_output.serial.helpers import enqueue_instruction
 from .interesting_logger import InterestingLogRotator
 from .mk3_polling import MK3Polling
 from .print_stats import PrintStats
@@ -96,7 +97,8 @@ class PrusaLink:
         # Init components first, so they all exist for signal binding stuff
         self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_parser,
                                       self.model)
-        self.job = Job(self.serial_parser, self.model, self.cfg, self.printer)
+        self.job = Job(self.serial_parser, self.serial_queue, self.model,
+                       self.cfg, self.printer)
         self.state_manager = StateManager(self.serial_parser, self.model,
                                           self.printer, self.cfg,
                                           self.settings)
@@ -110,7 +112,7 @@ class PrusaLink:
                                          self.serial_parser,
                                          self.state_manager, self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
-        self.mk3_polling = MK3Polling(self.serial_queue, self.printer, self.model)
+        self.mk3_polling = MK3Polling(self.serial_queue, self.printer, self.model, self.job)
         self.command_queue = CommandQueue()
 
         # Bind signals
@@ -388,6 +390,7 @@ class PrusaLink:
         """Passes the job_id into the SDK"""
         assert sender
         self.printer.job_id = job_id
+        self.mk3_polling.ensure_job_id()
 
     def telemetry_observed_print(self, sender):
         """
