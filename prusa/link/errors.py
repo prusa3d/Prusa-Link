@@ -36,6 +36,7 @@ RPI_ENABLED = ErrorState("RPIenabled", "RPi port is not enabled", prev=SERIAL)
 ID = ErrorState("ID", "Device is not a Prusa printer", prev=RPI_ENABLED)
 FW = ErrorState("Firmware", "Firmware is not up-to-date", prev=ID)
 SN = ErrorState("SN", "Serial number cannot be obtained", prev=FW)
+JOB_ID = ErrorState("JobID", "Job ID cannot be obtained", prev=SN)
 
 HW = ErrorState("HW", "Firmware detected a hardware issue")
 

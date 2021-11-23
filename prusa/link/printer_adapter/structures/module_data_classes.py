@@ -44,6 +44,8 @@ class StateManagerData(BaseModel):
 
 class JobData(BaseModel):
     """Data of the Job class"""
+    job_id: Optional[int]
+    job_id_offset: int
     already_sent: Optional[bool]
     job_start_cmd_id: Optional[int]
     selected_file_path: Optional[str]
@@ -54,7 +56,6 @@ class JobData(BaseModel):
     from_sd: Optional[bool]
     inbuilt_reporting: Optional[bool]
 
-    job_id: int
     job_state: JobState
 
     def get_job_id_for_api(self):
