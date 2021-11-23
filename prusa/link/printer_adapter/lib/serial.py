@@ -1,4 +1,6 @@
 """Own Serail class """
+import errno
+import logging
 import os
 import termios
 import fcntl
@@ -75,10 +77,17 @@ class Serial:
         termios.tcsetattr(self.fd, termios.TCSAFLUSH, tty)
         # clear input buffer
         termios.tcflush(self.fd, termios.TCIFLUSH)
-        # Data Terminal Ready
-        fcntl.ioctl(self.fd, termios.TIOCMBIS, TIOCM_DTR_str)
-        # Request To Send
-        fcntl.ioctl(self.fd, termios.TIOCMBIS, TIOCM_RTS_str)
+        try:
+            # Data Terminal Ready
+            fcntl.ioctl(self.fd, termios.TIOCMBIS, TIOCM_DTR_str)
+            # Request To Send
+            fcntl.ioctl(self.fd, termios.TIOCMBIS, TIOCM_RTS_str)
+        except OSError as e:
+            if e.errno == errno.ENOTTY:
+                logging.getLogger(__name__).warning(
+                    "The file does not support ioctl() ignoring")
+            else:
+                raise
 
         self.__buffer = b''
 
