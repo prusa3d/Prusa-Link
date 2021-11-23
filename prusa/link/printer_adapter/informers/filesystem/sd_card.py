@@ -20,7 +20,7 @@ from ...structures.model_classes import SDState
 from ...structures.module_data_classes import SDCardData
 from ...structures.regular_expressions import \
     SD_PRESENT_REGEX, BEGIN_FILES_REGEX, END_FILES_REGEX, \
-    SD_EJECTED_REGEX, LFN_CAPTURE, D3_C1_OUTPUT_REGEX
+    SD_EJECTED_REGEX, LFN_CAPTURE, D3_OUTPUT_REGEX
 from ...const import SD_INTERVAL, \
     SD_FILESCAN_INTERVAL, SD_MOUNT_NAME, SFN_TO_LFN_EXTENSIONS, \
     MAX_FILENAME_LENGTH, FLASH_AIR_INTERVAL
@@ -146,7 +146,7 @@ class SDCard(ThreadedUpdatable):
         is turned on
         """
         instruction = enqueue_matchable(self.serial_queue, "D3 Ax0fbb C1",
-                                        D3_C1_OUTPUT_REGEX)
+                                        D3_OUTPUT_REGEX)
         wait_for_instruction(instruction, lambda: self.running)
         match = instruction.match()
         if match:

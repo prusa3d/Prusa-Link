@@ -435,9 +435,14 @@ class JobInfo(Command):
             self.failed("Cannot get job info, "
                         "when there is no job in progress.")
 
+        if self.model.job.job_id is None:
+            self.failed("Cannot get job info, "
+                        "don't know the job id yet.")
+
         # Happens when launching into a paused print
         if self.model.job.selected_file_path is None:
-            self.failed("Don't know the file details yet.")
+            self.failed("Cannot get job info, "
+                        "don't know the file details yet.")
 
         data = self.job.get_job_info_data(
             for_connect=self.command_id is not None)
