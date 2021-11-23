@@ -17,7 +17,6 @@ from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
 from .command_queue import CommandQueue
 from .informers.filesystem.sd_card import SDState
 from .informers.job import Job
-from .input_output.serial.helpers import enqueue_instruction
 from .interesting_logger import InterestingLogRotator
 from .mk3_polling import MK3Polling
 from .print_stats import PrintStats
@@ -258,9 +257,11 @@ class PrusaLink:
             log.debug(thread)
         self.stopped_event.set()
 
+    # pylint: disable=no-self-use
     def check_printer(self, message: str, callback):
         """Demand an encoder click from the poor user"""
         log.error("DEPRECATED / needs re-implementation")
+        assert message is not None
         # FIXME: Get rid of this, or make it official
         # Let's get rid of a possible comms desync, by asking for a specific
         # info instead of just OK
