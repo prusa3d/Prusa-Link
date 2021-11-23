@@ -119,6 +119,7 @@ class MK3Polling:
         self.item_updater.start()
 
     def stop(self):
+        """Stops the item updater"""
         self.item_updater.stop()
 
     def invalidate_printer_info(self):

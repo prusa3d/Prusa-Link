@@ -1,9 +1,7 @@
 """Contains implementation of the Job class"""
-import json
 import logging
 import os
 import re
-from typing import Any, Dict
 
 from blinker import Signal  # type: ignore
 from prusa.connect.printer import Printer
@@ -26,8 +24,11 @@ log = logging.getLogger(__name__)
 
 class Job(metaclass=MCSingleton):
     """Keeps track of print jobs and their properties"""
-    def __init__(self, serial_parser: SerialParser, serial_queue: SerialQueue, model: Model, cfg: Config,
-                 printer: Printer):
+
+    # pylint: disable=too-many-arguments
+    def __init__(self, serial_parser: SerialParser,
+                 serial_queue: SerialQueue, model: Model,
+                 cfg: Config, printer: Printer):
         # Sent every time the job id should disappear, appear or update
         self.printer = printer
         self.serial_parser = serial_parser
