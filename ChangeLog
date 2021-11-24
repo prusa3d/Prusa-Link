@@ -34,6 +34,10 @@
     * HTTP Request handling improvement
     * own Serial class implementation (speed improvement)
     * Changed args to kwargs for execute_gcode command
+    * log thread stack on interesting events
+    * move job_id into the EEPROM
+    * make STOP_PRINT wait for any of the READY, STOPPED or FINISHED states
+
 
 0.5.1 (2021-07-16)
     * Implementation of print after upload endpoint
