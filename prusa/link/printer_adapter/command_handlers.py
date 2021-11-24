@@ -11,7 +11,7 @@ from pathlib import Path
 from re import Match
 from threading import Event
 from time import time, sleep
-from typing import Optional, Dict
+from typing import Optional, Dict, Set
 
 from prusa.connect.printer.const import State, Source, Event as EventConst
 
@@ -43,11 +43,11 @@ class TryUntilState(Command):
         super().__init__(command_id=command_id, source=source)
         self.right_state = Event()
 
-    def _try_until_state(self, gcode: str, desired_state: State):
+    def _try_until_state(self, gcode: str, desired_states: Set[State]):
         """
         Sends a gcode in hopes of reaching a desired_state.
         :param gcode: Which gcode to send. For example: "M603"
-        :param desired_state: Into which state do we hope to get
+        :param desired_states: Into which state do we hope to get
         """
         def state_changed(sender, from_state, to_state, *args, **kwargs):
             # --- pylint section ---
@@ -60,15 +60,19 @@ class TryUntilState(Command):
             assert kwargs is not None
 
             # --- actual code ---
-            if to_state == desired_state:
+            if to_state in desired_states:
                 self.right_state.set()
 
-        if self.state_manager.get_state() != desired_state:
+        if self.state_manager.get_state() not in desired_states:
+            to_states = {desired: self.source for desired in desired_states}
             self.state_manager.expect_change(
-                StateChange(command_id=self.command_id,
-                            to_states={desired_state: self.source}))
+                StateChange(
+                    command_id=self.command_id,
+                    to_states=to_states))
+        state_list = list(map(lambda item: item.name, desired_states))
+        state_names = ", ".join(state_list)
 
-        log.debug("Trying to get to the %s state.", desired_state.name)
+        log.debug("Trying to get to one of %s states.", state_names)
 
         self.state_manager.state_changed_signal.connect(state_changed)
 
@@ -79,7 +83,7 @@ class TryUntilState(Command):
         succeeded = False
 
         # Crush an edge case where we already are in the desired state
-        if self.model.state_manager.current_state == desired_state:
+        if self.model.state_manager.current_state in desired_states:
             self.right_state.set()
 
         while self.running and time() < wait_until and not succeeded:
@@ -89,9 +93,9 @@ class TryUntilState(Command):
         self.state_manager.stop_expecting_change()
 
         if not succeeded:
-            log.debug("Could not get from %s to %s",
-                      self.state_manager.get_state(), desired_state)
-            self.failed(f"Couldn't get to the {desired_state} state.")
+            log.debug("Could not get from %s to one of these: %s",
+                      self.state_manager.get_state(), desired_states)
+            self.failed(f"Couldn't get to any of {state_names} states.")
 
     @abc.abstractmethod
     def _run_command(self):
@@ -169,11 +173,16 @@ class StopPrint(TryUntilState):
         file printer component, then it uses its parent to go through the stop
         sequence.
         """
+        job_id = self.model.job.job_id
+
         if self.model.file_printer.printing:
             self.file_printer.stop_print()
 
-        # There might be an edge case with FINISHED, so let's wait for READY
-        self._try_until_state(gcode="M603", desired_state=State.STOPPED)
+        self._try_until_state(
+            gcode="M603",
+            desired_states={State.STOPPED, State.READY, State.FINISHED})
+
+        return dict(job_id=job_id)
 
 
 class PausePrint(TryUntilState):
@@ -191,7 +200,7 @@ class PausePrint(TryUntilState):
         if self.model.file_printer.printing:
             self.file_printer.pause()
 
-        self._try_until_state(gcode="M601", desired_state=State.PAUSED)
+        self._try_until_state(gcode="M601", desired_states={State.PAUSED})
 
 
 class ResumePrint(TryUntilState):
@@ -207,7 +216,7 @@ class ResumePrint(TryUntilState):
         if self.state_manager.get_state() != State.PAUSED:
             self.failed("Cannot resume when not paused.")
 
-        self._try_until_state(gcode="M602", desired_state=State.PRINTING)
+        self._try_until_state(gcode="M602", desired_states={State.PRINTING})
 
         # If we were file printing, the module itself will recognize
         # it should resume from serial
