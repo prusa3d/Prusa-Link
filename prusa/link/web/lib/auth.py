@@ -62,6 +62,7 @@ def check_api_digest(func):
             res = Response(data="Bad X-Api-Key.",
                            status_code=state.HTTP_FORBIDDEN)
             raise HTTPException(res)
+        # TODO: append printer object to kwargs
         return func(req, *args, **kwargs)
 
     return handler

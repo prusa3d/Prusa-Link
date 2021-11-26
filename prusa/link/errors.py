@@ -243,6 +243,14 @@ class TransferConflict(ConflictError):
     id = "transfer-conflict"
 
 
+# TODO: html variant
+class TranferStopped(ConflictError):
+    """409 Tranfer process was stopped by user."""
+    title = "Transfer stopped"
+    text = "Tranfer process was stopped by user."
+    id = "transfer-stoped"
+
+
 class LengthRequired(LinkError):
     """411 Length Required."""
     title = "Length Required"

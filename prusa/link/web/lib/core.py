@@ -25,7 +25,6 @@ class PrusaLink(Application):
     daemon = None
     wizard = None
     api_key = None
-    posting_data = False
 
 
 app = application = PrusaLink(__package__)
