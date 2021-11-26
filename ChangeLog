@@ -37,6 +37,7 @@
     * log thread stack on interesting events
     * move job_id into the EEPROM
     * make STOP_PRINT wait for any of the READY, STOPPED or FINISHED states
+    * Implementation of new Transfer object from SDK
 
 
 0.5.1 (2021-07-16)
