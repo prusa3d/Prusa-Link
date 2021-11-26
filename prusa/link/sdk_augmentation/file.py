@@ -13,7 +13,7 @@ class SDFile(File):
         """
         parts = Path(path).parts
         # Ignores the first "/"
-        node: SDFile = self.get(parts[1:])
+        node: "SDFile" = self.get(parts[1:])
         if not str(path).startswith("/."):
             if node is None:
                 raise FileNotFoundError(f"Can't find the node at {path} to add"

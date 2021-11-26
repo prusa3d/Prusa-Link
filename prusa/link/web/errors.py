@@ -19,8 +19,11 @@ def response_error(req, error: errors.LinkError):
     if req.accept_json:
         return error.json_response()
     if req.accept_html:
-        return make_response(generate_page(req, error.template, title=error.title,
-                             text=error.text, status_code=error.status_code),
+        return make_response(generate_page(req,
+                                           error.template,
+                                           title=error.title,
+                                           text=error.text,
+                                           status_code=error.status_code),
                              status_code=error.status_code)
     return error.text_response()
 
@@ -68,6 +71,7 @@ def forbidden(req):
 def not_found(req):
     """Error handler for 404 Not Found."""
     return response_error(req, errors.NotFoundError())
+
 
 @app.http_state(400)
 @app.route('/error/no-file-in-request')

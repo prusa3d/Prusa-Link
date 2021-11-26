@@ -9,7 +9,6 @@ from prusa.connect.printer.metadata import FDMMetaData
 from prusa.connect.printer.files import File
 from prusa.connect.printer import Printer as SDKPrinter, const
 from prusa.connect.printer import Command
-from prusa.connect.printer.download import Download
 
 from ..printer_adapter.input_output.lcd_printer import LCDPrinter
 from ..printer_adapter.model import Model
@@ -27,6 +26,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
     Overrides some methods of the SDK Printer to provide better support for
     Prusa Link
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.lcd_printer = LCDPrinter.get_instance()
@@ -154,5 +154,5 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
     def download_loop(self):
         """Handler for download loop"""
         prctl_name()
-        Download.throttle = 0.01  # too much IO kills zero
+        self.download_mgr.transfer.throttle = 0.01  # too much IO kills zero
         self.download_mgr.loop()
