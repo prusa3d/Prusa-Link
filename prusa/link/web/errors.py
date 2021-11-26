@@ -73,70 +73,60 @@ def not_found(req):
     return response_error(req, errors.NotFoundError())
 
 
-@app.http_state(400)
 @app.route('/error/no-file-in-request')
 def no_file_in_request(req):
     """Error handler for 400 File not found in request payload."""
     return response_error(req, errors.NoFileInRequest())
 
 
-@app.http_state(400)
 @app.route('/error/file-size-mismatch')
 def file_size_mismatch(req):
     """Error handler for 400 File size mismatch."""
     return response_error(req, errors.FileSizeMismatch())
 
 
-@app.http_state(400)
 @app.route('/error/forbidden-characters')
 def forbidden_characters(req):
     """Error handler for 400 Forbidden Characters."""
     return response_error(req, errors.ForbiddenCharacters())
 
 
-@app.http_state(404)
 @app.route('/error/sdcard-not-supported')
 def sdcard_not_supported(req):
     """Error handler for 404 Some operations are not possible on SDCard."""
     return response_error(req, errors.SDCardNotSupoorted())
 
 
-@app.http_state(404)
 @app.route('/error/location-not-found')
 def location_not_found(req):
     """Error handler for 404 Location from url not found."""
     return response_error(req, errors.LocationNotFound())
 
 
-@app.http_state(409)
 @app.route('/error/file-currently-printed')
 def file_currently_printed(req):
     """Error handler for 409 File is currently printed."""
     return response_error(req, errors.FileCurrentlyPrinted())
 
 
-@app.http_state(409)
 @app.route('/error/transfer-conflict')
 def transfer_conflict(req):
     """Error handler for 409 Already in transfer process."""
     return response_error(req, errors.TransferConflict())
 
 
-@app.http_state(413)
 @app.route('/error/entity-too-large')
 def entity_too_large(req):
     """Error handler for 413 Payload Too Large"""
     return response_error(req, errors.EntityTooLarge())
 
 
-@app.http_state(415)
 @app.route('/error/unsupported-media-type')
 def unsupported_media_type(req):
     """Error handler for 415 Unsupported Media Type"""
     return response_error(req, errors.UnsupportedMediaError())
 
 
-@app.http_state(500)
 @app.route('/error/response-timeout')
 def response_timeout(req):
     """Error handler for 500 Response Timeout"""
