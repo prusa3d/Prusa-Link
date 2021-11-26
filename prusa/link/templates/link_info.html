@@ -110,11 +110,11 @@
             <li>Type: <span class="white">{{ transfer.transfer_type.value }}</span></li>
             <li>URL: <span class="white">{{ transfer.url }}</span></li>
             <li>Path: <span class="white">{{ transfer.path }}</span></li>
-            <li>Size: <span class="white">{{ translate.size }}</span></li>
+            <li>Size: <span class="white">{{ transfer.size }}</span></li>
             <li>Start time: <span class="white">{{ translate.start_ts|int }}</span></li>
             <li>Progress: <span class="white">{{ transfer.progress }}</span></li>
             <li>Remaining time: <span class="white">{{ transfer.time_remaining() }}</span></li>
-            <li>Complete: <span class="white">{{ transfer.complete }}</span></li>
+            <li>Completed: <span class="white">{{ transfer.completed }}</span></li>
             <li>To select: <span class="white">{{ transfer.to_select }}</span></li>
             <li>To print: <span class="white">{{ transfer.to_print }}</span></li>
         </ul>

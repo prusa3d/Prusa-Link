@@ -16,8 +16,9 @@ from poorwsgi.request import FieldStorage
 from poorwsgi.response import JSONResponse, Response, FileResponse
 from poorwsgi.results import hbytes
 
-from prusa.connect.printer.const import GCODE_EXTENSIONS, State, TransferType
+from prusa.connect.printer import const
 from prusa.connect.printer.metadata import FDMMetaData, get_metadata
+from prusa.connect.printer.download import Transfer, TransferRunningError
 
 from .lib.core import app
 from .lib.auth import check_api_digest
@@ -51,8 +52,8 @@ def get_local_free_space(path):
 
 class GCodeFile(FileIO):
     """Own file class to control processing data when POST"""
-    def __init__(self, filepath):
-        app.posting_data = True
+    def __init__(self, filepath: str, transfer: Transfer):
+        self.transfer = transfer
         job = Job.get_instance()
         self.filepath = filepath
         self.__uploaded = 0
@@ -66,16 +67,26 @@ class GCodeFile(FileIO):
         return self.__uploaded
 
     def write(self, data):
-        if self.printer.state == State.PRINTING \
+        if self.transfer.stop_ts is not None:
+            event_cb = app.daemon.prusa_link.printer.event_cb
+            event_cb(const.Event.TRANSFER_STOPPED, const.Source.USER)
+            self.transfer.transfer_type = const.TransferType.NO_TRANSFER
+            raise errors.TranferStopped()
+        if self.printer.state == const.State.PRINTING \
                 and not self.job_data.from_sd:
             sleep(0.01)
         size = super().write(data)
         self.__uploaded += size
+        self.transfer.completed = self.__uploaded
         return size
 
     def close(self):
         super().close()
-        app.posting_data = False
+        event_cb = app.daemon.prusa_link.printer.event_cb
+        event_cb(const.Event.TRANSFER_FINISHED,
+                 const.Source.CONNECT,
+                 destination=self.transfer.path)
+        self.transfer.transfer_type = const.TransferType.NO_TRANSFER
 
 
 def callback_factory(req):
@@ -98,14 +109,25 @@ def callback_factory(req):
         if any(character in filename for character in FORBIDDEN_CHARACTERS):
             raise errors.ForbiddenCharacters()
 
-        if not filename.endswith(GCODE_EXTENSIONS) or filename.startswith('.'):
+        if not filename.endswith(
+                const.GCODE_EXTENSIONS) or filename.startswith('.'):
             raise errors.UnsupportedMediaError()
 
         # Content-Length is not file-size but it is good limit
         if get_local_free_space(dirname(part_path)) <= req.content_length:
             raise errors.EntityTooLarge()
 
-        return GCodeFile(part_path)
+        transfer = app.daemon.prusa_link.printer.transfer
+        # TODO: check if client is Slicer ;) and use another type
+        # TODO: read to_print and to_select first
+        try:
+            transfer.start_transfer(const.TransferType.FROM_CLIENT, '',
+                                    filename, False, False)
+            transfer.size = req.content_length
+        except TransferRunningError as err:
+            raise errors.TransferConflict() from err
+
+        return GCodeFile(part_path, transfer)
 
     return gcode_callback
 
@@ -193,10 +215,6 @@ def api_files(req):
 @check_target
 def api_upload(req, target):
     """Function for uploading G-CODE."""
-    if app.posting_data:
-        # only one file can be posted at the same time
-        raise errors.TransferConflict()
-
     form = FieldStorage(req,
                         keep_blank_values=app.keep_blank_values,
                         strict_parsing=app.strict_parsing,
@@ -211,6 +229,10 @@ def api_upload(req, target):
     if form.bytes_read != req.content_length:
         log.error("File uploading not complete")
         unlink(part_path)
+        event_cb = app.daemon.prusa_link.printer.event_cb
+        event_cb(const.Event.TRANSFER_ABORTED, const.Source.USER)
+        transfer = app.daemon.prusa_link.printer.tranfer
+        transfer.transfer_type = const.TransferType.NO_TRANSFER
         raise errors.FileSizeMismatch()
 
     foldername = form.get('path', '/')
@@ -298,7 +320,7 @@ def api_resources(req, target, path):
 
     result = {'origin': target, 'name': basename(path), 'path': path}
 
-    if path.endswith(GCODE_EXTENSIONS):
+    if path.endswith(const.GCODE_EXTENSIONS):
         result['type'] = 'machinecode'
         result['typePath'] = ['machinecode', 'gcode']
     else:
@@ -353,7 +375,7 @@ def api_transfer_info(req):
     if transfer.in_progress:
         return JSONResponse(
             **{
-                "type": transfer.transaction_type.value,
+                "type": transfer.tranfer_type.value,
                 "url": transfer.url,
                 "target": "local",
                 "destination": transfer.path,
@@ -393,7 +415,8 @@ def api_download(req, target):
             path == job.data.selected_file_path:
         raise errors.FileCurrentlyPrinted()
 
-    download_mgr.start(TransferType.FROM_WEB, url, path, to_print, to_select)
+    download_mgr.start(const.TransferType.FROM_WEB, url, path, to_print,
+                       to_select)
 
     return Response(status_code=state.HTTP_CREATED)
 
