@@ -16,7 +16,7 @@ from poorwsgi.request import FieldStorage
 from poorwsgi.response import JSONResponse, Response, FileResponse
 from poorwsgi.results import hbytes
 
-from prusa.connect.printer.const import GCODE_EXTENSIONS, State
+from prusa.connect.printer.const import GCODE_EXTENSIONS, State, TransferType
 from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 
 from .lib.core import app
@@ -344,24 +344,27 @@ def api_delete(req, target, path):
 
 
 @app.route('/api/download')
+@app.route('/api/transfer')
 @check_api_digest
-def api_download_info(req):
-    """Get info about the file currently being downloaded"""
+def api_transfer_info(req):
+    """Get info about the file currently being transfered"""
     # pylint: disable=unused-argument
-    current = app.daemon.prusa_link.printer.download_mgr.current
-    if current is not None:
+    transfer = app.daemon.prusa_link.printer.transfer
+    if transfer.in_progress:
         return JSONResponse(
             **{
-                "url": current.url,
+                "type": transfer.transaction_type.value,
+                "url": transfer.url,
                 "target": "local",
-                "destination": current.destination,
-                "size": current.size,
-                "start_time": int(current.start_ts),
-                "progress": current.progress and round(current.progress /
-                                                       100, 4),
-                "remaining_time": current.time_remaining(),
-                "to_select": current.to_select,
-                "to_print": current.to_print
+                "destination": transfer.path,
+                "path": transfer.path,
+                "size": transfer.size,
+                "start_time": int(transfer.start_ts),
+                "progress": transfer.progress
+                and round(transfer.progress / 100, 4),
+                "remaining_time": transfer.time_remaining(),
+                "to_select": transfer.to_select,
+                "to_print": transfer.to_print
             })
     return Response(status_code=state.HTTP_NO_CONTENT)
 
@@ -375,14 +378,14 @@ def api_download(req, target):
     download_mgr = app.daemon.prusa_link.printer.download_mgr
 
     url = req.json.get('url')
-    destination_name = req.json.get('destination')
-    destination = join('/Prusa Link gcodes', destination_name)
+    path_name = req.json.get('path', req.json.get('destination'))
+    path = join('/Prusa Link gcodes', path_name)
     to_select = req.json.get('to_select', False)
     to_print = req.json.get('to_print', False)
     log.debug('select=%s, print=%s', to_select, to_print)
 
     filename = split(url)[1]
-    path = join(destination, filename)
+    path = join(path, filename)
 
     job = Job.get_instance()
 
@@ -390,7 +393,8 @@ def api_download(req, target):
             path == job.data.selected_file_path:
         raise errors.FileCurrentlyPrinted()
 
-    download_mgr.start(url, path, to_print, to_select)
+    download_mgr.start(TransferType.FROM_WEB, url, path, to_print, to_select)
+
     return Response(status_code=state.HTTP_CREATED)
 
 

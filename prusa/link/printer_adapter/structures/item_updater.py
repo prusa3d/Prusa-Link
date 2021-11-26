@@ -86,7 +86,7 @@ class WatchedItem(Watchable):
         self.validation_function: Callable[[Any], bool] = validation_function
         # Takes care of putting the value in the right places
         # Shall not throw anything EVER!
-        self.write_function: Callable[[WatchedItem], None] = write_function
+        self.write_function: Callable[["WatchedItem"], None] = write_function
 
         # -- Signals --
 
