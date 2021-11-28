@@ -53,6 +53,8 @@ def get_local_free_space(path):
 class GCodeFile(FileIO):
     """Own file class to control processing data when POST"""
     def __init__(self, filepath: str, transfer: Transfer):
+        assert (app.daemon and app.daemon.prusa_link
+                and app.daemon.prusa_link.printer)
         self.transfer = transfer
         job = Job.get_instance()
         self.filepath = filepath
@@ -215,6 +217,7 @@ def api_files(req):
 @check_target
 def api_upload(req, target):
     """Function for uploading G-CODE."""
+    # pylint: disable=too-many-locals
     form = FieldStorage(req,
                         keep_blank_values=app.keep_blank_values,
                         strict_parsing=app.strict_parsing,
