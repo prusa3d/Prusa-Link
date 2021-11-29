@@ -72,8 +72,8 @@ class GCodeFile(FileIO):
         if self.transfer.stop_ts is not None:
             event_cb = app.daemon.prusa_link.printer.event_cb
             event_cb(const.Event.TRANSFER_STOPPED, const.Source.USER)
-            self.transfer.transfer_type = const.TransferType.NO_TRANSFER
-            raise errors.TranferStopped()
+            self.transfer.type = const.TransferType.NO_TRANSFER
+            raise errors.TransferStopped()
         if self.printer.state == const.State.PRINTING \
                 and not self.job_data.from_sd:
             sleep(0.01)
@@ -88,7 +88,7 @@ class GCodeFile(FileIO):
         event_cb(const.Event.TRANSFER_FINISHED,
                  const.Source.CONNECT,
                  destination=self.transfer.path)
-        self.transfer.transfer_type = const.TransferType.NO_TRANSFER
+        self.transfer.type = const.TransferType.NO_TRANSFER
 
 
 def callback_factory(req):
@@ -123,12 +123,10 @@ def callback_factory(req):
         # TODO: check if client is Slicer ;) and use another type
         # TODO: read to_print and to_select first
         try:
-            transfer.start_transfer(const.TransferType.FROM_CLIENT, '',
-                                    filename, False, False)
+            transfer.start(const.TransferType.FROM_CLIENT, filename)
             transfer.size = req.content_length
         except TransferRunningError as err:
             raise errors.TransferConflict() from err
-
         return GCodeFile(part_path, transfer)
 
     return gcode_callback
@@ -234,8 +232,8 @@ def api_upload(req, target):
         unlink(part_path)
         event_cb = app.daemon.prusa_link.printer.event_cb
         event_cb(const.Event.TRANSFER_ABORTED, const.Source.USER)
-        transfer = app.daemon.prusa_link.printer.tranfer
-        transfer.transfer_type = const.TransferType.NO_TRANSFER
+        transfer = app.daemon.prusa_link.printer.transfer
+        transfer.type = const.TransferType.NO_TRANSFER
         raise errors.FileSizeMismatch()
 
     foldername = form.get('path', '/')
@@ -378,7 +376,7 @@ def api_transfer_info(req):
     if transfer.in_progress:
         return JSONResponse(
             **{
-                "type": transfer.tranfer_type.value,
+                "type": transfer.type.value,
                 "url": transfer.url,
                 "target": "local",
                 "destination": transfer.path,
@@ -418,7 +416,7 @@ def api_download(req, target):
             path == job.data.selected_file_path:
         raise errors.FileCurrentlyPrinted()
 
-    download_mgr.start(const.TransferType.FROM_WEB, url, path, to_print,
+    download_mgr.start(const.TransferType.FROM_WEB, path, url, to_print,
                        to_select)
 
     return Response(status_code=state.HTTP_CREATED)
