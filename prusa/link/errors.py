@@ -244,10 +244,10 @@ class TransferConflict(ConflictError):
 
 
 # TODO: html variant
-class TranferStopped(ConflictError):
-    """409 Tranfer process was stopped by user."""
+class TransferStopped(ConflictError):
+    """409 Transfer process was stopped by user."""
     title = "Transfer stopped"
-    text = "Tranfer process was stopped by user."
+    text = "Transfer process was stopped by user."
     id = "transfer-stoped"
 
 
