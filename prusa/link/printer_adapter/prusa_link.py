@@ -95,7 +95,7 @@ class PrusaLink:
 
         # Init components first, so they all exist for signal binding stuff
         self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_parser,
-                                      self.model)
+                                      self.model, self.settings)
         self.job = Job(self.serial_parser, self.serial_queue, self.model,
                        self.cfg, self.printer)
         self.state_manager = StateManager(self.serial_parser, self.model,

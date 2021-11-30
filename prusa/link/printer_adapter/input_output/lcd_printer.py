@@ -11,6 +11,7 @@ from .serial.serial_parser import SerialParser
 from ..structures.mc_singleton import MCSingleton
 from ..structures.regular_expressions import LCD_UPDATE_REGEX
 from ..updatable import prctl_name, Thread
+from ...config import Settings
 
 log = logging.getLogger(__name__)
 
@@ -20,10 +21,11 @@ class LCDPrinter(metaclass=MCSingleton):
     MESSAGE_DURATION = 5
 
     def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
-                 model: Model):
+                 model: Model, settings: Settings):
         self.serial_queue = serial_queue
         self.serial_parser = serial_parser
         self.model = model
+        self.settings = settings
 
         self.last_updated = time()
         # When printing from our queue, the "LCD status updated gets printed
@@ -77,10 +79,10 @@ class LCDPrinter(metaclass=MCSingleton):
             all_ok = all(errors.TAILS)
             # XXX implement a way how to display both the IP and the error
             #  state name. Maybe as carousel?
-            if all_ok:
+            if all_ok and not self.settings.is_wizard_needed():
                 msg = "OK: " + self.get_ip()
             # If wizard is not completed, show GO: <IP> msg on LCD
-            elif self.get_ip() and errors.TAILS[1].ok is None:
+            elif self.get_ip() and self.settings.is_wizard_needed():
                 msg = "GO: " + self.get_ip()
             else:
                 for chain in errors.HEADS:

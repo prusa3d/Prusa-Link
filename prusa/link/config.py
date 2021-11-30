@@ -267,3 +267,14 @@ class Settings(Get):
         self.set_section('network', self.network)
         self.set_section('service::connect', self.service_connect)
         self.set_section('service::local', self.service_local)
+
+    def is_wizard_needed(self):
+        """
+        Is there a reason for the wizard to be shown?
+        """
+        interested_in = [
+            self.printer["name"],
+            self.printer["type"],
+            self.service_local["username"],
+            self.service_local["digest"]]
+        return not all(interested_in)
