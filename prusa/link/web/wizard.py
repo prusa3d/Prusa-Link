@@ -206,8 +206,10 @@ def wizard_finish_post(req):
 @app.before_request()
 def check_wizard_access(req):
     """Check if wizard can be shown."""
-    if app.auth_map and req.path.startswith('/wizard'):
+    if not app.settings.is_wizard_needed() \
+            and req.path.startswith('/wizard'):
         abort(410)  # auth map is configured, wizard is denied
 
-    if not app.auth_map and req.path == '/':
+    if app.settings.is_wizard_needed() \
+            and req.path == '/':
         redirect('/wizard')
