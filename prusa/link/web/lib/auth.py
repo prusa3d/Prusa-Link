@@ -4,7 +4,7 @@ from functools import wraps
 import logging
 
 from poorwsgi import state
-from poorwsgi.response import Response, HTTPException, redirect
+from poorwsgi.response import Response, HTTPException
 from poorwsgi.session import check_token
 from poorwsgi.digest import check_credentials, hexdigest
 
@@ -77,8 +77,6 @@ def check_config(func):
             log.error('prusa_link or prusa_link.printer is not available')
             raise HTTPException(state.HTTP_SERVICE_UNAVAILABLE)
 
-        if not app.auth_map:
-            redirect('/wizard')
         return func(req, *args, **kwargs)
 
     return handler

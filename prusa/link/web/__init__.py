@@ -43,7 +43,7 @@ def init(daemon):
     else:
         log.info("No Api-Key was set.")
 
-    if not app.auth_map and not service_local.api_key:
+    if app.settings.is_wizard_needed():
         app.wizard = Wizard(app)
 
     if app.cfg.http.link_info:
