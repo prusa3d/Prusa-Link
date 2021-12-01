@@ -4,6 +4,7 @@ import os
 from threading import Event, enumerate as enumerate_threads
 from time import time
 from typing import Dict, Any
+from enum import Enum
 
 from prusa.connect.printer import Command as SDKCommand
 
@@ -16,7 +17,7 @@ from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
     UnloadFilamentMK3
 from .command_queue import CommandQueue
 from .informers.filesystem.sd_card import SDState
-from .informers.job import Job
+from .informers.job import Job, JobState
 from .interesting_logger import InterestingLogRotator
 from .mk3_polling import MK3Polling
 from .print_stats import PrintStats
@@ -32,7 +33,8 @@ from .input_output.serial.serial_parser import SerialParser
 from .model import Model
 from .structures.model_classes import Telemetry
 from .const import PRINTING_STATES, TELEMETRY_IDLE_INTERVAL, \
-    TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, SD_MOUNT_NAME
+    TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, SD_MOUNT_NAME, \
+    PATH_WAIT_TIMEOUT
 from .structures.regular_expressions import \
     PRINTER_BOOT_REGEX, START_PRINT_REGEX, PAUSE_PRINT_REGEX, \
     RESUME_PRINT_REGEX
@@ -44,6 +46,13 @@ from ..errors import HW
 from ..sdk_augmentation.printer import MyPrinter
 
 log = logging.getLogger(__name__)
+
+
+class TransferCallbackState(Enum):
+    """Return values form download_finished_cb."""
+    SUCCESS = 0
+    NOT_IN_TREE = 1
+    ANOTHER_PRINTING = 2
 
 
 class PrusaLink:
@@ -75,6 +84,10 @@ class PrusaLink:
 
         self.printer.register_handler = self.printer_registered
         self.printer.set_connect(settings)
+
+        # Set download callbacks
+        self.printer.printed_file_cb = self.printed_file_cb
+        self.printer.download_finished_cb = self.download_finished_cb
 
         # Bind command handlers
         self.printer.set_handler(CommandType.GCODE, self.execute_gcode)
@@ -111,7 +124,8 @@ class PrusaLink:
                                          self.serial_parser,
                                          self.state_manager, self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
-        self.mk3_polling = MK3Polling(self.serial_queue, self.printer, self.model, self.job)
+        self.mk3_polling = MK3Polling(self.serial_queue, self.printer,
+                                      self.model, self.job)
         self.command_queue = CommandQueue()
 
         # Bind signals
@@ -270,6 +284,34 @@ class PrusaLink:
         # instruction = enqueue_instruction(self.serial_queue, f"M0 {message}")
         # wait_for_instruction(instruction)
         callback()
+
+    # --- Download callbacks ---
+    def printed_file_cb(self):
+        """Return absolute path of the currently printed file."""
+        if self.job.data.job_state == JobState.IN_PROGRESS:
+            return self.job.data.selected_file_path
+        return None
+
+    def download_finished_cb(self, transfer):
+        """Called when download is finished successfully"""
+        if not transfer.to_print:
+            return TransferCallbackState.SUCCESS
+
+        if self.job.data.job_state == JobState.IDLE:
+            self.job.deselect_file()
+            if not self.printer.fs.wait_until_path(transfer.path,
+                                                   PATH_WAIT_TIMEOUT):
+                log.warning("Transferred file %s not found in tree",
+                            transfer.path)
+                return TransferCallbackState.NOT_IN_TREE
+
+            self.job.select_file(transfer.path)
+            self.command_queue.do_command(
+                StartPrint(self.job.data.selected_file_path))
+            return TransferCallbackState.SUCCESS
+
+        log.warning("Printer is printing another file.")
+        return TransferCallbackState.ANOTHER_PRINTING
 
     # --- Command handlers ---
 
