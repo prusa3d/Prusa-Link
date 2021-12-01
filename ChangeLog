@@ -39,7 +39,7 @@
     * make STOP_PRINT wait for any of the READY, STOPPED or FINISHED states
     * Implementation of new Transfer object from SDK
     * Make a centralised wizard activation condition
-
+    * Download finished callback implementation
 
 0.5.1 (2021-07-16)
     * Implementation of print after upload endpoint
