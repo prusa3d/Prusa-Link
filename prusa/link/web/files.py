@@ -5,7 +5,7 @@ from os.path import abspath, join, exists, basename, dirname, split, getsize, \
 from base64 import decodebytes
 from datetime import datetime
 from hashlib import md5
-from time import sleep
+from time import sleep, time
 from io import FileIO
 from functools import wraps
 
@@ -25,6 +25,8 @@ from .lib.auth import check_api_digest
 from .lib.files import file_to_api, get_os_path, local_refs, sdcard_refs, \
         gcode_analysis, sort_files
 
+from ..printer_adapter.prusa_link import TransferCallbackState
+from ..printer_adapter.const import PATH_WAIT_TIMEOUT
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.informers.job import JobState, Job
 from .. import errors
@@ -32,7 +34,6 @@ from .. import errors
 log = logging.getLogger(__name__)
 HEADER_DATETIME_FORMAT = "%a, %d %b %Y %X GMT"
 FORBIDDEN_CHARACTERS = ('\\', '?', '"', '%', '¯', '°', '#', 'ˇ')
-WAIT_TIMEOUT = 10  # in seconds
 
 
 def partfilepath(filename):
@@ -125,23 +126,12 @@ def callback_factory(req):
         try:
             transfer.start(const.TransferType.FROM_CLIENT, filename)
             transfer.size = req.content_length
+            transfer.start_ts = time()
         except TransferRunningError as err:
             raise errors.TransferConflict() from err
         return GCodeFile(part_path, transfer)
 
     return gcode_callback
-
-
-def wait_until_fs_path(printer, path):
-    """Wait until path was added to filesystem tree.py
-
-    Function waits WAIT_TIMEOUT for path or raises TIMOUT exception.
-    """
-    for i in range(WAIT_TIMEOUT * 10):  # pylint: disable=unused-variable
-        if printer.fs.get(path):
-            return
-        sleep(0.1)
-    raise errors.ResponseTimeout()
 
 
 def check_target(func):
@@ -226,27 +216,29 @@ def api_upload(req, target):
 
     filename = form['file'].filename
     part_path = partfilepath(filename)
+    transfer = app.daemon.prusa_link.printer.transfer
 
     if form.bytes_read != req.content_length:
         log.error("File uploading not complete")
         unlink(part_path)
         event_cb = app.daemon.prusa_link.printer.event_cb
         event_cb(const.Event.TRANSFER_ABORTED, const.Source.USER)
-        transfer = app.daemon.prusa_link.printer.transfer
         transfer.type = const.TransferType.NO_TRANSFER
         raise errors.FileSizeMismatch()
 
     foldername = form.get('path', '/')
-
-    select = form.getfirst('select') == 'true'
-    _print = form.getfirst('print') == 'true'
-    log.debug('select=%s, print=%s', select, _print)
 
     if foldername.startswith('/'):
         foldername = '.' + foldername
     print_path = abspath(join("/Prusa Link gcodes/", foldername, filename))
     foldername = abspath(join(app.cfg.printer.directories[0], foldername))
     filepath = join(foldername, filename)
+
+    # post upload transfer fix from form fields
+    transfer.to_select = form.getfirst('select') == 'true'
+    transfer.to_print = form.getfirst('print') == 'true'
+    log.debug('select=%s, print=%s', transfer.to_select, transfer.to_print)
+    transfer.path = print_path  # post upload fix
 
     job = Job.get_instance()
 
@@ -257,15 +249,15 @@ def api_upload(req, target):
 
     log.info("Store file to %s::%s", target, filepath)
     makedirs(foldername, exist_ok=True)
-    wait_until_fs_path(job.printer, dirname(print_path))
+
+    if not job.printer.fs.wait_until_path(dirname(print_path),
+                                          PATH_WAIT_TIMEOUT):
+        raise errors.ResponseTimeout()
     replace(part_path, filepath)
 
-    if _print and job.data.job_state == JobState.IDLE:
-        job.deselect_file()
-        wait_until_fs_path(job.printer, print_path)
-        job.select_file(print_path)
-        command_queue = app.daemon.prusa_link.command_queue
-        command_queue.do_command(StartPrint(job.data.selected_file_path))
+    if app.daemon.prusa_link.download_finished_cb(transfer) \
+            == TransferCallbackState.NOT_IN_TREE:
+        raise errors.ResponseTimeout()
 
     if req.accept_json:
         data = app.daemon.prusa_link.printer.get_info()["files"]
