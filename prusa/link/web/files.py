@@ -69,7 +69,7 @@ class GCodeFile(FileIO):
         return self.__uploaded
 
     def write(self, data):
-        if self.transfer.stop_ts is not None:
+        if self.transfer.stop_ts > 0:
             event_cb = app.daemon.prusa_link.printer.event_cb
             event_cb(const.Event.TRANSFER_STOPPED, const.Source.USER)
             self.transfer.type = const.TransferType.NO_TRANSFER
