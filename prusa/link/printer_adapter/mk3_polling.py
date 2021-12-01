@@ -298,7 +298,7 @@ class MK3Polling:
         It's a setter, what am I expected to write here?
         Sets the firmware version duh
         """
-        self.printer.firmware_version = value
+        self.printer.firmware = value
 
     def _set_nozzle_diameter(self, value):
         """Sets the nozzle diameter"""
