@@ -80,7 +80,7 @@ class GCodeFile(FileIO):
             sleep(0.01)
         size = super().write(data)
         self.__uploaded += size
-        self.transfer.completed = self.__uploaded
+        self.transfer.transferred = self.__uploaded
         return size
 
     def close(self):
