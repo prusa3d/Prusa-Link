@@ -86,8 +86,9 @@ class PrusaLink:
         self.printer.set_connect(settings)
 
         # Set download callbacks
-        self.printer.printed_file_cb = self.printed_file_cb
-        self.printer.download_finished_cb = self.download_finished_cb
+        self.printer.download_mgr.printed_file_cb = self.printed_file_cb
+        self.printer.download_mgr.download_finished_cb \
+            = self.download_finished_cb
 
         # Bind command handlers
         self.printer.set_handler(CommandType.GCODE, self.execute_gcode)
