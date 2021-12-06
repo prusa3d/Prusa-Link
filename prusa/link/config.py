@@ -278,3 +278,10 @@ class Settings(Get):
             self.service_local["username"],
             self.service_local["digest"]]
         return not all(interested_in)
+
+    def use_connect(self):
+        """
+        Gets the user's wish to use or not tu use connect
+        Needs its own value, now substituted by token
+        """
+        return bool(self.service_connect["token"])

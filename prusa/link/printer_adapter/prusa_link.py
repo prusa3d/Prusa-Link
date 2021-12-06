@@ -26,7 +26,7 @@ from .informers.ip_updater import IPUpdater
 from .informers.state_manager import StateManager, StateChange
 from .informers.filesystem.storage_controller import StorageController
 from .informers.telemetry_gatherer import TelemetryGatherer
-from .input_output.lcd_printer import LCDPrinter
+from .lcd_printer import LCDPrinter
 from .input_output.serial.serial_queue import MonitoredSerialQueue
 from .input_output.serial.serial_adapter import SerialAdapter
 from .input_output.serial.serial_parser import SerialParser
@@ -609,6 +609,7 @@ class PrusaLink:
 
         # file printer stop print needs to happen before this
         self.state_manager.reset()
+        self.lcd_printer.reset_error_grace()
         self.mk3_polling.invalidate_printer_info()
         self.ip_updater.send_ip_to_printer()
 
