@@ -4,6 +4,7 @@ For more information see prusa-link_states.txt.
 """
 
 import itertools
+from enum import Enum
 
 from typing import Optional
 from poorwsgi import state
@@ -14,6 +15,14 @@ from prusa.connect.printer.errors import ErrorState, INTERNET, HTTP, TOKEN, \
 
 assert HTTP is not None
 assert TOKEN is not None
+
+
+class Categories(Enum):
+    """Error categories, so we don't index them by order"""
+    PRINTER = "Printer"
+    NETWORK = "Network"
+    HARDWARE = "Hardware"
+
 
 OK_MSG = {"ok": True, "message": "OK"}
 
@@ -32,23 +41,32 @@ LAN = ErrorState("Lan",
 INTERNET.prev = LAN
 
 SERIAL = ErrorState("Port", "Serial device does not exist")
-RPI_ENABLED = ErrorState("RPIenabled", "RPi port is not enabled", prev=SERIAL)
-ID = ErrorState("ID", "Device is not a Prusa printer", prev=RPI_ENABLED)
-FW = ErrorState("Firmware", "Firmware is not up-to-date", prev=ID)
-SN = ErrorState("SN", "Serial number cannot be obtained", prev=FW)
-JOB_ID = ErrorState("JobID", "Job ID cannot be obtained", prev=SN)
+RPI_ENABLED = ErrorState("RPIenabled", "RPi port is not enabled", prev=SERIAL,
+                         short_msg="Enable RPi port")
+ID = ErrorState("ID", "Device is not a Prusa printer", prev=RPI_ENABLED,
+                short_msg="Not a PRUSA")
+FW = ErrorState("Firmware", "Firmware is not up-to-date", prev=ID,
+                short_msg="Unsupported FW")
+SN = ErrorState("SN", "Serial number cannot be obtained", prev=FW,
+                short_msg="reading S/N")
+JOB_ID = ErrorState("JobID", "Job ID cannot be obtained", prev=SN,
+                    short_msg="reading JOB_ID")
 
-HW = ErrorState("HW", "Firmware detected a hardware issue")
+HW = ErrorState("HW", "Firmware detected a hardware issue", short_msg="Printer error")
 
 # first and last elements for all available error state chains
-HEADS = [SERIAL, DEVICE, HW]
-TAILS = [SN, API, HW]
+HEADS = {Categories.PRINTER: SERIAL,
+         Categories.NETWORK: DEVICE,
+         Categories.HARDWARE: HW}
+TAILS = {Categories.PRINTER: JOB_ID,
+         Categories.NETWORK: API,
+         Categories.HARDWARE: HW}
 
 
 def status():
     """Return a dict with representation of all current error states """
     result = []
-    for head in HEADS:
+    for head in HEADS.values():
         chain = {}
         current = head
         while current is not None:
@@ -60,7 +78,7 @@ def status():
 
 def printer_status():
     """Returns a dict with representation of current printer error states"""
-    if TAILS[0].ok and TAILS[2].ok:
+    if TAILS[Categories.PRINTER].ok and TAILS[Categories.HARDWARE].ok:
         return OK_MSG
     result = {}
     printer = itertools.chain(HW, SERIAL)
@@ -72,7 +90,7 @@ def printer_status():
 
 def connect_status():
     """Returns a dict with representation of current Connect error states"""
-    if TAILS[1].ok:
+    if TAILS[Categories.NETWORK].ok:
         return OK_MSG
     result = {}
     for error in DEVICE:
@@ -103,7 +121,7 @@ def get_printer_error_states():
 def get_all_error_states():
     """Return a list of all ErrorStates"""
     error_states = []
-    for head in HEADS:
+    for head in HEADS.values():
         error_states.extend(get_error_states_for_head(head))
     return error_states
 
