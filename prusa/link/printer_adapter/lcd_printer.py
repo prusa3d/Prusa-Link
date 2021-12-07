@@ -3,12 +3,14 @@ Should inform the user about everything important in prusa link while
 nod obstructing anything else the printer wrote.
 """
 import logging
+import math
 from multiprocessing import Event
 from pathlib import Path
 from queue import Queue
 from time import time
 from typing import Callable
 
+from prusa.connect.printer import Printer
 from prusa.connect.printer.errors import HTTP, API, TOKEN, INTERNET
 
 from .structures.model_classes import JobState
@@ -35,10 +37,12 @@ WELCOME_TONE = [
 
 ERROR_TONE = ["M300 S5 P600"]
 
+UPLOAD_TONE = ["M300 P12 S50"]
+
 
 class LCDLine:
     """Info about the text to show"""
-    def __init__(self, text, delay=3):
+    def __init__(self, text, delay=2.0):
         self.text: str = text
         self.delay: int = delay
 
@@ -60,8 +64,8 @@ class DisplayThing:
         self.conditions = {}
 
     # pylint: disable=too-many-arguments
-    def set_text(self, text, scroll_delay=2, first_line_extra=2,
-                 scroll_amount=10, last_screen_extra=1):
+    def set_text(self, text, scroll_delay=2.0, first_line_extra=2.0,
+                 scroll_amount=10, last_screen_extra=1.0):
         """
         Given text and parameters, it sets up the "screen" with your text
 
@@ -143,13 +147,25 @@ class DisplayThing:
             self.at_start = False
 
         self.line: LCDLine = self.lines[self.index]
-        self.ends_at = time() + self.line.delay
+        self.reset_ends_at()
         return self.line.text
 
     def to_start(self):
         """Reset the scroll progress"""
         self.index = 0
         self.at_start = True
+
+    def reset_ends_at(self):
+        """
+        Resets ends_at. Useful for when the printer is unresponsive
+        for a long time, the message would not scroll, then catch up when
+        the printer becomes responsive again.
+
+        Calling this after the printer confirms it displayed the message
+        ensures the delay before scrolling will be equal or longer than
+        the set delay
+        """
+        self.ends_at = time() + self.line.delay
 
 
 ERROR_GRACE = 15
@@ -158,12 +174,14 @@ ERROR_GRACE = 15
 class LCDPrinter(metaclass=MCSingleton):
     """Reports Prusa Link status on the printer LCD whenever possible"""
 
+    # pylint: disable=too-many-arguments
     def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
-                 model: Model, settings: Settings):
+                 model: Model, settings: Settings, printer: Printer):
         self.serial_queue = serial_queue
         self.serial_parser = serial_parser
         self.model = model
         self.settings = settings
+        self.printer = printer
 
         self.event_queue: Queue[Callable[[], None]] = Queue()
 
@@ -184,13 +202,16 @@ class LCDPrinter(metaclass=MCSingleton):
         self.wizard_display.set_sound(WELCOME_TONE)
         self.error_display = DisplayThing(30)
         self.error_display.set_sound(ERROR_TONE)
+        self.upload_display = DisplayThing(20)
+        self.upload_display.set_sound(UPLOAD_TONE)
         # self.message_display = DisplayThing()
 
         self.displayed_things = [
             self.print_display,
             self.error_display,
             # self.message_display,
-            self.wizard_display]
+            self.wizard_display,
+            self.upload_display]
 
         self.current_thing = None
 
@@ -234,12 +255,12 @@ class LCDPrinter(metaclass=MCSingleton):
         self._check_printing()
         self._check_errors()
         self._check_wizard()
+        self._check_upload()
 
     def _check_printing(self):
         """
         Should a printing display be activated? And what should it say?
         """
-        # Printing screen
         if self.model.job.job_state == JobState.IN_PROGRESS and \
                 self.model.job.selected_file_path is not None:
             # We're printing! Display the file name
@@ -260,7 +281,6 @@ class LCDPrinter(metaclass=MCSingleton):
         """
         Should an error display be activated? And what should it say?
         """
-        # Error screen
         error = self._get_error()
         error_grace_ended = time() - self.ignore_errors_to > 0
         if error is None:
@@ -297,6 +317,47 @@ class LCDPrinter(metaclass=MCSingleton):
                     f"{self.model.ip_updater.local_ip}", last_screen_extra=5)
         else:
             self.wizard_display.disable("Wizard done, enjoy")
+
+    def _check_upload(self):
+        """
+        Should an upload display be visible? And what should it say?
+        """
+        if self.printer.transfer.in_progress:
+            self.upload_display.enable()
+            progress = self.printer.transfer.progress
+            bar_length = 12
+            # Have 12 characters for the load bar,
+            # increased to 14 by the arrow visibility
+            # [UPLOAD:     0%     ]
+            # [UPLOAD:>    5%     ]
+            # [UPLOAD:=====95%===>]
+            # [UPLOAD:====100%====]
+
+            # index of 0 and 13 means a hidden arrow
+            rough_index = progress / (100 / (bar_length + 2))
+            index = min(math.floor(rough_index), bar_length + 1)
+            display_arrow = 0 < index < 13
+
+            progress_background = "=" * max(0, (index - 1))
+            if display_arrow:
+                progress_background += ">"
+            progress_background = progress_background.ljust(bar_length)
+
+            # Put percents over the background
+            int_progress = int(round(progress))
+            string_progress = f"{int_progress}%"
+            centered_progress = string_progress.center(bar_length)
+            centering_index = centered_progress.index(string_progress)
+
+            progress_graphic = "Upload:"
+            progress_graphic += progress_background[:centering_index]
+            progress_graphic += string_progress
+            progress_graphic += progress_background[centering_index + len(string_progress):]
+            self.upload_display.set_text(
+                progress_graphic, scroll_delay=0.5, last_screen_extra=0,
+                first_line_extra=0)
+        else:
+            self.upload_display.disable()
 
     # pylint: disable=too-many-branches
     # I think with the comments it's usable as is
@@ -361,8 +422,9 @@ class LCDPrinter(metaclass=MCSingleton):
 
             # Get the line and send it to the printer
             if to_display is not None:
-                text = self.current_thing.get_next()
+                text = to_display.get_next()
                 self._print_text(text)
+                to_display.reset_ends_at()
                 # Play a sound accompanying the newly shown thing
                 if to_display.play_sound:
                     to_display.play_sound = False
@@ -373,7 +435,7 @@ class LCDPrinter(metaclass=MCSingleton):
             elif becomes_empty and end_text is not None:
                 self._print_text(end_text)
 
-    def _print_text(self, text: str, prefix="\x04"):
+    def _print_text(self, text: str, prefix="\x7E"):
         """
         Sends the given message using M117 gcode and waits for its
         confirmation
