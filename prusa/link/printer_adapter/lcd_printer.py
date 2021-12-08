@@ -8,7 +8,7 @@ from multiprocessing import Event
 from pathlib import Path
 from queue import Queue
 from time import time
-from typing import Callable
+from typing import Callable, List
 
 from prusa.connect.printer import Printer
 from prusa.connect.printer.errors import HTTP, API, TOKEN, INTERNET
@@ -50,11 +50,14 @@ class LCDLine:
 class DisplayThing:
     """A text "display thing" implementing stuff like scrolling text"""
     def __init__(self, priority):
+        # only the things with the highest priority get displayed
         self.priority = priority
+        # if there are more than one, they get ordered by this number
+        self.order = 0
         self.enabled = False
         self.play_sound = True
         self.lines = []
-        self.index = 0
+        self.line_index = 0
         self.at_start = True
         self.ends_at = time()
         self.line = None
@@ -65,7 +68,7 @@ class DisplayThing:
 
     # pylint: disable=too-many-arguments
     def set_text(self, text, scroll_delay=2.0, first_line_extra=2.0,
-                 scroll_amount=10, last_screen_extra=1.0):
+                 scroll_amount=10, last_screen_extra=1.0, to_clear=True):
         """
         Given text and parameters, it sets up the "screen" with your text
 
@@ -75,7 +78,8 @@ class DisplayThing:
         scroll_amount: How many characters to scroll > 0
         last_screen_extra: How much longer to wait on the last screen
         """
-        self.clear()
+        if to_clear:
+            self.clear()
         remaining_text = text
         if len(text) < 19:
             self.lines.append(LCDLine(
@@ -125,6 +129,15 @@ class DisplayThing:
             self.to_start()
             self.enabled = True
 
+    def set_priority(self, priority):
+        """
+        Sets the priority, since that will change what's displayed
+        in 99% of cases, resets the scroll position too
+        """
+        if priority != self.priority:
+            self.to_start()
+        self.priority = priority
+
     def clear(self):
         """Clear the thing, so we can set it up again"""
         self.lines.clear()
@@ -140,19 +153,19 @@ class DisplayThing:
         if self.at_start:
             self.at_start = False
         else:
-            self.index += 1
+            self.line_index += 1
 
-        if self.index == len(self.lines):
+        if self.line_index == len(self.lines):
             self.to_start()
             self.at_start = False
 
-        self.line: LCDLine = self.lines[self.index]
+        self.line: LCDLine = self.lines[self.line_index]
         self.reset_ends_at()
         return self.line.text
 
     def to_start(self):
         """Reset the scroll progress"""
-        self.index = 0
+        self.line_index = 0
         self.at_start = True
 
     def reset_ends_at(self):
@@ -166,6 +179,13 @@ class DisplayThing:
         the set delay
         """
         self.ends_at = time() + self.line.delay
+
+    def is_at_end(self):
+        """
+        Are we at the end of the scrolling text
+        Used for getting to the next display thing if there's any
+        """
+        return self.line_index == len(self.lines) - 1
 
 
 ERROR_GRACE = 15
@@ -186,7 +206,6 @@ class LCDPrinter(metaclass=MCSingleton):
         self.event_queue: Queue[Callable[[], None]] = Queue()
 
         self.fw_msg_end_at = time()
-        self.last_from_fw = False
         # Used for ignoring LCD status updated that we generate
         self.ignore = 0
         self.serial_parser.add_handler(LCD_UPDATE_REGEX, self.lcd_updated)
@@ -206,7 +225,7 @@ class LCDPrinter(metaclass=MCSingleton):
         self.upload_display.set_sound(UPLOAD_TONE)
         # self.message_display = DisplayThing()
 
-        self.displayed_things = [
+        self.display_things = [
             self.print_display,
             self.error_display,
             # self.message_display,
@@ -214,6 +233,9 @@ class LCDPrinter(metaclass=MCSingleton):
             self.upload_display]
 
         self.current_thing = None
+        self.currently_displayable: List[DisplayThing] = []
+        # If there's more things to display, on which are we?
+        self.thing_index = 0
 
         # Need to implement this in state manager. Only problem is, it's driven
         # Cannot update itself. For now, this is the workaround
@@ -235,10 +257,13 @@ class LCDPrinter(metaclass=MCSingleton):
         assert match is not None
 
         def handler():
-            """Reset the active screen after a fw message"""
+            """
+            Reset the active screen after a fw message
+            !!! Crucially also makes the main loop wait
+            !!! for the fw message timeout again
+            """
             if self.current_thing is not None:
                 self.current_thing.to_start()
-                self.last_from_fw = True
 
         if self.ignore > 0:
             self.ignore -= 1
@@ -272,10 +297,7 @@ class LCDPrinter(metaclass=MCSingleton):
                 self.print_display.conditions = conditions
                 self.print_display.set_text(filename)
         else:
-            if self.last_from_fw:
-                self.print_display.disable()
-            else:
-                self.print_display.disable("Print ended")
+            self.print_display.disable()
 
     def _check_errors(self):
         """
@@ -294,12 +316,18 @@ class LCDPrinter(metaclass=MCSingleton):
             conditions = dict(lan=LAN.ok, error=error)
             if self.error_display.conditions != conditions:
                 self.error_display.conditions = conditions
+
                 text = f"Error: {error.short_msg}"
                 if LAN.ok:
                     text += f", more info at: {self.model.ip_updater.local_ip}"
                 else:
                     text += ", please connect PrusaLink to a network."
                 self.error_display.set_text(text)
+
+            if self.model.job.job_state == JobState.IN_PROGRESS:
+                self.error_display.set_priority(50)
+            else:
+                self.error_display.set_priority(30)
 
     def _check_wizard(self):
         """
@@ -359,6 +387,23 @@ class LCDPrinter(metaclass=MCSingleton):
         else:
             self.upload_display.disable()
 
+    def _wait(self):
+        """
+        Wait until an event comes,
+        or until it's time to draw on the screen
+        """
+        current_time = time()
+        if self.current_thing is not None:
+            line_ends_at = self.current_thing.ends_at
+        else:
+            line_ends_at = current_time + QUIT_INTERVAL
+        til_fw_end = self.fw_msg_end_at - current_time
+        til_line_end = line_ends_at - current_time
+        wait_for = max((0, til_line_end, til_fw_end))
+
+        # Wait for the FW message
+        self.notiff_event.wait(wait_for)
+
     # pylint: disable=too-many-branches
     # I think with the comments it's usable as is
     def _lcd_printer(self):
@@ -366,25 +411,15 @@ class LCDPrinter(metaclass=MCSingleton):
         This is the thread controlling what gets displayed
         """
         prctl_name()
+        self._print_text_and_wait("PrusaLink started")
         while self.running:
             # Wait until an event comes,
             # or until it's time to draw on the screen
-            triggered = False
             if self.event_queue.empty():
-                current_time = time()
-                if self.current_thing is not None:
-                    line_ends_at = self.current_thing.ends_at
-                else:
-                    line_ends_at = current_time + QUIT_INTERVAL
-                til_fw_end = self.fw_msg_end_at - current_time
-                til_line_end = line_ends_at - current_time
-                wait_for = max((0, til_line_end, til_fw_end))
+                self._wait()
 
-                # Wait for the FW message
-                triggered = self.notiff_event.wait(wait_for)
-
-            # If an event came while we were waiting, or the queue wasn't empty, execute its handler
-            if triggered or not self.event_queue.empty():
+            # If an event came while we were waiting, execute its handler
+            if not self.event_queue.empty():
                 self.notiff_event.clear()
                 to_run = self.event_queue.get()
                 to_run()
@@ -393,47 +428,68 @@ class LCDPrinter(metaclass=MCSingleton):
             # Lets update our state
             self.whats_going_on()
 
-            # Get the most important thing to display
-            to_display = None
+            # Get things with the highest priority to display
+            displayable = []
             highest_priority = 0
-            for thing in self.displayed_things:
+            for thing in self.display_things:
 
                 if thing.enabled and thing.priority > highest_priority:
-                    to_display = thing
+                    displayable.clear()
                     highest_priority = thing.priority
-                elif thing.enabled and \
-                        thing.priority == to_display.priority:
-                    log.warning("Cannot display two things at once! "
-                                "Priority = %s", thing.priority)
+                if thing.enabled and thing.priority == highest_priority:
+                    displayable.append(thing)
 
-            # If there's nothing to display, ask the last thing, if there's
-            # a message to display, like "Errors resolved" or "Print ended"
-            becomes_empty = False
-            end_text = ""
-            if self.current_thing is not None and to_display is None:
-                becomes_empty = True
-                end_text = self.current_thing.end_text
+            # If there's more, sort them using their order attribute
+            displayable.sort(key=lambda item: item.order)
+
+            if self.current_thing is not None and \
+                    self.current_thing.is_at_end():
+                self.thing_index += 1
+
+            # If we ended up out of bounds, or changed priority, roll back to 0
+            if self.thing_index > len(displayable) - 1 or \
+                    self.currently_displayable != displayable:
+                self.thing_index = 0
+
+            to_display = None
+            if displayable:
+                to_display = displayable[self.thing_index]
 
             # Update what's the currently displayed thing
+            # reset to start, if we changed the displayed thing
+            last_thing = self.current_thing
             if self.current_thing != to_display:
                 if self.current_thing is not None:
                     self.current_thing.to_start()
                 self.current_thing = to_display
 
+            self.currently_displayable = displayable
+
             # Get the line and send it to the printer
             if to_display is not None:
                 text = to_display.get_next()
-                self._print_text(text)
-                to_display.reset_ends_at()
+                instruction = self._print_text(text)
                 # Play a sound accompanying the newly shown thing
                 if to_display.play_sound:
                     to_display.play_sound = False
                     for command in to_display.sound_gcodes:
                         enqueue_instruction(self.serial_queue, command)
 
-            # Show the end text if there is any
-            elif becomes_empty and end_text is not None:
-                self._print_text(end_text)
+                wait_for_instruction(instruction, lambda: self.running)
+                to_display.reset_ends_at()
+
+            # If there's nothing to display, ask the last thing, if there's
+            # a message to display, like "Errors resolved" or "Print ended"
+            # TODO: make the messages their own DisplayThing
+            if last_thing is not None and to_display is None:
+                end_text = last_thing.end_text
+                if end_text is not None:
+                    self._print_text_and_wait(end_text)
+
+    def _print_text_and_wait(self, text):
+        instruction = self._print_text(text)
+        wait_for_instruction(instruction, lambda: self.running)
+        log.debug("Printed: '%s' on the LCD.", text)
 
     def _print_text(self, text: str, prefix="\x7E"):
         """
@@ -441,21 +497,18 @@ class LCDPrinter(metaclass=MCSingleton):
         confirmation
 
         :param text: Text to be shown in the status portion of the printer LCD
-        Should not exceed 20 characters.
+        Should not exceed 20 - len(prefix) characters.
         """
         self.ignore += 1
-        instruction = enqueue_instruction(
+        return enqueue_instruction(
             self.serial_queue, f"M117 {prefix}{text}", to_front=True)
-        wait_for_instruction(instruction, lambda: self.running)
-        log.debug("Printed: '%s' on the LCD.", text)
-        self.last_from_fw = False
 
     def stop(self):
         """Stops the module"""
         self.running = False
         self.add_event(lambda: None)
         self.display_thread.join()
-        self._print_text("PrusaLink stopped")
+        self._print_text_and_wait("PrusaLink stopped")
 
     def add_event(self, handler):
         """Adds a handler to the LCDPrinter event queue"""
