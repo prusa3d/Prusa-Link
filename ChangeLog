@@ -1,5 +1,9 @@
 # ChangeLog
 
+0.7.0
+    * Work around a bug: pinter in serial print mode while wizard is shown
+    * Flag checked replaced by prepared
+
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
     * Added endpoint for heatbed temperature control
@@ -43,7 +47,6 @@
     * Make a centralised wizard activation condition
     * Download finished callback implementation
     * Fix SD initialising always as PRESENT even when ABSENT
-    * Work around a bug: pinter in serial print mode while wizard is shown
 
 0.5.1 (2021-07-16)
     * Implementation of print after upload endpoint
