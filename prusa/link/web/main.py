@@ -206,7 +206,7 @@ def api_printer(req):
                     "ready": tel.state == State.READY,
                     "closedOrError": False,
                     "finished": tel.state == State.FINISHED,
-                    "checked": printer.checked
+                    "prepared": printer.prepared
                 }
             },
             "telemetry": {

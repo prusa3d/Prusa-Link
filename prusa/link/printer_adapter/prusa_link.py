@@ -641,7 +641,7 @@ class PrusaLink:
                       source=None,
                       command_id=None,
                       reason=None,
-                      checked=False):
+                      prepared=False):
         """Connects the state manager state change to Prusa Connect"""
         assert sender is not None
         assert from_state is not None
@@ -667,12 +667,12 @@ class PrusaLink:
             if to_state == State.FINISHED:
                 Thread(target=self.check_printer,
                        args=("Done, remove print",
-                             self.state_manager.printer_checked),
+                             self.state_manager.printer_prepared),
                        daemon=True).start()
             if to_state == State.STOPPED:
                 Thread(target=self.check_printer,
                        args=("Stopped, clear sheet",
-                             self.state_manager.printer_checked),
+                             self.state_manager.printer_prepared),
                        daemon=True).start()
 
         extra_data = {}
@@ -683,7 +683,7 @@ class PrusaLink:
                                command_id=command_id,
                                source=source,
                                job_id=self.model.job.get_job_id_for_api(),
-                               checked=checked,
+                               prepared=prepared,
                                **extra_data)
 
     def time_printing_updated(self, sender, time_printing):
