@@ -41,18 +41,13 @@ LAN = ErrorState("Lan",
 INTERNET.prev = LAN
 
 SERIAL = ErrorState("Port", "Serial device does not exist")
-RPI_ENABLED = ErrorState("RPIenabled", "RPi port is not enabled", prev=SERIAL,
-                         short_msg="Enable RPi port")
-ID = ErrorState("ID", "Device is not a Prusa printer", prev=RPI_ENABLED,
-                short_msg="Not a PRUSA")
-FW = ErrorState("Firmware", "Firmware is not up-to-date", prev=ID,
-                short_msg="Unsupported FW")
-SN = ErrorState("SN", "Serial number cannot be obtained", prev=FW,
-                short_msg="reading S/N")
-JOB_ID = ErrorState("JobID", "Job ID cannot be obtained", prev=SN,
-                    short_msg="reading JOB_ID")
+RPI_ENABLED = ErrorState("RPIenabled", "RPi port is not enabled", prev=SERIAL)
+ID = ErrorState("ID", "Device is not a Prusa printer", prev=RPI_ENABLED)
+FW = ErrorState("Firmware", "Firmware is not up-to-date", prev=ID)
+SN = ErrorState("SN", "Serial number cannot be obtained", prev=FW)
+JOB_ID = ErrorState("JobID", "Job ID cannot be obtained", prev=SN)
 
-HW = ErrorState("HW", "Firmware detected a hardware issue", short_msg="Printer error")
+HW = ErrorState("HW", "Firmware detected a hardware issue")
 
 # first and last elements for all available error state chains
 HEADS = {Categories.PRINTER: SERIAL,

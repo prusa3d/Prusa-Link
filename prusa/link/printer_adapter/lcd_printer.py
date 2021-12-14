@@ -23,7 +23,7 @@ from .structures.mc_singleton import MCSingleton
 from .structures.regular_expressions import LCD_UPDATE_REGEX
 from .updatable import prctl_name, Thread
 from ..config import Settings
-from ..errors import Categories, TAILS, LAN
+from ..errors import Categories, TAILS, LAN, RPI_ENABLED, ID, FW, SN, JOB_ID
 
 log = logging.getLogger(__name__)
 
@@ -38,6 +38,19 @@ WELCOME_TONE = [
 ERROR_TONE = ["M300 S5 P600"]
 
 UPLOAD_TONE = ["M300 P12 S50"]
+
+ERROR_MESSAGES = {
+    RPI_ENABLED: "Err Enable RPi port",
+    ID: "Error not a PRUSA",
+    FW: "Err unsupported FW",
+    SN: "Err Enable RPi port",
+    JOB_ID: "Err reading job id",
+    HTTP: "HTTP error 4xx",
+    TOKEN: "Error bad token",
+    # This needs updating, but currently there's nothing better to say
+    API: "HTTP error 5xx",
+    INTERNET: "No internet access"
+}
 
 
 class LCDLine:
@@ -84,19 +97,19 @@ class DisplayThing:
         if len(text) < 19:
             self.lines.append(LCDLine(
                 text, delay=scroll_delay+first_line_extra))
-
-        while True:
-            line = LCDLine(remaining_text[:19], delay=scroll_delay)
-            if remaining_text == text:
-                line.delay += first_line_extra
-            self.lines.append(line)
-            # Last screen start index (in the remaining_text)
-            last_index = len(remaining_text) - 19
-            if last_index == 0:
-                # We're on the last screen and it already has been added
-                break
-            actual_scroll_amount = min(scroll_amount, last_index)
-            remaining_text = remaining_text[actual_scroll_amount:]
+        else:
+            while True:
+                line = LCDLine(remaining_text[:19], delay=scroll_delay)
+                if remaining_text == text:
+                    line.delay += first_line_extra
+                self.lines.append(line)
+                # Last screen start index (in the remaining_text)
+                last_index = len(remaining_text) - 19
+                if last_index == 0:
+                    # We're on the last screen and it already has been added
+                    break
+                actual_scroll_amount = min(scroll_amount, last_index)
+                remaining_text = remaining_text[actual_scroll_amount:]
 
         if len(self.lines) > 1:
             self.lines[-1].delay += last_screen_extra
@@ -317,12 +330,15 @@ class LCDPrinter(metaclass=MCSingleton):
             if self.error_display.conditions != conditions:
                 self.error_display.conditions = conditions
 
-                text = f"Error: {error.short_msg}"
+                # No scrolling errors, just a screen worth of explanations
+                # and another one for the IP address
+                text = ERROR_MESSAGES[error][:19].ljust(19)
                 if LAN.ok:
-                    text += f", more info at: {self.model.ip_updater.local_ip}"
+                    text += f"see {self.model.ip_updater.local_ip}".ljust(19)
                 else:
-                    text += ", please connect PrusaLink to a network."
-                self.error_display.set_text(text)
+                    text += "Connect Link to LAN".ljust(19)
+                self.error_display.set_text(text, scroll_amount=19,
+                                            last_screen_extra=8)
 
             if self.model.job.job_state == JobState.IN_PROGRESS:
                 self.error_display.set_priority(50)
@@ -341,10 +357,10 @@ class LCDPrinter(metaclass=MCSingleton):
             if self.wizard_display.conditions != conditions:
                 self.wizard_display.conditions = conditions
                 self.wizard_display.set_text(
-                    f"Hi, set up your PrusaLink at: "
-                    f"{self.model.ip_updater.local_ip}", last_screen_extra=5)
+                    f"Go: {self.model.ip_updater.local_ip}",
+                    last_screen_extra=10)
         else:
-            self.wizard_display.disable("Wizard done, enjoy")
+            self.wizard_display.disable("Setup completed")
 
     def _check_upload(self):
         """
