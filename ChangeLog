@@ -14,6 +14,8 @@
       - Add serial number setting
       - Prevent api polling when previous requests were not handled
       - Prevent error messages flood in case of a connection problem
+      - Optimize application loop
+      - Add serial, CONNECT and communication state to the left side bar
     * Added size and date attributes to api/logs GET endpoint
     * Removed m_time file attribute
     * Added restriction for forbidden characters in uploaded file name
