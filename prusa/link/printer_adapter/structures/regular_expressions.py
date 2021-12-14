@@ -21,8 +21,8 @@ LFN_CAPTURE = re.compile(r"(?P<dir_enter>^DIR_ENTER: (?P<sdn>/[^ ]*/) "
                          r"(\"(?P<lfn>[^\"]*)\") ?)*$)|"
                          r"(?P<dir_exit>^DIR_EXIT$)")
 
-SD_PRESENT_REGEX = re.compile(r"^echo:(?P<ok>SD card ok)|"
-                              r"(?P<fail>SD init fail)$")
+SD_PRESENT_REGEX = re.compile(r"^echo:((?P<ok>SD card ok)|"
+                              r"(?P<fail>SD init fail))$")
 SD_EJECTED_REGEX = re.compile(r"^(echo:SD card released)$")
 
 ANY_REGEX = re.compile(r".*")
