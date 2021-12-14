@@ -42,6 +42,7 @@
     * Implementation of new Transfer object from SDK
     * Make a centralised wizard activation condition
     * Download finished callback implementation
+    * Fix SD initialising always as PRESENT even when ABSENT
 
 0.5.1 (2021-07-16)
     * Implementation of print after upload endpoint
