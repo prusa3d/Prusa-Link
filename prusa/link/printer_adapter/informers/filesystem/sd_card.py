@@ -88,7 +88,7 @@ class SDCard(ThreadedUpdatable):
                                         last_updated=time(),
                                         last_checked_flash_air=time(),
                                         sd_state=SDState.UNSURE,
-                                        files=self.get_root(),
+                                        files=None,
                                         lfn_to_sfn_paths={},
                                         sfn_to_lfn_paths={},
                                         mixed_to_lfn_paths={},
@@ -279,6 +279,9 @@ class SDCard(ThreadedUpdatable):
                                          end_regex=END_FILES_REGEX)
         wait_for_instruction(instruction, lambda: self.running)
 
+        if not instruction.captured:
+            return None
+
         # Captured can be three distinct lines. Dir entry, exit or a file
         # listing.
         for match in instruction.captured:
@@ -404,7 +407,7 @@ class SDCard(ThreadedUpdatable):
             log.debug("Failed determining the SD presence.")
         else:
             match = instruction.match()
-            if match is not None and match.groups()[0] is not None:
+            if match is not None and match.group("ok") is not None:
                 if self.data.sd_state != SDState.PRESENT:
                     self.sd_state_changed(SDState.PRESENT)
             else:
