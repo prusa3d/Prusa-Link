@@ -8,6 +8,7 @@
       - shows upload progress
       - shows the name of a file being printed
       - notifies about errors
+      - shows an idle screen with the IP address after 30min
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
