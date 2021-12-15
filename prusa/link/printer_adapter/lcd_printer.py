@@ -14,7 +14,7 @@ from prusa.connect.printer import Printer
 from prusa.connect.printer.errors import HTTP, API, TOKEN, INTERNET
 
 from .structures.model_classes import JobState
-from .const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL
+from .const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL, SLEEP_SCREEN_TIMEOUT
 from .model import Model
 from .input_output.serial.helpers import enqueue_instruction, wait_for_instruction
 from .input_output.serial.serial_queue import SerialQueue
@@ -219,6 +219,7 @@ class LCDPrinter(metaclass=MCSingleton):
         self.event_queue: Queue[Callable[[], None]] = Queue()
 
         self.fw_msg_end_at = time()
+        self.idle_from = time()
         # Used for ignoring LCD status updated that we generate
         self.ignore = 0
         self.serial_parser.add_handler(LCD_UPDATE_REGEX, self.lcd_updated)
@@ -278,6 +279,7 @@ class LCDPrinter(metaclass=MCSingleton):
             if self.current_thing is not None:
                 self.current_thing.to_start()
 
+        self.reset_idle()
         if self.ignore > 0:
             self.ignore -= 1
         else:
@@ -502,6 +504,12 @@ class LCDPrinter(metaclass=MCSingleton):
                 if end_text is not None:
                     self._print_text_and_wait(end_text)
 
+            if last_thing == self.current_thing is None:
+                if time() - self.idle_from > SLEEP_SCREEN_TIMEOUT:
+                    if LAN.ok:
+                        self._print_text_and_wait(
+                            f"{self.model.ip_updater.local_ip}".ljust(19))
+
     def _print_text_and_wait(self, text):
         instruction = self._print_text(text)
         wait_for_instruction(instruction, lambda: self.running)
@@ -516,8 +524,13 @@ class LCDPrinter(metaclass=MCSingleton):
         Should not exceed 20 - len(prefix) characters.
         """
         self.ignore += 1
+        self.reset_idle()
         return enqueue_instruction(
             self.serial_queue, f"M117 {prefix}{text}", to_front=True)
+
+    def reset_idle(self):
+        """Reset the idle time form to the current time"""
+        self.idle_from = time()
 
     def stop(self):
         """Stops the module"""
