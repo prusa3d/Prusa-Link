@@ -285,8 +285,11 @@ def api_job(req):
     progress = (tel.progress or 0) / 100.0 if is_printing else None
     time_estimated = tel.time_estimated or estimated_from_gcode
     time_printing = tel.time_printing or 0
+
+    # Prevent None divide if gcode name doesn't contain estimated time
     estimated = int(time_estimated + time_printing) \
-        if is_printing else time_estimated
+        if is_printing and time_estimated is not None else time_estimated
+
     return JSONResponse(
         **{
             "job": {
