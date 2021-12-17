@@ -1,6 +1,6 @@
 # ChangeLog
 
-0.6.0.dev0
+0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
     * Added endpoint for heatbed temperature control
     * Static web update
