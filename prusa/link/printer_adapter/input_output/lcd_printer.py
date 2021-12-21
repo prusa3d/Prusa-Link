@@ -83,7 +83,10 @@ class LCDPrinter(metaclass=MCSingleton):
                 msg = "OK: " + self.get_ip()
             # If wizard is not completed, show GO: <IP> msg on LCD
             elif self.get_ip() and self.settings.is_wizard_needed():
-                msg = "GO: " + self.get_ip()
+                # Can't have a capital G because FW doesn't understand
+                # What's a print command and what's not. They differentiate
+                # between them using `"G" in command` condition
+                msg = "go: " + self.get_ip()
             else:
                 for chain in errors.HEADS:
                     node = chain
