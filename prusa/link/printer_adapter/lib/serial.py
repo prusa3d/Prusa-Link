@@ -114,7 +114,8 @@ class Serial:
         times_out_at = time() + self.timeout
         start_at = 0
 
-        while time() < times_out_at:
+        while True:
+            current_time = time()
             pos = self.__buffer.find(b'\n', start_at)
             if pos >= 0:
                 line = self.__buffer[:pos + 1]
@@ -122,8 +123,10 @@ class Serial:
                 return line
 
             start_at = max(0, len(self.__buffer) - 1)
+            if current_time >= times_out_at:
+                break
 
-            self.__read(times_out_at - time())
+            self.__read(times_out_at - current_time)
 
         return b''
 
