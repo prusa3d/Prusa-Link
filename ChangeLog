@@ -1,5 +1,8 @@
 # ChangeLog
 
+0.6.1 (2022-03-15)
+    * Fix negative timeout being possible in serial read
+
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
     * Added endpoint for heatbed temperature control
