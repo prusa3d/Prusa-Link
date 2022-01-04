@@ -10,6 +10,7 @@
       - notifies about errors
       - shows an idle screen with the IP address after 30min
     * Name and location of printer in ini file is wrapped by quotes, "#" sign encoded in URL
+    * Fix negative timeout being possible in serial read
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
