@@ -358,8 +358,11 @@ class LCDPrinter(metaclass=MCSingleton):
             conditions = dict(lan=LAN.ok, wizard_needed=wizard_needed)
             if self.wizard_display.conditions != conditions:
                 self.wizard_display.conditions = conditions
+                # Can't have a capital G because FW doesn't understand
+                # What's a print command and what's not. They differentiate
+                # between them using `"G" in command` condition
                 self.wizard_display.set_text(
-                    f"Go: {self.model.ip_updater.local_ip}",
+                    f"go: {self.model.ip_updater.local_ip}",
                     last_screen_extra=10)
         else:
             self.wizard_display.disable("Setup completed")
