@@ -151,8 +151,8 @@ class Wizard:
         settings.network.hostname = self.net_hostname
 
         # printer
-        settings.printer.name = self.printer_name
-        settings.printer.location = self.printer_location
+        settings.printer.name = f'"{self.printer_name}"'
+        settings.printer.location = f'"{self.printer_location}"'
 
         # connect
         settings.service_connect.hostname = self.connect_hostname
