@@ -19,8 +19,8 @@ INVALID_CHARACTERS = ['\'', '\"']
 
 def set_settings_printer(name, location):
     """Set new values to printer settings"""
-    app.daemon.settings.printer.name = name
-    app.daemon.settings.printer.location = location
+    app.daemon.settings.printer.name = f'"{name}"'
+    app.daemon.settings.printer.location = f'"{location}"'
 
 
 def set_settings_user(new_username, new_digest):
@@ -48,8 +48,8 @@ def api_settings(req):
         **{
             "api-key": service_local.api_key,
             "printer": {
-                "name": printer_settings.name,
-                "location": printer_settings.location,
+                "name": printer_settings.name.replace("\"", ""),
+                "location": printer_settings.location.replace("\"", ""),
                 "farm_mode": printer_settings.farm_mode
             }
         })
