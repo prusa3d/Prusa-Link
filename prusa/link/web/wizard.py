@@ -102,18 +102,23 @@ def wizard_connect(req):
     return generate_page(req, "wizard_connect.html", wizard=app.wizard)
 
 
+@app.route('/wizard/connect/skip', method=state.METHOD_POST)
 @app.route('/wizard/connect', method=state.METHOD_POST)
 @check_step('printer')
 def wizard_connect_post(req):
     """Check and store values from wizard_connect page."""
-    form = FieldStorage(req,
-                        keep_blank_values=app.keep_blank_values,
-                        strict_parsing=app.strict_parsing)
-    app.wizard.connect_hostname = form.get('hostname', '').strip()
-    app.wizard.connect_tls = int('tls' in form)
-    app.wizard.connect_port = form.getfirst('port', 0, try_int)
-    if not app.wizard.check_connect():
-        redirect('/wizard/connect')
+    if req.path.endswith('/skip'):
+        app.wizard.connect_skip = True
+    else:
+        app.wizard.connect_skip = False
+        form = FieldStorage(req,
+                            keep_blank_values=app.keep_blank_values,
+                            strict_parsing=app.strict_parsing)
+        app.wizard.connect_hostname = form.get('hostname', '').strip()
+        app.wizard.connect_tls = int('tls' in form)
+        app.wizard.connect_port = form.getfirst('port', 0, try_int)
+        if not app.wizard.check_connect():
+            redirect('/wizard/connect')
     redirect('/wizard/finish')
 
 
@@ -188,19 +193,23 @@ def wizard_finish_post(req):
             break
         sleep(.1)
 
-    # register printer
-    if app.settings.service_connect.token:
+    if app.wizard.connect_skip:
         redirect('/')
     else:
-        code = None
-        code = printer.register()
-        url = Printer.connect_url(wizard.connect_hostname,
-                                  bool(wizard.connect_tls),
-                                  wizard.connect_port)
-        type_ = printer.type
-        name = wizard.printer_name.replace("#", "%23")
-        location = wizard.printer_location
-        redirect(f'{url}/add-printer/connect/{type_}/{code}/{name}/{location}')
+        # register printer
+        if app.settings.service_connect.token:
+            redirect('/')
+        else:
+            code = None
+            code = printer.register()
+            url = Printer.connect_url(wizard.connect_hostname,
+                                      bool(wizard.connect_tls),
+                                      wizard.connect_port)
+            type_ = printer.type
+            name = wizard.printer_name.replace("#", "%23")
+            location = wizard.printer_location
+            redirect(
+                f'{url}/add-printer/connect/{type_}/{code}/{name}/{location}')
 
 
 @app.before_request()
