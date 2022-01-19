@@ -8,7 +8,7 @@
     <div class="row">
         <div class="col-md-12">
             <h1>Prusa Connect settings</h1>
-
+            <form method="post" action="/wizard/connect/skip" id="skip"></form>
             <form method="post" id="form">
                 <p>Please check connect settings for your printer.</p>
 
@@ -51,7 +51,8 @@
                             <a href="/wizard/printer" class="btn btn-back btn-outline-light"><img src="../img/arrow-left.svg" height="16" /> BACK | Setup printer</a>
                         </div>
                         <div class="col-xs-auto">
-                          <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Recap | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
+                            <button type="submit" form="skip" class="btn btn-back btn-outline-light">Skip PRUSA CONNECT settings <img src="../img/arrow-right.svg" height="16" /></button>
+                            <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Add to PRUSA CONNECT | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
                         </div>
                     </div>
                 </div>
