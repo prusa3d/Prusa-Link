@@ -47,11 +47,15 @@
 
           <h3>Connect</h3>
           <ul>
+          {% if not wizard.connect_skip %}
             <li>Server: <span class="white">{{ connect_url }}</span></li>
             {% if printer.token %}
             <li>Token: <span class="white">{{ printer.token }}</span></li>
             {% endif %}
           </ul>
+          {% else %}
+            <span class="orange">YOU WILL NOT BE REGISTRATED TO PRUSA CONNECT</span>
+          {% endif %}
 
         </div>{# /col-md-6 so end of content  #}
       </div>{# /row #}
@@ -65,7 +69,7 @@
                     <a href="/wizard/connect" class="btn btn-back btn-outline-light"><img src="../img/arrow-left.svg" height="16" /> BACK | Prusa Connect settings</a>
                   </div>
                   <div class="col-xs-auto">
-                    <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Save and Register Printer | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
+                    <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Save {% if not wizard.connect_skip %} and Register {% endif %} Printer | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
                   </div>
               </div>
             </div>
