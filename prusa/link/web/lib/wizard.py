@@ -69,6 +69,7 @@ class Wizard:
         self.printer_location = app.settings.printer.location
 
         # connect
+        self.connect_skip = False
         self.connect_hostname = app.settings.service_connect.hostname
         self.connect_tls = app.settings.service_connect.tls
         self.connect_port = app.settings.service_connect.port
@@ -155,10 +156,11 @@ class Wizard:
         settings.printer.location = f'"{self.printer_location}"'
 
         # connect
-        settings.service_connect.hostname = self.connect_hostname
-        settings.service_connect.tls = self.connect_tls
-        settings.service_connect.port = self.connect_port
+        if not self.connect_skip:
+            settings.service_connect.hostname = self.connect_hostname
+            settings.service_connect.tls = self.connect_tls
+            settings.service_connect.port = self.connect_port
 
-        settings.update_sections()
+        settings.update_sections(self.connect_skip)
         with open(self.cfg.printer.settings, 'w', encoding='utf-8') as ini:
             settings.write(ini)

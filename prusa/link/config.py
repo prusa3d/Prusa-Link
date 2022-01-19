@@ -261,11 +261,12 @@ class Settings(Get):
         for key, val in model.items():
             self.set(name, key, str(val))
 
-    def update_sections(self):
+    def update_sections(self, connect_skip=False):
         """Update config from attributes."""
         self.set_section('printer', self.printer)
         self.set_section('network', self.network)
-        self.set_section('service::connect', self.service_connect)
+        if not connect_skip:
+            self.set_section('service::connect', self.service_connect)
         self.set_section('service::local', self.service_local)
 
     def is_wizard_needed(self):
