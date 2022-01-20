@@ -13,6 +13,7 @@
     * Fix negative timeout being possible in serial read
     * Change of name / location of printer in PrusaLink fixed (added quotes, removed from endpoint json)
     * Added option for skip Connect registration in wizard
+    * Added registration status and code values to api/connection GET endpoint
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
