@@ -1,6 +1,7 @@
 """/api/connection endpoint handlers"""
 from poorwsgi import state
 from poorwsgi.response import JSONResponse
+from prusa.connect.printer.const import RegistrationStatus
 
 from .. import errors
 
@@ -18,8 +19,17 @@ def api_connection(req):
     cfg = app.daemon.cfg
     tel = app.daemon.prusa_link.model.last_telemetry
 
+    # Registration code from Connect - if code exists, there's registration
+    # in progress
+    code = app.daemon.prusa_link.printer.code
+
+    registration = RegistrationStatus.NO_REGISTRATION
+
     # Token is available only after successful registration to Connect
-    is_registrated = len(service_connect.token) > 0
+    if bool(service_connect.token):
+        registration = RegistrationStatus.FINISHED
+    elif code:
+        registration = RegistrationStatus.IN_PROGRESS
 
     return JSONResponse(
         **{
@@ -42,7 +52,8 @@ def api_connection(req):
                 "hostname": service_connect.hostname,
                 "port": service_connect.port,
                 "tls": bool(service_connect.tls),
-                "registrated": is_registrated
+                "registration": registration.value,
+                "code": code
             },
             "states": {
                 "printer": errors.printer_status(),
@@ -65,13 +76,13 @@ def api_connection_set(req):
 
     type_ = printer.type
     code = printer.register()
-    name = printer_settings.name
-    location = printer_settings.location
+    name = printer_settings.name.replace("#", "%23").replace("\"", "")
+    location = printer_settings.location.replace("#", "%23").replace("\"", "")
 
     service_connect.hostname = hostname
     service_connect.port = port
     service_connect.tls = tls
-    url = printer.connect_url(hostname, tls, port)
+    url = printer.connect_url(hostname, bool(tls), port)
 
     url_ = f'{url}/add-printer/connect/{type_}/{code}/{name}/{location}'
     return JSONResponse(status_code=state.HTTP_OK, url=url_)

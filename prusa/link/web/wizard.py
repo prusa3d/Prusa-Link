@@ -206,8 +206,9 @@ def wizard_finish_post(req):
                                       bool(wizard.connect_tls),
                                       wizard.connect_port)
             type_ = printer.type
-            name = wizard.printer_name.replace("#", "%23")
-            location = wizard.printer_location
+            name = wizard.printer_name.replace("#", "%23").replace("\"", "")
+            location = \
+                wizard.printer_location.replace("#", "%23").replace("\"", "")
             redirect(
                 f'{url}/add-printer/connect/{type_}/{code}/{name}/{location}')
 
