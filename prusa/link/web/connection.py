@@ -70,9 +70,10 @@ def api_connection_set(req):
     printer_settings = app.daemon.settings.printer
     printer = app.daemon.prusa_link.printer
 
-    hostname = req.json.get('hostname')
-    port = req.json.get('port')
-    tls = req.json.get('tls')
+    connect = req.json.get('connect')
+    hostname = connect.get('hostname')
+    port = connect.get('port')
+    tls = connect.get('tls')
 
     type_ = printer.type
     code = printer.register()
