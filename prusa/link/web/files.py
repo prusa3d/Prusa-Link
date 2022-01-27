@@ -35,6 +35,11 @@ log = logging.getLogger(__name__)
 HEADER_DATETIME_FORMAT = "%a, %d %b %Y %X GMT"
 FORBIDDEN_CHARACTERS = ('\\', '?', '"', '%', '¯', '°', '#', 'ˇ')
 
+# Exceeded length of the filename, maximum is 255 characters, including an
+# extension and "." prefix + ".cache" suffix for cache files. Maximum length
+# of filename is 248 characters then
+MAX_LENGTH = 248
+
 
 def partfilepath(filename):
     """Return file path for part file name."""
@@ -103,6 +108,11 @@ def callback_factory(req):
         When data can be accepted create and return file instance for writing
         form data.
         """
+
+        # filename, including suffix must be <= 248 characters
+        if len(filename.encode('utf-8')) > MAX_LENGTH:
+            raise errors.FilenameTooLong()
+
         if not filename:
             raise errors.NoFileInRequest()
 
