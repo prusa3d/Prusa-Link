@@ -16,6 +16,7 @@
     * Added registration status and code values to api/connection GET endpoint
     * Added connect section to api/connection POST
     * Fixed additional registration process
+    * Added length limit to file uploaded to Link, added FilenameTooLong error
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder

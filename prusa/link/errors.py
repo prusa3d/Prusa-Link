@@ -189,6 +189,13 @@ class ForbiddenCharacters(BadRequestError):
     id = "forbidden-characters"
 
 
+class FilenameTooLong(BadRequestError):
+    """400 Filename Too Long"""
+    title = "Filename Too Long"
+    text = "Exceeded file name length"
+    id = "filename-too-long"
+
+
 class ForbiddenError(LinkError):
     """403 Forbidden"""
     title = "Forbidden"
