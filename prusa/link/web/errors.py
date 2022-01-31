@@ -91,6 +91,12 @@ def forbidden_characters(req):
     return response_error(req, errors.ForbiddenCharacters())
 
 
+@app.route('/error/filename-too-long')
+def filename_too_long(req):
+    """Error handler for 400 Filename Too Long"""
+    return response_error(req, errors.FilenameTooLong())
+
+
 @app.route('/error/sdcard-not-supported')
 def sdcard_not_supported(req):
     """Error handler for 404 Some operations are not possible on SDCard."""
