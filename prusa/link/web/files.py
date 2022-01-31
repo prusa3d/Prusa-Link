@@ -1,6 +1,6 @@
 """/api/files endpoint handlers"""
 from os import makedirs, unlink, replace, statvfs
-from os.path import abspath, join, exists, basename, dirname, split, getsize, \
+from os.path import abspath, join, exists, basename, dirname, getsize, \
     getctime
 from base64 import decodebytes
 from datetime import datetime
@@ -18,7 +18,8 @@ from poorwsgi.results import hbytes
 
 from prusa.connect.printer import const
 from prusa.connect.printer.metadata import FDMMetaData, get_metadata
-from prusa.connect.printer.download import Transfer, TransferRunningError
+from prusa.connect.printer.download import Transfer, TransferRunningError, \
+    forbidden_characters, filename_too_long
 
 from .lib.core import app
 from .lib.auth import check_api_digest
@@ -33,12 +34,18 @@ from .. import errors
 
 log = logging.getLogger(__name__)
 HEADER_DATETIME_FORMAT = "%a, %d %b %Y %X GMT"
-FORBIDDEN_CHARACTERS = ('\\', '?', '"', '%', '¯', '°', '#', 'ˇ')
 
-# Exceeded length of the filename, maximum is 255 characters, including an
-# extension and "." prefix + ".cache" suffix for cache files. Maximum length
-# of filename is 248 characters then
-MAX_LENGTH = 248
+
+def check_filename(filename):
+    """Check filename length and format"""
+
+    # filename, including suffix must be <= 248 characters
+    if filename_too_long(filename):
+        raise errors.FilenameTooLong()
+
+    # File name cannot contain any of forbidden characters e.g. '\'
+    if forbidden_characters(filename):
+        raise errors.ForbiddenCharacters()
 
 
 def partfilepath(filename):
@@ -108,19 +115,12 @@ def callback_factory(req):
         When data can be accepted create and return file instance for writing
         form data.
         """
-
-        # filename, including suffix must be <= 248 characters
-        if len(filename.encode('utf-8')) > MAX_LENGTH:
-            raise errors.FilenameTooLong()
-
         if not filename:
             raise errors.NoFileInRequest()
 
-        part_path = partfilepath(filename)
+        check_filename(filename)
 
-        # File name cannot contain any of forbidden characters e.g. '\'
-        if any(character in filename for character in FORBIDDEN_CHARACTERS):
-            raise errors.ForbiddenCharacters()
+        part_path = partfilepath(filename)
 
         if not filename.endswith(
                 const.GCODE_EXTENSIONS) or filename.startswith('.'):
@@ -403,13 +403,14 @@ def api_download(req, target):
     download_mgr = app.daemon.prusa_link.printer.download_mgr
 
     url = req.json.get('url')
+    filename = basename(url)
+    check_filename(filename)
+
     path_name = req.json.get('path', req.json.get('destination'))
     path = join('/Prusa Link gcodes', path_name)
     to_select = req.json.get('to_select', False)
     to_print = req.json.get('to_print', False)
     log.debug('select=%s, print=%s', to_select, to_print)
-
-    filename = split(url)[1]
     path = join(path, filename)
 
     job = Job.get_instance()
