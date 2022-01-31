@@ -192,7 +192,7 @@ class ForbiddenCharacters(BadRequestError):
 class FilenameTooLong(BadRequestError):
     """400 Filename Too Long"""
     title = "Filename Too Long"
-    text = "Exceeded file name length"
+    text = "File name length is too long"
     id = "filename-too-long"
 
 
