@@ -75,10 +75,19 @@ def api_connection_set(req):
     port = connect.get('port')
     tls = connect.get('tls')
 
+    app.settings.service_connect.hostname = hostname
+    app.settings.service_connect.port = port
+    app.settings.service_connect.tls = tls
+
+    app.settings.update_sections()
+    printer.set_connect(app.settings)
+
     type_ = printer.type
     code = printer.register()
-    name = printer_settings.name.replace("#", "%23").replace("\"", "")
-    location = printer_settings.location.replace("#", "%23").replace("\"", "")
+    name = printer_settings.name.replace("#", "%23")\
+        .replace("\"", "").replace(" ", "%20")
+    location = printer_settings.location.replace("#", "%23")\
+        .replace("\"", "").replace(" ", "%20")
 
     service_connect.hostname = hostname
     service_connect.port = port
