@@ -176,16 +176,13 @@ def wizard_finish_post(req):
     """Show wizard status and link to homepage."""
     # pylint: disable=unused-argument
     wizard = app.wizard
+    printer = wizard.daemon.prusa_link.printer
     wizard.write_settings(app.settings)
 
     # set authorization
     app.auth_map.clear()
     app.auth_map.set(REALM, wizard.username, wizard.digest)
     app.api_key = wizard.api_key
-
-    # set connect connection
-    printer = wizard.daemon.prusa_link.printer
-    printer.set_connect(app.settings)
 
     # wait up to one second for printer.sn to be set
     for i in range(10):  # pylint: disable=unused-variable
@@ -200,15 +197,20 @@ def wizard_finish_post(req):
         if app.settings.service_connect.token:
             redirect('/')
         else:
+            # set connect connection
+            printer.set_connect(app.settings)
             code = None
             code = printer.register()
             url = Printer.connect_url(wizard.connect_hostname,
                                       bool(wizard.connect_tls),
                                       wizard.connect_port)
             type_ = printer.type
-            name = wizard.printer_name.replace("#", "%23").replace("\"", "")
+            name = \
+                wizard.printer_name.replace("#", "%23")\
+                .replace("\"", "").replace(" ", "%20")
             location = \
-                wizard.printer_location.replace("#", "%23").replace("\"", "")
+                wizard.printer_location.replace("#", "%23")\
+                .replace("\"", "").replace(" ", "%20")
             redirect(
                 f'{url}/add-printer/connect/{type_}/{code}/{name}/{location}')
 
