@@ -19,7 +19,7 @@ from poorwsgi.results import hbytes
 from prusa.connect.printer import const
 from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 from prusa.connect.printer.download import Transfer, TransferRunningError, \
-    forbidden_characters, filename_too_long
+    forbidden_characters, filename_too_long, foldername_too_long
 
 from .lib.core import app
 from .lib.auth import check_api_digest
@@ -39,12 +39,24 @@ HEADER_DATETIME_FORMAT = "%a, %d %b %Y %X GMT"
 def check_filename(filename):
     """Check filename length and format"""
 
-    # filename, including suffix must be <= 248 characters
+    # Filename length, including suffix must be <= 248 characters
     if filename_too_long(filename):
         raise errors.FilenameTooLong()
 
     # File name cannot contain any of forbidden characters e.g. '\'
     if forbidden_characters(filename):
+        raise errors.ForbiddenCharacters()
+
+
+def check_foldername(foldername):
+    """Check foldername length and format"""
+
+    # All foldername lengths in path must be <= 255 characters
+    if foldername_too_long(foldername):
+        raise errors.FoldernameTooLong()
+
+    # Foldername cannot contain any of forbidden characters e.g. '\'
+    if forbidden_characters(foldername):
         raise errors.ForbiddenCharacters()
 
 
@@ -237,6 +249,7 @@ def api_upload(req, target):
         raise errors.FileSizeMismatch()
 
     foldername = form.get('path', '/')
+    check_foldername(foldername)
 
     if foldername.startswith('/'):
         foldername = '.' + foldername

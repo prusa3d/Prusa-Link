@@ -196,6 +196,13 @@ class FilenameTooLong(BadRequestError):
     id = "filename-too-long"
 
 
+class FoldernameTooLong(BadRequestError):
+    """400 Foldername Too Long"""
+    title = "Foldername Too Long"
+    text = "Folder name length is too long"
+    id = "foldername-too-long"
+
+
 class ForbiddenError(LinkError):
     """403 Forbidden"""
     title = "Forbidden"
