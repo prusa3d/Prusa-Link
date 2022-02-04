@@ -18,6 +18,7 @@
     * Fixed additional registration process
     * File name forbidden characters check moved to SDK, added functions for check it and check file name length
     * Fixed transfer and print in ATTENTION error
+    * Added function for check foldername length (from SDK)
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
