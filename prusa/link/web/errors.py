@@ -97,6 +97,12 @@ def filename_too_long(req):
     return response_error(req, errors.FilenameTooLong())
 
 
+@app.route('/error/foldername-too-long')
+def foldername_too_long(req):
+    """Error handler for 400 Foldername Too Long"""
+    return response_error(req, errors.FoldernameTooLong())
+
+
 @app.route('/error/sdcard-not-supported')
 def sdcard_not_supported(req):
     """Error handler for 404 Some operations are not possible on SDCard."""
