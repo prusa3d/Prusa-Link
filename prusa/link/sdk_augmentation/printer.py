@@ -77,10 +77,10 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         """Return file info for a given file
         sometimes only when it exists"""
         # pylint: disable=unused-argument
-        if not caller.args:
-            raise ValueError("SEND_FILE_INFO requires args")
+        if not caller.kwargs:
+            raise ValueError("SEND_FILE_INFO requires kwargs")
 
-        file_path_string = caller.args[0]
+        file_path_string = caller.kwargs['path']
         path: Path = Path(file_path_string)
         log.info("FILE_INFO for: %s", path)
         parts = path.parts
