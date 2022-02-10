@@ -53,6 +53,7 @@ class TransferCallbackState(Enum):
     SUCCESS = 0
     NOT_IN_TREE = 1
     ANOTHER_PRINTING = 2
+    PRINTER_IN_ATTENTION = 3
 
 
 class PrusaLink:
@@ -297,6 +298,9 @@ class PrusaLink:
         """Called when download is finished successfully"""
         if not transfer.to_print:
             return TransferCallbackState.SUCCESS
+
+        if self.printer.state == State.ATTENTION:
+            return TransferCallbackState.PRINTER_IN_ATTENTION
 
         if self.job.data.job_state == JobState.IDLE:
             self.job.deselect_file()
