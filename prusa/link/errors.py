@@ -185,7 +185,7 @@ class FileSizeMismatch(BadRequestError):
 class ForbiddenCharacters(BadRequestError):
     """400 Forbidden Characters."""
     title = "Forbidden Characters"
-    text = "Forbidden characters in file name."
+    text = "Forbidden characters in file or folder name."
     id = "forbidden-characters"
 
 
