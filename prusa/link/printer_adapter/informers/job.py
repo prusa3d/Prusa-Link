@@ -215,7 +215,7 @@ class Job(metaclass=MCSingleton):
         if self.data.job_start_cmd_id is not None:
             data["start_cmd_id"] = self.data.job_start_cmd_id
         if self.data.selected_file_path is not None:
-            data["file_path"] = self.data.selected_file_path
+            data["path"] = self.data.selected_file_path
         if self.data.selected_file_m_timestamp is not None:
             data["m_timestamp"] = self.data.selected_file_m_timestamp
         if self.data.selected_file_size is not None:
