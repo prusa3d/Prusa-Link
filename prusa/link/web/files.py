@@ -171,10 +171,13 @@ def check_target(func):
 
 
 @app.route('/api/files')
+@app.route('/api/files/path/<path:re:.+>')
 @check_api_digest
-def api_files(req):
-    """Returns info about all available print files"""
-
+def api_files(req, path=''):
+    """
+    Returns info about all available print files or
+    about print files in specific directory
+    """
     file_system = app.daemon.prusa_link.printer.fs
 
     last_updated = 0
@@ -204,11 +207,20 @@ def api_files(req):
             return Response(status_code=state.HTTP_NOT_MODIFIED,
                             headers=headers)
 
-    data = app.daemon.prusa_link.printer.get_info()["files"]
-    files = [file_to_api(child) for child in data.get("children", [])]
-
-    file_system = app.daemon.prusa_link.printer.fs
     mount_path = ''
+    data = app.daemon.prusa_link.printer.get_info()["files"]
+
+    if path:
+        files = file_system.get(path)
+        if files:
+            files = [file_to_api(child) for child in files
+                .to_dict()["children"]]
+        else:
+            return Response(status_code=state.HTTP_NOT_FOUND,
+                            headers=headers)
+    else:
+        files = [file_to_api(child) for child in data.get("children", [])]
+
     for item in files:
         if item['origin'] == 'local':
             mount_path = item['name']
