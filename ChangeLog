@@ -22,6 +22,7 @@
     * Attribute file_path in job info changed to path
     * Fix PrusaLink IP not getting reset from printer on shutdown
     * Fix the serial_number step in wizard
+    * Modified endpoint api/files to optionally get specific directory instead of whole tree
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
