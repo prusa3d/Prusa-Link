@@ -12,7 +12,7 @@ from .input_output.serial.helpers import wait_for_instruction, \
     enqueue_matchable, enqueue_instruction
 from .structures.model_classes import NetworkInfo
 from .structures.regular_expressions import SN_REGEX, PRINTER_TYPE_REGEX, \
-    FW_REGEX, NOZZLE_REGEX, D3_OUTPUT_REGEX
+    FW_REGEX, NOZZLE_REGEX, D3_OUTPUT_REGEX, VALID_SN_REGEX
 from .. import errors
 from .const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE
 from .input_output.serial.serial_queue import \
@@ -243,6 +243,9 @@ class MK3Polling:
         Validates the serial number, throws error because a more
         descriptive error message can be shown this way
         """
+        if VALID_SN_REGEX.match(value) is None:
+            return False
+
         if self.printer.sn is not None and value != self.printer.sn:
             log.error("The new serial number is different from the old one!")
             raise RuntimeError(f"Serial numbers differ. Original: "
