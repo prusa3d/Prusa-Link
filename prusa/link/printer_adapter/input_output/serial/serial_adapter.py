@@ -107,7 +107,7 @@ class SerialAdapter(metaclass=MCSingleton):
                        "so stuff doesn't break"
             try:
                 raw_line = self.serial.readline()
-                line = raw_line.decode("ASCII").strip().replace('\x00', '')
+                line = raw_line.decode("cp437").strip().replace('\x00', '')
             except serial.SerialException:
                 log.exception("Failed when reading from the printer. "
                               "Trying to re-open")
@@ -118,13 +118,16 @@ class SerialAdapter(metaclass=MCSingleton):
             except UnicodeDecodeError:
                 log.error("Failed decoding a message %s", raw_line)
             else:
-                if line != "":
-                    # with self.write_read_lock:
-                    # Why would I not want to write and handle reads
-                    # at the same time? IDK, but if something weird starts
-                    # happening, i'll re-enable this
+                # with self.write_read_lock:
+                # Why would I not want to write and handle reads
+                # at the same time? IDK, but if something weird starts
+                # happening, i'll re-enable this
+                if line == "":
+                    log.debug("Printer has most likely sent something, "
+                              "which is not human readable")
+                else:
                     log.debug("Printer says: '%s'", line)
-                    self.serial_parser.decide(line)
+                self.serial_parser.decide(line)
 
     def write(self, message: bytes):
         """
