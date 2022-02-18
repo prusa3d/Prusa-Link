@@ -35,7 +35,8 @@ class CommandQueue:
         self.command_queue = Queue()
         self.current_command_adapter = None
         self.runner_thread = Thread(target=self.process_queue,
-                                    name="command_queue")
+                                    name="command_queue",
+                                    daemon=True)
         self.enqueue_lock = RLock()
 
     def start(self):

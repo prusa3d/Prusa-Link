@@ -72,12 +72,17 @@ class ReportingEnsurer(ThreadedUpdatable):
         The S argument is the frequency of autoreports
         """
         instruction = enqueue_instruction(self.serial_queue, "M155 S2 C7")
-        wait_for_instruction(instruction, lambda: self.running)
+        wait_for_instruction(instruction, should_wait_evt=self.quit_evt)
         self.temps_recorded()
         self.positions_recorded()
         self.fans_recorded()
 
-    def stop(self):
-        """Tries to turn the autoreporting off before stopping"""
-        enqueue_instruction(self.serial_queue, "M155 S0 C0")
+    def proper_stop(self):
+        """
+        Stops the autoreporting ensurer
+        and tries to turn the auto-reporting off
+        """
+        timeout_at = time() + 5
+        instruction = enqueue_instruction(self.serial_queue, "M155 S0 C0")
+        wait_for_instruction(instruction, lambda: time() < timeout_at)
         super().stop()

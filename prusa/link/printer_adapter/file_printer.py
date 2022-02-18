@@ -86,12 +86,14 @@ class FilePrinter(metaclass=MCSingleton):
         # self.check_failed_print()
 
     def stop(self):
-        """Stop printing thread."""
+        """Indicate to the printing thread to stop"""
         if self.data.printing:
             self.stop_print()
+
+    def wait_stopped(self):
+        """Wait for the printing thread to stop"""
         if self.thread is not None and self.thread.is_alive():
             self.thread.join()
-            log.warning("File printer thread joined")
 
     @property
     def pp_exists(self):
@@ -110,7 +112,8 @@ class FilePrinter(metaclass=MCSingleton):
             raise RuntimeError("Cannot print two things at once")
 
         self.data.file_path = os_path
-        self.thread = Thread(target=self._print, name="file_print")
+        self.thread = Thread(target=self._print, name="file_print",
+                             daemon=True)
         self.data.printing = True
         self.data.stopped_forcefully = False
         self.print_stats.start_time_segment()

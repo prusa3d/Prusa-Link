@@ -199,6 +199,9 @@ class ItemUpdater:
         self.running = False
         self.invalidate_queue_event.set()
         self.timeout_queue_event.set()
+
+    def wait_stopped(self):
+        """waits for the value tracker to quit"""
         self.invalidator_thread.join()
         self.timeout_thread.join()
         self.refresher_thread.join()
