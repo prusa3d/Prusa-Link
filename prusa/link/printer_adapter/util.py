@@ -6,7 +6,8 @@ import socket
 import typing
 from hashlib import sha256
 from pathlib import Path
-from time import sleep, time
+from threading import Event
+from time import time
 from typing import Callable
 
 import unidecode
@@ -16,7 +17,7 @@ from .const import SD_MOUNT_NAME
 log = logging.getLogger(__name__)
 
 
-def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,
+def run_slowly_die_fast(loop_evt: Event, check_exit_every_sec,
                         run_every_sec: Callable[[], float], to_run,
                         *arg_getters, **kwarg_getters):
     """
@@ -31,7 +32,7 @@ def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,
 
     last_called = 0.0
 
-    while should_loop():
+    while not loop_evt.is_set():
         last_checked_exit = time()
         # if it's time to run the func
         if time() - last_called > run_every_sec():
@@ -53,7 +54,7 @@ def run_slowly_die_fast(should_loop: Callable[[], bool], check_exit_every_sec,
         run_again_in = max(0.0, (last_called + run_every_sec()) - time())
         check_exit_in = max(0.0, (last_checked_exit + check_exit_every_sec) -
                             time())
-        sleep(min(check_exit_in, run_again_in))
+        loop_evt.wait(min(check_exit_in, run_again_in))
 
 
 def get_local_ip():

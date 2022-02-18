@@ -68,7 +68,7 @@ class PrusaLink:
         self.cfg: Config = cfg
         log.info('Starting adapter for port %s', self.cfg.printer.port)
         self.settings: Settings = settings
-        self.running = True
+        self.quit_evt = Event()
         self.stopped_event = Event()
         HW.ok = True
         self.model = Model()
@@ -200,7 +200,8 @@ class PrusaLink:
         self.command_queue.start()
         self.last_sent_telemetry = time()
         self.telemetry_thread = Thread(target=self.keep_sending_telemetry,
-                                       name="telemetry_passer")
+                                       name="telemetry_passer",
+                                       daemon=True)
         self.telemetry_thread.start()
         self.printer.start()
         # Start this last, as it might start printing right away
@@ -219,7 +220,7 @@ class PrusaLink:
         give Prusa Link commands through the terminal
         """
         print("Debug shell")
-        while self.running:
+        while not self.quit_evt.is_set():
             try:
                 command = input("[Prusa-link]: ")
                 result = ""
@@ -237,6 +238,8 @@ class PrusaLink:
                         StartPrint(command.split(" ", 1)[1]))
                 elif command.startswith("trigger"):
                     InterestingLogRotator.trigger("a debugging command")
+                elif command.startswith("faststop"):
+                    self.stop(True)
 
                 if result:
                     print(result)
@@ -244,38 +247,60 @@ class PrusaLink:
             except:
                 log.exception("Debug console errored out")
 
-    def stop(self):
+    def stop(self, fast=False):
         """
         Calls stop on every module containing a thread, for debugging prints
         out all threads which are still running and sets an event to signalize
         that Prusa Link has stopped.
         """
 
+        log.debug("Stop start%s", ' fast' if fast else '')
+
         was_printing = self.model.file_printer.printing
 
-        self.running = False
+        self.quit_evt.set()
         self.file_printer.stop()
         self.command_queue.stop()
         self.printer.stop_loop()
-        self.printer.stop()
+        self.printer.indicate_stop()
         self.mk3_polling.stop()
         self.telemetry_thread.join()
         self.storage.stop()
-        self.lcd_printer.stop()
+        self.lcd_printer.stop(fast)
         self.telemetry_gatherer.stop()
-        self.ip_updater.stop()
-        self.reporting_ensurer.stop()
+        # This is for pylint to stop complaining, I'd like stop(fast) more
+        if fast:
+            self.ip_updater.stop()
+            self.reporting_ensurer.stop()
+        else:
+            self.ip_updater.proper_stop()
+            self.reporting_ensurer.proper_stop()
+
         self.serial_queue.stop()
 
-        if was_printing:
+        if was_printing and not fast:
             self.serial.write(b"M603\n")
 
         self.serial.stop()
+        log.debug("Stop signalled")
 
-        log.debug("Remaining threads, that could prevent us from quitting:")
-        for thread in enumerate_threads():
-            log.debug(thread)
+        if not fast:
+            self.file_printer.wait_stopped()
+            self.printer.wait_stopped()
+            self.mk3_polling.wait_stopped()
+            self.storage.wait_stopped()
+            self.lcd_printer.wait_stopped()
+            self.telemetry_gatherer.wait_stopped()
+            self.ip_updater.wait_stopped()
+            self.reporting_ensurer.wait_stopped()
+            self.serial_queue.wait_stopped()
+            self.serial.wait_stopped()
+
+            log.debug("Remaining threads, that might prevent stopping:")
+            for thread in enumerate_threads():
+                log.debug(thread)
         self.stopped_event.set()
+        log.info("Stop completed%s", ' fast!' if fast else '')
 
     # pylint: disable=no-self-use
     def check_printer(self, message: str, callback):
@@ -736,7 +761,7 @@ class PrusaLink:
     def keep_sending_telemetry(self):
         """Runs a loop in a thread to pass the telemetry from model to SDK"""
         prctl_name()
-        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
+        run_slowly_die_fast(self.quit_evt, QUIT_INTERVAL,
                             self.get_telemetry_interval, self.send_telemetry)
 
     def send_telemetry(self):

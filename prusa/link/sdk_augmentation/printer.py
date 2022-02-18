@@ -136,6 +136,30 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.loop_thread.join()
         self.download_thread.join()
 
+    def indicate_stop(self):
+        """Passes the stop request to all SDK related threads.
+
+        * command handler
+        * loop
+        * inotify
+        """
+        self.__inotify_running = False
+        self.download_mgr.stop_loop()
+        self.stop_loop()
+        self.queue.put(None)  # Trick the SDK into quitting fast
+        self.command_handler.stop()
+
+    def wait_stopped(self):
+        """Waits for the SDK threads to join
+
+        * command handler
+        * loop
+        * inotify
+        """
+        self.inotify_thread.join()
+        self.loop_thread.join()
+        self.download_thread.join()
+
     def loop(self):
         """SDKPrinter.loop with thread name."""
         prctl_name()

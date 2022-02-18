@@ -537,12 +537,19 @@ class LCDPrinter(metaclass=MCSingleton):
         """Reset the idle time form to the current time"""
         self.idle_from = time()
 
-    def stop(self):
-        """Stops the module"""
+    def stop(self, fast=False):
+        """
+        Stops the module, if not required to go fast, prints a goodbye message
+        """
         self.running = False
         self.add_event(lambda: None)
+        if not fast:
+            self.wait_stopped()
+            self._print_text_and_wait("PrusaLink stopped")
+
+    def wait_stopped(self):
+        """Waits for LCD Printer to quit"""
         self.display_thread.join()
-        self._print_text_and_wait("PrusaLink stopped")
 
     def add_event(self, handler):
         """Adds a handler to the LCDPrinter event queue"""
