@@ -4,7 +4,7 @@ html {
     color: #7a7a7a;
     background-color: hsl(0, 0%, 4%);
     height: 100%;
-    font-family: "Atlas Grotesk Web Light";
+    font-family: Helvetica, sans-serif;
 }
 
 a {
