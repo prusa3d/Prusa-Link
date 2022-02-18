@@ -44,8 +44,8 @@ SERIAL = ErrorState("Port", "Serial device does not exist")
 RPI_ENABLED = ErrorState("RPIenabled", "RPi port is not enabled", prev=SERIAL)
 ID = ErrorState("ID", "Device is not a Prusa printer", prev=RPI_ENABLED)
 FW = ErrorState("Firmware", "Firmware is not up-to-date", prev=ID)
-SN = ErrorState("SN", "Serial number cannot be obtained", prev=FW)
-JOB_ID = ErrorState("JobID", "Job ID cannot be obtained", prev=SN)
+JOB_ID = ErrorState("JobID", "Job ID cannot be obtained", prev=FW)
+SN = ErrorState("SN", "Serial number cannot be obtained", prev=JOB_ID)
 
 HW = ErrorState("HW", "Firmware detected a hardware issue")
 
@@ -53,7 +53,7 @@ HW = ErrorState("HW", "Firmware detected a hardware issue")
 HEADS = {Categories.PRINTER: SERIAL,
          Categories.NETWORK: DEVICE,
          Categories.HARDWARE: HW}
-TAILS = {Categories.PRINTER: JOB_ID,
+TAILS = {Categories.PRINTER: SN,
          Categories.NETWORK: API,
          Categories.HARDWARE: HW}
 
