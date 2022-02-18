@@ -9,33 +9,26 @@ from prusa.connect.printer import Printer
 
 from ..lib.auth import REALM
 from ...printer_adapter.input_output.serial.helpers import enqueue_instruction
+from ...printer_adapter.structures.regular_expressions import VALID_SN_REGEX
 
 log = logging.getLogger(__name__)
 
 
 def is_valid_sn(serial):
     """Check serial number format."""
-    return (serial is not None and len(serial) == 19
-            and serial.startswith('CZPX') and serial[4:8].isdigit()
-            and serial[8] == 'X' and serial[9:12].isdigit()
-            and serial[12] == 'X' and serial[14:19].isdigit())
+    return VALID_SN_REGEX.match(serial) is not None
 
 
-def execute_sn_gcode(serial_number, serial_queue):
+def execute_sn_gcode(serial_number: str, serial_queue):
     """Encode S/N to GCODE instruction and execute it"""
-    first = "X" + (
-        "".join([hex(letter)[2:]
-                 for letter in serial_number.encode("ascii")]) + "00")[:32]
-    last = "X" + (
-        "".join([hex(letter)[2:]
-                 for letter in serial_number.encode("ascii")]) + "00")[32:]
+    hex_serial = serial_number.encode("ascii").hex() + "00"
     # Add correct prefix
-    gcode_first = f"D3 Ax0d15 C16 {first}"
-    gcode_last = f"D3 Ax0d25 C4 {last}"
+    first_gcode = f"D3 Ax0d15 C16 X{hex_serial[:32]}"
+    second_gcode = f"D3 Ax0d25 C4 X{hex_serial[32:]}"
 
     # Send GCODE instructions to printer
-    enqueue_instruction(serial_queue, gcode_first, True)
-    enqueue_instruction(serial_queue, gcode_last, True)
+    enqueue_instruction(serial_queue, first_gcode, True)
+    enqueue_instruction(serial_queue, second_gcode, True)
 
 
 class Wizard:
