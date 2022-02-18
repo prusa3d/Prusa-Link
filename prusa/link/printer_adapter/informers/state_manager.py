@@ -184,26 +184,37 @@ class StateManager(metaclass=MCSingleton):
         for regex, handler in regex_handlers.items():
             self.serial_parser.add_handler(regex, handler)
 
-        error_states = get_printer_error_states()
-        for state in error_states:
-            if not state.ok:
-                self.data.error_count += 1
+        for state in get_printer_error_states():
             state.detected_cb = self.link_error_detected
             state.resolved_cb = self.link_error_resolved
+
+        self.count_errors()
         log.debug("error count = %s", self.data.error_count)
 
         super().__init__()
 
+    def count_errors(self):
+        """Re-counts the currently present errors"""
+        self.data.error_count = 0
+        error_states = get_printer_error_states()
+        for state in error_states:
+            if state.ok is not None and not state.ok:
+                self.data.error_count += 1
+
     def link_error_detected(self):
         """increments an error counter once an error gets detected"""
-        self.data.error_count += 1
-        log.debug("Error count increased to %s", self.data.error_count)
+        old_count = self.data.error_count
+        self.count_errors()
+        if old_count != self.data.error_count:
+            log.debug("Error count increased to %s", self.data.error_count)
         self.error()
 
     def link_error_resolved(self):
         """decrements an error counter once an error gets resolved"""
-        self.data.error_count -= 1
-        log.debug("Error count decreased to %s", self.data.error_count)
+        old_count = self.data.error_count
+        self.count_errors()
+        if old_count != self.data.error_count:
+            log.debug("Error count decreased to %s", self.data.error_count)
         if self.data.error_count == 0:
             self.error_resolved()
 
