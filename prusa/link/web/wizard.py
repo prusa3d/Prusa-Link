@@ -1,4 +1,5 @@
 """Wizard endpoints"""
+from threading import Event
 from time import sleep
 from functools import wraps
 from poorwsgi import state, redirect, abort
@@ -12,6 +13,8 @@ from .lib.view import generate_page
 from .lib.wizard import execute_sn_gcode
 
 from .. import errors
+from ..printer_adapter.mk3_polling import MK3Polling
+from ..printer_adapter.structures.item_updater import WatchedItem
 
 
 def check_printer(fun):
@@ -158,13 +161,27 @@ def wizard_serial_set(req):
 
     execute_sn_gcode(wizard.serial, serial_queue)
 
-    # wait up to five second for S/N to be set
-    sn_reader = app.daemon.prusa_link.sn_reader
-    sn_reader.try_getting_sn()
-    for i in range(50):  # pylint: disable=unused-variable
-        if not sn_reader.interested_in_sn:  # sn was read
-            redirect('/wizard/auth')
-        sleep(.1)
+    polling: MK3Polling = app.daemon.prusa_link.mk3_polling
+    # Note: if there's more of things like this, consider integrating
+    # Set up an event to wait for
+    serial_number: WatchedItem = polling.serial_number
+    serial_event = Event()
+
+    def sn_became_valid(item):
+        assert item is not None
+        serial_event.set()
+
+    serial_number.became_valid_signal.connect(sn_became_valid)
+    polling.invalidate_serial_number()
+    # wait up to five second for S/N to become valid
+    success = serial_event.wait(5)
+    serial_number.became_valid_signal.disconnect(sn_became_valid)
+
+    if success:
+        redirect('/wizard/auth')
+
+    # TODO: A redirect to "please wait, ensure the printer is idle"
+    #  and "please try again or contact support" after a timer could be nice
 
     app.wizard.errors['serial']['not_obtained'] = True
     redirect('/wizard/serial')

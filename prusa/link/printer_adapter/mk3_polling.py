@@ -128,7 +128,11 @@ class MK3Polling:
 
     def invalidate_network_info(self):
         """Invalidates just the network info"""
-        self.item_updater.invalidate("network_info")
+        self.item_updater.invalidate(self.network_info)
+
+    def invalidate_serial_number(self):
+        """Invalidates just the serial number"""
+        self.item_updater.invalidate(self.serial_number)
 
     def polling_not_ok(self):
         """Stops polling of some values"""
