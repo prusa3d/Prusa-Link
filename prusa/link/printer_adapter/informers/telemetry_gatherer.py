@@ -101,7 +101,8 @@ class TelemetryGatherer(ThreadedUpdatable):
             if to_execute():
                 instruction = enqueue_matchable(self.serial_queue, gcode,
                                                 regexp)
-                wait_for_instruction(instruction, lambda: self.running)
+                wait_for_instruction(instruction,
+                                     should_wait_evt=self.quit_evt)
                 result_handler(instruction)
 
         self.slow_ticker.update()

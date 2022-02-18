@@ -1,5 +1,6 @@
 """Contains helper functions, for instruction enqueuing"""
 import re
+from threading import Event
 from typing import List, Callable
 
 from ..serial.instruction import \
@@ -11,15 +12,17 @@ from ...const import QUIT_INTERVAL
 
 def wait_for_instruction(instruction,
                          should_wait: Callable[[], bool] = lambda: True,
+                         should_wait_evt: Event = Event(),
                          check_every=QUIT_INTERVAL):
     """
     Wait until the instruction is done, or we shouldn't wait anymore
 
     :param instruction: The instruction to wait for
     :param should_wait: a lambda returning true if we should continue waiting
+    :param should_wait_evt: an event, if set, means this should quit
     :param check_every: how fast to consult the should_wait lambda
     """
-    while should_wait():
+    while should_wait() and not should_wait_evt.is_set():
         if instruction.wait_for_confirmation(timeout=check_every):
             break
 

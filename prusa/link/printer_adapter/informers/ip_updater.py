@@ -168,10 +168,13 @@ class IPUpdater(ThreadedUpdatable):
         else:
             instruction = enqueue_instruction(self.serial_queue,
                                               f"M552 P{ip_address}")
-        wait_for_instruction(instruction,
-                             lambda: self.running and time() < timeout_at)
+        wait_for_instruction(
+            instruction,
+            lambda: not self.quit_evt.is_set() and time() < timeout_at)
 
-    def stop(self):
-        """Stops the module"""
+    def proper_stop(self):
+        """
+        Stops the ip updater and resets the IP shown in the support menu
+        """
         self.send_ip_to_printer(None, reset=True)
         super().stop()

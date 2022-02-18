@@ -92,3 +92,9 @@ class StorageController:
         self.sd_card.stop()
         self.fs_mounts.stop()
         self.dir_mounts.stop()
+
+    def wait_stopped(self):
+        """SWait for storage submodules to quit"""
+        self.sd_card.wait_stopped()
+        self.fs_mounts.wait_stopped()
+        self.dir_mounts.wait_stopped()

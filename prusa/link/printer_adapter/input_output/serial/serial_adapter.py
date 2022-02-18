@@ -46,7 +46,8 @@ class SerialAdapter(metaclass=MCSingleton):
         self._renew_serial_connection()
 
         self.read_thread = Thread(target=self._read_continually,
-                                  name="serial_read_thread")
+                                  name="serial_read_thread",
+                                  daemon=True)
         self.read_thread.start()
 
     def _reopen(self):
@@ -165,4 +166,7 @@ class SerialAdapter(metaclass=MCSingleton):
         """Stops the component"""
         self.running = False
         self.serial.close()
+
+    def wait_stopped(self):
+        """Waits for the serial to be stopped"""
         self.read_thread.join()

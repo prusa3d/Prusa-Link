@@ -122,6 +122,10 @@ class MK3Polling:
         """Stops the item updater"""
         self.item_updater.stop()
 
+    def wait_stopped(self):
+        """Waits for the item updater to stop"""
+        self.item_updater.wait_stopped()
+
     def invalidate_printer_info(self):
         """Invalidates all of printer info related watched values"""
         self.item_updater.invalidate_group(self.printer_info)

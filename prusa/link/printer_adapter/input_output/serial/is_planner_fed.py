@@ -208,3 +208,4 @@ class IsPlannerFed:
             with open(self.threshold_path, "w",
                       encoding='utf-8') as threshold_file:
                 threshold_file.write(str(self.get_dynamic_threshold()))
+                os.fsync(threshold_file.fileno())

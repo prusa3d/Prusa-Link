@@ -4,7 +4,7 @@ There was an updatable without a thread, but it stopped being used
 
 Also contains a thread utility function
 """
-from threading import Thread as _Thread, current_thread
+from threading import Thread as _Thread, current_thread, Event
 from cProfile import Profile
 
 import prctl  # type: ignore
@@ -47,7 +47,7 @@ class ThreadedUpdatable:
     update_interval = 1.0
 
     def __init__(self):
-        self.running = True
+        self.quit_evt = Event()
         self.thread = Thread(target=self.__keep_updating,
                              name=self.thread_name)
 
@@ -57,12 +57,15 @@ class ThreadedUpdatable:
 
     def __keep_updating(self):
         prctl_name()
-        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
+        run_slowly_die_fast(self.quit_evt, QUIT_INTERVAL,
                             lambda: self.update_interval, self.update)
 
     def stop(self):
-        """Stop thread"""
-        self.running = False
+        """Stop the updatable"""
+        self.quit_evt.set()
+
+    def wait_stopped(self):
+        """Wait for the updatable to be stopped"""
         self.thread.join()
 
     def update(self):

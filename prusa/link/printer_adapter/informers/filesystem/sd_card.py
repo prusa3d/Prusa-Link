@@ -147,7 +147,7 @@ class SDCard(ThreadedUpdatable):
         """
         instruction = enqueue_matchable(self.serial_queue, "D3 Ax0fbb C1",
                                         D3_OUTPUT_REGEX)
-        wait_for_instruction(instruction, lambda: self.running)
+        wait_for_instruction(instruction, should_wait_evt=self.quit_evt)
         match = instruction.match()
         if match:
             self.data.is_flash_air = match.group("data") == "01"
@@ -277,7 +277,7 @@ class SDCard(ThreadedUpdatable):
                                          begin_regex=BEGIN_FILES_REGEX,
                                          capture_regex=LFN_CAPTURE,
                                          end_regex=END_FILES_REGEX)
-        wait_for_instruction(instruction, lambda: self.running)
+        wait_for_instruction(instruction, should_wait_evt=self.quit_evt)
 
         if not instruction.captured:
             return None
@@ -400,7 +400,7 @@ class SDCard(ThreadedUpdatable):
         self.data.expecting_insertion = True
         instruction = enqueue_matchable(self.serial_queue, "M21",
                                         SD_PRESENT_REGEX)
-        wait_for_instruction(instruction, lambda: self.running)
+        wait_for_instruction(instruction, should_wait_evt=self.quit_evt)
         self.data.expecting_insertion = False
 
         if not instruction.is_confirmed():

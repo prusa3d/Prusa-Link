@@ -7,7 +7,7 @@ and instruction management
 import logging
 import re
 from collections import deque
-from threading import Lock
+from threading import Lock, Event
 from time import time, sleep
 from typing import Optional, Deque, List
 
@@ -550,10 +550,11 @@ class MonitoredSerialQueue(SerialQueue):
         # If we want to time out, the communication has to be dead for some
         # time
         # Useful only with unbuffered messages
-        self.running = True
+        self.quit_evt = Event()
         self.last_event_on = time()
         self.monitoring_thread = Thread(target=self.keep_monitoring,
-                                        name="sq_stall_recovery")
+                                        name="sq_stall_recovery",
+                                        daemon=True)
         self.monitoring_thread.start()
 
     def get_current_delay(self):
@@ -567,7 +568,7 @@ class MonitoredSerialQueue(SerialQueue):
 
     def keep_monitoring(self):
         """Runs the loop of monitoring the queue"""
-        run_slowly_die_fast(lambda: self.running, QUIT_INTERVAL,
+        run_slowly_die_fast(self.quit_evt, QUIT_INTERVAL,
                             lambda: SERIAL_QUEUE_MONITOR_INTERVAL,
                             self.check_status)
 
@@ -590,9 +591,15 @@ class MonitoredSerialQueue(SerialQueue):
             self._renew_timeout(unstuck=False)
 
     def stop(self):
-        """Stops the monitoring thread"""
-        self.running = False
+        """
+        Stops the monitoring thread
+        If not required to go fast, saves the planner fed threshold
+        """
+        self.quit_evt.set()
         self.is_planner_fed.save()
+
+    def wait_stopped(self):
+        """Waits for the serial queue to stop"""
         self.monitoring_thread.join()
 
     def _confirmed(self, force=False):
