@@ -220,25 +220,29 @@ class PrusaLink:
         """
         print("Debug shell")
         while self.running:
-            command = input("[Prusa-link]: ")
-            result = ""
-            if command == "pause":
-                result = self.command_queue.do_command(PausePrint())
-            elif command == "resume":
-                result = self.command_queue.do_command(ResumePrint())
-            elif command == "stop":
-                result = self.command_queue.do_command(StopPrint())
-            elif command.startswith("gcode"):
-                result = self.command_queue.do_command(
-                    ExecuteGcode(command.split(" ", 1)[1]))
-            elif command.startswith("print"):
-                result = self.command_queue.do_command(
-                    StartPrint(command.split(" ", 1)[1]))
-            elif command.startswith("trigger"):
-                InterestingLogRotator.trigger("a debugging command")
+            try:
+                command = input("[Prusa-link]: ")
+                result = ""
+                if command == "pause":
+                    result = self.command_queue.do_command(PausePrint())
+                elif command == "resume":
+                    result = self.command_queue.do_command(ResumePrint())
+                elif command == "stop":
+                    result = self.command_queue.do_command(StopPrint())
+                elif command.startswith("gcode"):
+                    result = self.command_queue.do_command(
+                        ExecuteGcode(command.split(" ", 1)[1]))
+                elif command.startswith("print"):
+                    result = self.command_queue.do_command(
+                        StartPrint(command.split(" ", 1)[1]))
+                elif command.startswith("trigger"):
+                    InterestingLogRotator.trigger("a debugging command")
 
-            if result:
-                print(result)
+                if result:
+                    print(result)
+            # pylint: disable=bare-except
+            except:
+                log.exception("Debug console errored out")
 
     def stop(self):
         """
@@ -365,7 +369,7 @@ class PrusaLink:
         Connects the command to reset printer from CONNECT with its handler
         """
         command = ResetPrinter(command_id=caller.command_id)
-        return self.command_queue.do_command(command)
+        return self.command_queue.force_command(command)
 
     def job_info(self, caller: SDKCommand):
         """
