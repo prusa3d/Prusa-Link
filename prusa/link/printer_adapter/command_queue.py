@@ -5,7 +5,7 @@ withch are the queue members
 
 import logging
 from queue import Queue, Empty
-from threading import Event
+from threading import Event, RLock
 
 from .command import Command, CommandFailed
 from .const import QUIT_INTERVAL
@@ -36,6 +36,7 @@ class CommandQueue:
         self.current_command_adapter = None
         self.runner_thread = Thread(target=self.process_queue,
                                     name="command_queue")
+        self.enqueue_lock = RLock()
 
     def start(self):
         """Start the command processing"""
@@ -45,20 +46,17 @@ class CommandQueue:
     def stop(self):
         """Stop the command processing"""
         self.running = False
-        if self.current_command_adapter is not None:
-            self.current_command_adapter.command.stop()
-        while not self.command_queue.empty():
-            adapter = self.command_queue.get()
-            adapter.command.stop()
+        self._stop_current()
 
     def enqueue_command(self, command: Command):
         """
         Ask for a command to be processed
         :param command: The command to be processed
         """
-        adapter = CommandAdapter(command)
-        self.command_queue.put(adapter)
-        return adapter
+        with self.enqueue_lock:
+            adapter = CommandAdapter(command)
+            self.command_queue.put(adapter)
+            return adapter
 
     def do_command(self, command: Command):
         """
@@ -81,6 +79,12 @@ class CommandQueue:
                                 "Prusa Link is stopping or in an error state")
         return adapter.data
 
+    def force_command(self, command: Command):
+        """Drops everything and does the supplied command"""
+        with self.enqueue_lock:
+            self._clear_queue()
+            self.do_command(command)
+
     def process_queue(self):
         """
         Runs until stopped, processes commands in queue, writes outputs
@@ -101,3 +105,15 @@ class CommandQueue:
                     # Don't forget to pass exceptions as well as values
                     adapter.exception = exception
                 adapter.processed.set()
+
+    def _stop_current(self):
+        """Stops current command, if there is any"""
+        if self.current_command_adapter is not None:
+            self.current_command_adapter.command.stop()
+
+    def _clear_queue(self):
+        """Clears the whole command queue"""
+        self._stop_current()
+        while not self.command_queue.empty():
+            adapter = self.command_queue.get()
+            adapter.command.stop()
