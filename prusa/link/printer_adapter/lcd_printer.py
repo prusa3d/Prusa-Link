@@ -43,7 +43,7 @@ ERROR_MESSAGES = {
     RPI_ENABLED: "Err Enable RPi port",
     ID: "Error not a PRUSA",
     FW: "Err unsupported FW",
-    SN: "Err Enable RPi port",
+    SN: "Err obtaining S/N",
     JOB_ID: "Err reading job id",
     HTTP: "HTTP error 4xx",
     TOKEN: "Error bad token",
