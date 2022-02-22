@@ -10,6 +10,7 @@ from queue import Queue
 from time import time
 from typing import Callable, List
 
+import unidecode
 from prusa.connect.printer import Printer
 from prusa.connect.printer.errors import HTTP, API, TOKEN, INTERNET
 
@@ -526,10 +527,11 @@ class LCDPrinter(metaclass=MCSingleton):
         :param text: Text to be shown in the status portion of the printer LCD
         Should not exceed 20 - len(prefix) characters.
         """
+        ascii_text = unidecode.unidecode(text)
         self.ignore += 1
         self.reset_idle()
         return enqueue_instruction(
-            self.serial_queue, f"M117 {prefix}{text}", to_front=True)
+            self.serial_queue, f"M117 {prefix}{ascii_text}", to_front=True)
 
     def reset_idle(self):
         """Reset the idle time form to the current time"""
