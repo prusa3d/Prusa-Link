@@ -336,7 +336,25 @@ def api_start_print(req, target, path):
     return Response(status_code=state.HTTP_BAD_REQUEST)
 
 
-@app.route('/api/files/<target>/<path:re:.+>')
+@app.route('/api/files/<target>/<path:re:.+>/raw')
+@check_api_digest
+@check_target
+def api_downloads(req, target, path):
+    """Downloads intended gcode."""
+    # pylint: disable=unused-argument
+    filename = basename(path)
+    os_path = get_os_path(f"/{path}")
+
+    if os_path is None:
+        raise errors.FileNotFound()
+
+    headers = {
+        "Content-Disposition":f"attachment;filename=\"{filename}\""
+    }
+    return FileResponse(os_path, headers=headers)
+
+
+@app.route('/api/files/<target>/<path:re:.+(?!/raw)>')
 @check_api_digest
 def api_resources(req, target, path):
     """Returns metadata from cache file."""
@@ -458,18 +476,6 @@ def api_download_abort(req):
     download_mgr = app.daemon.prusa_link.printer.download_mgr
     download_mgr.stop()
     return Response(status_code=state.HTTP_NO_CONTENT)
-
-
-@app.route('/api/downloads/<target>/<path:re:.+>')
-@check_api_digest
-@check_target
-def api_downloads(req, target, path):
-    """Downloads intended gcode."""
-    # pylint: disable=unused-argument
-    os_path = get_os_path(f"/{path}")
-    if os_path is None:
-        raise errors.FileNotFound()
-    return FileResponse(os_path)
 
 
 @app.route('/api/thumbnails/<path:re:.+>.orig.png')
