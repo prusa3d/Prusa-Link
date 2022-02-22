@@ -95,6 +95,7 @@ class CommandQueue:
                 pass
             else:
                 try:
+                    self.current_command_adapter = adapter
                     adapter.data = adapter.command.run_command()
                 except Exception as exception:  # pylint: disable=broad-except
                     # Don't forget to pass exceptions as well as values
