@@ -27,6 +27,7 @@
     * Fix unicode characters in file names breaking lcd printer
     * Make RESET_PRINTER clear the command queue and have priority that way
     * Made the app stop itself faster
+    * Use M400 instead of G4 for printer queue syncing
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
