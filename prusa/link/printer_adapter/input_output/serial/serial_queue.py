@@ -230,7 +230,7 @@ class SerialQueue(metaclass=MCSingleton):
 
         if M110_REGEX.match(next_instruction.message) and \
                 not self.worked_around_m110:
-            self.m110_workaround_slot = Instruction("G4 S0.001")
+            self.m110_workaround_slot = Instruction("M400")
             self.worked_around_m110 = True
 
         self.next_instruction()
