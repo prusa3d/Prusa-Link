@@ -25,6 +25,7 @@
     * Modified endpoint api/files to optionally get specific directory instead of whole tree
     * Added '/api/files/<target>/<path:re:.+>/raw' endpoint
     * Fix unicode characters in file names breaking lcd printer
+    * Make RESET_PRINTER clear the command queue and have priority that way
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
