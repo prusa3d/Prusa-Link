@@ -19,8 +19,6 @@ def printer_type(type_):
         return "Original Prusa i3 MK3"
     if type_ == PrinterType.I3MK3S:
         return "Original Prusa i3 MK3S"
-    if type_ == PrinterType.MINI:
-        return "Original Prusa MINI"
     return "Unknown"
 
 
