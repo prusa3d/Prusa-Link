@@ -8,13 +8,10 @@ from poorwsgi.digest import check_digest
 from .lib.core import app
 from .lib.auth import check_api_digest, set_digest, valid_credentials, \
     valid_digests, REALM
-from .lib.wizard import is_valid_sn, execute_sn_gcode
+from .lib.wizard import is_valid_sn, execute_sn_gcode, INVALID_CHARACTERS, \
+    PRINTER_MISSING_CREDENTIALS, PRINTER_INVALID_CREDENTIALS
 
 from .. import errors
-
-PRINTER_MISSING_CREDENTIALS = "Both name and location credentials are required"
-PRINTER_INVALID_CREDENTIALS = "Name or location cointains invalid characters"
-INVALID_CHARACTERS = ['\'', '\"']
 
 
 def set_settings_printer(name, location):

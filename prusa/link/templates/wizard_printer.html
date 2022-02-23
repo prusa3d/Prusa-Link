@@ -18,7 +18,7 @@
               <div class="col-sm-10">
                 <input type="text" class="form-control {{ 'is-invalid' if errors.get('name') else '' }}" id="name" name="name" value="{{ wizard.printer_name or '' }}" required>
                 <div class="invalid-feedback">
-                  Please provide a printer name.
+                  Please provide a valid printer name.
                 </div>
               </div>
             </div>
@@ -28,7 +28,7 @@
               <div class="col-sm-10">
                 <input type="text" class="form-control {{ 'is-invalid' if errors.get('location') else '' }}" id="location" name="location" value="{{ wizard.printer_location or '' }}" required>
                 <div class="invalid-feedback">
-                  Please provide a printer location.
+                  Please provide a valid printer location.
                 </div>
               </div>
             </div>

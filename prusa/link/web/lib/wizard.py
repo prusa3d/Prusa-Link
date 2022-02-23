@@ -13,6 +13,10 @@ from ...printer_adapter.structures.regular_expressions import VALID_SN_REGEX
 
 log = logging.getLogger(__name__)
 
+PRINTER_MISSING_CREDENTIALS = "Both name and location credentials are required"
+PRINTER_INVALID_CREDENTIALS = "Name or location cointains invalid characters"
+INVALID_CHARACTERS = ['\'', '\"']
+
 
 def is_valid_sn(serial):
     """Check serial number format."""
@@ -100,12 +104,16 @@ class Wizard:
         return not errors
 
     def check_printer(self):
-        """Check printer is valid."""
+        """Check if printer name and location are valid."""
         errors = {}
-        if not self.printer_name:
+        if not self.printer_name or \
+                any(ch in self.printer_name for ch in INVALID_CHARACTERS):
             errors['name'] = True
-        if not self.printer_location:
+
+        if not self.printer_location or \
+                any(ch in self.printer_location for ch in INVALID_CHARACTERS):
             errors['location'] = True
+
         self.errors['printer'] = errors
         return not errors
 
