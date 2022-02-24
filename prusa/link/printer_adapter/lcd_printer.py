@@ -12,6 +12,7 @@ from typing import Callable, List
 
 import unidecode
 from prusa.connect.printer import Printer
+from prusa.connect.printer.const import TransferType
 from prusa.connect.printer.errors import HTTP, API, TOKEN, INTERNET
 
 from .structures.model_classes import JobState
@@ -51,6 +52,19 @@ ERROR_MESSAGES = {
     # This needs updating, but currently there's nothing better to say
     API: "HTTP error 5xx",
     INTERNET: "No internet access"
+}
+
+FROM_TRANSFER_TYPES = {
+    TransferType.FROM_PRINTER,
+    TransferType.FROM_WEB,
+    TransferType.FROM_CONNECT,
+    TransferType.FROM_CLIENT,
+    TransferType.FROM_SLICER
+}
+
+TO_TRANSFER_TYPES = {
+    TransferType.TO_CONNECT,
+    TransferType.TO_CLIENT
 }
 
 
@@ -375,13 +389,14 @@ class LCDPrinter(metaclass=MCSingleton):
         if self.printer.transfer.in_progress:
             self.upload_display.enable()
             progress = self.printer.transfer.progress
+            sync_type: TransferType = self.printer.transfer.type
             bar_length = 12
             # Have 12 characters for the load bar,
             # increased to 14 by the arrow visibility
-            # [UPLOAD:     0%     ]
-            # [UPLOAD:>    5%     ]
-            # [UPLOAD:=====95%===>]
-            # [UPLOAD:====100%====]
+            # [Sync|->:     0%     ]
+            # [Sync|->:>    5%     ]
+            # [Sync|->:=====95%===>]
+            # [Sync|->:====100%====]
 
             # index of 0 and 13 means a hidden arrow
             rough_index = progress / (100 / (bar_length + 2))
@@ -393,16 +408,21 @@ class LCDPrinter(metaclass=MCSingleton):
                 progress_background += ">"
             progress_background = progress_background.ljust(bar_length)
 
-            # Put percents over the background
+            # Put percentage over the background
             int_progress = int(round(progress))
             string_progress = f"{int_progress}%"
             centered_progress = string_progress.center(bar_length)
             centering_index = centered_progress.index(string_progress)
 
-            progress_graphic = "Upload:"
+            progress_graphic = "Sync  :"
+            if sync_type in FROM_TRANSFER_TYPES:
+                progress_graphic = "Sync\x7E|:"
+            if sync_type in TO_TRANSFER_TYPES:
+                progress_graphic = "Sync|\x7E:"
             progress_graphic += progress_background[:centering_index]
             progress_graphic += string_progress
-            progress_graphic += progress_background[centering_index + len(string_progress):]
+            progress_graphic += progress_background[centering_index +
+                                                    len(string_progress):]
             self.upload_display.set_text(
                 progress_graphic, scroll_delay=0.5, last_screen_extra=0,
                 first_line_extra=0)
