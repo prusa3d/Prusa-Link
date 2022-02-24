@@ -13,8 +13,8 @@ from ...printer_adapter.structures.regular_expressions import VALID_SN_REGEX
 
 log = logging.getLogger(__name__)
 
-PRINTER_MISSING_CREDENTIALS = "Both name and location credentials are required"
-PRINTER_INVALID_CREDENTIALS = "Name or location cointains invalid characters"
+PRINTER_MISSING_NAME = "Both printer name and location are required"
+PRINTER_INVALID_CHARACTERS = "Name or location cointains invalid characters"
 INVALID_CHARACTERS = ['\'', '\"']
 
 

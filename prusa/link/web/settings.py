@@ -9,7 +9,7 @@ from .lib.core import app
 from .lib.auth import check_api_digest, set_digest, valid_credentials, \
     valid_digests, REALM
 from .lib.wizard import is_valid_sn, execute_sn_gcode, INVALID_CHARACTERS, \
-    PRINTER_MISSING_CREDENTIALS, PRINTER_INVALID_CREDENTIALS
+    PRINTER_MISSING_NAME, PRINTER_INVALID_CHARACTERS
 
 from .. import errors
 
@@ -71,11 +71,13 @@ def api_settings_set(req):
         location = printer.get('location')
         for character in INVALID_CHARACTERS:
             if character in name or character in location:
-                errors_['printer'] = \
-                    {'invalid_credentials': PRINTER_INVALID_CREDENTIALS}
+                errors_ = {
+                    'title':'invalid_characters',
+                    'message': PRINTER_INVALID_CHARACTERS}
         if not name or not location:
-            errors_['printer'] = \
-                {'missing_credentials': PRINTER_MISSING_CREDENTIALS}
+            errors_ = {
+                'title':'missing_name',
+                'message': PRINTER_MISSING_NAME}
 
     # user settings
     if user:
@@ -109,7 +111,7 @@ def api_settings_set(req):
         else:
             status = state.HTTP_NO_CONTENT
     else:
-        kwargs = {'errors': errors_}
+        kwargs = {**errors_}
         status = state.HTTP_BAD_REQUEST
 
     return JSONResponse(status_code=status, **kwargs)
