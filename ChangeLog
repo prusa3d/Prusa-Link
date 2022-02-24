@@ -29,6 +29,7 @@
     * Made the app stop itself faster
     * Use M400 instead of G4 for printer queue syncing
     * Added printer name and location validation to wizard
+    * Reworked errors in validation of printer name and location in Link settings
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
