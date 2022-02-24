@@ -32,6 +32,7 @@
     * Reworked errors in validation of printer name and location in Link settings
     * Reworked validation of correct S/N write
     * Modified username and password length validation
+    * Use "Sync|->:" and "Sync->|:" to signify which way is the current transfer going
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
