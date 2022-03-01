@@ -201,22 +201,31 @@ class StateManager(metaclass=MCSingleton):
             if state.ok is not None and not state.ok:
                 self.data.error_count += 1
 
-    def link_error_detected(self):
+    def link_error_detected(self, old_value="legacy"):
         """increments an error counter once an error gets detected"""
-        old_count = self.data.error_count
-        self.count_errors()
-        if old_count != self.data.error_count:
+        if old_value == "legacy":
+            old_count = self.data.error_count
+            self.count_errors()
+            if old_count != self.data.error_count:
+                log.debug("Error count increased to %s", self.data.error_count)
+        else:
+            self.data.error_count += 1
             log.debug("Error count increased to %s", self.data.error_count)
         self.error()
 
-    def link_error_resolved(self):
+    def link_error_resolved(self, old_value="legacy"):
         """decrements an error counter once an error gets resolved"""
-        old_count = self.data.error_count
-        self.count_errors()
-        if old_count != self.data.error_count:
-            log.debug("Error count decreased to %s", self.data.error_count)
-        if self.data.error_count == 0:
-            self.error_resolved()
+        if old_value == "legacy":
+            old_count = self.data.error_count
+            self.count_errors()
+            if old_count != self.data.error_count:
+                log.debug("Error count decreased to %s", self.data.error_count)
+            if self.data.error_count == 0:
+                self.error_resolved()
+        else:
+            if old_value is not None and not old_value:
+                self.data.error_count -= 1
+                log.debug("Error count decreased to %s", self.data.error_count)
 
     def file_printer_started_printing(self):
         """
