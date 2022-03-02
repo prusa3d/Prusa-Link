@@ -1,4 +1,5 @@
 """Configuration wizard library."""
+from threading import Event
 import logging
 from secrets import token_urlsafe
 from socket import gethostbyname
@@ -7,9 +8,12 @@ from urllib.request import urlopen
 from poorwsgi.digest import hexdigest
 from prusa.connect.printer import Printer
 
+from ..lib.core import app
 from ..lib.auth import REALM
 from ...printer_adapter.input_output.serial.helpers import enqueue_instruction
 from ...printer_adapter.structures.regular_expressions import VALID_SN_REGEX
+from ...printer_adapter.mk3_polling import MK3Polling
+from ...printer_adapter.structures.item_updater import WatchedItem
 
 log = logging.getLogger(__name__)
 
@@ -18,9 +22,29 @@ PRINTER_INVALID_CHARACTERS = "Name or location cointains invalid characters"
 INVALID_CHARACTERS = ['\'', '\"']
 
 
-def is_valid_sn(serial):
+def valid_sn_format(serial):
     """Check serial number format."""
     return VALID_SN_REGEX.match(serial) is not None
+
+
+def sn_write_success():
+    """Check if the S/N was written successfully to the printer"""
+    polling: MK3Polling = app.daemon.prusa_link.mk3_polling
+    # Note: if there's more of things like this, consider integrating
+    # Set up an event to wait for
+    serial_number: WatchedItem = polling.serial_number
+    serial_event = Event()
+
+    def sn_became_valid(item):
+        assert item is not None
+        serial_event.set()
+
+    serial_number.became_valid_signal.connect(sn_became_valid)
+    polling.invalidate_serial_number()
+    # wait up to five second for S/N to become valid
+    success = serial_event.wait(5)
+    serial_number.became_valid_signal.disconnect(sn_became_valid)
+    return success
 
 
 def execute_sn_gcode(serial_number: str, serial_queue):
@@ -39,7 +63,7 @@ class Wizard:
     """Configuration wizard singleton with validation methods."""
     instance = None
 
-    def __init__(self, app):
+    def __init__(self, _app):
         if Wizard.instance is not None:
             raise RuntimeError('Wizard is singleton')
 
@@ -51,29 +75,29 @@ class Wizard:
         self.serial = None
 
         # auth
-        self.username = app.settings.service_local.username
+        self.username = _app.settings.service_local.username
         self.digest = None
-        if app.api_key:
-            self.api_key = app.api_key
+        if _app.api_key:
+            self.api_key = _app.api_key
         else:
             self.api_key = token_urlsafe(10)
 
         # network
-        self.net_hostname = app.settings.network.hostname
+        self.net_hostname = _app.settings.network.hostname
 
         # printer
-        self.printer_name = app.settings.printer.name
-        self.printer_location = app.settings.printer.location
+        self.printer_name = _app.settings.printer.name
+        self.printer_location = _app.settings.printer.location
 
         # connect
         self.connect_skip = False
-        self.connect_hostname = app.settings.service_connect.hostname
-        self.connect_tls = app.settings.service_connect.tls
-        self.connect_port = app.settings.service_connect.port
+        self.connect_hostname = _app.settings.service_connect.hostname
+        self.connect_tls = _app.settings.service_connect.tls
+        self.connect_port = _app.settings.service_connect.port
 
-        self.daemon = app.daemon
-        self.cfg = app.daemon.cfg
-        self.settings = app.settings
+        self.daemon = _app.daemon
+        self.cfg = _app.daemon.cfg
+        self.settings = _app.settings
 
         self.wifi = None
 
@@ -120,7 +144,7 @@ class Wizard:
     def check_serial(self):
         """Check S/N is valid."""
         errors = {}
-        if not is_valid_sn(self.serial):
+        if not valid_sn_format(self.serial):
             errors['not_valid'] = True
         self.errors['serial'] = errors
         return not errors
