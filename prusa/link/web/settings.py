@@ -1,5 +1,4 @@
 """/api/settings endpoint handlers"""
-from time import sleep
 from secrets import token_urlsafe
 from poorwsgi import state
 from poorwsgi.response import JSONResponse
@@ -8,8 +7,8 @@ from poorwsgi.digest import check_digest
 from .lib.core import app
 from .lib.auth import check_api_digest, set_digest, valid_credentials, \
     valid_digests, REALM
-from .lib.wizard import is_valid_sn, execute_sn_gcode, INVALID_CHARACTERS, \
-    PRINTER_MISSING_NAME, PRINTER_INVALID_CHARACTERS
+from .lib.wizard import valid_sn_format, sn_write_success, execute_sn_gcode, \
+    INVALID_CHARACTERS, PRINTER_MISSING_NAME, PRINTER_INVALID_CHARACTERS
 
 from .. import errors
 
@@ -149,16 +148,12 @@ def api_sn(req):
 
     if not errors.SN.ok:
         serial = req.json.get('serial')
-        if is_valid_sn(serial):
+        if valid_sn_format(serial):
             execute_sn_gcode(serial, serial_queue)
 
             # wait up to five second for S/N to be set
-            sn_reader = app.daemon.prusa_link.sn_reader
-            sn_reader.try_getting_sn()
-            for i in range(50):  # pylint: disable=unused-variable
-                if not sn_reader.interested_in_sn:  # sn was read
-                    return JSONResponse(status_code=state.HTTP_OK)
-                sleep(.1)
+            if sn_write_success():
+                return JSONResponse(status_code=state.HTTP_OK)
 
             status = state.HTTP_INSUFFICIENT_STORAGE
             message = "S/N was not successfully written to printer"
