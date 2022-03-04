@@ -9,8 +9,8 @@
       <div class="col-md-12">
           <h1>Authorization</h1>
           <form method="post" id="form">
-            <p>Prusa Link will use HTTP Digest authorization. Please set administration username and password.<br />All values must be <i>7 characters
-              length at least</i>.</p>
+            <p>Prusa Link will use HTTP Digest authorization. Please set administration username and password.<br />
+              Username length must be at least <i>3 characters</i> and password at least <i>8 characters</i> long<br /></p>
 
             {% set errors = wizard.errors.get('auth', {}) %}
             <div class="form-group row">
@@ -28,7 +28,7 @@
               <div class="col-sm-10">
                 <input type="password" class="form-control {{ 'is-invalid' if errors.get('password') else '' }}" id="password" name="password" value="" required>
                 <div class="invalid-feedback">
-                  Please provide a strong password.
+                  Please provide a strong password with sufficient length.
                 </div>
               </div>
             </div>
