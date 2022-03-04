@@ -11,7 +11,8 @@ from prusa.connect.printer import Printer
 from ..lib.core import app
 from ..lib.auth import REALM
 from ...printer_adapter.input_output.serial.helpers import enqueue_instruction
-from ...printer_adapter.structures.regular_expressions import VALID_SN_REGEX
+from ...printer_adapter.structures.regular_expressions import VALID_SN_REGEX, \
+    VALID_USERNAME_REGEX, VALID_PASSWORD_REGEX
 from ...printer_adapter.mk3_polling import MK3Polling
 from ...printer_adapter.structures.item_updater import WatchedItem
 
@@ -113,12 +114,13 @@ class Wizard:
         """Proxy property for daemon.prusa_link.printer.sn."""
         return self.daemon.prusa_link.printer.sn
 
-    def check_auth(self, password, repassword):
+    def check_credentials(self, password, repassword):
         """Check if auth values are valid."""
         errors = {}
-        if len(self.username) < 2 or ':' in self.username:
+
+        if not VALID_USERNAME_REGEX.match(self.username):
             errors['username'] = True
-        if len(password) < 7:  # TODO: check password quality
+        if not VALID_PASSWORD_REGEX.match(password):
             errors['password'] = True
         if password != repassword:
             errors['repassword'] = True
