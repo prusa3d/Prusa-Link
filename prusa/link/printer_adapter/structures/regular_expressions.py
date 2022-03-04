@@ -13,6 +13,9 @@ VALID_SN_REGEX = re.compile(r"^(?P<sn>^CZPX\d{4}X\d{3}X.\d{5})$")
 NOZZLE_REGEX = re.compile(r"^(?P<size>\d\.\d+)$")
 PERCENT_REGEX = re.compile(r"^(?P<percent>\d{0,3})%$")
 
+VALID_USERNAME_REGEX = re.compile(".{3,256}")
+VALID_PASSWORD_REGEX = re.compile(".{8,}")
+
 BEGIN_FILES_REGEX = re.compile(r"^Begin file list$")
 END_FILES_REGEX = re.compile(r"^End file list$")
 

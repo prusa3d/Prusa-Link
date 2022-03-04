@@ -10,13 +10,16 @@ from poorwsgi.digest import check_credentials, hexdigest
 
 from .core import app
 
+from ...printer_adapter.structures.regular_expressions import \
+    VALID_USERNAME_REGEX, VALID_PASSWORD_REGEX
+
 log = logging.getLogger(__name__)
 
 REALM = 'Administrator'
 
 # --- Errors ---
-USERNAME = "Username is shorter than 2 characters or in invalid format"
-PASSWORD = "New password is shorter than 7 characters or in invalid format"
+USERNAME = "Username is shorter than 3 characters or in invalid format"
+PASSWORD = "New password is shorter than 8 characters or in invalid format"
 REPASSWORD = "New passwords are not same"
 OLD_DIGEST = "Password is not correct"
 SAME_DIGEST = "Nothing to change. All credentials are same as old ones"
@@ -90,10 +93,10 @@ def set_digest(username, password):
 def valid_credentials(username, new_password, new_repassword, errors):
     """Check if auth credentials are valid."""
     _errors = {}
-    if len(username) < 2 or ':' in username:
+    if not VALID_USERNAME_REGEX.match(username):
         _errors['username'] = USERNAME
     if new_password:
-        if len(new_password) < 7:
+        if not VALID_PASSWORD_REGEX.match(new_password):
             _errors['password'] = PASSWORD
         if new_password != new_repassword:
             _errors['repassword'] = REPASSWORD

@@ -68,7 +68,7 @@ def wizard_auth_post(req):
     password = form.get('password', '')
     repassword = form.get('repassword', '')
     app.wizard.api_key = form.get('api_key', '').strip()
-    if not app.wizard.check_auth(password, repassword):
+    if not app.wizard.check_credentials(password, repassword):
         redirect('/wizard/auth')
     app.wizard.set_digest(password)
     redirect('/wizard/printer')

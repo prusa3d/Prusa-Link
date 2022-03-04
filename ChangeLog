@@ -31,6 +31,7 @@
     * Added printer name and location validation to wizard
     * Reworked errors in validation of printer name and location in Link settings
     * Reworked validation of correct S/N write
+    * Modified username and password length validation
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
