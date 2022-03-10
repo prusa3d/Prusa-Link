@@ -213,6 +213,8 @@ class StateManager(metaclass=MCSingleton):
         if old_value is not None and not old_value:
             self.data.error_count -= 1
             log.debug("Error count decreased to %s", self.data.error_count)
+            if self.data.error_count == 0:
+                self.error_resolved()
 
     def file_printer_started_printing(self):
         """
