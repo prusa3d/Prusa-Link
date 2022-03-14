@@ -1,12 +1,29 @@
-"""Original Prusa Link printer adapter."""
+"""Original Prusa Link printer adapter.
+
+    Copyright (C) 2022 PrusaResearch
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+"""
 __application__ = "PrusaLink"
 __vendor__ = "PrusaResearch"
 
-__version__ = "0.6.0"
-__date__ = "17 Dec 2021"
-__copyright__ = "(c) 2020 Prusa 3D"
-__author_name__ = "Tomáš Jozífek"
-__author_email__ = "tomas.jozifek@prusa3d.cz"
+__version__ = "0.7.0.dev1"
+__date__ = "14 Mar 2022"
+__copyright__ = "(c) 2022 Prusa 3D"
+__author_name__ = "Prusa Link Developers"
+__author_email__ = "link@prusa3d.cz"
 __author__ = f"{__author_name__} <{__author_email__}>"
 __description__ = f"{__application__} software"
 
