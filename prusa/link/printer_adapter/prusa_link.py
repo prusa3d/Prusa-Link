@@ -31,6 +31,7 @@ from .input_output.serial.serial_queue import MonitoredSerialQueue
 from .input_output.serial.serial_adapter import SerialAdapter
 from .input_output.serial.serial_parser import SerialParser
 from .model import Model
+from .service_discovery import ServiceDiscovery
 from .structures.model_classes import Telemetry
 from .const import PRINTING_STATES, TELEMETRY_IDLE_INTERVAL, \
     TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, SD_MOUNT_NAME, \
@@ -72,6 +73,12 @@ class PrusaLink:
         self.stopped_event = Event()
         HW.ok = True
         self.model = Model()
+
+        self.service_discovery = ServiceDiscovery(self.cfg)
+        self.sd_registerer = Thread(
+            target=self.service_discovery.register, daemon=True)
+        self.sd_registerer.start()
+
         self.serial_parser = SerialParser()
 
         self.serial = SerialAdapter(self.serial_parser,
@@ -285,6 +292,7 @@ class PrusaLink:
         log.debug("Stop signalled")
 
         if not fast:
+            self.service_discovery.unregister()
             self.file_printer.wait_stopped()
             self.printer.wait_stopped()
             self.mk3_polling.wait_stopped()
