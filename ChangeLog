@@ -33,6 +33,7 @@
     * Reworked validation of correct S/N write
     * Modified username and password length validation
     * Use "Sync|->:" and "Sync->|:" to signify which way is the current transfer going
+    * Add DNS service discovery compatible with prusa-slicer
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
