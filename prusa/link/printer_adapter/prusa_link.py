@@ -13,6 +13,7 @@ from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType, State
 from prusa.connect.printer.const import Source
 
+from .auto_telemetry import AutoTelemetry
 from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
     ResetPrinter, ResumePrint, StartPrint, StopPrint, LoadFilamentMK3, \
     UnloadFilamentMK3
@@ -26,21 +27,20 @@ from .file_printer import FilePrinter
 from .informers.ip_updater import IPUpdater
 from .informers.state_manager import StateManager, StateChange
 from .informers.filesystem.storage_controller import StorageController
-from .informers.telemetry_gatherer import TelemetryGatherer
 from .lcd_printer import LCDPrinter
 from .input_output.serial.serial_queue import MonitoredSerialQueue
 from .input_output.serial.serial_adapter import SerialAdapter
 from .input_output.serial.serial_parser import SerialParser
 from .model import Model
 from .service_discovery import ServiceDiscovery
-from .structures.model_classes import Telemetry
+from .structures.item_updater import WatchedItem
+from .structures.model_classes import Telemetry, PrintState
 from .const import PRINTING_STATES, TELEMETRY_IDLE_INTERVAL, \
     TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, SD_MOUNT_NAME, \
     PATH_WAIT_TIMEOUT
 from .structures.regular_expressions import \
     PRINTER_BOOT_REGEX, START_PRINT_REGEX, PAUSE_PRINT_REGEX, \
     RESUME_PRINT_REGEX
-from .reporting_ensurer import ReportingEnsurer
 from .util import run_slowly_die_fast, make_fingerprint
 from .updatable import prctl_name, Thread
 from ..config import Config, Settings
@@ -124,9 +124,6 @@ class PrusaLink:
         self.state_manager = StateManager(self.serial_parser, self.model,
                                           self.printer, self.cfg,
                                           self.settings)
-        self.telemetry_gatherer = TelemetryGatherer(self.serial_parser,
-                                                    self.serial_queue,
-                                                    self.model)
         self.print_stats = PrintStats(self.model)
         self.file_printer = FilePrinter(self.serial_queue, self.serial_parser,
                                         self.model, self.cfg, self.print_stats)
@@ -134,8 +131,8 @@ class PrusaLink:
                                          self.serial_parser,
                                          self.state_manager, self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
-        self.mk3_polling = MK3Polling(self.serial_queue, self.printer,
-                                      self.model, self.job)
+        self.mk3_polling = MK3Polling(self.serial_queue, self.serial_parser,
+                                      self.printer, self.model, self.job)
         self.command_queue = CommandQueue()
 
         # Bind signals
@@ -157,21 +154,6 @@ class PrusaLink:
         self.state_manager.post_state_change_signal.connect(
             self.post_state_change)
         self.state_manager.state_changed_signal.connect(self.state_changed)
-        self.telemetry_gatherer.updated_signal.connect(self.telemetry_gathered)
-        self.telemetry_gatherer.printing_signal.connect(
-            self.telemetry_observed_print)
-        self.telemetry_gatherer.paused_serial_signal.connect(
-            self.telemetry_observed_serial_pause)
-        self.telemetry_gatherer.paused_sd_signal.connect(
-            self.telemetry_observed_sd_pause)
-        self.telemetry_gatherer.not_printing_signal.connect(
-            self.telemetry_observed_no_print)
-        self.telemetry_gatherer.progress_broken_signal.connect(
-            self.progress_broken)
-        self.telemetry_gatherer.file_path_signal.connect(
-            self.file_path_observed)
-        self.telemetry_gatherer.byte_position_signal.connect(
-            self.byte_position_changed)
         self.file_printer.time_printing_signal.connect(
             self.time_printing_updated)
         self.file_printer.new_print_started_signal.connect(
@@ -186,6 +168,16 @@ class PrusaLink:
         self.storage.dir_unmounted_signal.connect(self.dir_unmount)
         self.storage.sd_mounted_signal.connect(self.sd_mount)
         self.storage.sd_unmounted_signal.connect(self.sd_unmount)
+        self.mk3_polling.print_state.became_valid_signal.connect(
+            self.print_state_changed
+        )
+        self.mk3_polling.byte_position.value_changed_signal.connect(
+            lambda value: self.byte_position_changed(
+                self.mk3_polling, value[0], value[1]))
+        self.mk3_polling.mixed_path.value_changed_signal.connect(
+            self.mixed_path_changed)
+        self.mk3_polling.sd_progress_broken.value_changed_signal.connect(
+            self.progress_broken)
 
         # Update the bare minimum of things for initial info
         self.ip_updater.update()
@@ -194,14 +186,14 @@ class PrusaLink:
         # sent twice
         self.ip_updater.updated_signal.connect(self.ip_updated)
 
-        self.reporting_ensurer = ReportingEnsurer(self.serial_parser,
-                                                  self.serial_queue)
-        self.reporting_ensurer.start()
+        # Leave the non-polled telemetry split from the rest
+        self.auto_telemetry = AutoTelemetry(
+            self.serial_parser, self.serial_queue, self.model)
+        self.auto_telemetry.start()
 
         # Start individual informer threads after updating manually, so nothing
         # will race with itself
         self.mk3_polling.start()
-        self.telemetry_gatherer.start()
         self.storage.start()
         self.ip_updater.start()
         self.lcd_printer.start()
@@ -275,14 +267,13 @@ class PrusaLink:
         self.telemetry_thread.join()
         self.storage.stop()
         self.lcd_printer.stop(fast)
-        self.telemetry_gatherer.stop()
         # This is for pylint to stop complaining, I'd like stop(fast) more
         if fast:
             self.ip_updater.stop()
-            self.reporting_ensurer.stop()
+            self.auto_telemetry.stop()
         else:
             self.ip_updater.proper_stop()
-            self.reporting_ensurer.proper_stop()
+            self.auto_telemetry.proper_stop()
 
         self.serial_queue.stop()
 
@@ -299,9 +290,8 @@ class PrusaLink:
             self.mk3_polling.wait_stopped()
             self.storage.wait_stopped()
             self.lcd_printer.wait_stopped()
-            self.telemetry_gatherer.wait_stopped()
             self.ip_updater.wait_stopped()
-            self.reporting_ensurer.wait_stopped()
+            self.auto_telemetry.wait_stopped()
             self.serial_queue.wait_stopped()
             self.serial.wait_stopped()
 
@@ -478,43 +468,50 @@ class PrusaLink:
         self.printer.job_id = job_id
         self.mk3_polling.ensure_job_id()
 
-    def telemetry_observed_print(self, sender):
+    def print_state_changed(self, item: WatchedItem):
+        """Handles the newly observed print state"""
+        assert item.value is not None
+        state_to_handler = {
+            PrintState.SD_PRINTING: self.observed_print,
+            PrintState.NOT_SD_PRINTING: self.observed_no_print,
+            PrintState.SD_PAUSED: self.observed_sd_pause,
+            PrintState.SERIAL_PAUSED: self.observed_serial_pause,
+        }
+        state_to_handler[item.value]()
+
+    def observed_print(self):
         """
         The telemetry can observe some states, this method connects
         it observing a print in progress to the state manager
         """
-        assert sender is not None
         self.state_manager.expect_change(
             StateChange(to_states={State.PRINTING: Source.FIRMWARE}))
         self.state_manager.printing()
         self.state_manager.stop_expecting_change()
 
-    def telemetry_observed_sd_pause(self, sender):
+    def observed_sd_pause(self):
         """
         Connects telemetry observing a paused sd print to the state manager
         """
-        assert sender is not None
         self.state_manager.expect_change(
             StateChange(to_states={State.PAUSED: Source.FIRMWARE}))
         self.state_manager.paused()
         self.state_manager.stop_expecting_change()
 
-    def telemetry_observed_serial_pause(self, sender):
+    def observed_serial_pause(self):
         """
         If the printer says the serial print is paused, but we're not serial
         printing at all, we'll resolve it by stopping whatever was going on
         before.
         """
-        assert sender is not None
         if not self.model.file_printer.printing:
             self.command_queue.enqueue_command(StopPrint())
 
-    def telemetry_observed_no_print(self, sender):
+    def observed_no_print(self):
         """
-        Usefull only when not serial printing. Connects telemetry
+        Useful only when not serial printing. Connects telemetry
         observing there's no print in progress to the state_manager
         """
-        assert sender is not None
         # When serial printing, the printer reports not printing
         # Let's ignore it in that case
         if not self.model.file_printer.printing:
@@ -523,17 +520,11 @@ class PrusaLink:
             self.state_manager.stopped_or_not_printing()
             self.state_manager.stop_expecting_change()
 
-    def telemetry_gathered(self, sender, telemetry: Telemetry):
-        """Writes updated telemetry values to the model"""
-        assert sender is not None
-        self.model.set_telemetry(telemetry)
-
-    def progress_broken(self, sender, progress_broken):
+    def progress_broken(self, progress_broken):
         """
         Connects telemetry, which can see the progress returning garbage
         values to the job component
         """
-        assert sender is not None
         self.job.progress_broken(progress_broken)
 
     def byte_position_changed(self, sender, current: int, total: int):
@@ -541,16 +532,26 @@ class PrusaLink:
         assert sender is not None
         self.job.file_position(current=current, total=total)
 
-    def file_path_observed(self, sender, path: str):
+    def mixed_path_changed(self, path: str):
         """Connects telemetry observed file path to the job component"""
-        assert sender is not None
         self.job.process_mixed_path(path)
+
+    def _new_print(self):
+        """
+        When a new print is detected, it implies some values like progress and
+        time_printing being at zero.
+        We do not want to pretend they are from the printer
+        """
+        self.model.set_telemetry(Telemetry(
+            progress=0,
+            time_printing=0
+        ))
 
     def sd_print_start_observed(self, sender, match):
         """Tells the telemetry about a new print job starting"""
         assert sender is not None
         assert match is not None
-        self.telemetry_gatherer.new_print()
+        self._new_print()
 
     def file_printer_started_printing(self, sender):
         """
@@ -559,7 +560,7 @@ class PrusaLink:
         """
         assert sender is not None
         self.state_manager.file_printer_started_printing()
-        self.telemetry_gatherer.new_print()
+        self._new_print()
 
     def file_printer_stopped_printing(self, sender):
         """Connects file printer stopping with state manager"""

@@ -77,3 +77,11 @@ class SDState(Enum):
     INITIALISING = "INITIALISING"
     UNSURE = "UNSURE"
     ABSENT = "ABSENT"
+
+
+class PrintState(Enum):
+    """States which the printer can report on its own"""
+    SD_PRINTING = "SD_PRINTING"
+    SD_PAUSED = "SD_PAUSED"
+    SERIAL_PAUSED = "SERIAL_PAUSED"
+    NOT_SD_PRINTING = "NOT_SD_PRINTING"
