@@ -3,6 +3,8 @@ Uses info updater to keep up with the printer info.
 Hope I can get most of printer polling to use this mechanism.
 """
 import logging
+import re
+from datetime import timedelta
 from packaging.version import Version
 
 from prusa.connect.printer import Printer
@@ -10,16 +12,19 @@ from prusa.connect.printer import Printer
 from .informers.job import Job
 from .input_output.serial.helpers import wait_for_instruction, \
     enqueue_matchable
-from .structures.model_classes import NetworkInfo
+from .input_output.serial.serial_parser import SerialParser
+from .structures.model_classes import NetworkInfo, Telemetry
 from .structures.regular_expressions import SN_REGEX, PRINTER_TYPE_REGEX, \
-    FW_REGEX, NOZZLE_REGEX, D3_OUTPUT_REGEX, VALID_SN_REGEX
+    FW_REGEX, NOZZLE_REGEX, D3_OUTPUT_REGEX, VALID_SN_REGEX, \
+    PERCENT_REGEX, PRINT_INFO_REGEX, M27_OUTPUT_REGEX
 from .. import errors
-from .const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE
+from .const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE, \
+    SLOW_TELEMETRY, TELEMETRY_INTERVAL, PRINT_STATE_PAIRING
 from .input_output.serial.serial_queue import \
     SerialQueue
 from .model import Model
 from .structures.item_updater import ItemUpdater, \
-    WatchedItem, WatchedGroup
+    WatchedItem, WatchedGroup, SideEffectOnly
 from .util import make_fingerprint
 
 log = logging.getLogger(__name__)
@@ -32,13 +37,14 @@ class MK3Polling:
 
     quit_interval = QUIT_INTERVAL
 
-    # pylint: disable=too-many-statements
-    def __init__(self, serial_queue: SerialQueue, printer: Printer,
-                 model: Model, job: Job):
+    # pylint: disable=too-many-statements, too-many-arguments
+    def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
+                 printer: Printer, model: Model, job: Job):
         super().__init__()
         self.item_updater = ItemUpdater()
 
         self.serial_queue = serial_queue
+        self.serial_parser = serial_parser
         self.printer = printer
         self.model = model
         self.job = job
@@ -111,6 +117,91 @@ class MK3Polling:
         for item in self.printer_info:
             item.value_changed_signal.connect(lambda value: self._send_info(),
                                               weak=False)
+        # Telemetry
+        self.speed_multiplier = WatchedItem(
+            "speed_multiplier",
+            gather_function=self._get_speed_multiplier,
+            write_function=self._set_speed_multiplier,
+            validation_function=self._validate_percent,
+            interval=TELEMETRY_INTERVAL)
+        self.item_updater.add_watched_item(self.speed_multiplier)
+
+        self.flow_multiplier = WatchedItem(
+            "flow_multiplier",
+            gather_function=self._get_flow_multiplier,
+            write_function=self._set_flow_multiplier,
+            validation_function=self._validate_percent,
+            interval=TELEMETRY_INTERVAL)
+        self.item_updater.add_watched_item(self.flow_multiplier)
+
+        # Print info can be autoreported or polled
+
+        # Only the progress gets an interval
+        # Its gatherer sets all the other values manually while other
+        # get set in cascade, converted from sooner acquired values
+        self.sd_progress = WatchedItem(
+            "sd_progress",
+            gather_function=self._get_print_info,
+            validation_function=self._validate_progress,
+            write_function=self._set_sd_progress,
+        )
+        self.item_updater.add_watched_item(self.sd_progress)
+
+        self.sd_progress_broken = WatchedItem("sd_progress_broken")
+        self.sd_progress.validation_error_signal.connect(
+            lambda: self.item_updater.set_value(self.sd_progress_broken, True))
+        self.sd_progress.became_valid_signal.connect(
+            lambda: self.item_updater.set_value(self.sd_progress_broken, False
+                                                ))
+        self.item_updater.add_watched_item(self.sd_progress_broken)
+
+        # These two times remaining update together through this
+        # convertor or whatever it is
+        self.speed_adjusted_secs_remaining = WatchedItem(
+            "speed_adjusted_secs_remaining",
+            validation_function=self._validate_time_remaining,
+            write_function=self._set_speed_adjusted_secs_remaining)
+        self.item_updater.add_watched_item(self.speed_adjusted_secs_remaining)
+
+        # Once this is set, the write function passes the value to the other
+        # watched item
+        self.speed_agnostic_mins_remaining = WatchedItem(
+            "speed_agnostic_mins_remaining",
+            validation_function=self._validate_time_remaining,
+            write_function=self._get_speed_adjusted_mins_remaining
+        )
+        self.item_updater.add_watched_item(self.speed_agnostic_mins_remaining)
+
+        self.serial_parser.add_handler(PRINT_INFO_REGEX,
+                                       self._print_info_handler)
+
+        # M27 results
+        # These are sometimes auto reported, but due to some technical
+        # limitations, I'm not able to read them when auto reported
+        self.print_state = WatchedItem("print_state",
+                                       gather_function=self._get_m27,
+                                       interval=TELEMETRY_INTERVAL,
+                                       on_fail_interval=SLOW_TELEMETRY)
+        self.item_updater.add_watched_item(self.print_state)
+
+        # short (8.3) folder names, long file name (52 chars)
+        self.mixed_path = WatchedItem("mixed_path")
+        self.item_updater.add_watched_item(self.mixed_path)
+
+        self.byte_position = WatchedItem("byte_position")
+        self.item_updater.add_watched_item(self.byte_position)
+
+        self.progress_from_bytes = WatchedItem(
+            "progress_from_bytes",
+            write_function=self._set_progress_from_bytes)
+        self.byte_position.value_changed_signal.connect(
+            self._get_progress_from_byte_position)
+        self.item_updater.add_watched_item(self.progress_from_bytes)
+
+        self.sd_seconds_printing = WatchedItem(
+            "sd_seconds_printing",
+            write_function=self._set_sd_seconds_printing)
+        self.item_updater.add_watched_item(self.sd_seconds_printing)
 
     def start(self):
         """Starts the item updater"""
@@ -138,15 +229,27 @@ class MK3Polling:
 
     def polling_not_ok(self):
         """Stops polling of some values"""
-        self.item_updater.watched_items["nozzle_diameter"].interval = None
+        self.nozzle_diameter.interval = None
+        self.flow_multiplier.interval = SLOW_TELEMETRY
+        self.speed_multiplier.interval = SLOW_TELEMETRY
+        self.sd_progress.interval = SLOW_TELEMETRY
 
-        self.item_updater.cancel_scheduled_invalidation("nozzle_diameter")
+        self.item_updater.cancel_scheduled_invalidation(self.nozzle_diameter)
+        self.item_updater.schedule_invalidation(self.flow_multiplier)
+        self.item_updater.schedule_invalidation(self.speed_multiplier)
+        self.item_updater.schedule_invalidation(self.sd_progress)
 
     def polling_ok(self):
         """Re-starts polling of some values"""
-        self.item_updater.watched_items["nozzle_diameter"].interval = 10
+        self.nozzle_diameter.interval = SLOW_TELEMETRY
+        self.flow_multiplier.interval = TELEMETRY_INTERVAL
+        self.speed_multiplier.interval = TELEMETRY_INTERVAL
+        self.sd_progress.interval = None
 
-        self.item_updater.schedule_invalidation("nozzle_diameter")
+        self.item_updater.schedule_invalidation(self.nozzle_diameter)
+        self.item_updater.schedule_invalidation(self.flow_multiplier)
+        self.item_updater.schedule_invalidation(self.speed_multiplier)
+        self.item_updater.cancel_scheduled_invalidation(self.sd_progress)
 
     def ensure_job_id(self):
         """
@@ -246,6 +349,119 @@ class MK3Polling:
                                   to_front=True)
         return int(match.group("data").replace(" ", ""), base=16)
 
+    def _get_speed_multiplier(self):
+        match = self.do_matcheble("M220", PERCENT_REGEX)
+        return int(match.group("percent"))
+
+    def _get_flow_multiplier(self):
+        match = self.do_matcheble("M221", PERCENT_REGEX)
+        return int(match.group("percent"))
+
+    def _get_print_info(self):
+        """Polls the print info, but instead of returning it, it uses
+        another method, that will eventually set it"""
+        match = self.do_matcheble("M73", PRINT_INFO_REGEX)
+        self._print_info_handler(self, match)
+
+        raise SideEffectOnly()
+
+    def _get_m27(self):
+        """Polls M27, sets all values got from it manually,
+        and returns its own"""
+        instruction = enqueue_matchable(self.serial_queue,
+                                        "M27 P",
+                                        M27_OUTPUT_REGEX,
+                                        to_front=True)
+        wait_for_instruction(instruction, self.should_wait)
+        matches = instruction.get_matches()
+        if not matches:
+            raise RuntimeError("There are no matches for M27. Very peculiar")
+
+        print_state = None
+
+        first_match = instruction.match(0)
+        if first_match:
+            self._parse_mixed_path(first_match.groupdict())
+            print_state = self._parse_print_state(first_match.groupdict())
+
+        second_match: re.Match = instruction.match(1)
+        if second_match:
+            self._parse_byte_position(second_match.groupdict())
+
+        third_match: re.Match = instruction.match(2)
+        if third_match:
+            self._parse_sd_seconds_printing(third_match.groupdict())
+
+        if print_state is None:
+            raise SideEffectOnly("Did not gather value for itself, "
+                                 "but may have for others")
+        return print_state
+
+    def _parse_print_state(self, groups):
+        """Parse a printer tracked state depending on which match group
+        is filled"""
+        # Depending on a group present, a state is set
+        for group, state in PRINT_STATE_PAIRING.items():
+            if groups[group] is not None:
+                return self.item_updater.set_value(self.print_state, state)
+        return None
+
+    def _parse_mixed_path(self, groups):
+        """Here we get a printer print state and if printing
+        a mixed length path of the file being printed from the SD card"""
+        if groups["sdn_lfn"] is not None:
+            self.item_updater.set_value(self.mixed_path, groups["sdn_lfn"])
+
+    def _parse_byte_position(self, groups):
+        """Gets the byte position of the file being sd printed"""
+        byte_position = (int(groups["current"]), int(groups["sum"]))
+        self.item_updater.set_value(self.byte_position, byte_position)
+
+    def _parse_sd_seconds_printing(self, groups):
+        """Gets the time for which we've been printing already"""
+        printing_time = timedelta(hours=int(groups["hours"]),
+                                  minutes=int(groups["minutes"]))
+        self.item_updater.set_value(self.sd_seconds_printing,
+                                    printing_time.seconds)
+
+    def _get_progress_from_byte_position(self, value):
+        """Gets a progress value out of byte position"""
+        current, total = value
+        progress = int((current / total) * 100)
+        self.item_updater.set_value(self.progress_from_bytes, progress)
+
+    def _print_info_handler(self, sender, match: re.Match):
+        """One special handler supporting polling and spontaneous
+        unsolicited reporting of progress and minutes remaining"""
+        assert sender is not None
+        groups = match.groupdict()
+
+        self.item_updater.set_value(self.sd_progress, int(groups["progress"]))
+        self.item_updater.set_value(self.speed_agnostic_mins_remaining,
+                                    int(groups["time"]))
+
+    # -- From other watched items --
+
+    def _get_speed_adjusted_mins_remaining(self, value):
+        """
+        The minutes remaining are naively multiplied by the inverse of the
+        speed multiplier
+        """
+        speed_agnostic_mins_remaining = value
+        if self.model.last_telemetry.speed is not None:
+            speed_multiplier = self.model.last_telemetry.speed / 100
+        else:
+            speed_multiplier = 1
+        inverse_speed_multiplier = 1 / speed_multiplier
+
+        mins_remaining = int(speed_agnostic_mins_remaining *
+                             inverse_speed_multiplier)
+        log.debug("Mins without speed considering %s, mins otherwise %s",
+                  speed_agnostic_mins_remaining, mins_remaining)
+        secs_remaining = mins_remaining * 60
+        self.item_updater.set_value(self.speed_adjusted_secs_remaining,
+                                    secs_remaining)
+
     # -- Validate --
 
     def _validate_serial_number(self, value):
@@ -293,6 +509,24 @@ class MK3Polling:
                              "between 0 and 999")
         return True
 
+    @staticmethod
+    def _validate_progress(value):
+        """Validates progress"""
+        if not 0 <= value <= 100:
+            raise ValueError("The progress value is outside 0 and 100, this is"
+                             " usually a perfectly normal behaviour")
+        return True
+
+    @staticmethod
+    def _validate_time_remaining(value):
+        """
+        Validates both time values because negative time
+        remaining is impossible
+        """
+        if value < 0:
+            raise ValueError("There cannot be negative time remaining")
+        return True
+
     # -- Write --
     def _set_network_info(self, value):
         """Sets network info"""
@@ -326,6 +560,66 @@ class MK3Polling:
     def _set_job_id(self, value):
         """Set the job id"""
         self.job.job_id_from_eeprom(value)
+
+    def _set_temps(self, value):
+        """Write the temps to the model"""
+        telemetry = Telemetry(temp_nozzle=float(value["ntemp"]))
+        if "btemp" in value:
+            telemetry.temp_bed = float(value["btemp"])
+        if "set_ntemp" in value and "set_btemp" in value:
+            telemetry.target_nozzle = float(value["set_ntemp"])
+            telemetry.target_bed = float(value["set_btemp"])
+        self.model.set_telemetry(telemetry)
+
+    def _set_positions(self, value):
+        """Write the position values to the model"""
+        self.model.set_telemetry(
+            Telemetry(axis_x=float(value["x"]),
+                      axis_y=float(value["y"]),
+                      axis_z=float(value["z"])))
+
+    def _set_fans(self, value):
+        """Write the fan values to the model"""
+        self.model.set_telemetry(
+            Telemetry(fan_extruder=int(value["extruder_rpm"]),
+                      fan_print=int(value["print_rpm"]),
+                      target_fan_extruder=int(value["extruder_power"]),
+                      target_fan_print=int(value["print_power"])))
+
+    def _set_speed_multiplier(self, value):
+        """Write the speed multiplier to model"""
+        self.model.set_telemetry(Telemetry(speed=value))
+
+    def _set_flow_multiplier(self, value):
+        """Write the flow multiplier to model"""
+        self.model.set_telemetry(Telemetry(flow=value))
+
+    def _set_sd_progress(self, value):
+        """Write the progress"""
+        self.model.set_telemetry(Telemetry(progress=value))
+
+    def _set_speed_adjusted_secs_remaining(self, value):
+        """sets the time remaining adjusted for speed"""
+        self.model.set_telemetry(Telemetry(time_estimated=value))
+
+    def _set_sd_seconds_printing(self, value):
+        """sets the time we've been printing"""
+        self.model.set_telemetry(Telemetry(time_printing=value))
+
+    def _set_progress_from_bytes(self, value):
+        """
+        Sets the progress gathered from the byte position,
+        But only if it's broken in the printer
+        """
+        if self.sd_progress_broken.value:
+            log.debug(
+                "SD print has no inbuilt percentage tracking, "
+                "falling back to getting progress from byte "
+                "position in the file. "
+                "Progress: %s%% Byte %s/%s", value,
+                self.byte_position.value[0], self.byte_position.value[1])
+            self.model.set_telemetry(Telemetry(progress=value))
+
 
     # -- Signal handlers --
 

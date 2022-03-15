@@ -10,6 +10,7 @@ from importlib.resources import files  # type: ignore
 from packaging.version import Version
 
 from prusa.connect.printer.const import State, PrinterType
+from .structures.model_classes import PrintState
 
 PRINTER_TYPES = {
     300: PrinterType.I3MK3,
@@ -124,3 +125,10 @@ PRINT_SPEED = limits_mk3['print_speed']
 TEMP_BED = limits_mk3['temp_bed']
 TEMP_NOZZLE = limits_mk3['temp_nozzle']
 EXTRUSION = limits_mk3['extrusion']
+
+PRINT_STATE_PAIRING = {
+    "sdn_lfn": PrintState.SD_PRINTING,
+    "sd_paused": PrintState.SD_PAUSED,
+    "serial_paused": PrintState.SERIAL_PAUSED,
+    "no_print": PrintState.NOT_SD_PRINTING,
+}
