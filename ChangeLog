@@ -1,6 +1,6 @@
 # ChangeLog
 
-0.6.1 (2022-03-15)
+0.6.1 (2022-03-16)
     * Fix negative timeout being possible in serial read
 
 0.6.0 (2021-12-17)
