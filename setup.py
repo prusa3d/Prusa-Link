@@ -118,7 +118,7 @@ class BuildStatic(Command):
 
 setup(name="prusa-link",
       version=__version__,
-      description=description,
+      description=description.split("\n", maxsplit=1)[0],
       author="Tomáš Jozífek",
       author_email="tomas.jozifek@prusa3d.cz",
       maintainer="Tomáš Jozífek",
