@@ -32,7 +32,7 @@ class ServiceDiscovery:
         one _http, because we have a web server
         and one _prusa-link because why not
         """
-        self._register_service("Prusa Link", "prusa-link")
+        self._register_service("Prusa Link", "prusalink")
         self._register_service("Prusa Link", "http")
 
         # legacy slicer support
