@@ -240,24 +240,34 @@ def api_files(req, path=''):
 def api_upload(req, target):
     """Function for uploading G-CODE."""
     # pylint: disable=too-many-locals
-    form = FieldStorage(req,
-                        keep_blank_values=app.keep_blank_values,
-                        strict_parsing=app.strict_parsing,
-                        file_callback=callback_factory(req))
+
+    def failed_upload_handler(transfer):
+        """Cancels the file transfer"""
+        event_cb = app.daemon.prusa_link.printer.event_cb
+        event_cb(const.Event.TRANSFER_ABORTED, const.Source.USER)
+        transfer.type = const.TransferType.NO_TRANSFER
+
+    transfer = app.daemon.prusa_link.printer.transfer
+    try:
+        form = FieldStorage(req,
+                            keep_blank_values=app.keep_blank_values,
+                            strict_parsing=app.strict_parsing,
+                            file_callback=callback_factory(req))
+    except TimeoutError as exception:
+        log.error("Oh no. Upload of a file timed out")
+        failed_upload_handler(transfer)
+        raise errors.RequestTimeout() from exception
 
     if 'file' not in form:
         raise errors.NoFileInRequest()
 
     filename = form['file'].filename
     part_path = partfilepath(filename)
-    transfer = app.daemon.prusa_link.printer.transfer
 
     if form.bytes_read != req.content_length:
         log.error("File uploading not complete")
         unlink(part_path)
-        event_cb = app.daemon.prusa_link.printer.event_cb
-        event_cb(const.Event.TRANSFER_ABORTED, const.Source.USER)
-        transfer.type = const.TransferType.NO_TRANSFER
+        failed_upload_handler(transfer)
         raise errors.FileSizeMismatch()
 
     foldername = form.get('path', '/')

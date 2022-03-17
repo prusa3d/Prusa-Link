@@ -324,3 +324,12 @@ class PrinterUnavailable(LinkError):
     text = "PrusaLink not finished initializing or Printer not connected."
     id = "printer-unavailable"
     status_code = state.HTTP_SERVICE_UNAVAILABLE
+
+
+class RequestTimeout(LinkError):
+    """408 Request timeout."""
+    title = "Request timeout."
+    text = "PrusaLink got tired of waiting for your request. " \
+           "cancelled upload?"
+    id = "request-timeout"
+    status_code = state.HTTP_REQUEST_TIME_OUT
