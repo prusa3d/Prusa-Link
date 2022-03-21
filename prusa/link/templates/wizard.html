@@ -7,13 +7,17 @@
 <div class="container">
     <div class="row">
         <div class="col-md-12">
-            <h1 class="align-center">Welcome to Prusa Link configuration Wizard</h1>
+            <h1 class="align-center">Welcome to PrusaLink configuration Wizard</h1>
             {% if not wizard.daemon.prusa_link or not wizard.daemon.prusa_link.printer %}
 
-            <h3>There is problem in communication with printer</h3>
-            <p>Please check printer settings, if RPi port is on, and if Prusa Link is connected to printer correctly. Prusa Link gives some time to printer until printer is ready.</p>
+            <h3>We have encountered problems talking to your printer</h3>
+            <p>Please make sure the RPi port is set to ON and your printer is idle, showing the status screen.
+                You can also try going over your connections one more time.</p>
 
-            <p>Wait a few seconds and refresh the page. If problems still persists, try to power off and power on your printer / Prusa Link and try it again.</p>
+            <p>PrusaLink takes some time to properly initialize. Try waiting a few seconds and refresh the page. If the problem still persists, power cycle your printer / PrusaLink and try again.</p>
+
+            <p>If everything fails, let us know on <a href="https://forum.prusaprinters.org/forum/prusa-connect-prusalink/">the forum</a>
+                or contact support at info@prusa3d.com</p>
 
             {# TODO: some prusa-link log to see what's happen. #}
 
@@ -32,11 +36,18 @@
 
             <div class="container navigation">
                 <div class="row">
-                {% if not errors.FW.ok %}
+                {% if not errors.ID.ok %}
+                    <div class="col" style="text-align: center;">Unfortunately your printer is  not supported<br /><br />
+                        Only the MK3, MK3S and MK3S+ printers are supported. If you think this is a bug, consider
+                        starting a new thread on
+                        <a href="https://forum.prusaprinters.org/forum/prusa-connect-prusalink/">our forum</a>
+                        or contacting support at info@prusa3d.com
+                    </div>
+                {% elif not errors.FW.ok %}
                     <div class="col" style="text-align: center;">Firmware is not up to date, please update it!<br /><br />
-                        You can download latest stable firmware at <a href="https://prusa3d.com/drivers" target="_blank">Drivers, Firmware and Manuals</a> download page.<br />
+                        You can download the latest stable firmware at <a href="https://prusa3d.com/drivers" target="_blank">Drivers, Firmware and Manuals</a> download page.<br />
                         Follow the instructions in this <a href="https://help.prusa3d.com/en/guide/upgrading-the-firmware-original-prusa-i3_24720" target="_blank">guide</a>.<br /><br />
-                        After upgrading the firmware, run this wizard again.
+                        After upgrading, run this wizard again.
                     </div>
                 {% elif not errors.SN.ok %}
                     <div class="col"><b>Great!</b> You can continue to set Serial Number</div>
