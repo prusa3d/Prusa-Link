@@ -71,12 +71,14 @@ def api_settings_set(req):
         for character in INVALID_CHARACTERS:
             if character in name or character in location:
                 errors_ = {
-                    'title':'invalid_characters',
-                    'message': PRINTER_INVALID_CHARACTERS}
+                    'title': 'invalid_characters',
+                    'message': PRINTER_INVALID_CHARACTERS
+                }
         if not name or not location:
             errors_ = {
-                'title':'missing_name',
-                'message': PRINTER_MISSING_NAME}
+                'title': 'missing_name',
+                'message': PRINTER_MISSING_NAME
+            }
 
     # user settings
     if user:

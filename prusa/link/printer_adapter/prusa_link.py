@@ -75,8 +75,8 @@ class PrusaLink:
         self.model = Model()
 
         self.service_discovery = ServiceDiscovery(self.cfg)
-        self.sd_registerer = Thread(
-            target=self.service_discovery.register, daemon=True)
+        self.sd_registerer = Thread(target=self.service_discovery.register,
+                                    daemon=True)
         self.sd_registerer.start()
 
         self.serial_parser = SerialParser()
@@ -251,7 +251,7 @@ class PrusaLink:
                 if result:
                     print(result)
             # pylint: disable=bare-except
-            except:
+            except:  # noqa: E722
                 log.exception("Debug console errored out")
 
     def stop(self, fast=False):

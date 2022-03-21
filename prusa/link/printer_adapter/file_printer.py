@@ -112,7 +112,8 @@ class FilePrinter(metaclass=MCSingleton):
             raise RuntimeError("Cannot print two things at once")
 
         self.data.file_path = os_path
-        self.thread = Thread(target=self._print, name="file_print",
+        self.thread = Thread(target=self._print,
+                             name="file_print",
                              daemon=True)
         self.data.printing = True
         self.data.stopped_forcefully = False

@@ -17,7 +17,6 @@ class ServiceDiscovery:
     A class implementing methods for easy registration of PrusaLink as
     a network service to be discoverable by prusa-slicer and alike
     """
-
     def __init__(self, config: Config):
         """Loads configuration and inits Zeroconf"""
         self.zeroconf = Zeroconf()
@@ -51,12 +50,12 @@ class ServiceDiscovery:
             http://www.dns-sd.org/ServiceTypes.html
             https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xml
         """
-        info = ServiceInfo(
-            type_=f"_{service_type}._tcp.local.",
-            name=f"{name}._{service_type}._tcp.local.",
-            port=self.port,
-            server=f"{self.hostname}.local",
-            properties={"path": "/"})
-        log.debug("Registering service name: %s, type: %s, port: %s, "
-                  "server: %s", info.name, info.type, info.port, info.server)
+        info = ServiceInfo(type_=f"_{service_type}._tcp.local.",
+                           name=f"{name}._{service_type}._tcp.local.",
+                           port=self.port,
+                           server=f"{self.hostname}.local",
+                           properties={"path": "/"})
+        log.debug(
+            "Registering service name: %s, type: %s, port: %s, "
+            "server: %s", info.name, info.type, info.port, info.server)
         self.zeroconf.register_service(info)

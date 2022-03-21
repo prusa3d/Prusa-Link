@@ -18,7 +18,8 @@ from prusa.connect.printer.errors import HTTP, API, TOKEN, INTERNET
 from .structures.model_classes import JobState
 from .const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL, SLEEP_SCREEN_TIMEOUT
 from .model import Model
-from .input_output.serial.helpers import enqueue_instruction, wait_for_instruction
+from .input_output.serial.helpers import enqueue_instruction, \
+        wait_for_instruction
 from .input_output.serial.serial_queue import SerialQueue
 from .input_output.serial.serial_parser import SerialParser
 from .structures.mc_singleton import MCSingleton
@@ -30,10 +31,7 @@ from ..errors import Categories, TAILS, LAN, RPI_ENABLED, ID, FW, SN, JOB_ID
 log = logging.getLogger(__name__)
 
 WELCOME_TONE = [
-    "M300 P100 S3200",
-    "M300 P25 S0",
-    "M300 P25 S4800",
-    "M300 P75 S0",
+    "M300 P100 S3200", "M300 P25 S0", "M300 P25 S4800", "M300 P75 S0",
     "M300 P25 S4800"
 ]
 
@@ -55,17 +53,12 @@ ERROR_MESSAGES = {
 }
 
 FROM_TRANSFER_TYPES = {
-    TransferType.FROM_PRINTER,
-    TransferType.FROM_WEB,
-    TransferType.FROM_CONNECT,
-    TransferType.FROM_CLIENT,
+    TransferType.FROM_PRINTER, TransferType.FROM_WEB,
+    TransferType.FROM_CONNECT, TransferType.FROM_CLIENT,
     TransferType.FROM_SLICER
 }
 
-TO_TRANSFER_TYPES = {
-    TransferType.TO_CONNECT,
-    TransferType.TO_CLIENT
-}
+TO_TRANSFER_TYPES = {TransferType.TO_CONNECT, TransferType.TO_CLIENT}
 
 
 class LCDLine:
@@ -95,8 +88,13 @@ class DisplayThing:
         self.conditions = {}
 
     # pylint: disable=too-many-arguments
-    def set_text(self, text, scroll_delay=2.0, first_line_extra=2.0,
-                 scroll_amount=10, last_screen_extra=1.0, to_clear=True):
+    def set_text(self,
+                 text,
+                 scroll_delay=2.0,
+                 first_line_extra=2.0,
+                 scroll_amount=10,
+                 last_screen_extra=1.0,
+                 to_clear=True):
         """
         Given text and parameters, it sets up the "screen" with your text
 
@@ -110,8 +108,8 @@ class DisplayThing:
             self.clear()
         remaining_text = text
         if len(text) < 19:
-            self.lines.append(LCDLine(
-                text, delay=scroll_delay+first_line_extra))
+            self.lines.append(
+                LCDLine(text, delay=scroll_delay + first_line_extra))
         else:
             while True:
                 line = LCDLine(remaining_text[:19], delay=scroll_delay)
@@ -259,7 +257,8 @@ class LCDPrinter(metaclass=MCSingleton):
             self.error_display,
             # self.message_display,
             self.wizard_display,
-            self.upload_display]
+            self.upload_display
+        ]
 
         self.current_thing = None
         self.currently_displayable: List[DisplayThing] = []
@@ -354,7 +353,8 @@ class LCDPrinter(metaclass=MCSingleton):
                     text += f"see {self.model.ip_updater.local_ip}".ljust(19)
                 else:
                     text += "Connect Link to LAN".ljust(19)
-                self.error_display.set_text(text, scroll_amount=19,
+                self.error_display.set_text(text,
+                                            scroll_amount=19,
                                             last_screen_extra=8)
 
             if self.model.job.job_state == JobState.IN_PROGRESS:
@@ -423,9 +423,10 @@ class LCDPrinter(metaclass=MCSingleton):
             progress_graphic += string_progress
             progress_graphic += progress_background[centering_index +
                                                     len(string_progress):]
-            self.upload_display.set_text(
-                progress_graphic, scroll_delay=0.5, last_screen_extra=0,
-                first_line_extra=0)
+            self.upload_display.set_text(progress_graphic,
+                                         scroll_delay=0.5,
+                                         last_screen_extra=0,
+                                         first_line_extra=0)
         else:
             self.upload_display.disable()
 
@@ -550,8 +551,9 @@ class LCDPrinter(metaclass=MCSingleton):
         ascii_text = unidecode.unidecode(text)
         self.ignore += 1
         self.reset_idle()
-        return enqueue_instruction(
-            self.serial_queue, f"M117 {prefix}{ascii_text}", to_front=True)
+        return enqueue_instruction(self.serial_queue,
+                                   f"M117 {prefix}{ascii_text}",
+                                   to_front=True)
 
     def reset_idle(self):
         """Reset the idle time form to the current time"""
@@ -582,7 +584,6 @@ class LCDPrinter(metaclass=MCSingleton):
         We can display only one at a time, this decides which one
         Returns None if no error is found
         """
-
         def is_ignored(evaluated_error):
             """
             Ignore connect errors when it's not even configured

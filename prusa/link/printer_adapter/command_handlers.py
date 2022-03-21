@@ -66,9 +66,7 @@ class TryUntilState(Command):
         if self.state_manager.get_state() not in desired_states:
             to_states = {desired: self.source for desired in desired_states}
             self.state_manager.expect_change(
-                StateChange(
-                    command_id=self.command_id,
-                    to_states=to_states))
+                StateChange(command_id=self.command_id, to_states=to_states))
         state_list = list(map(lambda item: item.name, desired_states))
         state_names = ", ".join(state_list)
 
@@ -445,8 +443,7 @@ class JobInfo(Command):
                         "when there is no job in progress.")
 
         if self.model.job.job_id is None:
-            self.failed("Cannot get job info, "
-                        "don't know the job id yet.")
+            self.failed("Cannot get job info, " "don't know the job id yet.")
 
         # Happens when launching into a paused print
         if self.model.job.selected_file_path is None:
