@@ -1,3 +1,6 @@
 [submodule "prusa-link-web"]
 	path = Prusa-Link-Web
 	url = git@github.com:prusa3d/Prusa-Link-Web.git
+[submodule "PiShrink"]
+	path = PiShrink
+	url = https://github.com/Drewsif/PiShrink
