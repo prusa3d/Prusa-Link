@@ -50,12 +50,12 @@ PRINT_DONE_REGEX = re.compile(r"^Done printing file$")
 # reset using M999 or manual button, with connect, only manual reset shall
 # be accepted
 
-ERROR_REGEX = re.compile(
-    r"(Error:("
-    r"(?P<kill>Printer halted\. kill\(\) called!)|"
-    r"(?P<stop>Printer stopped due to errors\..*)))")
+ERROR_REGEX = re.compile(r"(Error:("
+                         r"(?P<kill>Printer halted\. kill\(\) called!)|"
+                         r"(?P<stop>Printer stopped due to errors\..*)))")
 
 ERROR_REASON_REGEX = re.compile(
+    # flake8: noqa
     r"(Error:("
     r"(?P<temp>(0: )?Heaters switched off\. "
     r"M((?P<mintemp>IN)|(?P<maxtemp>AX))TEMP (?P<bed>BED )?triggered!)|"
@@ -107,4 +107,5 @@ LCD_UPDATE_REGEX = re.compile(r"^LCD status changed$")
 M110_REGEX = re.compile(r"^(N\d+)? *M110 ?N(?P<cmd_number>-?\d*)$")
 FAN_ERROR_REGEX = re.compile(
     r"^(?P<fan_name>Extruder|Print) fan speed is lower than expected$")
-D3_OUTPUT_REGEX = re.compile(r"^(?P<address>\w{2,}) {2}(?P<data>([0-9a-fA-F]{2} ?)+)$")
+D3_OUTPUT_REGEX = re.compile(
+    r"^(?P<address>\w{2,}) {2}(?P<data>([0-9a-fA-F]{2} ?)+)$")

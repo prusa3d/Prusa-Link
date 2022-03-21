@@ -214,11 +214,11 @@ def api_files(req, path=''):
     if path:
         files = file_system.get(path)
         if files:
-            files = [file_to_api(child) for child in files
-                .to_dict()["children"]]
+            files = [
+                file_to_api(child) for child in files.to_dict()["children"]
+            ]
         else:
-            return Response(status_code=state.HTTP_NOT_FOUND,
-                            headers=headers)
+            return Response(status_code=state.HTTP_NOT_FOUND, headers=headers)
     else:
         files = [file_to_api(child) for child in data.get("children", [])]
 
@@ -240,6 +240,7 @@ def api_files(req, path=''):
 @check_target
 def api_upload(req, target):
     """Function for uploading G-CODE."""
+
     # pylint: disable=too-many-locals
 
     def failed_upload_handler(transfer):
@@ -359,9 +360,7 @@ def api_downloads(req, target, path):
     if os_path is None:
         raise errors.FileNotFound()
 
-    headers = {
-        "Content-Disposition":f"attachment;filename=\"{filename}\""
-    }
+    headers = {"Content-Disposition": f"attachment;filename=\"{filename}\""}
     return FileResponse(os_path, headers=headers)
 
 
@@ -526,8 +525,6 @@ def api_modify(req, target):
     path = dirname(destination)
 
     job = Job.get_instance()
-
-
 
     if job.data.job_state == JobState.IN_PROGRESS and \
             source == get_os_path(job.data.selected_file_path):

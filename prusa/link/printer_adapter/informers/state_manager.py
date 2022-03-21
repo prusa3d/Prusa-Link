@@ -256,6 +256,7 @@ class StateManager(metaclass=MCSingleton):
             state_change = self.expected_state_change
             expecting_change = state_change is not None
             if expecting_change:
+                # flake8: noqa
                 expected_to = self.data.current_state in state_change.to_states
                 expected_from = self.data.last_state in state_change.from_states
                 has_default_source = state_change.default_source is not None
@@ -323,8 +324,8 @@ class StateManager(metaclass=MCSingleton):
                 self.data.last_state = self.data.current_state
                 self.data.current_state = self.get_state()
                 self.data.state_history.append(self.data.current_state)
-                log.debug("Changing state from %s to %s",
-                          self.data.last_state, self.data.current_state)
+                log.debug("Changing state from %s to %s", self.data.last_state,
+                          self.data.current_state)
 
                 # Now let's find out if the state change was expected
                 # and what parameters can we deduce from that
@@ -334,8 +335,7 @@ class StateManager(metaclass=MCSingleton):
                 prepared = False
 
                 if self.data.printing_state is not None:
-                    log.debug("We are printing - %s",
-                              self.data.printing_state)
+                    log.debug("We are printing - %s", self.data.printing_state)
 
                 if self.data.override_state is not None:
                     log.debug("State is overridden by %s",
@@ -350,21 +350,22 @@ class StateManager(metaclass=MCSingleton):
                     reason = self.expected_state_change.reason
                     prepared = self.expected_state_change.prepared
                     if reason is not None:
-                        log.debug("Reason for %s: %s",
-                                  self.get_state(), reason)
+                        log.debug("Reason for %s: %s", self.get_state(),
+                                  reason)
                 else:
                     log.debug("Unexpected state change. This is weird")
                 self.expected_state_change = None
 
                 self.pre_state_change_signal.send(self, command_id=command_id)
 
-                self.state_changed_signal.send(self,
-                                               from_state=self.data.last_state,
-                                               to_state=self.data.current_state,
-                                               command_id=command_id,
-                                               source=source,
-                                               reason=reason,
-                                               prepared=prepared)
+                self.state_changed_signal.send(
+                    self,
+                    from_state=self.data.last_state,
+                    to_state=self.data.current_state,
+                    command_id=command_id,
+                    source=source,
+                    reason=reason,
+                    prepared=prepared)
                 self.post_state_change_signal.send(self)
 
     def fan_error(self, sender, match: re.Match):
@@ -398,8 +399,7 @@ class StateManager(metaclass=MCSingleton):
 
         reason = self.parse_error_reason(groups)
         self.expect_change(
-            StateChange(to_states={State.ERROR: Source.MARLIN},
-                        reason=reason))
+            StateChange(to_states={State.ERROR: Source.MARLIN}, reason=reason))
 
         HW.ok = False
 

@@ -26,9 +26,8 @@ class Job(metaclass=MCSingleton):
     """Keeps track of print jobs and their properties"""
 
     # pylint: disable=too-many-arguments
-    def __init__(self, serial_parser: SerialParser,
-                 serial_queue: SerialQueue, model: Model,
-                 cfg: Config, printer: Printer):
+    def __init__(self, serial_parser: SerialParser, serial_queue: SerialQueue,
+                 model: Model, cfg: Config, printer: Printer):
         # Sent every time the job id should disappear, appear or update
         self.printer = printer
         self.serial_parser = serial_parser

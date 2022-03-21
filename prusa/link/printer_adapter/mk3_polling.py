@@ -159,12 +159,14 @@ class MK3Polling:
         def job_became_valid(item):
             self.job_id.became_valid_signal.disconnect(job_became_valid)
             if self.model.job.job_id != item.value:
-                log.warning("Job id on the printer: %s differs from the local"
-                            " one: %s!", item.value, self.model.job.job_id)
+                log.warning(
+                    "Job id on the printer: %s differs from the local"
+                    " one: %s!", item.value, self.model.job.job_id)
                 self.job.write()
                 self.ensure_job_id()
 
-        self.item_updater.schedule_invalidation(ambiguous_item=self.job_id, interval=1)
+        self.item_updater.schedule_invalidation(ambiguous_item=self.job_id,
+                                                interval=1)
         self.job_id.became_valid_signal.connect(job_became_valid)
 
     # -- Gather --
@@ -241,7 +243,9 @@ class MK3Polling:
 
     def _get_job_id(self):
         """Gets the current job_id from the printer"""
-        match = self.do_matcheble("D3 Ax0D05 C4", D3_OUTPUT_REGEX, to_front=True)
+        match = self.do_matcheble("D3 Ax0D05 C4",
+                                  D3_OUTPUT_REGEX,
+                                  to_front=True)
         return int(match.group("data").replace(" ", ""), base=16)
 
     # -- Validate --

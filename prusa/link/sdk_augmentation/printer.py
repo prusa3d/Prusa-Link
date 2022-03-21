@@ -26,7 +26,6 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
     Overrides some methods of the SDK Printer to provide better support for
     Prusa Link
     """
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.lcd_printer = LCDPrinter.get_instance()

@@ -50,12 +50,16 @@ SN = ErrorState("SN", "Serial number cannot be obtained", prev=JOB_ID)
 HW = ErrorState("HW", "Firmware detected a hardware issue")
 
 # first and last elements for all available error state chains
-HEADS = {Categories.PRINTER: SERIAL,
-         Categories.NETWORK: DEVICE,
-         Categories.HARDWARE: HW}
-TAILS = {Categories.PRINTER: SN,
-         Categories.NETWORK: API,
-         Categories.HARDWARE: HW}
+HEADS = {
+    Categories.PRINTER: SERIAL,
+    Categories.NETWORK: DEVICE,
+    Categories.HARDWARE: HW
+}
+TAILS = {
+    Categories.PRINTER: SN,
+    Categories.NETWORK: API,
+    Categories.HARDWARE: HW
+}
 
 
 def status():
