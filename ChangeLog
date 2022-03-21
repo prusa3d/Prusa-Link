@@ -35,6 +35,7 @@
     * Use "Sync|->:" and "Sync->|:" to signify which way is the current transfer going
     * Add DNS service discovery compatible with prusa-slicer
     * Support file upload cancels from prusa-slicer (once PoorWSGI updates)
+    * Added endpoints for create and delete of folder and relocating the file
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder

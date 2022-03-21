@@ -168,6 +168,13 @@ class BadRequestError(LinkError):
     status_code = state.HTTP_BAD_REQUEST
 
 
+class DestinationSameAsSource(BadRequestError):
+    """400 Destination is same as source"""
+    title = "Destination same as source"
+    text = "Destination to move file is same as the source of the file"
+    id = "destination-same-as-source"
+
+
 class NoFileInRequest(BadRequestError):
     """400 File not found in request payload."""
     title = "Missing file in payload."

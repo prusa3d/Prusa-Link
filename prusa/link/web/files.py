@@ -8,6 +8,7 @@ from hashlib import md5
 from time import sleep, time
 from io import FileIO
 from functools import wraps
+from shutil import move, rmtree
 
 import logging
 
@@ -474,6 +475,76 @@ def api_download(req, target):
 
     download_mgr.start(const.TransferType.FROM_WEB, path, url, to_print,
                        to_select)
+
+    return Response(status_code=state.HTTP_CREATED)
+
+
+@app.route('/api/folder/<target>/<path:re:.+>', method=state.METHOD_POST)
+@check_api_digest
+@check_target
+def api_create_folder(req, target, path):
+    """Create a folder in a path"""
+    # pylint: disable=unused-argument
+    os_path = get_os_path('/Prusa Link gcodes')
+    path = join(os_path, path)
+
+    if not exists(path):
+        makedirs(path)
+    else:
+        return Response(status_code=state.HTTP_CONFLICT)
+
+    return Response(status_code=state.HTTP_CREATED)
+
+
+@app.route('/api/folder/<target>/<path:re:.+>', method=state.METHOD_DELETE)
+@check_api_digest
+@check_target
+def api_delete_folder(req, target, path):
+    """Delete a folder in a path"""
+    # pylint: disable=unused-argument
+    os_path = get_os_path('/Prusa Link gcodes')
+    path = join(os_path, path)
+
+    if exists(path):
+        rmtree(path)
+        return Response(status_code=state.HTTP_OK)
+
+    return Response(status_code=state.HTTP_CONFLICT)
+
+
+@app.route('/api/modify/<target>', method=state.METHOD_POST)
+@check_api_digest
+@check_target
+def api_modify(req, target):
+    """Move file to another directory or/and change its name"""
+    # pylint: disable=unused-argument
+    os_path = get_os_path('/Prusa Link gcodes')
+
+    source = join(os_path, req.json.get('source'))
+    destination = join(os_path, req.json.get('destination'))
+
+    path = dirname(destination)
+
+    job = Job.get_instance()
+
+
+
+    if job.data.job_state == JobState.IN_PROGRESS and \
+            source == get_os_path(job.data.selected_file_path):
+        raise errors.FileCurrentlyPrinted()
+
+    if source == destination:
+        raise errors.DestinationSameAsSource
+
+    if not exists(source):
+        raise errors.FileNotFound
+
+    if not exists(path):
+        try:
+            makedirs(path)
+            move(source, destination)
+        except PermissionError as error:
+            raise error
 
     return Response(status_code=state.HTTP_CREATED)
 
