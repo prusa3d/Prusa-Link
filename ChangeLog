@@ -36,6 +36,20 @@
     * Add DNS service discovery compatible with prusa-slicer
     * Support file upload cancels from prusa-slicer (once PoorWSGI updates)
     * Added endpoints for create and delete of folder and relocating the file
+    * Static web update:
+      - Fix big log files displaying
+      - Decrease display log file size limit to 1M
+      - Change temperature controls widget number format to display integers
+      - Add stop/resume print button
+      - Add protection from steppers disabling when printing
+      - Fix upload widget toggles on interaction with projects list
+      - Fix sidebar width
+      - Replace PNG icons with SVG
+      - Fix router, telemetry graph dinmensions and page layout
+      - Update error handling to avoid duplicates of popups
+      - Add FE version output to console log
+      - Add support for file extensions provided by printer profiles from API
+      - Fix display names of origins
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
