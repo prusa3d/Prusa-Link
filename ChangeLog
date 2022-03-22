@@ -50,6 +50,12 @@
       - Add FE version output to console log
       - Add support for file extensions provided by printer profiles from API
       - Fix display names of origins
+      - New application design
+      - New field to rename project file uploaded by URL
+      - New widget displaying used/free size (not-connected to printer yet)
+      - New Rename and Copy actions (hidden)
+      - New tool to unify icons colors
+      - Fixed icons colors
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
