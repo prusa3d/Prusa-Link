@@ -9,7 +9,7 @@ from prusa.connect.printer import Printer
 
 from .informers.job import Job
 from .input_output.serial.helpers import wait_for_instruction, \
-    enqueue_matchable, enqueue_instruction
+    enqueue_matchable
 from .structures.model_classes import NetworkInfo
 from .structures.regular_expressions import SN_REGEX, PRINTER_TYPE_REGEX, \
     FW_REGEX, NOZZLE_REGEX, D3_OUTPUT_REGEX, VALID_SN_REGEX
@@ -57,11 +57,9 @@ class MK3Polling:
             validation_function=self._validate_printer_type)
         self.item_updater.add_watched_item(self.printer_type)
         self.printer_type.became_valid_signal.connect(
-            lambda item: self._set_fw_error(True), weak=False)
+            lambda item: self._set_id_error(True), weak=False)
         self.printer_type.val_err_timeout_signal.connect(
-            lambda item: self._set_fw_error(False), weak=False)
-        self.printer_type.validation_error_signal.connect(
-            self._printer_type_validation_error)
+            lambda item: self._set_id_error(False), weak=False)
 
         self.firmware_version = WatchedItem(
             "firmware_version",
@@ -70,9 +68,9 @@ class MK3Polling:
             validation_function=self._validate_fw_version)
         self.item_updater.add_watched_item(self.firmware_version)
         self.firmware_version.became_valid_signal.connect(
-            lambda item: self._set_id_error(True), weak=False)
+            lambda item: self._set_fw_error(True), weak=False)
         self.firmware_version.val_err_timeout_signal.connect(
-            lambda item: self._set_id_error(False), weak=False)
+            lambda item: self._set_fw_error(False), weak=False)
 
         self.nozzle_diameter = WatchedItem(
             "nozzle_diameter",
@@ -350,18 +348,6 @@ class MK3Polling:
     def _set_job_id_error(value):
         """Needs to exist because we cannot assign in lambdas"""
         errors.JOB_ID.ok = value
-
-    def _printer_type_validation_error(self, item, exception):
-        """Failed when getting printer type, let's notify the user"""
-        assert item is not None
-        # TODO: improve this by a centralised error announcement component
-        if isinstance(exception, ValueError):
-            instruction = enqueue_instruction(self.serial_queue,
-                                              "M0 Invalid printer type")
-        else:
-            instruction = enqueue_instruction(self.serial_queue,
-                                              "M0 Printer type changed")
-        wait_for_instruction(instruction, self.should_wait)
 
     def _send_info(self):
         """

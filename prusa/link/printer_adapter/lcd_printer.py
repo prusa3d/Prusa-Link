@@ -41,7 +41,7 @@ UPLOAD_TONE = ["M300 P12 S50"]
 
 ERROR_MESSAGES = {
     RPI_ENABLED: "Err Enable RPi port",
-    ID: "Error not a PRUSA",
+    ID: "Unsupported printer",
     FW: "Err unsupported FW",
     SN: "Err obtaining S/N",
     JOB_ID: "Err reading job id",
