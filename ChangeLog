@@ -57,6 +57,7 @@
       - New tool to unify icons colors
       - Fixed icons colors
      * Differentiate between FW and ID errors in the wizard, update texts
+     * Fix ID error being swapped with the FW error
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
