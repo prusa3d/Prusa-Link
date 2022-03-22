@@ -5,7 +5,7 @@ As of now only DNS-SD is supported
 import logging
 import socket
 
-from zeroconf import Zeroconf, ServiceInfo
+from zeroconf import Zeroconf, ServiceInfo, NonUniqueNameException
 
 from ..config import Config
 
@@ -22,6 +22,7 @@ class ServiceDiscovery:
         self.zeroconf = Zeroconf()
         self.port = config.http.port
         self.hostname = socket.gethostname()
+        self.number = 0
 
     def register(self):
         """
@@ -31,11 +32,11 @@ class ServiceDiscovery:
         one _http, because we have a web server
         and one _prusa-link because why not
         """
-        self._register_service("Prusa Link", "prusalink")
-        self._register_service("Prusa Link", "http")
+        self._register_service("PrusaLink", "prusalink")
+        self._register_service("PrusaLink", "http")
 
         # legacy slicer support
-        self._register_service("Prusa Link", "octoprint")
+        self._register_service("PrusaLink", "octoprint")
 
     def unregister(self):
         """Unregisters all services"""
@@ -50,12 +51,27 @@ class ServiceDiscovery:
             http://www.dns-sd.org/ServiceTypes.html
             https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xml
         """
-        info = ServiceInfo(type_=f"_{service_type}._tcp.local.",
-                           name=f"{name}._{service_type}._tcp.local.",
-                           port=self.port,
-                           server=f"{self.hostname}.local",
-                           properties={"path": "/"})
+        number = self.number
+        while True:
+            name_to_use = f"{name} at {self.hostname}:{self.port}"
+            if number > 0:
+                name_to_use += f" ({number})"
+            try:
+                info = ServiceInfo(type_=f"_{service_type}._tcp.local.",
+                                   name=f"{name_to_use}._{service_type}"
+                                        f"._tcp.local.",
+                                   port=self.port,
+                                   server=f"{self.hostname}.local",
+                                   properties={"path": "/"})
+                self.zeroconf.register_service(info)
+            except NonUniqueNameException:
+                number += 1
+            else:
+                break
+        self.number = number
+        if number > 0:
+            log.warning("Registered service named identically to others #%s"
+                        , number)
         log.debug(
-            "Registering service name: %s, type: %s, port: %s, "
+            "Registered service name: %s, type: %s, port: %s, "
             "server: %s", info.name, info.type, info.port, info.server)
-        self.zeroconf.register_service(info)
