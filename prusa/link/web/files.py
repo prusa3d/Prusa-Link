@@ -179,6 +179,7 @@ def api_files(req, path=''):
     Returns info about all available print files or
     about print files in specific directory
     """
+    #pylint: disable=too-many-locals
     file_system = app.daemon.prusa_link.printer.fs
 
     last_updated = 0
@@ -228,11 +229,14 @@ def api_files(req, path=''):
             break
 
     mount = file_system.mounts.get(mount_path)
-    free = hbytes(mount.get_free_space()) if mount else (0, "B")
+    space_info = mount.get_space_info()
+    free = hbytes(space_info.get("free_space")) if mount else (0, "B")
+    total = hbytes(space_info.get("total_space")) if mount else (0, "B")
 
     return JSONResponse(headers=headers,
                         files=sort_files(filter(None, files)),
-                        free=f"{int(free[0])} {free[1]}")
+                        free=f"{int(free[0])} {free[1]}",
+                        total=f"{int(total[0])} {total[1]}")
 
 
 @app.route('/api/files/<target>', method=state.METHOD_POST)
