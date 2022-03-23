@@ -36,7 +36,7 @@ def local_refs(path, thumbnails):
         thumbnail = f"/api/thumbnails{path}.orig.png"
     return {
         'resource': f"/api/files/local{path}",
-        'download': f"/api/downloads/local{path}",
+        'download': f"/api/files/local{path}/raw",
         'thumbnailSmall': None,
         'thumbnailBig': thumbnail,
     }
