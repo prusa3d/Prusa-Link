@@ -176,7 +176,12 @@ def api_printer(req):
     tel = prusa_link.model.last_telemetry
     sd_ready = prusa_link.sd_ready
     printer = prusa_link.printer
+    mounts = printer.fs.mounts
     operational = tel.state in (State.READY, State.FINISHED, State.STOPPED)
+
+    space_info = mounts["Prusa Link gcodes"].get_space_info()
+    free_space = space_info["free_space"]
+    total_space = space_info["total_space"]
 
     return JSONResponse(
         **{
@@ -218,6 +223,13 @@ def api_printer(req):
                 "axis_x": tel.axis_x,
                 "axis_y": tel.axis_y,
                 "axis_z": tel.axis_z
+            },
+            "storage": {
+                "local": {
+                    "free_space": free_space,
+                    "total_space": total_space
+                },
+                "sd_card": None
             }
         })
 
