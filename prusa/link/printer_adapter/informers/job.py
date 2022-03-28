@@ -165,7 +165,6 @@ class Job(metaclass=MCSingleton):
         :param prepend_sd_mountpoint: Whether to prepend the SD Card
         mountpoint name
         """
-
         # If asked to, prepend the SD mount name
         if prepend_sd_mountpoint:
             # Path joins don't work on paths with leading slashes
@@ -181,9 +180,7 @@ class Job(metaclass=MCSingleton):
             "known path=%s", path, path_incomplete, self.data.path_incomplete,
             self.data.job_state, self.data.selected_file_path)
         # If we have a full path, don't overwrite it with an incomplete one
-        # Also don't overwrite with the same path
-        if path != self.data.selected_file_path and \
-                (not path_incomplete or self.data.path_incomplete):
+        if not path_incomplete or self.data.path_incomplete:
 
             log.debug("Overwriting file path with %s", path)
             self.data.selected_file_path = path
