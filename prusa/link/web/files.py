@@ -459,16 +459,23 @@ def api_download(req, target):
     # pylint: disable=unused-argument
     download_mgr = app.daemon.prusa_link.printer.download_mgr
 
+    local = '/Prusa Link gcodes'
     url = req.json.get('url')
     filename = basename(url)
     check_filename(filename)
 
     path_name = req.json.get('path', req.json.get('destination'))
-    path = join('/Prusa Link gcodes', path_name)
+    new_filename = req.json.get('rename')
+
+    path = join(local, path_name)
     to_select = req.json.get('to_select', False)
     to_print = req.json.get('to_print', False)
     log.debug('select=%s, print=%s', to_select, to_print)
-    path = join(path, filename)
+
+    if new_filename:
+        path = join(path, new_filename + ".gcode")
+    else:
+        path = join(path, filename)
 
     job = Job.get_instance()
 
