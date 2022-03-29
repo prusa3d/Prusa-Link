@@ -60,6 +60,7 @@
      * Fix ID error being swapped with the FW error
      * Fixed download ref, added total storage space info
      * Added storage space info to api/printer
+     * Added function for save file with custom name
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
