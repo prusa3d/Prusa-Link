@@ -2,16 +2,15 @@ prusa.connect.sdk.printer>=0.6.0
 appdirs
 blinker
 extendparser
-importlib_resources
 jinja2-template-info>=0.2.2
 lockfile
+packaging
 PoorWSGI>=2.5.0
 pydantic
 python-daemon
 python-prctl
 PyYAML
 requests
-setuptools
 sortedcontainers
 unidecode
 pyric

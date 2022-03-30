@@ -2,15 +2,12 @@
 Contains almost every constant for the printer communication part of
 Prusa Link
 """
-from distutils.version import StrictVersion
 from os import path
 from typing import List
 from json import load
 
-try:
-    from importlib.resources import files  # type: ignore
-except ImportError:
-    from importlib_resources import files  # 3.9 has native resources
+from importlib.resources import files  # type: ignore
+from packaging.version import Version
 
 from prusa.connect.printer.const import State, PrinterType
 
@@ -92,8 +89,8 @@ BLACKLISTED_NAMES = [SD_MOUNT_NAME]
 SFN_TO_LFN_EXTENSIONS = {"GCO": "gcode", "G": "g"}
 
 RESET_PIN = 22  # RPi gpio pin for resetting printer
-SUPPORTED_FIRMWARE = "3.10.0"
-MINIMAL_FIRMWARE = StrictVersion(SUPPORTED_FIRMWARE)  # TODO: Firmware release
+SUPPORTED_FIRMWARE = "3.10.1"
+MINIMAL_FIRMWARE = Version(SUPPORTED_FIRMWARE)
 MAX_INT = (2**31) - 1
 STATE_HISTORY_SIZE = 10
 
