@@ -19,7 +19,6 @@ class SideEffectOnly(Exception):
     """An exception to raise in a gatherer that has nothing to return,
     but its side effects succeeded in setting a balue or
     have otherwise ensured that the value would be received eventually"""
-    ...
 
 
 class Watchable:
