@@ -212,7 +212,7 @@ def wizard_finish_post(req):
                 f'{url}/add-printer/connect/{type_}/{code}/{name}/{location}')
 
 
-@app.before_request()
+@app.before_response()
 def check_wizard_access(req):
     """Check if wizard can be shown."""
     if not app.settings.is_wizard_needed() \

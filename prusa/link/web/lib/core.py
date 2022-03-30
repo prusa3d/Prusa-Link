@@ -5,10 +5,7 @@ from os.path import join, abspath
 
 import os
 
-try:
-    from importlib.resources import files  # type: ignore
-except ImportError:
-    from importlib_resources import files  # 3.9 has native resources
+from importlib.resources import files  # type: ignore
 
 from poorwsgi import Application
 from poorwsgi.digest import PasswordMap

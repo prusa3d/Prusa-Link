@@ -1,6 +1,6 @@
 """Response generate module."""
 from os.path import join
-from importlib_resources import files  # 3.9 has native resources
+from importlib.resources import files
 from jinja2 import Environment, FileSystemLoader
 from jinja2_template_info import TemplateInfoExtension
 
