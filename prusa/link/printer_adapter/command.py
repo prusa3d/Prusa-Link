@@ -24,7 +24,6 @@ log = logging.getLogger(__name__)
 
 class CommandFailed(Exception):
     """Exception class for signalling that a command has failed"""
-    ...
 
 
 class Command:
@@ -104,7 +103,6 @@ class Command:
     @abc.abstractmethod
     def _run_command(self):
         """Put implementation here"""
-        ...
 
     def stop(self):
         """Stops the command"""
