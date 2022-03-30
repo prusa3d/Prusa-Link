@@ -24,7 +24,8 @@ from .lib.auth import check_api_digest, check_config, REALM
 from .lib.view import package_to_api
 from .lib.files import get_os_path, gcode_analysis, gcode_analysis_sd
 
-from ..printer_adapter.const import LOGS_PATH, LOGS_FILES, GZ_SUFFIX
+from ..printer_adapter.const import LOGS_PATH, LOGS_FILES, GZ_SUFFIX, \
+        LOCAL_MOUNT_NAME
 from ..printer_adapter.informers.job import JobState, Job
 from ..printer_adapter.informers.state_manager import StateManager
 from ..printer_adapter.command import CommandFailed
@@ -179,7 +180,7 @@ def api_printer(req):
     mounts = printer.fs.mounts
     operational = tel.state in (State.READY, State.FINISHED, State.STOPPED)
 
-    space_info = mounts["Prusa Link gcodes"].get_space_info()
+    space_info = mounts[LOCAL_MOUNT_NAME].get_space_info()
     free_space = space_info["free_space"]
     total_space = space_info["total_space"]
 
@@ -407,7 +408,7 @@ def api_system_commands_execute(req, source, action):
         if action == 'restart':
             app.daemon.restart(app.daemon.argv)
             return JSONResponse(status_code=state.HTTP_OK,
-                                message="Restarting Prusa-Link.")
+                                message="Restarting PrusaLink.")
 
         return JSONResponse(
             status_code=state.HTTP_BAD_REQUEST,

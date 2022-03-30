@@ -1,5 +1,5 @@
 """
-Implements all command Prusa Link command handlers
+Implements all command PrusaLink command handlers
 Start, pause, resume and stop print as well as one for executing arbitrary
 gcodes, resetting the printer and sending the job info
 """

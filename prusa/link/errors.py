@@ -1,6 +1,6 @@
-"""Prusa Link error states.html
+"""PrusaLink error states.html
 
-For more information see prusa-link_states.txt.
+For more information see prusalink_states.txt.
 """
 
 import itertools

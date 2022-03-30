@@ -1,5 +1,5 @@
 """
-Should inform the user about everything important in prusa link while
+Should inform the user about everything important in PrusaLink while
 nod obstructing anything else the printer wrote.
 """
 import logging
@@ -218,7 +218,7 @@ ERROR_GRACE = 15
 
 
 class LCDPrinter(metaclass=MCSingleton):
-    """Reports Prusa Link status on the printer LCD whenever possible"""
+    """Reports PrusaLink status on the printer LCD whenever possible"""
 
     # pylint: disable=too-many-arguments
     def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
