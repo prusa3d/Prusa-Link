@@ -138,7 +138,6 @@ class Mounts(ThreadedUpdatable):
         The implementation is expected to return a set of valid
         mountpoints based on its configuration
         """
-        ...
 
     @abc.abstractmethod
     def get_data_object(self) -> MountsData:
@@ -146,7 +145,6 @@ class Mounts(ThreadedUpdatable):
         There need to be two different object for the two different mount
         types. This method takes care of that
         """
-        ...
 
 
 class FSMounts(Mounts):
