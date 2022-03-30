@@ -3,7 +3,7 @@ Uses info updater to keep up with the printer info.
 Hope I can get most of printer polling to use this mechanism.
 """
 import logging
-from distutils.version import StrictVersion
+from packaging.version import Version
 
 from prusa.connect.printer import Printer
 
@@ -281,7 +281,7 @@ class MK3Polling:
     def _validate_fw_version(value):
         """Validates that the printer fw version is up to date enough"""
         without_buildnumber = value.split("-")[0]
-        if StrictVersion(without_buildnumber) < MINIMAL_FIRMWARE:
+        if Version(without_buildnumber) < MINIMAL_FIRMWARE:
             raise ValueError("The printer firmware is outdated")
         return True
 
