@@ -59,7 +59,7 @@ class TransferCallbackState(Enum):
 
 class PrusaLink:
     """
-    This class is the controller for Prusa Link, more specifically the part
+    This class is the controller for PrusaLink, more specifically the part
     that communicates with the printer.
 
     It connects signals with their handlers
@@ -224,12 +224,12 @@ class PrusaLink:
     def debug_shell(self):
         """
         Calling this in a thread that receives stdin enables th user to
-        give Prusa Link commands through the terminal
+        give PrusaLink commands through the terminal
         """
         print("Debug shell")
         while not self.quit_evt.is_set():
             try:
-                command = input("[Prusa-link]: ")
+                command = input("[PrusaLink]: ")
                 result = ""
                 if command == "pause":
                     result = self.command_queue.do_command(PausePrint())
@@ -258,7 +258,7 @@ class PrusaLink:
         """
         Calls stop on every module containing a thread, for debugging prints
         out all threads which are still running and sets an event to signalize
-        that Prusa Link has stopped.
+        that PrusaLink has stopped.
         """
 
         log.debug("Stop start%s", ' fast' if fast else '')

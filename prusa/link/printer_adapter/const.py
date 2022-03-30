@@ -1,6 +1,6 @@
 """
 Contains almost every constant for the printer communication part of
-Prusa Link
+PrusaLink
 """
 from os import path
 from typing import List
@@ -78,6 +78,7 @@ PRINT_QUEUE_SIZE = 4
 # --- Mountpoints ---
 MAX_FILENAME_LENGTH = 52
 SD_MOUNT_NAME = "SD Card"
+LOCAL_MOUNT_NAME = "PrusaLink gcodes"
 BLACKLISTED_TYPES: List[str] = []
 BLACKLISTED_PATHS = [
     "/dev",

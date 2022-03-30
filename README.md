@@ -1,6 +1,6 @@
-# Prusa Link
+# PrusaLink for MK3
 
-This program is a compatibility layer between old Prusa printers (MK3(s) for the time being) and Prusa Connect.
+This program is a compatibility layer between Prusa printers (MK3(s)) and PrusaConnect.
 
 It supports configuration of multiple directories which are going to be scanned for gcodes.
 It also reports the printer SD files (short DOS names for now)
@@ -24,28 +24,28 @@ To install, make sure you have all the prerequisites:
 # install system dependencies
 sudo apt install git python3-pip python3-wheel pigpio libcap-dev
 
-# install Prusa Link from GitHub, While the repo is private,
+# install PrusaLink from GitHub, While the repo is private,
 # you'll need to install an ssh deploy key
 sudo pip3 install git+ssh://git@github.com/prusa3d/Prusa-Link.git
 ```
 
 ## Config
-Prusa Link is configured using `/etc/Prusa-Link/prusa-link.ini`.
+PrusaLink is configured using `/etc/prusalink/prusalink.ini`.
 
-Some legacy settings are stored in `/var/tmp/Prusa-Link/config.yaml`.
+Some legacy settings are stored in `/var/tmp/prusalink/config.yaml`.
 
 
 ## Usage
-The executable is called `prusa-link` and can be used to control the daemon, if you want to run it directly, use the -f option
+The executable is called `prusalink` and can be used to control the daemon, if you want to run it directly, use the -f option
 
 for more info about commandline options use:
 
 ```bash
-prusa-link --help
+prusalink --help
 ```
 
-To start Prusa Link on boot, add this line to `/etc/rc.local`
+To start PrusaLink on boot, add this line to `/etc/rc.local`
 
 ```
-su pi -c 'prusa-link start'
+su pi -c 'prusalink start'
 ```

@@ -1,4 +1,4 @@
-"""Setup.py for Prusa-Link software."""
+"""Setup.py for PrusaLink software."""
 import os
 import re
 
@@ -11,7 +11,8 @@ from distutils.core import Command
 
 from setuptools import setup, find_namespace_packages  # type: ignore
 
-from prusa.link import __version__, __doc__ as description  # type: ignore
+from prusa.link import (  # type: ignore
+    __version__, __doc__ as description, __author_name__, __author_email__)
 
 RPI_MODEL_PATH = "/sys/firmware/devicetree/base/model"
 RE_GIT = re.compile(r'(-e )?git\+|:')
@@ -116,32 +117,31 @@ class BuildStatic(Command):
                  dirs_exist_ok=True)
 
 
-setup(name="prusa-link",
-      version=__version__,
-      description=description.split("\n", maxsplit=1)[0],
-      author="Tomáš Jozífek",
-      author_email="tomas.jozifek@prusa3d.cz",
-      maintainer="Tomáš Jozífek",
-      maintainer_email="tomas.jozifek@prusa3d.cz",
-      url="https://github.com/prusa3d/Prusa-Link",
-      packages=find_namespace_packages(include=['prusa.*']),
-      include_package_data=True,
-      data_files=[('share/prusa-link',
-                   ['README.md', 'ChangeLog', 'LICENSE', 'CONTRIBUTION.md'])],
-      license="AGPLv3",
-      license_files=["LICENSE"],
-      long_description=doc(),
-      long_description_content_type="text/markdown",
-      classifiers=[
-          "Development Status :: 4 - Beta",
-          "Natural Language :: English",
-          "Operating System :: POSIX :: Linux",
-          "License :: OSI Approved :: GNU Affero General Public License v3",
-          "Programming Language :: Python :: 3 :: Only",
-      ],
-      python_requires=">=3.7",
-      install_requires=REQUIRES,
-      entry_points={
-          'console_scripts': ['prusa-link = prusa.link.__main__:main']
-      },
-      cmdclass={'build_static': BuildStatic})
+setup(
+    name="prusalink",
+    version=__version__,
+    description=description.split("\n", maxsplit=1)[0],
+    author=__author_name__,
+    author_email=__author_email__,
+    maintainer=__author_name__,
+    maintainer_email=__author_email__,
+    url="https://github.com/prusa3d/Prusa-Link",
+    packages=find_namespace_packages(include=['prusa.*']),
+    include_package_data=True,
+    data_files=[('share/prusalink',
+                 ['README.md', 'ChangeLog', 'LICENSE', 'CONTRIBUTION.md'])],
+    license="AGPLv3",
+    license_files=["LICENSE"],
+    long_description=doc(),
+    long_description_content_type="text/markdown",
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "Natural Language :: English",
+        "Operating System :: POSIX :: Linux",
+        "License :: OSI Approved :: GNU Affero General Public License v3",
+        "Programming Language :: Python :: 3 :: Only",
+    ],
+    python_requires=">=3.9",
+    install_requires=REQUIRES,
+    entry_points={'console_scripts': ['prusalink = prusa.link.__main__:main']},
+    cmdclass={'build_static': BuildStatic})

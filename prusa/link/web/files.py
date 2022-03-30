@@ -28,7 +28,7 @@ from .lib.files import file_to_api, get_os_path, local_refs, sdcard_refs, \
         gcode_analysis, sort_files
 
 from ..printer_adapter.prusa_link import TransferCallbackState
-from ..printer_adapter.const import PATH_WAIT_TIMEOUT
+from ..printer_adapter.const import PATH_WAIT_TIMEOUT, LOCAL_MOUNT_NAME
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.informers.job import JobState, Job
 from .. import errors
@@ -179,7 +179,7 @@ def api_files(req, path=''):
     Returns info about all available print files or
     about print files in specific directory
     """
-    #pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals
     file_system = app.daemon.prusa_link.printer.fs
 
     last_updated = 0
@@ -281,7 +281,7 @@ def api_upload(req, target):
 
     if foldername.startswith('/'):
         foldername = '.' + foldername
-    print_path = abspath(join("/Prusa Link gcodes/", foldername, filename))
+    print_path = abspath(join(f"/{LOCAL_MOUNT_NAME}/", foldername, filename))
     foldername = abspath(join(app.cfg.printer.directories[0], foldername))
     filepath = join(foldername, filename)
 
@@ -459,7 +459,7 @@ def api_download(req, target):
     # pylint: disable=unused-argument
     download_mgr = app.daemon.prusa_link.printer.download_mgr
 
-    local = '/Prusa Link gcodes'
+    local = f'/{LOCAL_MOUNT_NAME}'
     url = req.json.get('url')
     filename = basename(url)
     check_filename(filename)
@@ -495,7 +495,7 @@ def api_download(req, target):
 def api_create_folder(req, target, path):
     """Create a folder in a path"""
     # pylint: disable=unused-argument
-    os_path = get_os_path('/Prusa Link gcodes')
+    os_path = get_os_path(f'/{LOCAL_MOUNT_NAME}')
     path = join(os_path, path)
 
     if not exists(path):
@@ -512,7 +512,7 @@ def api_create_folder(req, target, path):
 def api_delete_folder(req, target, path):
     """Delete a folder in a path"""
     # pylint: disable=unused-argument
-    os_path = get_os_path('/Prusa Link gcodes')
+    os_path = get_os_path(f'/{LOCAL_MOUNT_NAME}')
     path = join(os_path, path)
 
     if exists(path):
@@ -528,7 +528,7 @@ def api_delete_folder(req, target, path):
 def api_modify(req, target):
     """Move file to another directory or/and change its name"""
     # pylint: disable=unused-argument
-    os_path = get_os_path('/Prusa Link gcodes')
+    os_path = get_os_path(f'/{LOCAL_MOUNT_NAME}')
 
     source = join(os_path, req.json.get('source'))
     destination = join(os_path, req.json.get('destination'))

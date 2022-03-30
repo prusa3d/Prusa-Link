@@ -24,7 +24,7 @@ log = getLogger("connect-printer")
 class MyPrinter(SDKPrinter, metaclass=MCSingleton):
     """
     Overrides some methods of the SDK Printer to provide better support for
-    Prusa Link
+    PrusaLink
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -60,7 +60,8 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         info = super().get_info()
         info["nozzle_diameter"] = self.nozzle_diameter
         info["files"] = self.fs.to_dict()
-        info["prusa_link"] = __version__
+        info["prusa_link"] = __version__  # TODO: remove later
+        info["prusalink"] = __version__
         return info
 
     def set_connect(self, settings):

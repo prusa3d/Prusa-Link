@@ -1,4 +1,4 @@
-"""Original Prusa Link printer adapter.
+"""Original PrusaLink printer adapter.
 
     Copyright (C) 2022 PrusaResearch
 
@@ -19,13 +19,13 @@
 __application__ = "PrusaLink"
 __vendor__ = "PrusaResearch"
 
-__version__ = "0.7.0.dev1"
+__version__ = "0.7.0.dev2"
 __date__ = "14 Mar 2022"
 __copyright__ = "(c) 2022 Prusa 3D"
-__author_name__ = "Prusa Link Developers"
+__author_name__ = "PrusaLink Developers"
 __author_email__ = "link@prusa3d.cz"
 __author__ = f"{__author_name__} <{__author_email__}>"
-__description__ = f"{__application__} software"
+__description__ = f"{__application__} for MK3 host software"
 
 __credits__ = "Tomáš Jozífek, Ondřej Tůma, Michal Zoubek"
 __url__ = "https://github.com/prusa3d/Prusa-Link"

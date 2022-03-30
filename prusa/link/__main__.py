@@ -19,7 +19,7 @@ from .printer_adapter.interesting_logger import InterestingLogRotator, \
 from .printer_adapter.updatable import Thread
 
 # pylint: disable=wrong-import-position, wrong-import-order
-# Pop this singleton into existence before importing prusa link
+# Pop this singleton into existence before importing prusalink
 InterestingLogRotator()
 logging.setLoggerClass(InterestingLogger)
 
@@ -29,7 +29,7 @@ log = logging.getLogger(__name__)
 
 # pylint: disable=too-many-return-statements
 # pylint: disable=too-many-statements
-CONFIG_FILE = '/etc/Prusa-Link/prusa-link.ini'
+CONFIG_FILE = '/etc/prusalink/prusalink.ini'
 
 
 def excepthook(exception_arguments, args, argv):
@@ -42,7 +42,7 @@ def excepthook(exception_arguments, args, argv):
         log.fatal("This instance is now broken. Will not restart "
                   "because we're running in the foreground mode")
     else:
-        log.warning("Caught unhandled exception, restarting Prusa Link")
+        log.warning("Caught unhandled exception, restarting PrusaLink")
         Daemon.restart(argv)
     # excepthook has the global exception set, besides even if we failed
     # here, it will literally affect nothing
@@ -75,7 +75,7 @@ def check_process(pid):
 
 
 def stop(pid):
-    """Tries to stop Prusa Link nicely, if it times out, uses SIGKILL"""
+    """Tries to stop PrusaLink nicely, if it times out, uses SIGKILL"""
     kill(pid, SIGTERM)
     timeout_at = time() + EXIT_TIMEOUT
     while time() <= timeout_at:
@@ -98,8 +98,7 @@ def stop(pid):
 def main():
     """Standard main function."""
     # pylint: disable=too-many-branches
-    parser = ArgumentParser(prog="prusa-link",
-                            description="Prusa Link daemon.")
+    parser = ArgumentParser(prog="prusalink", description="PrusaLink daemon.")
     parser.add_argument(
         "command",
         nargs='?',
@@ -225,7 +224,7 @@ def main():
                                 signal_map={SIGTERM: daemon.sigterm})
 
         pid_dir = path.dirname(config.daemon.pid_file)
-        if pid_dir == '/var/run/prusa-link' and not path.exists(pid_dir):
+        if pid_dir == '/var/run/prusalink' and not path.exists(pid_dir):
             mkdir(pid_dir)
             chmod(pid_dir, 0o777)
 
