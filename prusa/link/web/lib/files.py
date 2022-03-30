@@ -6,6 +6,7 @@ from prusa.connect.printer.metadata import FDMMetaData, estimated_to_seconds
 from prusa.connect.printer.const import GCODE_EXTENSIONS
 
 from .core import app
+from ...printer_adapter.const import SD_MOUNT_NAME
 
 
 def get_os_path(abs_path):
@@ -89,8 +90,8 @@ def file_to_api(node, origin='local', path='/', sort_by='folder,date'):
     >>> from mock import Mock
     >>> from prusa.connect.printer.files import Filesystem
     >>> fs = Filesystem()
-    >>> fs.from_dir('/tmp', 'Prusa Link gcodes')
-    >>> fs.get('/Prusa Link gcodes/Examples')
+    >>> fs.from_dir('/tmp', 'PrusaLink gcodes')
+    >>> fs.get('/PrusaLink gcodes/Examples')
     >>> app.daemon = Mock()
     >>> app.daemon.prusa_link.printer.fs = fs
     >>> files = {'type': 'DIR', 'name': '/', 'ro': True, 'children':[
@@ -98,7 +99,7 @@ def file_to_api(node, origin='local', path='/', sort_by='folder,date'):
     ...         {'type': 'DIR', 'name': 'Examples', 'children':[
     ...             {'type': 'FILE', 'name': '1.gcode'},
     ...             {'type': 'FILE', 'name': 'b.gco'}]}]},
-    ...     {'type': 'DIR', 'name': 'Prusa Link gcodes', 'children':[
+    ...     {'type': 'DIR', 'name': 'PrusaLink gcodes', 'children':[
     ...         {'type': 'DIR', 'name': 'Examples', 'children':[
     ...             {'type': 'FILE', 'name': '1.gcode'},
     ...             {'type': 'FILE', 'name': 'b.gco'}]}]},
@@ -121,10 +122,10 @@ def file_to_api(node, origin='local', path='/', sort_by='folder,date'):
     'machinecode'
     >>> api_files['children'][0]['children'][0]['children'][0]['origin']
     'sdcard'
-    >>> # /Prusa Link gcodes/Examples
+    >>> # /PrusaLink gcodes/Examples
     >>> api_files['children'][1]['children'][0]['type']
     'folder'
-    >>> # /Prusa Link gcodes/Examples/1.gcode
+    >>> # /PrusaLink gcodes/Examples/1.gcode
     >>> api_files['children'][1]['children'][0]['children'][0]['type']
     'machinecode'
     >>> api_files['children'][1]['children'][0]['children'][0]['origin']
@@ -144,7 +145,7 @@ def file_to_api(node, origin='local', path='/', sort_by='folder,date'):
         result['size'] = node['size']
 
     if node['type'] == 'DIR':
-        if name == 'SD Card':
+        if name == SD_MOUNT_NAME:
             origin = 'sdcard'
 
         result['type'] = 'folder'

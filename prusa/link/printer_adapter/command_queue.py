@@ -77,7 +77,7 @@ class CommandQueue:
         if not adapter.processed.is_set():
             log.warning("Unprocessed command %s!", adapter.command)
             raise CommandFailed("Command has not been processed because "
-                                "Prusa Link is stopping or in an error state")
+                                "PrusaLink is stopping or in an error state")
         return adapter.data
 
     def force_command(self, command: Command):

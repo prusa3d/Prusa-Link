@@ -66,7 +66,7 @@ class Model(dict):
 
 
 class Config(Get):
-    """This class handles prusa-link.ini configuration file."""
+    """This class handles prusalink.ini configuration file."""
     instance = None
 
     def __init__(self, args):
@@ -85,7 +85,7 @@ class Config(Get):
                 "daemon",
                 (
                     ("data_dir", str, ''),  # user home by default
-                    ("pid_file", str, "./prusa-link.pid"),
+                    ("pid_file", str, "./prusalink.pid"),
                     ("power_panic_file", str, "./power_panic"),
                     ("job_file", str, "./job_data.json"),
                     ("threshold_file", str, "./threshold.data"),
@@ -155,7 +155,7 @@ class Config(Get):
                     ("settings", str, "./prusa_printer_settings.ini"),
                     ("mountpoints", tuple, [], ':'),
                     # relative to HOME
-                    ("directories", tuple, ("./Prusa Link gcodes", ), ':'),
+                    ("directories", tuple, ("./PrusaLink gcodes", ), ':'),
                 )))
         if args.serial_port:
             self.printer.port = args.serial_port
