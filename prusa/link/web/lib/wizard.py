@@ -4,6 +4,7 @@ import logging
 from secrets import token_urlsafe
 from socket import gethostbyname
 from urllib.request import urlopen
+from re import search
 
 from poorwsgi.digest import hexdigest
 from prusa.connect.printer import Printer
@@ -117,8 +118,8 @@ class Wizard:
     def check_credentials(self, password, repassword):
         """Check if auth values are valid."""
         errors = {}
-
-        if not VALID_USERNAME_REGEX.match(self.username):
+        if search("[À-ž]", self.username) or \
+                not VALID_USERNAME_REGEX.match(self.username):
             errors['username'] = True
         if not VALID_PASSWORD_REGEX.match(password):
             errors['password'] = True
