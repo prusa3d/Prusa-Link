@@ -4,7 +4,8 @@ from sys import exc_info
 
 from traceback import format_tb
 
-from poorwsgi.response import make_response
+from poorwsgi import state
+from poorwsgi.response import make_response, JSONResponse, Response
 
 from .lib.view import generate_page
 from .lib.core import app
@@ -165,6 +166,19 @@ def service_unavailable(req):
     type_, error, traceback = exc_info()  # pylint: disable=unused-variable
     traceback = format_tb(traceback)
     log.error('\n%s%s', ''.join(traceback), repr(error))
+    accept = req.headers['Accept']
+
+    if accept == 'application/json':
+        err = errors.PrinterUnavailable()
+        error_ = {
+            "title": err.title,
+            "text": err.text,
+            "status": err.status_code
+        }
+        return JSONResponse(**error_)
+
+    if accept == "text/html":
+        return Response(status_code=state.HTTP_SERVICE_UNAVAILABLE)
 
     return response_error(req, errors.PrinterUnavailable())
 
