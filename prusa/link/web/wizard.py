@@ -64,7 +64,7 @@ def wizard_auth_post(req):
     form = FieldStorage(req,
                         keep_blank_values=app.keep_blank_values,
                         strict_parsing=app.strict_parsing)
-    app.wizard.username = form.get('username', '').strip()
+    app.wizard.username = form.get('username', '')
     password = form.get('password', '')
     repassword = form.get('repassword', '')
     app.wizard.api_key = form.get('api_key', '').strip()
