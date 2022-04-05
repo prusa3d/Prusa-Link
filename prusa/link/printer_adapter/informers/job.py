@@ -9,7 +9,6 @@ from prusa.connect.printer import Printer
 from ..input_output.serial.helpers import enqueue_instruction
 from ..input_output.serial.serial_queue import SerialQueue
 from ..structures.module_data_classes import JobData
-from ...config import Config
 from ..input_output.serial.serial_parser import SerialParser
 from ..model import Model
 from ..const import PRINTING_STATES, \
@@ -17,7 +16,6 @@ from ..const import PRINTING_STATES, \
 from ..structures.mc_singleton import MCSingleton
 from ..structures.model_classes import JobState
 from ..structures.regular_expressions import OPEN_RESULT_REGEX
-from ..util import get_clean_path, ensure_directory
 
 log = logging.getLogger(__name__)
 
@@ -27,7 +25,7 @@ class Job(metaclass=MCSingleton):
 
     # pylint: disable=too-many-arguments
     def __init__(self, serial_parser: SerialParser, serial_queue: SerialQueue,
-                 model: Model, cfg: Config, printer: Printer):
+                 model: Model, printer: Printer):
         # Sent every time the job id should disappear, appear or update
         self.printer = printer
         self.serial_parser = serial_parser
@@ -37,9 +35,6 @@ class Job(metaclass=MCSingleton):
         # Unused
         self.job_id_updated_signal = Signal()  # kwargs: job_id: int
         self.job_info_updated_signal = Signal()
-
-        self.job_path = get_clean_path(cfg.daemon.job_file)
-        ensure_directory(os.path.dirname(self.job_path))
 
         self.model: Model = model
         self.model.job = JobData(already_sent=False,

@@ -57,21 +57,6 @@ def doc():
         return readme.read().strip()
 
 
-def find_data_files(directory, target_folder=""):
-    """Find files in directory, and prepare tuple for setup."""
-    rv = []  # pylint: disable=C0103
-    for root, dirs, files in os.walk(directory):  # pylint: disable=W0612
-        if target_folder:
-            rv.append((target_folder + root[len(directory):],
-                       list(root + '/' + f for f in files
-                            if f[0] != '.' and f[-1] != '~')))
-        else:
-            rv.append((root,
-                       list(root + '/' + f for f in files
-                            if f[0] != '.' and f[-1] != '~')))
-    return rv
-
-
 class BuildStatic(Command):
     """Build static html files, need docker."""
     description = __doc__

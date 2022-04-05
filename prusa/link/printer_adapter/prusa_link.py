@@ -119,7 +119,7 @@ class PrusaLink:
         self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_parser,
                                       self.model, self.settings, self.printer)
         self.job = Job(self.serial_parser, self.serial_queue, self.model,
-                       self.cfg, self.printer)
+                       self.printer)
         self.state_manager = StateManager(self.serial_parser, self.model,
                                           self.printer, self.cfg,
                                           self.settings)
