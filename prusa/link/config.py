@@ -87,7 +87,6 @@ class Config(Get):
                     ("data_dir", str, ''),  # user home by default
                     ("pid_file", str, "./prusalink.pid"),
                     ("power_panic_file", str, "./power_panic"),
-                    ("job_file", str, "./job_data.json"),
                     ("threshold_file", str, "./threshold.data"),
                     ("user", str, "pi"),
                     ("group", str, "pi"),
@@ -105,8 +104,7 @@ class Config(Get):
         if args.pidfile:
             self.daemon.pid_file = abspath(args.pidfile)
 
-        for file_ in ('pid_file', 'power_panic_file', 'job_file',
-                      'threshold_file'):
+        for file_ in ('pid_file', 'power_panic_file', 'threshold_file'):
             setattr(
                 self.daemon, file_,
                 abspath(join(self.daemon.data_dir, getattr(self.daemon,
