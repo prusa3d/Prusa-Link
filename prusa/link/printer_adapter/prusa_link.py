@@ -1,12 +1,13 @@
 """Implements the PrusaLink class"""
 import logging
+import multiprocessing
 import os
 from threading import Event, enumerate as enumerate_threads
 from time import time
 from typing import Dict, Any
 from enum import Enum
 
-from prusa.connect.printer import Command as SDKCommand
+from prusa.connect.printer import Command as SDKCommand, DownloadMgr
 
 from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType, State
@@ -704,6 +705,14 @@ class PrusaLink:
             self.mk3_polling.polling_not_ok()
         if to_state not in {State.PRINTING, State.ATTENTION, State.ERROR}:
             self.mk3_polling.polling_ok()
+
+        # Set download throttling depending on printer state and cpu count
+        if to_state == State.PRINTING and multiprocessing.cpu_count() < 4:
+            self.printer.download_mgr.buffer_size = DownloadMgr.SMALL_BUFFER
+            self.printer.download_mgr.throttle = 0.03
+        else:
+            self.printer.download_mgr.buffer_size = DownloadMgr.BIG_BUFFER
+            self.printer.download_mgr.throttle = 0
 
         if self.settings.printer.prompt_clean_sheet:
             if to_state == State.FINISHED:
