@@ -178,5 +178,4 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
     def download_loop(self):
         """Handler for download loop"""
         prctl_name()
-        self.download_mgr.transfer.throttle = 0.01  # too much IO kills zero
         self.download_mgr.loop()
