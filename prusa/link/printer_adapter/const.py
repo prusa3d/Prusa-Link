@@ -13,6 +13,10 @@ from prusa.connect.printer.const import State, PrinterType
 from .structures.model_classes import PrintState
 
 PRINTER_TYPES = {
+    250: PrinterType.I3MK25,
+    252: PrinterType.I3MK25S,
+    20250: PrinterType.I3MK25,
+    20252: PrinterType.I3MK25S,
     300: PrinterType.I3MK3,
     20300: PrinterType.I3MK3,
     302: PrinterType.I3MK3S,
