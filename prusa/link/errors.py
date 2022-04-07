@@ -42,7 +42,7 @@ INTERNET.prev = LAN
 
 SERIAL = ErrorState("Port", "Serial device does not exist")
 RPI_ENABLED = ErrorState("RPIenabled", "RPi port is not enabled", prev=SERIAL)
-ID = ErrorState("ID", "Device is not a Prusa printer", prev=RPI_ENABLED)
+ID = ErrorState("ID", "Device is not supported", prev=RPI_ENABLED)
 FW = ErrorState("Firmware", "Firmware is not up-to-date", prev=ID)
 JOB_ID = ErrorState("JobID", "Job ID cannot be obtained", prev=FW)
 SN = ErrorState("SN", "Serial number cannot be obtained", prev=JOB_ID)
