@@ -19,6 +19,7 @@ REALM = 'Administrator'
 
 # --- Errors ---
 USERNAME = "Username is shorter than 3 characters or in invalid format"
+USERNAME_SPACES = "Username cannot contain space at the beginning nor the end"
 PASSWORD = "New password is shorter than 8 characters or in invalid format"
 REPASSWORD = "New passwords are not same"
 OLD_DIGEST = "Password is not correct"
@@ -93,6 +94,8 @@ def set_digest(username, password):
 def valid_credentials(username, new_password, new_repassword, errors):
     """Check if auth credentials are valid."""
     _errors = {}
+    if username.startswith(" ") or username.endswith(" "):
+        errors['username_spaces'] = USERNAME_SPACES
     if not VALID_USERNAME_REGEX.match(username):
         _errors['username'] = USERNAME
     if new_password:
