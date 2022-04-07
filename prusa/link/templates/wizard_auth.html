@@ -16,9 +16,13 @@
             <div class="form-group row">
               <label for="username" class="col-sm-2 col-form-label">Username:</label>
               <div class="col-sm-10">
-                <input type="text" class="form-control {{ 'is-invalid' if errors.get('username') else '' }}" id="username" name="username" value="{{ wizard.username or '' }}" required>
+                <input type="text" class="form-control {{ 'is-invalid' if errors.get('username') or errors.get('username_spaces') else '' }}" id="username" name="username" value="{{ wizard.username or '' }}" required>
                 <div class="invalid-feedback">
-                  Please provide a username with sufficient length and in valid format.
+                  {% if errors.get('username_spaces') %}
+                    <p>Username cannot contain space at the beginning nor the end</p>
+                  {% elif errors.get('username') %}
+                    <p>Please provide a username with sufficient length and in valid format.</p>
+                  {% endif %}
                 </div>
               </div>
             </div>

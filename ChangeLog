@@ -65,6 +65,7 @@
      * Add dynamic download throttling when printing
      * Exclude diacritic from username
      * time_estimated changed to time_remaining (time_remaining kept for compatibility)
+     * Added check for spaces on the beginning and the end of the username
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
