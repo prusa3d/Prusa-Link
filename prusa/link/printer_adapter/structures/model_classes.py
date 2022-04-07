@@ -13,6 +13,7 @@ from prusa.connect.printer.const import State
 
 class Telemetry(BaseModel):
     """The Telemetry model"""
+    # time_estimated is deprecated, kept for compatibility
 
     temp_nozzle: Optional[float] = None
     temp_bed: Optional[float] = None
@@ -31,6 +32,7 @@ class Telemetry(BaseModel):
     speed: Optional[int] = None
     time_printing: Optional[int] = None
     time_estimated: Optional[int] = None
+    time_remaining: Optional[int] = None
     odometer_x: Optional[int] = None
     odometer_y: Optional[int] = None
     odometer_z: Optional[int] = None

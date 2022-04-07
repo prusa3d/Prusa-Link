@@ -296,12 +296,12 @@ def api_job(req):
     file_['display'] = file_['name']
 
     progress = (tel.progress or 0) / 100.0 if is_printing else None
-    time_estimated = tel.time_estimated or estimated_from_gcode
+    time_remaining = tel.time_remaining or estimated_from_gcode
     time_printing = tel.time_printing or 0
 
     # Prevent None divide if gcode name doesn't contain estimated time
-    estimated = int(time_estimated + time_printing) \
-        if is_printing and time_estimated is not None else time_estimated
+    estimated = int(time_remaining + time_printing) \
+        if is_printing and time_remaining is not None else time_remaining
 
     return JSONResponse(
         **{
@@ -317,7 +317,7 @@ def api_job(req):
                 "completion": progress,
                 "filepos": 0,
                 "printTime": tel.time_printing if is_printing else None,
-                "printTimeLeft": tel.time_estimated if is_printing else None,
+                "printTimeLeft": tel.time_remaining if is_printing else None,
                 "printTimeLeftOrigin": "estimate",
                 "pos_z_mm": tel.axis_z,
                 "printSpeed": tel.speed,
