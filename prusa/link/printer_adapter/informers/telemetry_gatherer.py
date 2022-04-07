@@ -324,7 +324,9 @@ class TelemetryGatherer(ThreadedUpdatable):
                                              progress_broken=progress_broken)
 
             if mins_remaining >= 0:
+                # time_estimated is deprecated, kept for compatibility
                 self.current_telemetry.time_estimated = secs_remaining
+                self.current_telemetry.time_remaining = secs_remaining
                 self.telemetry_updated()
 
     def heating_handler(self, sender, match: re.Match):

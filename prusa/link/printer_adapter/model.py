@@ -49,9 +49,12 @@ class Model(metaclass=MCSingleton):
 
             # Make sure that even if the printer tells us print specific
             # values, nothing will be sent out while not printing
+
+            # time_estimated is deprecated, kept for compatibility
             if self.state_manager.current_state not in PRINTING_STATES:
                 self._telemetry.time_printing = None
                 self._telemetry.time_estimated = None
+                self._telemetry.time_remaining = None
                 self._telemetry.progress = None
             if self.state_manager.current_state == State.PRINTING:
                 self._telemetry.axis_x = None

@@ -63,6 +63,7 @@
      * Added function for save file with custom name
      * Fix files not reloading when already selected for printing, but overwritten
      * Exclude diacritic from username
+     * time_estimated changed to time_remaining (time_remaining kept for compatibility)
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
