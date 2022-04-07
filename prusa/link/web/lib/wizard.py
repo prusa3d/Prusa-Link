@@ -117,7 +117,8 @@ class Wizard:
     def check_credentials(self, password, repassword):
         """Check if auth values are valid."""
         errors = {}
-
+        if self.username.startswith(" ") or self.username.endswith(" "):
+            errors['username_spaces'] = True
         if not VALID_USERNAME_REGEX.match(self.username):
             errors['username'] = True
         if not VALID_PASSWORD_REGEX.match(password):
