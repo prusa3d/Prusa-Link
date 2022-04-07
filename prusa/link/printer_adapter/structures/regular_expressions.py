@@ -74,7 +74,7 @@ TEMPERATURE_REGEX = re.compile(
     r"^T:(?P<ntemp>-?\d+\.\d+) /(?P<set_ntemp>-?\d+\.\d+) "
     r"B:(?P<btemp>-?\d+\.\d+) /(?P<set_btemp>-?\d+\.\d+) "
     r"T0:(-?\d+\.\d+) /(-?\d+\.\d+) @:(?P<tpwm>-?\d+) B@:(?P<bpwm>-?\d+) "
-    r"P:(?P<ptemp>-?\d+\.\d+) A:(?P<atemp>-?\d+\.\d+)$")
+    r"P:(?P<ptemp>-?\d+\.\d+)( A:(?P<atemp>-?\d+\.\d+))?$")
 POSITION_REGEX = re.compile(
     r"^X:(?P<x>-?\d+\.\d+) Y:(?P<y>-?\d+\.\d+) Z:(?P<z>-?\d+\.\d+) "
     r"E:(?P<e>-?\d+\.\d+) Count X: (?P<count_x>-?\d+\.\d+) "
