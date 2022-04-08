@@ -56,6 +56,8 @@
       - New Rename and Copy actions (hidden)
       - New tool to unify icons colors
       - Fixed icons colors
+      - Updated free space logic
+      - Fixed storage tabs behavior
      * Differentiate between FW and ID errors in the wizard, update texts
      * Fix ID error being swapped with the FW error
      * Fixed download ref, added total storage space info
