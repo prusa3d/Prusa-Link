@@ -149,21 +149,21 @@ class MK3Polling:
         # Only the progress gets an interval
         # Its gatherer sets all the other values manually while other
         # get set in cascade, converted from sooner acquired values
-        self.sd_progress = WatchedItem(
-            "sd_progress",
+        self.print_progress = WatchedItem(
+            "print_progress",
             gather_function=self._get_print_info,
             validation_function=self._validate_progress,
-            write_function=self._set_sd_progress,
+            write_function=self._set_print_progress,
         )
-        self.item_updater.add_watched_item(self.sd_progress)
+        self.item_updater.add_watched_item(self.print_progress)
 
-        self.sd_progress_broken = WatchedItem("sd_progress_broken")
-        self.sd_progress.validation_error_signal.connect(
-            lambda: self.item_updater.set_value(self.sd_progress_broken, True))
-        self.sd_progress.became_valid_signal.connect(
-            lambda: self.item_updater.set_value(self.sd_progress_broken, False
+        self.progress_broken = WatchedItem("progress_broken")
+        self.print_progress.validation_error_signal.connect(
+            lambda: self.item_updater.set_value(self.progress_broken, True))
+        self.print_progress.became_valid_signal.connect(
+            lambda: self.item_updater.set_value(self.progress_broken, False
                                                 ))
-        self.item_updater.add_watched_item(self.sd_progress_broken)
+        self.item_updater.add_watched_item(self.progress_broken)
 
         # These two times remaining update together through this
         # convertor or whatever it is
@@ -242,24 +242,24 @@ class MK3Polling:
         self.nozzle_diameter.interval = None
         self.flow_multiplier.interval = SLOW_TELEMETRY
         self.speed_multiplier.interval = SLOW_TELEMETRY
-        self.sd_progress.interval = SLOW_TELEMETRY
+        self.print_progress.interval = SLOW_TELEMETRY
 
         self.item_updater.cancel_scheduled_invalidation(self.nozzle_diameter)
         self.item_updater.schedule_invalidation(self.flow_multiplier)
         self.item_updater.schedule_invalidation(self.speed_multiplier)
-        self.item_updater.schedule_invalidation(self.sd_progress)
+        self.item_updater.schedule_invalidation(self.print_progress)
 
     def polling_ok(self):
         """Re-starts polling of some values"""
         self.nozzle_diameter.interval = SLOW_TELEMETRY
         self.flow_multiplier.interval = TELEMETRY_INTERVAL
         self.speed_multiplier.interval = TELEMETRY_INTERVAL
-        self.sd_progress.interval = None
+        self.print_progress.interval = None
 
         self.item_updater.schedule_invalidation(self.nozzle_diameter)
         self.item_updater.schedule_invalidation(self.flow_multiplier)
         self.item_updater.schedule_invalidation(self.speed_multiplier)
-        self.item_updater.cancel_scheduled_invalidation(self.sd_progress)
+        self.item_updater.cancel_scheduled_invalidation(self.print_progress)
 
     def ensure_job_id(self):
         """
@@ -454,7 +454,8 @@ class MK3Polling:
         assert sender is not None
         groups = match.groupdict()
 
-        self.item_updater.set_value(self.sd_progress, int(groups["progress"]))
+        self.item_updater.set_value(self.print_progress,
+                                    int(groups["progress"]))
         self.item_updater.set_value(self.speed_agnostic_mins_remaining,
                                     int(groups["time"]))
 
@@ -612,7 +613,7 @@ class MK3Polling:
         """Write the flow multiplier to model"""
         self.model.set_telemetry(Telemetry(flow=value))
 
-    def _set_sd_progress(self, value):
+    def _set_print_progress(self, value):
         """Write the progress"""
         self.model.set_telemetry(Telemetry(progress=value))
 
@@ -629,7 +630,7 @@ class MK3Polling:
         Sets the progress gathered from the byte position,
         But only if it's broken in the printer
         """
-        if self.sd_progress_broken.value:
+        if self.progress_broken.value:
             log.debug(
                 "SD print has no inbuilt percentage tracking, "
                 "falling back to getting progress from byte "
