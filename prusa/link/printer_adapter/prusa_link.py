@@ -176,7 +176,7 @@ class PrusaLink:
                 self.mk3_polling, value[0], value[1]))
         self.mk3_polling.mixed_path.value_changed_signal.connect(
             self.mixed_path_changed)
-        self.mk3_polling.sd_progress_broken.value_changed_signal.connect(
+        self.mk3_polling.progress_broken.value_changed_signal.connect(
             self.progress_broken)
 
         # Update the bare minimum of things for initial info
