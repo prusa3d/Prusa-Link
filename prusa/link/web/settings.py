@@ -7,8 +7,9 @@ from poorwsgi.digest import check_digest
 from .lib.core import app
 from .lib.auth import check_api_digest, set_digest, valid_credentials, \
     valid_digests, REALM
-from .lib.wizard import valid_sn_format, sn_write_success, execute_sn_gcode, \
-    INVALID_CHARACTERS, PRINTER_MISSING_NAME, PRINTER_INVALID_CHARACTERS
+from .lib.wizard import valid_sn_format, new_sn_format, sn_write_success, \
+    execute_sn_gcode, INVALID_CHARACTERS, PRINTER_MISSING_NAME, \
+    PRINTER_INVALID_CHARACTERS
 
 from .. import errors
 
@@ -146,7 +147,7 @@ def api_sn(req):
     # pylint: disable=unused-argument
     serial_queue = app.daemon.prusa_link.serial_queue
     status = state.HTTP_CONFLICT
-    message = "Printer already has a valid S/N"
+    msg = "Printer already has a valid S/N"
 
     if not errors.SN.ok:
         serial = req.json.get('serial')
@@ -158,8 +159,20 @@ def api_sn(req):
                 return JSONResponse(status_code=state.HTTP_OK)
 
             status = state.HTTP_INSUFFICIENT_STORAGE
-            message = "S/N was not successfully written to printer"
+            msg = "S/N was not successfully written to printer"
         else:
             status = state.HTTP_BAD_REQUEST
-            message = "Please provide a valid S/N"
-    return JSONResponse(status_code=status, message=message)
+            if new_sn_format(serial):
+                title = "New S/N format"
+                msg = \
+                    "S/N is in new format. Please contact our Customer support"
+            else:
+                title = "Invalid S/N"
+                msg = "Please provide a valid S/N"
+
+            errors_ = {
+                'title': title,
+                'message': msg
+            }
+            return JSONResponse(**errors_, status_code=status)
+    return JSONResponse(status_code=status, message=msg)
