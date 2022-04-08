@@ -18,7 +18,11 @@
               <div class="col-sm-10">
                 <input type="text" class="form-control {{ 'is-invalid' if errors else '' }}" id="serial" name="serial" value="{{ wizard.serial or '' }}" required>
                 <div class="invalid-feedback">
-                  Please provide a valid S/N.
+                    {% if errors.get('not_valid') %}
+                        <p>Please provide a valid S/N.</p>
+                    {% elif errors.get('new_sn') %}
+                        <p>It looks like you have a new version of our S/N. Please contact our <a href="https://help.prusa3d.com/en/article/support_2287" target="_blank">Customer support</a> for help with your registration.</p>
+                    {% endif %}
                 </div>
               </div>
             </div>

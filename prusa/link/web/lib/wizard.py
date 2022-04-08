@@ -12,7 +12,7 @@ from ..lib.core import app
 from ..lib.auth import REALM
 from ...printer_adapter.input_output.serial.helpers import enqueue_instruction
 from ...printer_adapter.structures.regular_expressions import VALID_SN_REGEX, \
-    VALID_USERNAME_REGEX, VALID_PASSWORD_REGEX
+    VALID_USERNAME_REGEX, VALID_PASSWORD_REGEX, NEW_SN_REGEX
 from ...printer_adapter.mk3_polling import MK3Polling
 from ...printer_adapter.structures.item_updater import WatchedItem
 
@@ -27,6 +27,9 @@ def valid_sn_format(serial):
     """Check serial number format."""
     return VALID_SN_REGEX.match(serial) is not None
 
+def new_sn_format(serial):
+    """Check if the entered serial number is new format (SN...)"""
+    return NEW_SN_REGEX.match(serial)
 
 def sn_write_success():
     """Check if the S/N was written successfully to the printer"""
@@ -147,7 +150,9 @@ class Wizard:
     def check_serial(self):
         """Check S/N is valid."""
         errors = {}
-        if not valid_sn_format(self.serial):
+        if new_sn_format(self.serial):
+            errors['new_sn'] = True
+        elif not valid_sn_format(self.serial):
             errors['not_valid'] = True
         self.errors['serial'] = errors
         return not errors
