@@ -10,6 +10,8 @@ FW_REGEX = re.compile(r"^(?P<version>\d+\.\d+\.\d+-.*)$")
 SN_REGEX = re.compile(r"^(?P<sn>^CZPX\d{4}X\d{3}X.\d{5})|"
                       r"(?P<invalid>SN invalid)|(?P<gibberish>.*)$")
 VALID_SN_REGEX = re.compile(r"^(?P<sn>^CZPX\d{4}X\d{3}X.\d{5})$")
+NEW_SN_REGEX = re.compile(
+        r"^(?P<sn>^SN(?!20)[2-9][0-9](004|017|022|023|024|025)[K,C]\d{6})$")
 NOZZLE_REGEX = re.compile(r"^(?P<size>\d\.\d+)$")
 PERCENT_REGEX = re.compile(r"^(?P<percent>\d{0,3})%$")
 
