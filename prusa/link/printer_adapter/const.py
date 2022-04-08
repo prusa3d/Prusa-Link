@@ -10,7 +10,7 @@ from importlib.resources import files  # type: ignore
 from packaging.version import Version
 
 from prusa.connect.printer.const import State, PrinterType
-from .structures.model_classes import PrintState
+from .structures.model_classes import PrintState, PrintMode
 
 PRINTER_TYPES = {
     250: PrinterType.I3MK25,
@@ -135,4 +135,15 @@ PRINT_STATE_PAIRING = {
     "sd_paused": PrintState.SD_PAUSED,
     "serial_paused": PrintState.SERIAL_PAUSED,
     "no_print": PrintState.NOT_SD_PRINTING,
+}
+
+PRINT_MODE_PAIRING = {
+    "SILENT": PrintMode.SILENT,
+    "NORMAL": PrintMode.NORMAL
+}
+
+PRINT_MODE_ID_PAIRING = {
+    0: PrintMode.SILENT,
+    1: PrintMode.NORMAL,
+    2: PrintMode.AUTO
 }
