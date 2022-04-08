@@ -85,3 +85,10 @@ class PrintState(Enum):
     SD_PAUSED = "SD_PAUSED"
     SERIAL_PAUSED = "SERIAL_PAUSED"
     NOT_SD_PRINTING = "NOT_SD_PRINTING"
+
+
+class PrintMode(Enum):
+    """The "Mode" from the printer LCD settings"""
+    SILENT = "SILENT"
+    NORMAL = "NORMAL"
+    AUTO = "AUTO"

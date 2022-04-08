@@ -95,7 +95,8 @@ M27_OUTPUT_REGEX = re.compile(
     r"(?P<byte_pos>SD printing byte (?P<current>\d+)/(?P<sum>\d+))|"
     r"(?P<printing_time>(?P<hours>\d+):(?P<minutes>\d{2}))$")
 PRINT_INFO_REGEX = re.compile(
-    r"^SILENT MODE: Percent done: (?P<progress>-?\d+); "
+    r"^(?P<mode>(SILENT)|(NORMAL)) MODE: "
+    r"Percent done: (?P<progress>-?\d+); "
     r"print time remaining in mins: (?P<time>-?\d+) ?.*$")
 HEATING_REGEX = re.compile(
     r"^T:(?P<ntemp>\d+\.\d+) E:\d+ B:(?P<btemp>\d+\.\d+)$")

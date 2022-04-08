@@ -13,13 +13,14 @@ from .informers.job import Job
 from .input_output.serial.helpers import wait_for_instruction, \
     enqueue_matchable
 from .input_output.serial.serial_parser import SerialParser
-from .structures.model_classes import NetworkInfo, Telemetry
+from .structures.model_classes import NetworkInfo, Telemetry, PrintMode
 from .structures.regular_expressions import SN_REGEX, PRINTER_TYPE_REGEX, \
     FW_REGEX, NOZZLE_REGEX, D3_OUTPUT_REGEX, VALID_SN_REGEX, \
     PERCENT_REGEX, PRINT_INFO_REGEX, M27_OUTPUT_REGEX
 from .. import errors
 from .const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE, \
-    SLOW_TELEMETRY, TELEMETRY_INTERVAL, PRINT_STATE_PAIRING
+    SLOW_TELEMETRY, TELEMETRY_INTERVAL, PRINT_STATE_PAIRING, \
+    PRINT_MODE_ID_PAIRING
 from .input_output.serial.serial_queue import \
     SerialQueue
 from .model import Model
@@ -112,6 +113,15 @@ class MK3Polling:
         self.job_id.val_err_timeout_signal.connect(
             lambda item: self._set_job_id_error(False), weak=False)
         self.item_updater.add_watched_item(self.job_id)
+
+        self.print_mode = WatchedItem(
+            "print_mode",
+            gather_function=self._get_print_mode,
+            interval=SLOW_TELEMETRY
+        )
+        # Make silent the default for when we fail to get the value in time
+        self.item_updater.add_watched_item(self.print_mode)
+        self.item_updater.set_value(self.print_mode, PrintMode.SILENT)
 
         # TODO: Put this outside
         for item in self.printer_info:
@@ -348,6 +358,14 @@ class MK3Polling:
                                   D3_OUTPUT_REGEX,
                                   to_front=True)
         return int(match.group("data").replace(" ", ""), base=16)
+
+    def _get_print_mode(self):
+        """Gets the print mode from the printer"""
+        match = self.do_matcheble("D3 Ax0fff C1",
+                                  D3_OUTPUT_REGEX,
+                                  to_front=True)
+        index = int(match.group("data").replace(" ", ""), base=16)
+        return PRINT_MODE_ID_PAIRING[index]
 
     def _get_speed_multiplier(self):
         match = self.do_matcheble("M220", PERCENT_REGEX)
