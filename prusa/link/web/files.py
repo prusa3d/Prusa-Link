@@ -572,6 +572,9 @@ def api_download_abort(req):
 def api_thumbnails(req, path):
     """Returns preview from cache file."""
     # pylint: disable=unused-argument
+    headers = {
+        'Cache-Control': 'private, max-age=604800'
+    }
     os_path = get_os_path('/' + path)
     if not os_path or not exists(os_path):
         raise errors.FileNotFound()
@@ -588,4 +591,4 @@ def api_thumbnails(req, path):
     for data in meta.thumbnails.values():
         if len(data) > len(biggest):
             biggest = data
-    return Response(decodebytes(biggest), content_type="image/png")
+    return Response(decodebytes(biggest), headers=headers)
