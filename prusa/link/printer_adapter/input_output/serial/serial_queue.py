@@ -20,7 +20,7 @@ from ...structures.regular_expressions import \
     CONFIRMATION_REGEX, RESEND_REGEX, BUSY_REGEX, \
     ATTENTION_REGEX, HEATING_HOTEND_REGEX, HEATING_REGEX, \
     M110_REGEX
-from ...util import run_slowly_die_fast
+from ...util import loop_until
 from .instruction import Instruction
 from .is_planner_fed import IsPlannerFed
 from .serial_parser import SerialParser
@@ -568,9 +568,8 @@ class MonitoredSerialQueue(SerialQueue):
 
     def keep_monitoring(self):
         """Runs the loop of monitoring the queue"""
-        run_slowly_die_fast(self.quit_evt, QUIT_INTERVAL,
-                            lambda: SERIAL_QUEUE_MONITOR_INTERVAL,
-                            self.check_status)
+        loop_until(self.quit_evt, lambda: SERIAL_QUEUE_MONITOR_INTERVAL,
+                   self.check_status)
 
     def check_status(self):
         """
