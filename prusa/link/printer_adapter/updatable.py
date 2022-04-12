@@ -9,8 +9,7 @@ from cProfile import Profile
 
 import prctl  # type: ignore
 
-from .const import QUIT_INTERVAL
-from .util import run_slowly_die_fast
+from .util import loop_until
 
 
 def prctl_name():
@@ -57,8 +56,7 @@ class ThreadedUpdatable:
 
     def __keep_updating(self):
         prctl_name()
-        run_slowly_die_fast(self.quit_evt, QUIT_INTERVAL,
-                            lambda: self.update_interval, self.update)
+        loop_until(self.quit_evt, lambda: self.update_interval, self.update)
 
     def stop(self):
         """Stop the updatable"""

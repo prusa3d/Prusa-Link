@@ -36,12 +36,12 @@ from .service_discovery import ServiceDiscovery
 from .structures.item_updater import WatchedItem
 from .structures.model_classes import Telemetry, PrintState
 from .const import PRINTING_STATES, TELEMETRY_IDLE_INTERVAL, \
-    TELEMETRY_PRINTING_INTERVAL, QUIT_INTERVAL, SD_MOUNT_NAME, \
+    TELEMETRY_PRINTING_INTERVAL, SD_MOUNT_NAME, \
     PATH_WAIT_TIMEOUT
 from .structures.regular_expressions import \
     PRINTER_BOOT_REGEX, START_PRINT_REGEX, PAUSE_PRINT_REGEX, \
     RESUME_PRINT_REGEX
-from .util import run_slowly_die_fast, make_fingerprint
+from .util import loop_until, make_fingerprint
 from .updatable import prctl_name, Thread
 from ..config import Config, Settings
 from ..errors import HW
@@ -779,8 +779,8 @@ class PrusaLink:
     def keep_sending_telemetry(self):
         """Runs a loop in a thread to pass the telemetry from model to SDK"""
         prctl_name()
-        run_slowly_die_fast(self.quit_evt, QUIT_INTERVAL,
-                            self.get_telemetry_interval, self.send_telemetry)
+        loop_until(self.quit_evt, self.get_telemetry_interval,
+                   self.send_telemetry)
 
     def send_telemetry(self):
         """
