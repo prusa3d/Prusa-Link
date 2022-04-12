@@ -35,10 +35,10 @@ JOB_ENDING_STATES = BASE_STATES.union(
 # --- Intervals ---
 # Values are in seconds
 
-TELEMETRY_INTERVAL = 1
 TELEMETRY_IDLE_INTERVAL = 0.25
 TELEMETRY_PRINTING_INTERVAL = 1
-SLOW_TELEMETRY = 10  # for values, that aren't that important
+FAST_POLL_INTERVAL = 1
+SLOW_POLL_INTERVAL = 10  # for values, that aren't that important
 IP_UPDATE_INTERVAL = 5
 QUIT_INTERVAL = 0.2
 SD_INTERVAL = 0.2
