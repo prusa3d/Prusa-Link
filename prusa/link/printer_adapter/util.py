@@ -17,44 +17,30 @@ from .const import SD_MOUNT_NAME
 log = logging.getLogger(__name__)
 
 
-def run_slowly_die_fast(loop_evt: Event, check_exit_every_sec,
-                        run_every_sec: Callable[[], float], to_run,
-                        *arg_getters, **kwarg_getters):
+def loop_until(loop_evt: Event,
+               run_every_sec: Callable[[], float], to_run,
+               *arg_getters, **kwarg_getters):
     """
-    Lets say you run something every minute,
-    but you want to quit your program faster
-
-    This lets you do that. there is lots of getter functions as params.
-    If they were passed by value, even the should_loop would never change
-    resulting in an infinite loop. Getters seem like a nice way to pass
-    by reference
+    Call a function every X seconds, quit instantly
+    pass getters for arguments
     """
-
-    last_called = 0.0
 
     while not loop_evt.is_set():
-        last_checked_exit = time()
         # if it's time to run the func
-        if time() - last_called > run_every_sec():
 
-            last_called = time()
-            args = []
-            for getter in arg_getters:
-                args.append(getter())
+        last_called = time()
+        args = []
+        for getter in arg_getters:
+            args.append(getter())
 
-            kwargs = {}
-            for name, getter in kwarg_getters.items():
-                kwargs[name] = getter()
+        kwargs = {}
+        for name, getter in kwarg_getters.items():
+            kwargs[name] = getter()
 
-            to_run(*args, **kwargs)
+        to_run(*args, **kwargs)
 
-        # Wait until it's time to check, if we are still running,
-        # or it's time to run the func again
-        # wait at least 0s, don't wait negative amounts
         run_again_in = max(0.0, (last_called + run_every_sec()) - time())
-        check_exit_in = max(0.0, (last_checked_exit + check_exit_every_sec) -
-                            time())
-        loop_evt.wait(min(check_exit_in, run_again_in))
+        loop_evt.wait(run_again_in)
 
 
 def get_local_ip():
