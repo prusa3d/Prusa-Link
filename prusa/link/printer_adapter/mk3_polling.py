@@ -125,7 +125,7 @@ class MK3Polling:
 
         # TODO: Put this outside
         for item in self.printer_info:
-            item.value_changed_signal.connect(lambda value: self._send_info(),
+            item.became_valid_signal.connect(lambda value: self._send_info(),
                                               weak=False)
         # Telemetry
         self.speed_multiplier = WatchedItem(
