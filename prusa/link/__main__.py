@@ -34,8 +34,9 @@ CONFIG_FILE = '/etc/prusalink/prusalink.ini'
 
 def excepthook(exception_arguments, args, argv):
     """If running as a daemon, restarts the app on unhandled exceptions"""
+    assert exception_arguments is not None
     InterestingLogRotator.trigger("exception in a thread")
-    log.error(exception_arguments.exc_value)
+    log.exception("Caught an exception at top level!")
     if args is None:
         log.fatal("Exception during startup, cannot restart")
     if args.foreground:
