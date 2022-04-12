@@ -19,7 +19,7 @@ from .structures.regular_expressions import SN_REGEX, PRINTER_TYPE_REGEX, \
     PERCENT_REGEX, PRINT_INFO_REGEX, M27_OUTPUT_REGEX
 from .. import errors
 from .const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE, \
-    SLOW_TELEMETRY, TELEMETRY_INTERVAL, PRINT_STATE_PAIRING, \
+    SLOW_POLL_INTERVAL, FAST_POLL_INTERVAL, PRINT_STATE_PAIRING, \
     PRINT_MODE_ID_PAIRING
 from .input_output.serial.serial_queue import \
     SerialQueue
@@ -117,7 +117,7 @@ class MK3Polling:
         self.print_mode = WatchedItem(
             "print_mode",
             gather_function=self._get_print_mode,
-            interval=SLOW_TELEMETRY
+            interval=SLOW_POLL_INTERVAL
         )
         # Make silent the default for when we fail to get the value in time
         self.item_updater.add_watched_item(self.print_mode)
@@ -133,7 +133,7 @@ class MK3Polling:
             gather_function=self._get_speed_multiplier,
             write_function=self._set_speed_multiplier,
             validation_function=self._validate_percent,
-            interval=TELEMETRY_INTERVAL)
+            interval=FAST_POLL_INTERVAL)
         self.item_updater.add_watched_item(self.speed_multiplier)
 
         self.flow_multiplier = WatchedItem(
@@ -141,7 +141,7 @@ class MK3Polling:
             gather_function=self._get_flow_multiplier,
             write_function=self._set_flow_multiplier,
             validation_function=self._validate_percent,
-            interval=TELEMETRY_INTERVAL)
+            interval=FAST_POLL_INTERVAL)
         self.item_updater.add_watched_item(self.flow_multiplier)
 
         # Print info can be autoreported or polled
@@ -190,8 +190,8 @@ class MK3Polling:
         # limitations, I'm not able to read them when auto reported
         self.print_state = WatchedItem("print_state",
                                        gather_function=self._get_m27,
-                                       interval=TELEMETRY_INTERVAL,
-                                       on_fail_interval=SLOW_TELEMETRY)
+                                       interval=FAST_POLL_INTERVAL,
+                                       on_fail_interval=SLOW_POLL_INTERVAL)
         self.item_updater.add_watched_item(self.print_state)
 
         # short (8.3) folder names, long file name (52 chars)
@@ -240,9 +240,9 @@ class MK3Polling:
     def polling_not_ok(self):
         """Stops polling of some values"""
         self.nozzle_diameter.interval = None
-        self.flow_multiplier.interval = SLOW_TELEMETRY
-        self.speed_multiplier.interval = SLOW_TELEMETRY
-        self.print_progress.interval = SLOW_TELEMETRY
+        self.flow_multiplier.interval = SLOW_POLL_INTERVAL
+        self.speed_multiplier.interval = SLOW_POLL_INTERVAL
+        self.print_progress.interval = SLOW_POLL_INTERVAL
 
         self.item_updater.cancel_scheduled_invalidation(self.nozzle_diameter)
         self.item_updater.schedule_invalidation(self.flow_multiplier)
@@ -251,9 +251,9 @@ class MK3Polling:
 
     def polling_ok(self):
         """Re-starts polling of some values"""
-        self.nozzle_diameter.interval = SLOW_TELEMETRY
-        self.flow_multiplier.interval = TELEMETRY_INTERVAL
-        self.speed_multiplier.interval = TELEMETRY_INTERVAL
+        self.nozzle_diameter.interval = SLOW_POLL_INTERVAL
+        self.flow_multiplier.interval = FAST_POLL_INTERVAL
+        self.speed_multiplier.interval = FAST_POLL_INTERVAL
         self.print_progress.interval = None
 
         self.item_updater.schedule_invalidation(self.nozzle_diameter)
