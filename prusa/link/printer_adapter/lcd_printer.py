@@ -45,10 +45,10 @@ ERROR_MESSAGES = {
     FW: "Err unsupported FW",
     SN: "Err obtaining S/N",
     JOB_ID: "Err reading job id",
-    HTTP: "HTTP error 4xx",
+    HTTP: "HTTP error 5xx",
     TOKEN: "Error bad token",
     # This needs updating, but currently there's nothing better to say
-    API: "HTTP error 5xx",
+    API: "HTTP error 4xx",
     INTERNET: "No internet access"
 }
 
