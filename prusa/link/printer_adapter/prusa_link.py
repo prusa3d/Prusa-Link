@@ -21,7 +21,7 @@ from .command_queue import CommandQueue
 from .informers.filesystem.sd_card import SDState
 from .informers.job import Job, JobState
 from .interesting_logger import InterestingLogRotator
-from .mk3_polling import MK3Polling
+from .printer_polling import MK3Polling
 from .print_stats import PrintStats
 from .file_printer import FilePrinter
 from .informers.ip_updater import IPUpdater
@@ -131,7 +131,7 @@ class PrusaLink:
                                          self.serial_parser,
                                          self.state_manager, self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
-        self.mk3_polling = MK3Polling(self.serial_queue, self.serial_parser,
+        self.printer_polling = MK3Polling(self.serial_queue, self.serial_parser,
                                       self.printer, self.model, self.job)
         self.command_queue = CommandQueue()
 
@@ -168,15 +168,15 @@ class PrusaLink:
         self.storage.dir_unmounted_signal.connect(self.dir_unmount)
         self.storage.sd_mounted_signal.connect(self.sd_mount)
         self.storage.sd_unmounted_signal.connect(self.sd_unmount)
-        self.mk3_polling.print_state.became_valid_signal.connect(
+        self.printer_polling.print_state.became_valid_signal.connect(
             self.print_state_changed
         )
-        self.mk3_polling.byte_position.value_changed_signal.connect(
+        self.printer_polling.byte_position.value_changed_signal.connect(
             lambda value: self.byte_position_changed(
-                self.mk3_polling, value[0], value[1]))
-        self.mk3_polling.mixed_path.value_changed_signal.connect(
+                self.printer_polling, value[0], value[1]))
+        self.printer_polling.mixed_path.value_changed_signal.connect(
             self.mixed_path_changed)
-        self.mk3_polling.progress_broken.value_changed_signal.connect(
+        self.printer_polling.progress_broken.value_changed_signal.connect(
             self.progress_broken)
 
         # Update the bare minimum of things for initial info
@@ -193,7 +193,7 @@ class PrusaLink:
 
         # Start individual informer threads after updating manually, so nothing
         # will race with itself
-        self.mk3_polling.start()
+        self.printer_polling.start()
         self.storage.start()
         self.ip_updater.start()
         self.lcd_printer.start()
@@ -263,7 +263,7 @@ class PrusaLink:
         self.command_queue.stop()
         self.printer.stop_loop()
         self.printer.indicate_stop()
-        self.mk3_polling.stop()
+        self.printer_polling.stop()
         self.telemetry_thread.join()
         self.storage.stop()
         self.lcd_printer.stop(fast)
@@ -287,7 +287,7 @@ class PrusaLink:
             self.service_discovery.unregister()
             self.file_printer.wait_stopped()
             self.printer.wait_stopped()
-            self.mk3_polling.wait_stopped()
+            self.printer_polling.wait_stopped()
             self.storage.wait_stopped()
             self.lcd_printer.wait_stopped()
             self.ip_updater.wait_stopped()
@@ -466,7 +466,7 @@ class PrusaLink:
         """Passes the job_id into the SDK"""
         assert sender
         self.printer.job_id = job_id
-        self.mk3_polling.ensure_job_id()
+        self.printer_polling.ensure_job_id()
 
     def print_state_changed(self, item: WatchedItem):
         """Handles the newly observed print state"""
@@ -609,7 +609,7 @@ class PrusaLink:
         On every ip change from ip updater sends a new info
         """
         assert sender is not None
-        self.mk3_polling.invalidate_network_info()
+        self.printer_polling.invalidate_network_info()
 
     def dir_mount(self, sender, path):
         """Connects a dir being mounted to Prusa Connect events"""
@@ -653,7 +653,7 @@ class PrusaLink:
         # file printer stop print needs to happen before this
         self.state_manager.reset()
         self.lcd_printer.reset_error_grace()
-        self.mk3_polling.invalidate_printer_info()
+        self.printer_polling.invalidate_printer_info()
         self.ip_updater.send_ip_to_printer()
 
     @property
@@ -703,9 +703,9 @@ class PrusaLink:
         # The states should be completely re-done i'm told. So this janky
         # stuff is what we're going to deal with for now
         if to_state in {State.PRINTING, State.ATTENTION, State.ERROR}:
-            self.mk3_polling.polling_not_ok()
+            self.printer_polling.polling_not_ok()
         if to_state not in {State.PRINTING, State.ATTENTION, State.ERROR}:
-            self.mk3_polling.polling_ok()
+            self.printer_polling.polling_ok()
 
         # Set download throttling depending on printer state and cpu count
         if to_state == State.PRINTING and multiprocessing.cpu_count() < 4:

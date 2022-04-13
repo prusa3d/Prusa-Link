@@ -13,7 +13,7 @@ from ..lib.auth import REALM
 from ...printer_adapter.input_output.serial.helpers import enqueue_instruction
 from ...printer_adapter.structures.regular_expressions import VALID_SN_REGEX, \
     VALID_USERNAME_REGEX, VALID_PASSWORD_REGEX, NEW_SN_REGEX
-from ...printer_adapter.mk3_polling import MK3Polling
+from ...printer_adapter.printer_polling import MK3Polling
 from ...printer_adapter.structures.item_updater import WatchedItem
 
 log = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ def new_sn_format(serial):
 
 def sn_write_success():
     """Check if the S/N was written successfully to the printer"""
-    polling: MK3Polling = app.daemon.prusa_link.mk3_polling
+    polling: MK3Polling = app.daemon.prusa_link.printer_polling
     # Note: if there's more of things like this, consider integrating
     # Set up an event to wait for
     serial_number: WatchedItem = polling.serial_number
