@@ -10,7 +10,8 @@ from enum import Enum
 from prusa.connect.printer import Command as SDKCommand, DownloadMgr
 
 from prusa.connect.printer.files import File
-from prusa.connect.printer.const import Command as CommandType, State
+from prusa.connect.printer.const import Command as CommandType, State, \
+    PrinterType, Event as EventType
 from prusa.connect.printer.const import Source
 
 from .auto_telemetry import AutoTelemetry
@@ -38,10 +39,10 @@ from .structures.item_updater import WatchedItem
 from .structures.model_classes import Telemetry, PrintState
 from .const import PRINTING_STATES, TELEMETRY_IDLE_INTERVAL, \
     TELEMETRY_PRINTING_INTERVAL, SD_MOUNT_NAME, \
-    PATH_WAIT_TIMEOUT, BASE_STATES
+    PATH_WAIT_TIMEOUT, BASE_STATES, MK25_PRINTERS
 from .structures.regular_expressions import \
     PRINTER_BOOT_REGEX, PAUSE_PRINT_REGEX, \
-    RESUME_PRINT_REGEX
+    RESUME_PRINT_REGEX, MBL_TRIGGER_REGEX
 from .util import loop_until, make_fingerprint, get_print_stats_gcode
 from .updatable import prctl_name, Thread
 from ..config import Config, Settings
@@ -136,6 +137,11 @@ class PrusaLink:
                                       self.printer, self.model, self.job)
         self.command_queue = CommandQueue()
 
+        self.serial_parser.add_handler(
+            MBL_TRIGGER_REGEX,
+            lambda sender, match: self.printer_polling.invalidate_mbl()
+        )
+
         # Bind signals
         self.serial_queue.serial_queue_failed.connect(self.serial_queue_failed)
         self.serial_queue.stuck_signal.connect(self.stuck_serial)
@@ -177,6 +183,8 @@ class PrusaLink:
             self.mixed_path_changed)
         self.printer_polling.progress_broken.value_changed_signal.connect(
             self.progress_broken)
+        self.printer_polling.mbl.value_changed_signal.connect(
+            self.mbl_data_changed)
 
         # Update the bare minimum of things for initial info
         self.ip_updater.update()
@@ -449,6 +457,12 @@ class PrusaLink:
 
     # --- Signal handlers ---
 
+    def mbl_data_changed(self, data):
+        """Sends the mesh bed leveling data to Connect"""
+        self.printer.event_cb(event=EventType.MESH_BED_DATA,
+                              source=Source.MARLIN,
+                              mbl_data=data["data"])
+
     def job_info_updated(self, sender):
         """On job info update, sends the updated job info to the Connect"""
         assert sender is not None
@@ -694,6 +708,12 @@ class PrusaLink:
 
         if from_state in PRINTING_STATES and to_state in BASE_STATES:
             self._reset_print_stats()
+
+        # No other trigger exists for these older printers
+        # The printer will dip into BUSY for MBL, so lets use that
+        if to_state in {State.PRINTING, State.READY} and \
+                PrinterType(self.printer.type) in MK25_PRINTERS:
+            self.printer_polling.invalidate_mbl()
 
         # The states should be completely re-done i'm told. So this janky
         # stuff is what we're going to deal with for now

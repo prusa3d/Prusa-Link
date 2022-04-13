@@ -28,6 +28,8 @@ DATA_PATH = path.abspath(path.join(str(files('prusa.link')), 'data'))
 BASE_STATES = {State.READY, State.BUSY}
 PRINTING_STATES = {State.PRINTING, State.PAUSED, State.FINISHED, State.STOPPED}
 
+MK25_PRINTERS = {PrinterType.I3MK25, PrinterType.I3MK25S}
+
 JOB_ONGOING_STATES = {State.PRINTING, State.PAUSED}
 JOB_ENDING_STATES = BASE_STATES.union(
     {State.FINISHED, State.STOPPED, State.ERROR})

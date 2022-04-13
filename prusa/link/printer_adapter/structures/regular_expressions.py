@@ -112,3 +112,10 @@ FAN_ERROR_REGEX = re.compile(
     r"^(?P<fan_name>Extruder|Print) fan speed is lower than expected$")
 D3_OUTPUT_REGEX = re.compile(
     r"^(?P<address>\w{2,}) {2}(?P<data>([0-9a-fA-F]{2} ?)+)$")
+MBL_REGEX = re.compile(
+    r"^(?P<no_mbl>Mesh bed leveling not active.)|"
+    r"(Num X,Y: (?P<num_x>\d+),(?P<num_y>\d+))|"
+    r"(?P<mbl_row>([ ]*-?\d+\.\d+)+)$"
+)
+MBL_TRIGGER_REGEX = re.compile(r"^(tmc\d+_home_enter\(axes_mask=0x..\))|"
+                               r"(echo:enqueing \"G80\")")
