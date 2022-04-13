@@ -13,6 +13,15 @@ from .lib.wizard import valid_sn_format, new_sn_format, sn_write_success, \
 
 from .. import errors
 
+errors_titles = {
+    'username_spaces': 'Spaces in username',
+    'username': 'Invalid username',
+    'password': 'Invalid new password',
+    'repassword': 'Invalid re-password',
+    'old_digest': 'Invalid old password',
+    'same_digest': 'Nothing to change'
+}
+
 
 def set_settings_printer(name, location):
     """Set new values to printer settings"""
@@ -72,12 +81,12 @@ def api_settings_set(req):
         for character in INVALID_CHARACTERS:
             if character in name or character in location:
                 errors_ = {
-                    'title': 'invalid_characters',
+                    'title': 'Invalid characters',
                     'message': PRINTER_INVALID_CHARACTERS
                 }
         if not name or not location:
             errors_ = {
-                'title': 'missing_name',
+                'title': 'Missing name',
                 'message': PRINTER_MISSING_NAME
             }
 
@@ -113,6 +122,17 @@ def api_settings_set(req):
         else:
             status = state.HTTP_NO_CONTENT
     else:
+        if errors_.get('user'):
+            for key, value in errors_['user'].items():
+                title = key
+                message = value
+                break
+
+        errors_ = {
+            'title': errors_titles[title],
+            'message': message
+        }
+
         kwargs = {**errors_}
         status = state.HTTP_BAD_REQUEST
 
