@@ -12,11 +12,12 @@ from typing import Callable, List
 
 import unidecode
 from prusa.connect.printer import Printer
-from prusa.connect.printer.const import TransferType
+from prusa.connect.printer.const import TransferType, State
 from prusa.connect.printer.errors import HTTP, API, TOKEN, INTERNET
 
 from .structures.model_classes import JobState
-from .const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL, SLEEP_SCREEN_TIMEOUT
+from .const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL, SLEEP_SCREEN_TIMEOUT, \
+    PRINTING_STATES
 from .model import Model
 from .input_output.serial.helpers import enqueue_instruction, \
         wait_for_instruction
@@ -35,9 +36,8 @@ WELCOME_TONE = [
     "M300 P25 S4800"
 ]
 
-ERROR_TONE = ["M300 S5 P600"]
-
-UPLOAD_TONE = ["M300 P12 S50"]
+ERROR_TONE = ["M300 P600 S5"]
+UPLOAD_TONE = ["M300 P14 S50"]
 
 ERROR_MESSAGES = {
     RPI_ENABLED: "Err Enable RPi port",
@@ -84,6 +84,7 @@ class DisplayThing:
         self.line = None
         self.end_text = ""
         self.sound_gcodes = []
+        self.resets_idle = True
 
         self.conditions = {}
 
@@ -216,6 +217,12 @@ class DisplayThing:
 
 ERROR_GRACE = 15
 
+PRINT_PRIORITY = 50
+WIZARD_PRIORITY = 40
+ERROR_PRIORITY = 30
+UPLOAD_PRIORITY = 20
+IDLE_PRIORITY = 10
+
 
 class LCDPrinter(metaclass=MCSingleton):
     """Reports PrusaLink status on the printer LCD whenever possible"""
@@ -223,11 +230,11 @@ class LCDPrinter(metaclass=MCSingleton):
     # pylint: disable=too-many-arguments
     def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
                  model: Model, settings: Settings, printer: Printer):
-        self.serial_queue = serial_queue
-        self.serial_parser = serial_parser
-        self.model = model
-        self.settings = settings
-        self.printer = printer
+        self.serial_queue: SerialQueue = serial_queue
+        self.serial_parser: SerialParser = serial_parser
+        self.model: Model = model
+        self.settings: Settings = settings
+        self.printer: Printer = printer
 
         self.event_queue: Queue[Callable[[], None]] = Queue()
 
@@ -243,13 +250,15 @@ class LCDPrinter(metaclass=MCSingleton):
 
         self.notiff_event = Event()
 
-        self.print_display = DisplayThing(50)
-        self.wizard_display = DisplayThing(40)
+        self.print_display = DisplayThing(PRINT_PRIORITY)
+        self.wizard_display = DisplayThing(WIZARD_PRIORITY)
         self.wizard_display.set_sound(WELCOME_TONE)
-        self.error_display = DisplayThing(30)
+        self.error_display = DisplayThing(ERROR_PRIORITY)
         self.error_display.set_sound(ERROR_TONE)
-        self.upload_display = DisplayThing(20)
+        self.upload_display = DisplayThing(UPLOAD_PRIORITY)
         self.upload_display.set_sound(UPLOAD_TONE)
+        self.idle_display = DisplayThing(IDLE_PRIORITY)
+        self.idle_display.resets_idle = False
         # self.message_display = DisplayThing()
 
         self.display_things = [
@@ -257,7 +266,8 @@ class LCDPrinter(metaclass=MCSingleton):
             self.error_display,
             # self.message_display,
             self.wizard_display,
-            self.upload_display
+            self.upload_display,
+            self.idle_display
         ]
 
         self.current_thing = None
@@ -293,10 +303,10 @@ class LCDPrinter(metaclass=MCSingleton):
             if self.current_thing is not None:
                 self.current_thing.to_start()
 
-        self.reset_idle()
         if self.ignore > 0:
             self.ignore -= 1
         else:
+            self.reset_idle()
             self.fw_msg_end_at = time() + FW_MESSAGE_TIMEOUT
             self.add_event(handler=handler)
 
@@ -310,6 +320,7 @@ class LCDPrinter(metaclass=MCSingleton):
         self._check_errors()
         self._check_wizard()
         self._check_upload()
+        self._check_idle()
 
     def _check_printing(self):
         """
@@ -352,7 +363,7 @@ class LCDPrinter(metaclass=MCSingleton):
                 if LAN.ok:
                     text += f"see {self.model.ip_updater.local_ip}".ljust(19)
                 else:
-                    text += "Connect Link to LAN".ljust(19)
+                    text += "No IP".ljust(19)
                 self.error_display.set_text(text,
                                             scroll_amount=19,
                                             last_screen_extra=8)
@@ -369,8 +380,9 @@ class LCDPrinter(metaclass=MCSingleton):
         wizard_needed = self.settings.is_wizard_needed()
         if wizard_needed and LAN.ok:
             self.wizard_display.enable()
-
-            conditions = dict(lan=LAN.ok, wizard_needed=wizard_needed)
+            ip = self.model.ip_updater.local_ip
+            conditions = dict(lan=LAN.ok, wizard_needed=wizard_needed,
+                              ip=ip)
             if self.wizard_display.conditions != conditions:
                 self.wizard_display.conditions = conditions
                 # Can't have a capital G because FW doesn't understand
@@ -386,6 +398,11 @@ class LCDPrinter(metaclass=MCSingleton):
         """
         Should an upload display be visible? And what should it say?
         """
+        state = self.model.state_manager.current_state
+        if state in PRINTING_STATES and state != State.PRINTING:
+            self.upload_display.set_priority(PRINT_PRIORITY + 10)
+        else:
+            self.upload_display.set_priority(UPLOAD_PRIORITY)
         if self.printer.transfer.in_progress:
             self.upload_display.enable()
             progress = self.printer.transfer.progress
@@ -429,6 +446,32 @@ class LCDPrinter(metaclass=MCSingleton):
                                          first_line_extra=0)
         else:
             self.upload_display.disable()
+
+    def _check_idle(self):
+        if time() - self.idle_from > SLEEP_SCREEN_TIMEOUT:
+            if LAN.ok:
+                self.idle_display.enable()
+                ip = self.model.ip_updater.local_ip
+                speed = self.model.last_telemetry.speed
+                conditions = dict(ip=ip, speed=speed)
+                if self.idle_display.conditions != conditions:
+                    self.idle_display.conditions = conditions
+                    if speed != 42:
+                        self.idle_display.set_text(
+                            "PrusaLink OK.".ljust(19) + f"{ip}".ljust(19),
+                            scroll_amount=19,
+                            last_screen_extra=12)
+                    else:
+                        self.idle_display.set_text(
+                            "The Answer to the Great Question... Of Life, the "
+                            "Universe and Everything... Is... Forty-Two.",
+                            scroll_delay=0.3,
+                            scroll_amount=1,
+                            first_line_extra=2,
+                            last_screen_extra=5
+                        )
+        else:
+            self.idle_display.disable()
 
     def _wait(self):
         """
@@ -511,7 +554,8 @@ class LCDPrinter(metaclass=MCSingleton):
             # Get the line and send it to the printer
             if to_display is not None:
                 text = to_display.get_next()
-                instruction = self._print_text(text)
+                reset_idle = to_display.resets_idle
+                instruction = self._print_text(text, reset_idle=reset_idle)
                 # Play a sound accompanying the newly shown thing
                 if to_display.play_sound:
                     to_display.play_sound = False
@@ -529,18 +573,12 @@ class LCDPrinter(metaclass=MCSingleton):
                 if end_text is not None:
                     self._print_text_and_wait(end_text)
 
-            if last_thing == self.current_thing is None:
-                if time() - self.idle_from > SLEEP_SCREEN_TIMEOUT:
-                    if LAN.ok:
-                        self._print_text_and_wait(
-                            f"{self.model.ip_updater.local_ip}".ljust(19))
-
-    def _print_text_and_wait(self, text):
-        instruction = self._print_text(text)
+    def _print_text_and_wait(self, text, reset_idle=True):
+        instruction = self._print_text(text, reset_idle=reset_idle)
         wait_for_instruction(instruction, lambda: self.running)
         log.debug("Printed: '%s' on the LCD.", text)
 
-    def _print_text(self, text: str, prefix="\x7E"):
+    def _print_text(self, text: str, prefix="\x7E", reset_idle=True):
         """
         Sends the given message using M117 gcode and waits for its
         confirmation
@@ -548,9 +586,10 @@ class LCDPrinter(metaclass=MCSingleton):
         :param text: Text to be shown in the status portion of the printer LCD
         Should not exceed 20 - len(prefix) characters.
         """
+        if reset_idle:
+            self.reset_idle()
         ascii_text = unidecode.unidecode(text)
         self.ignore += 1
-        self.reset_idle()
         return enqueue_instruction(self.serial_queue,
                                    f"M117 {prefix}{ascii_text}",
                                    to_front=True)
