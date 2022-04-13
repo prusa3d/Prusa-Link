@@ -71,6 +71,7 @@
      * Added check for new S/N format and info to contact the customer support
      * Added caching for thumbnail images
      * Send printer info on printer reset / info invalidation event
+     * Fixed error handling for PrusaLink Web
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
