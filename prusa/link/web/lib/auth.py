@@ -95,7 +95,7 @@ def valid_credentials(username, new_password, new_repassword, errors):
     """Check if auth credentials are valid."""
     _errors = {}
     if username.startswith(" ") or username.endswith(" "):
-        errors['username_spaces'] = USERNAME_SPACES
+        _errors['username_spaces'] = USERNAME_SPACES
     if not VALID_USERNAME_REGEX.match(username):
         _errors['username'] = USERNAME
     if new_password:
