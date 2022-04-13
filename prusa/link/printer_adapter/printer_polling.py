@@ -16,7 +16,7 @@ from .input_output.serial.serial_parser import SerialParser
 from .structures.model_classes import NetworkInfo, Telemetry, PrintMode
 from .structures.regular_expressions import SN_REGEX, PRINTER_TYPE_REGEX, \
     FW_REGEX, NOZZLE_REGEX, D3_OUTPUT_REGEX, VALID_SN_REGEX, \
-    PERCENT_REGEX, PRINT_INFO_REGEX, M27_OUTPUT_REGEX
+    PERCENT_REGEX, PRINT_INFO_REGEX, M27_OUTPUT_REGEX, MBL_REGEX
 from .. import errors
 from .const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE, \
     SLOW_POLL_INTERVAL, FAST_POLL_INTERVAL, PRINT_STATE_PAIRING, \
@@ -127,6 +127,15 @@ class MK3Polling:
         for item in self.printer_info:
             item.became_valid_signal.connect(lambda value: self._send_info(),
                                               weak=False)
+
+        self.mbl = WatchedItem(
+            "mbl",
+            gather_function=self._get_mbl,
+            validation_function=self._validate_mbl,
+            on_fail_interval=None
+        )
+        self.item_updater.add_watched_item(self.mbl)
+
         # Telemetry
         self.speed_multiplier = WatchedItem(
             "speed_multiplier",
@@ -237,6 +246,10 @@ class MK3Polling:
         """Invalidates just the serial number"""
         self.item_updater.invalidate(self.serial_number)
 
+    def invalidate_mbl(self):
+        """Invalidates the mbl_data, so it will get updated."""
+        self.item_updater.invalidate(self.mbl)
+
     def polling_not_ok(self):
         """Stops polling of some values"""
         self.nozzle_diameter.interval = None
@@ -300,6 +313,18 @@ class MK3Polling:
             raise RuntimeError("Printer responded with something unexpected")
         return match
 
+    def do_multiline_matchable(self, gcode, regex, to_front=False):
+        """Polls something but returns all the lines"""
+        instruction = enqueue_matchable(self.serial_queue,
+                                        gcode,
+                                        regex,
+                                        to_front=to_front)
+        wait_for_instruction(instruction, self.should_wait)
+        matches = instruction.get_matches()
+        if not matches:
+            raise RuntimeError("Printer responded with something unexpected")
+        return matches
+
     def _get_network_info(self):
         """Gets the mac and ip addresses and packages them into an object."""
         network_info = NetworkInfo()
@@ -359,6 +384,26 @@ class MK3Polling:
                                   to_front=True)
         return int(match.group("data").replace(" ", ""), base=16)
 
+    def _get_mbl(self):
+        """Gets the current MBL data"""
+        matches = self.do_multiline_matchable("G81", MBL_REGEX, to_front=True)
+        groups = matches[0].groupdict()
+
+        data = {}
+        if groups["no_mbl"] is None:
+            num_x = int(groups["num_x"])
+            num_y = int(groups["num_y"])
+            data["shape"] = (num_x, num_y)
+            data["data"] = []
+            for i, match in enumerate(matches):
+                if i == 0:
+                    continue
+                line = match.group("mbl_row")
+                str_values = line.split()
+                values = [float(val) for val in str_values]
+                data["data"].append(values)
+        return data
+
     def _get_print_mode(self):
         """Gets the print mode from the printer"""
         match = self.do_matcheble("D3 Ax0fff C1",
@@ -386,28 +431,22 @@ class MK3Polling:
     def _get_m27(self):
         """Polls M27, sets all values got from it manually,
         and returns its own"""
-        instruction = enqueue_matchable(self.serial_queue,
-                                        "M27 P",
-                                        M27_OUTPUT_REGEX,
-                                        to_front=True)
-        wait_for_instruction(instruction, self.should_wait)
-        matches = instruction.get_matches()
-        if not matches:
-            raise RuntimeError("There are no matches for M27. Very peculiar")
-
+        matches = self.do_multiline_matchable("M27 P",
+                                              M27_OUTPUT_REGEX,
+                                              to_front=True)
         print_state = None
 
-        first_match = instruction.match(0)
-        if first_match:
+        if len(matches) >= 1:
+            first_match = matches[0]
             self._parse_mixed_path(first_match.groupdict())
             print_state = self._parse_print_state(first_match.groupdict())
 
-        second_match: re.Match = instruction.match(1)
-        if second_match:
+        if len(matches) >= 2:
+            second_match: re.Match = matches[1]
             self._parse_byte_position(second_match.groupdict())
 
-        third_match: re.Match = instruction.match(2)
-        if third_match:
+        if len(matches) >= 3:
+            third_match: re.Match = matches[2]
             self._parse_sd_seconds_printing(third_match.groupdict())
 
         if print_state is None:
@@ -518,6 +557,23 @@ class MK3Polling:
         without_buildnumber = value.split("-")[0]
         if Version(without_buildnumber) < MINIMAL_FIRMWARE:
             raise ValueError("The printer firmware is outdated")
+        return True
+
+    @staticmethod
+    def _validate_mbl(value):
+        """Validates the mesh bed leveling data"""
+        num_x, num_y = value["shape"]
+        data = value["data"]
+        if len(data) != num_y:
+            raise ValueError(f"The mbl data matrix was reported to have "
+                             f"{num_y} rows, but only {len(data)} "
+                             f"were observed")
+        for i, row in enumerate(data):
+            if len(row) != num_x:
+                raise ValueError(f"The mbl data matrix was reported to have "
+                                 f"{num_x} values per row, but only "
+                                 f"{len(row)} were observed on row with"
+                                 f" index {i}.")
         return True
 
     @staticmethod

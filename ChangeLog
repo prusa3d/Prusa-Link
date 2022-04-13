@@ -76,6 +76,7 @@
      * Added endpoint for unregistering the printer
      * Reset print stats after a print ends
      * Fix print fail from a unchecked print buffer underflow
+     * Report mesh bed leveling data
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
