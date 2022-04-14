@@ -9,3 +9,4 @@ dist
 .hypothesis
 *.coverage
 htmlcov
+docs/*.png

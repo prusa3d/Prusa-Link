@@ -1,0 +1,117 @@
+@startuml
+
+
+state "Add Printer" as Add
+state "PrusaLink Wizard" as Wizard #lavender
+state "Use config" as WConfig #lavender
+state "Network settings" as WiFi #lavender
+state Services #lavender
+state Printer #lavender
+state "Name" as PName #lavender
+state "Connect" as PConnect #lavender
+state Recapitulation #lavender
+state "Add Printer Form" as AConnect
+state "PrusaLink Web" as LBoard #grey
+state "Printer Overview" as Overview
+state "PrusaLink Web" as Link #gray
+state Settings #gray
+state Code #salmon
+state "Network settings" as Network
+state Overview
+state Config #lightgreen
+
+[*] -> Connect
+Connect: Printers
+Connect -> Add
+
+Add: Select Printer
+Add -up-> Wizard: Go to Printer
+Add -> Name
+
+Name: Name and Location
+Name: Team
+Name -> Network
+
+Network: WiFi Settings
+Network: IP Settings
+Network: Link Username and Password
+Network: SSH
+Network: NTP server
+Network-> Code
+
+[*] -up-> Wizard
+
+Wizard -up-> WiFi
+Wizard -up-> WConfig
+Wizard -> Printer
+
+WConfig: Use downloaded
+WConfig: prusa-printer-settings.ini
+WConfig --> LBoard
+
+WiFi: WiFi setting
+WiFi: IP Settings
+WiFi --> Wizard
+
+Printer: Printer Detection
+Printer: FW Check
+Printer -> PName
+
+PName -> Services
+PName: Name and Location
+
+Services: Username and Password
+Services: SSH
+Services: NTP server
+Services -> PConnect
+Services -> Recapitulation
+
+PConnect: SN Check
+PConnect: Connect Registration
+PConnect -[dotted]-> Code
+
+Code -up[dotted]-> PConnect
+Code: NO UI FORM
+Code: Generate Code
+Code -> Overview
+
+PConnect -> Recapitulation
+
+Recapitulation -> LBoard
+Recapitulation --> AConnect
+
+AConnect: Name and Location
+AConnect: Team
+AConnect: Registration Code
+AConnect -> Overview
+
+Overview -up-> LBoard
+Overview: Detect Link on LAN
+Overview -> Config
+
+Config: prusa-printer-settings.ini
+Config: Download and add to medium
+Config: Download and add to Wizard
+Config -up-> WConfig
+Config --> Settings
+
+[*] --> Link
+
+Link: Already configured
+Link -> Settings
+
+Settings: Additional (Re)registration
+Settings: Unregistration
+Settings -up[dotted]-> Code
+Code -[dotted]-> Settings
+
+legend right
+    | Color | Type |
+    |<#lavender>| Wizard on PrusaLink |
+    |<#fefece>| Wizard on PrusaConnect |
+    |<#gray>| PrusaLink |
+    |<#salmon>| Hidden action on PrusaConnect |
+    |<#lightgreen>| File download |
+endlegend
+
+@enduml
