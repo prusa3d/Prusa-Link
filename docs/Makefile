@@ -3,7 +3,7 @@
 # Martin Užák, 2021-01-14 14:55
 #
 
-UMLFILES = prusa-link_states.txt
+UMLFILES = prusalink_states.txt wizard.txt
 
 uml: $(UMLFILES)
 	plantuml $(UMLFILES)
