@@ -132,10 +132,10 @@ def api_version(req):
     """Return api version"""
     prusa_link = app.daemon.prusa_link
     retval = {
-        'api': "2.0.0",
+        'api': "0.9.0-legacy",
         'server': __version__,
         'original': f"PrusaLink {prusa_link.printer.type.name}",
-        'text': "OctoPrint 1.1.0",
+        'text': f"PrusaLink {__version__}",
         'firmware': prusa_link.printer.firmware,
         'sdk': sdk_version,
         'hostname': gethostname()
