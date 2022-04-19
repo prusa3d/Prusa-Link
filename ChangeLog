@@ -73,6 +73,7 @@
      * Send printer info on printer reset / info invalidation event
      * Fixed error handling for PrusaLink Web
      * Add idle screen and show transfers during print pauses
+     * Added endpoint for unregistering the printer
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
