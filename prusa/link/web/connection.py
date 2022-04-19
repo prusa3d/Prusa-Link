@@ -96,3 +96,19 @@ def api_connection_set(req):
 
     url_ = f'{url}/add-printer/connect/{type_}/{code}/{name}/{location}'
     return JSONResponse(status_code=state.HTTP_OK, url=url_)
+
+
+@app.route('/api/connection', method=state.METHOD_DELETE)
+@check_api_digest
+def api_connection_delete(req):
+    """Cancel Connect registration and delete token from ini file"""
+    # pylint: disable=unused-argument
+    app.settings.service_connect.token = ""
+
+    app.settings.update_sections()
+    app.daemon.prusa_link.printer.set_connect(app.settings)
+
+    with open(app.daemon.cfg.printer.settings, 'w', encoding='utf-8') as ini:
+        app.daemon.settings.write(ini)
+
+    return JSONResponse(status_code=state.HTTP_OK)
