@@ -214,14 +214,14 @@ class FilePrinter(metaclass=MCSingleton):
         """Gets rid of already confirmed messages and waits for any
         unconfirmed surplus"""
         # Pop all already confirmed instructions from the queue
-        while True:
+        while self.data.enqueued:  # ensure there is at least one item
             instruction = self.data.enqueued.popleft()
             if not instruction.is_confirmed():
                 self.data.enqueued.appendleft(instruction)
                 break
             log.debug("Throwing out trash %s", instruction.message)
         # If there are more than allowed and yet unconfirmed messages
-        # Wait for all of the surplus ones
+        # Wait for the surplus ones
         while len(self.data.enqueued) >= PRINT_QUEUE_SIZE:
             wait_for: Instruction = self.data.enqueued.popleft()
             wait_for_instruction(wait_for, lambda: self.data.printing)
