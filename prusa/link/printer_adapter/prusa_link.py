@@ -20,6 +20,7 @@ from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
 from .command_queue import CommandQueue
 from .informers.filesystem.sd_card import SDState
 from .informers.job import Job, JobState
+from .input_output.serial.helpers import enqueue_instruction
 from .interesting_logger import InterestingLogRotator
 from .printer_polling import MK3Polling
 from .print_stats import PrintStats
@@ -37,11 +38,11 @@ from .structures.item_updater import WatchedItem
 from .structures.model_classes import Telemetry, PrintState
 from .const import PRINTING_STATES, TELEMETRY_IDLE_INTERVAL, \
     TELEMETRY_PRINTING_INTERVAL, SD_MOUNT_NAME, \
-    PATH_WAIT_TIMEOUT
+    PATH_WAIT_TIMEOUT, BASE_STATES
 from .structures.regular_expressions import \
-    PRINTER_BOOT_REGEX, START_PRINT_REGEX, PAUSE_PRINT_REGEX, \
+    PRINTER_BOOT_REGEX, PAUSE_PRINT_REGEX, \
     RESUME_PRINT_REGEX
-from .util import loop_until, make_fingerprint
+from .util import loop_until, make_fingerprint, get_print_stats_gcode
 from .updatable import prctl_name, Thread
 from ..config import Config, Settings
 from ..errors import HW
@@ -144,8 +145,6 @@ class PrusaLink:
         self.serial.renewed_signal.connect(self.serial_renewed)
         self.serial_queue.instruction_confirmed_signal.connect(
             self.instruction_confirmed)
-        self.serial_parser.add_handler(START_PRINT_REGEX,
-                                       self.sd_print_start_observed)
         self.serial_parser.add_handler(PRINTER_BOOT_REGEX, self.printer_reset)
         self.job.job_info_updated_signal.connect(self.job_info_updated)
         self.job.job_id_updated_signal.connect(self.job_id_updated)
@@ -536,22 +535,16 @@ class PrusaLink:
         """Connects telemetry observed file path to the job component"""
         self.job.process_mixed_path(path)
 
-    def _new_print(self):
+    def _reset_print_stats(self):
         """
-        When a new print is detected, it implies some values like progress and
-        time_printing being at zero.
-        We do not want to pretend they are from the printer
+        When a print ends
         """
+        gcode = get_print_stats_gcode()
+        enqueue_instruction(self.serial_queue, gcode)
         self.model.set_telemetry(Telemetry(
             progress=0,
             time_printing=0
         ))
-
-    def sd_print_start_observed(self, sender, match):
-        """Tells the telemetry about a new print job starting"""
-        assert sender is not None
-        assert match is not None
-        self._new_print()
 
     def file_printer_started_printing(self, sender):
         """
@@ -560,7 +553,6 @@ class PrusaLink:
         """
         assert sender is not None
         self.state_manager.file_printer_started_printing()
-        self._new_print()
 
     def file_printer_stopped_printing(self, sender):
         """Connects file printer stopping with state manager"""
@@ -699,6 +691,9 @@ class PrusaLink:
             InterestingLogRotator.trigger(
                 "by the printer entering the ERROR state.")
             self.file_printer.stop_print()
+
+        if from_state in PRINTING_STATES and to_state in BASE_STATES:
+            self._reset_print_stats()
 
         # The states should be completely re-done i'm told. So this janky
         # stuff is what we're going to deal with for now

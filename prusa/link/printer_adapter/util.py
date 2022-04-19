@@ -156,3 +156,10 @@ def fat_datetime_to_tuple(fat_datetime):
                       minute=minutes,
                       second=seconds)
     return years, months, days, hours, minutes, seconds
+
+
+def get_print_stats_gcode(quiet_percent=-1, quiet_left=-1,
+                          normal_percent=-1, normal_left=-1):
+    """Returns the gcode for setting print stats"""
+    return (f"M73 Q{quiet_percent} S{quiet_left} "
+            f"P{normal_percent} R{normal_left} ")
