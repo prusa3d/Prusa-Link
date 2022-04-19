@@ -24,7 +24,7 @@ from .structures.mc_singleton import MCSingleton
 from .structures.regular_expressions import \
     POWER_PANIC_REGEX, ERROR_REGEX, ERROR_REASON_REGEX, CANCEL_REGEX, \
     PAUSED_REGEX, RESUMED_REGEX
-from .util import get_clean_path, get_gcode
+from .util import get_clean_path, get_gcode, get_print_stats_gcode
 from .updatable import prctl_name, Thread
 
 log = logging.getLogger(__name__)
@@ -262,11 +262,10 @@ class FilePrinter(metaclass=MCSingleton):
 
         # Idk what to do here, idk what would have happened if we used
         # the other mode, so let's report both modes the same
-        stat_command = f"M73 P{percent_done} R{time_remaining} " \
-                       f"Q{percent_done} S{time_remaining} "
-        instruction = enqueue_instruction(self.serial_queue,
-                                          stat_command,
-                                          to_front=True)
+        stat_command = get_print_stats_gcode(percent_done, time_remaining,
+                                             percent_done, time_remaining)
+        instruction = enqueue_instruction(
+            self.serial_queue, stat_command, to_front=True)
         self.data.enqueued.append(instruction)
 
     def to_print_stats(self, gcode_number):
