@@ -13,23 +13,23 @@ from typing import Optional, Deque, List
 
 from blinker import Signal  # type: ignore
 
-from ...interesting_logger import InterestingLogRotator
-from ....config import Config
+from ..printer_adapter.interesting_logger import InterestingLogRotator
+from ..config import Config
 from .serial_adapter import SerialAdapter
-from ...structures.regular_expressions import \
+from ..printer_adapter.structures.regular_expressions import \
     CONFIRMATION_REGEX, RESEND_REGEX, BUSY_REGEX, \
     ATTENTION_REGEX, HEATING_HOTEND_REGEX, HEATING_REGEX, \
     M110_REGEX
-from ...util import loop_until
+from ..printer_adapter.util import loop_until
 from .instruction import Instruction
 from .is_planner_fed import IsPlannerFed
 from .serial_parser import SerialParser
-from ...structures.mc_singleton import MCSingleton
-from ...const import PRINTER_BOOT_WAIT, \
+from ..printer_adapter.structures.mc_singleton import MCSingleton
+from ..printer_adapter.const import PRINTER_BOOT_WAIT, \
     QUIT_INTERVAL, SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT, \
     RX_SIZE, HISTORY_LENGTH, MAX_INT
-from .... import errors
-from ...updatable import prctl_name, Thread
+from .. import errors
+from ..printer_adapter.updatable import prctl_name, Thread
 
 log = logging.getLogger(__name__)
 

@@ -7,7 +7,7 @@ from ..serial.instruction import \
     Instruction, MandatoryMatchableInstruction, CollectingInstruction, \
     MatchableInstruction
 from .serial_queue import SerialQueue
-from ...const import QUIT_INTERVAL
+from ..printer_adapter.const import QUIT_INTERVAL
 
 
 def wait_for_instruction(instruction,

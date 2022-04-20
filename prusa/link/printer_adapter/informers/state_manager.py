@@ -11,7 +11,7 @@ from prusa.connect.printer import Printer
 from prusa.connect.printer.const import State, Source
 from ..const import STATE_HISTORY_SIZE, ERROR_REASON_TIMEOUT
 
-from ..input_output.serial.serial_parser import \
+from ...serial.serial_parser import \
     SerialParser
 from ..interesting_logger import InterestingLogRotator
 from ..model import Model

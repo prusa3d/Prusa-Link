@@ -21,7 +21,7 @@ from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
 from .command_queue import CommandQueue
 from .informers.filesystem.sd_card import SDState
 from .informers.job import Job, JobState
-from .input_output.serial.helpers import enqueue_instruction
+from ..serial.helpers import enqueue_instruction
 from .interesting_logger import InterestingLogRotator
 from .print_stat_doubler import PrintStatDoubler
 from .printer_polling import PrinterPolling
@@ -31,9 +31,9 @@ from .informers.ip_updater import IPUpdater
 from .informers.state_manager import StateManager, StateChange
 from .informers.filesystem.storage_controller import StorageController
 from .lcd_printer import LCDPrinter
-from .input_output.serial.serial_queue import MonitoredSerialQueue
-from .input_output.serial.serial_adapter import SerialAdapter
-from .input_output.serial.serial_parser import SerialParser
+from ..serial.serial_queue import MonitoredSerialQueue
+from ..serial.serial_adapter import SerialAdapter
+from ..serial.serial_parser import SerialParser
 from .model import Model
 from .service_discovery import ServiceDiscovery
 from .structures.item_updater import WatchedItem

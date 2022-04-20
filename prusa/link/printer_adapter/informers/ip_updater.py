@@ -9,9 +9,9 @@ from pyric.pyw import Card  # type: ignore
 
 from blinker import Signal  # type: ignore
 
-from ..input_output.serial.helpers import \
+from ...serial.helpers import \
     enqueue_instruction, wait_for_instruction
-from ..input_output.serial.serial_queue import SerialQueue
+from ...serial.serial_queue import SerialQueue
 from ..model import Model
 from ..const import IP_UPDATE_INTERVAL, IP_WRITE_TIMEOUT
 from ..structures.module_data_classes import IPUpdaterData

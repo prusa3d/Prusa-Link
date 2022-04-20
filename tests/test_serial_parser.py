@@ -2,7 +2,7 @@
 import re
 from unittest.mock import Mock
 
-from prusa.link.printer_adapter.input_output.serial.serial_parser import SerialParser  # type:ignore
+from prusa.link.serial.serial_parser import SerialParser  # type:ignore
 
 
 # pylint: disable=protected-access

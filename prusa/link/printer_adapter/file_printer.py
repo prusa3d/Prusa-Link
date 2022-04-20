@@ -8,13 +8,13 @@ from blinker import Signal  # type: ignore
 
 from .structures.module_data_classes import FilePrinterData
 from ..config import Config
-from .input_output.serial.instruction import \
+from ..serial.instruction import \
     Instruction
-from .input_output.serial.serial_queue import \
+from ..serial.serial_queue import \
     SerialQueue
-from .input_output.serial.serial_parser import \
+from ..serial.serial_parser import \
     SerialParser
-from .input_output.serial.helpers import \
+from ..serial.helpers import \
     enqueue_instruction, wait_for_instruction
 from .model import Model
 from .print_stats import PrintStats
