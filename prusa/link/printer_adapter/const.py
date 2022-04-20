@@ -145,7 +145,7 @@ PRINT_MODE_PAIRING = {
 }
 
 PRINT_MODE_ID_PAIRING = {
-    0: PrintMode.SILENT,
-    1: PrintMode.NORMAL,
+    0: PrintMode.NORMAL,
+    1: PrintMode.SILENT,
     2: PrintMode.AUTO
 }
