@@ -11,9 +11,9 @@ from blinker import Signal  # type: ignore
 from prusa.connect.printer.const import State
 
 from ..state_manager import StateManager
-from ...input_output.serial.serial_queue import SerialQueue
-from ...input_output.serial.serial_parser import SerialParser
-from ...input_output.serial.helpers import \
+from ....serial.serial_queue import SerialQueue
+from ....serial.serial_parser import SerialParser
+from ....serial.helpers import \
     wait_for_instruction, enqueue_matchable, enqueue_collecting
 from ...model import Model
 from ...structures.model_classes import SDState

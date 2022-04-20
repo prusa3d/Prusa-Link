@@ -9,12 +9,12 @@ from prusa.connect.printer.const import Source
 from .file_printer import FilePrinter
 from .informers.job import Job
 from .informers.state_manager import StateManager
-from .input_output.serial.serial_adapter import SerialAdapter
-from .input_output.serial.serial_queue import \
+from ..serial.serial_adapter import SerialAdapter
+from ..serial.serial_queue import \
     MonitoredSerialQueue
-from .input_output.serial.serial_parser import \
+from ..serial.serial_parser import \
     SerialParser
-from .input_output.serial.helpers import \
+from ..serial.helpers import \
     wait_for_instruction, enqueue_matchable, enqueue_instruction
 from .model import Model
 from ..sdk_augmentation.printer import MyPrinter

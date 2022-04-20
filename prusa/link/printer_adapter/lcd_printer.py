@@ -19,10 +19,10 @@ from .structures.model_classes import JobState
 from .const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL, SLEEP_SCREEN_TIMEOUT, \
     PRINTING_STATES
 from .model import Model
-from .input_output.serial.helpers import enqueue_instruction, \
+from ..serial.helpers import enqueue_instruction, \
         wait_for_instruction
-from .input_output.serial.serial_queue import SerialQueue
-from .input_output.serial.serial_parser import SerialParser
+from ..serial.serial_queue import SerialQueue
+from ..serial.serial_parser import SerialParser
 from .structures.mc_singleton import MCSingleton
 from .structures.regular_expressions import LCD_UPDATE_REGEX
 from .updatable import prctl_name, Thread

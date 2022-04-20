@@ -6,12 +6,11 @@ from time import sleep
 from blinker import Signal  # type: ignore
 
 from .serial_parser import SerialParser
-from ...lib import serial
-from ...const import PRINTER_BOOT_WAIT, \
-    SERIAL_REOPEN_TIMEOUT
-from ...structures.mc_singleton import MCSingleton
-from ...updatable import prctl_name, Thread
-from .... import errors
+from . import serial
+from ..printer_adapter.const import PRINTER_BOOT_WAIT, SERIAL_REOPEN_TIMEOUT
+from ..printer_adapter.structures.mc_singleton import MCSingleton
+from ..printer_adapter.updatable import prctl_name, Thread
+from .. import errors
 
 log = logging.getLogger(__name__)
 

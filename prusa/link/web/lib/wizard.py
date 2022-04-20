@@ -10,7 +10,7 @@ from prusa.connect.printer import Printer
 
 from ..lib.core import app
 from ..lib.auth import REALM
-from ...printer_adapter.input_output.serial.helpers import enqueue_instruction
+from ...serial.helpers import enqueue_instruction
 from ...printer_adapter.structures.regular_expressions import VALID_SN_REGEX, \
     VALID_USERNAME_REGEX, VALID_PASSWORD_REGEX, NEW_SN_REGEX
 from ...printer_adapter.printer_polling import PrinterPolling
