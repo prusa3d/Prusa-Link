@@ -24,7 +24,7 @@ from .informers.job import Job, JobState
 from .input_output.serial.helpers import enqueue_instruction
 from .interesting_logger import InterestingLogRotator
 from .print_stat_doubler import PrintStatDoubler
-from .printer_polling import MK3Polling
+from .printer_polling import PrinterPolling
 from .print_stats import PrintStats
 from .file_printer import FilePrinter
 from .informers.ip_updater import IPUpdater
@@ -134,8 +134,8 @@ class PrusaLink:
                                          self.serial_parser,
                                          self.state_manager, self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
-        self.printer_polling = MK3Polling(self.serial_queue, self.serial_parser,
-                                      self.printer, self.model, self.job)
+        self.printer_polling = PrinterPolling(self.serial_queue, self.serial_parser,
+                                              self.printer, self.model, self.job)
         self.command_queue = CommandQueue()
 
         self.serial_parser.add_handler(
