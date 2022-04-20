@@ -33,7 +33,7 @@ from .util import make_fingerprint
 log = logging.getLogger(__name__)
 
 
-class MK3Polling:
+class PrinterPolling:
     """
     Sets up the tracked values for info_updater
     """

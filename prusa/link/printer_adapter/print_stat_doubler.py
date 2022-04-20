@@ -3,7 +3,7 @@ import re
 from typing import List
 
 from .input_output.serial.serial_parser import SerialParser
-from .printer_polling import MK3Polling
+from .printer_polling import PrinterPolling
 from .structures.regular_expressions import PRINT_INFO_REGEX, \
     CONFIRMATION_REGEX
 
@@ -18,7 +18,7 @@ class PrintStatDoubler:
     """
 
     def __init__(self, serial_parser: SerialParser,
-                 printer_polling: MK3Polling):
+                 printer_polling: PrinterPolling):
         self.printer_polling = printer_polling
         self.serial_parser = serial_parser
 
