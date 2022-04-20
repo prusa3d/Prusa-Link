@@ -6,14 +6,6 @@ have which handlers
 As of writing this doc, the "ok" has infinite priority, then every instruction
 handler has the current time as the priority, meaning later added handlers are
 evaluated first.
-
-There is a feature for multiline matches but it only works if no other handler
-matches before it. If however we're expecting another lines of the multiline
-match it takes priority over everything else until it succeeds or fails to
-match.
-
-If a multiline handler fails to match, the lines thought to be a part of the
-multiline are tried as single line.
 """
 import logging
 import re
