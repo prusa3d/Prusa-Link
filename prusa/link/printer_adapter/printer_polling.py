@@ -5,6 +5,8 @@ Hope I can get most of printer polling to use this mechanism.
 import logging
 import re
 from datetime import timedelta
+from typing import List
+
 from packaging.version import Version
 
 from prusa.connect.printer import Printer
@@ -162,7 +164,7 @@ class MK3Polling:
             "print_progress",
             gather_function=self._get_print_info,
             validation_function=self._validate_progress,
-            write_function=self._set_print_progress,
+            write_function=self._set_print_progress
         )
         self.item_updater.add_watched_item(self.print_progress)
 
@@ -190,9 +192,6 @@ class MK3Polling:
             write_function=self._get_speed_adjusted_mins_remaining
         )
         self.item_updater.add_watched_item(self.speed_agnostic_mins_remaining)
-
-        self.serial_parser.add_handler(PRINT_INFO_REGEX,
-                                       self._print_info_handler)
 
         # M27 results
         # These are sometimes auto reported, but due to some technical
@@ -298,7 +297,7 @@ class MK3Polling:
         """Gather helper returning if the component is still running"""
         return self.item_updater.running
 
-    def do_matcheble(self, gcode, regex, to_front=False):
+    def do_matchable(self, gcode, regex, to_front=False):
         """
         Analogic to the command one, as the getters do this
         over and over again
@@ -313,16 +312,15 @@ class MK3Polling:
             raise RuntimeError("Printer responded with something unexpected")
         return match
 
-    def do_multiline_matchable(self, gcode, regex, to_front=False):
-        """Polls something but returns all the lines"""
-        instruction = enqueue_matchable(self.serial_queue,
-                                        gcode,
-                                        regex,
-                                        to_front=to_front)
+    def do_multimatch(self, gcode, regex, to_front=False):
+        """Send an instruction with multiple lines as output"""
+        instruction = enqueue_matchable(
+            self.serial_queue, gcode, regex, to_front=to_front)
         wait_for_instruction(instruction, self.should_wait)
         matches = instruction.get_matches()
         if not matches:
-            raise RuntimeError("Printer responded with something unexpected")
+            raise RuntimeError(f"There are no matches for {gcode}. "
+                               f"That is weird.")
         return matches
 
     def _get_network_info(self):
@@ -357,36 +355,36 @@ class MK3Polling:
 
     def _get_printer_type(self):
         """Gets the printer code using the M862.2 Q gcode."""
-        match = self.do_matcheble("M862.2 Q",
+        match = self.do_matchable("M862.2 Q",
                                   PRINTER_TYPE_REGEX,
                                   to_front=True)
         return int(match.group("code"))
 
     def _get_firmware_version(self):
         """Try to get firmware version from the printer."""
-        match = self.do_matcheble("PRUSA Fir", FW_REGEX, to_front=True)
+        match = self.do_matchable("PRUSA Fir", FW_REGEX, to_front=True)
         return match.group("version")
 
     def _get_nozzle_diameter(self):
         """Gets the printers nozzle diameter using M862.1 Q"""
-        match = self.do_matcheble("M862.1 Q", NOZZLE_REGEX, to_front=True)
+        match = self.do_matchable("M862.1 Q", NOZZLE_REGEX, to_front=True)
         return float(match.group("size"))
 
     def _get_serial_number(self):
         """Returns the SN regex match"""
-        match = self.do_matcheble("PRUSA SN", SN_REGEX, to_front=True)
+        match = self.do_matchable("PRUSA SN", SN_REGEX, to_front=True)
         return match.group("sn")
 
     def _get_job_id(self):
         """Gets the current job_id from the printer"""
-        match = self.do_matcheble("D3 Ax0D05 C4",
+        match = self.do_matchable("D3 Ax0D05 C4",
                                   D3_OUTPUT_REGEX,
                                   to_front=True)
         return int(match.group("data").replace(" ", ""), base=16)
 
     def _get_mbl(self):
         """Gets the current MBL data"""
-        matches = self.do_multiline_matchable("G81", MBL_REGEX, to_front=True)
+        matches = self.do_multimatch("G81", MBL_REGEX, to_front=True)
         groups = matches[0].groupdict()
 
         data = {}
@@ -406,53 +404,48 @@ class MK3Polling:
 
     def _get_print_mode(self):
         """Gets the print mode from the printer"""
-        match = self.do_matcheble("D3 Ax0fff C1",
+        match = self.do_matchable("D3 Ax0fff C1",
                                   D3_OUTPUT_REGEX,
                                   to_front=True)
         index = int(match.group("data").replace(" ", ""), base=16)
         return PRINT_MODE_ID_PAIRING[index]
 
     def _get_speed_multiplier(self):
-        match = self.do_matcheble("M220", PERCENT_REGEX)
+        match = self.do_matchable("M220", PERCENT_REGEX)
         return int(match.group("percent"))
 
     def _get_flow_multiplier(self):
-        match = self.do_matcheble("M221", PERCENT_REGEX)
+        match = self.do_matchable("M221", PERCENT_REGEX)
         return int(match.group("percent"))
 
     def _get_print_info(self):
         """Polls the print info, but instead of returning it, it uses
         another method, that will eventually set it"""
-        match = self.do_matcheble("M73", PRINT_INFO_REGEX)
-        self._print_info_handler(self, match)
+        matches = self.do_multimatch("M73", PRINT_INFO_REGEX)
+        self.print_info_handler(self, matches)
 
         raise SideEffectOnly()
 
     def _get_m27(self):
         """Polls M27, sets all values got from it manually,
         and returns its own"""
-        matches = self.do_multiline_matchable("M27 P",
-                                              M27_OUTPUT_REGEX,
-                                              to_front=True)
-        print_state = None
+        matches = self.do_multimatch("M27 P", M27_OUTPUT_REGEX,
+                                     to_front=True)
+
+        if len(matches) >= 3:
+            third_match = matches[2]
+            self._parse_sd_seconds_printing(third_match.groupdict())
+
+        if len(matches) >= 2:
+            second_match = matches[1]
+            self._parse_byte_position(second_match.groupdict())
 
         if len(matches) >= 1:
             first_match = matches[0]
             self._parse_mixed_path(first_match.groupdict())
-            print_state = self._parse_print_state(first_match.groupdict())
+            return self._parse_print_state(first_match.groupdict())
 
-        if len(matches) >= 2:
-            second_match: re.Match = matches[1]
-            self._parse_byte_position(second_match.groupdict())
-
-        if len(matches) >= 3:
-            third_match: re.Match = matches[2]
-            self._parse_sd_seconds_printing(third_match.groupdict())
-
-        if print_state is None:
-            raise SideEffectOnly("Did not gather value for itself, "
-                                 "but may have for others")
-        return print_state
+        raise RuntimeError("Failed to gather print info")
 
     def _parse_print_state(self, groups):
         """Parse a printer tracked state depending on which match group
@@ -487,16 +480,57 @@ class MK3Polling:
         progress = int((current / total) * 100)
         self.item_updater.set_value(self.progress_from_bytes, progress)
 
-    def _print_info_handler(self, sender, match: re.Match):
+    def print_info_handler(self, sender, matches: List[re.Match]):
         """One special handler supporting polling and spontaneous
         unsolicited reporting of progress and minutes remaining"""
         assert sender is not None
-        groups = match.groupdict()
 
-        self.item_updater.set_value(self.print_progress,
-                                    int(groups["progress"]))
-        self.item_updater.set_value(self.speed_agnostic_mins_remaining,
-                                    int(groups["time"]))
+        class PrintInfo:
+            """A shell for print stat data"""
+            def __init__(self):
+                self.valid = False
+                self.progress = -1
+                self.remaining = -1
+
+        silent, normal = PrintInfo(), PrintInfo()
+        for match in matches:
+            groups = match.groupdict()
+            info = PrintInfo()
+            info.progress = int(groups["progress"])
+            info.remaining = int(groups["remaining"])
+            try:
+                info.valid = self._validate_progress(info.progress)
+            except ValueError:
+                pass
+
+            if match.group("mode") == PrintMode.SILENT.value:
+                silent = info
+            elif match.group("mode") == PrintMode.NORMAL.value:
+                normal = info
+
+        use_normal = False
+
+        if self.print_mode.value == PrintMode.NORMAL:
+            if not normal.valid and silent.valid:
+                log.warning("We are in normal mode but only silent print "
+                            "tracking info is valid. That's weird")
+            else:
+                use_normal = True
+        elif not silent.valid:
+            # The file must have been sliced in a semi-compatible slicer
+            use_normal = True
+        # Yes, this solution ignores MK25 auto mode. Sorry
+
+        # Gladly reports even the wrong values
+        # just to set off handlers that depend on the validation failing
+        if use_normal:
+            self.item_updater.set_value(self.print_progress, normal.progress)
+            self.item_updater.set_value(self.speed_agnostic_mins_remaining,
+                                        normal.remaining)
+        else:
+            self.item_updater.set_value(self.print_progress, silent.progress)
+            self.item_updater.set_value(self.speed_agnostic_mins_remaining,
+                                        silent.remaining)
 
     # -- From other watched items --
 
