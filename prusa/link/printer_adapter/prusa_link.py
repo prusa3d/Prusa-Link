@@ -23,6 +23,7 @@ from .informers.filesystem.sd_card import SDState
 from .informers.job import Job, JobState
 from .input_output.serial.helpers import enqueue_instruction
 from .interesting_logger import InterestingLogRotator
+from .print_stat_doubler import PrintStatDoubler
 from .printer_polling import MK3Polling
 from .print_stats import PrintStats
 from .file_printer import FilePrinter
@@ -141,6 +142,9 @@ class PrusaLink:
             MBL_TRIGGER_REGEX,
             lambda sender, match: self.printer_polling.invalidate_mbl()
         )
+
+        self.print_stat_doubler = PrintStatDoubler(self.serial_parser,
+                                                   self.printer_polling)
 
         # Bind signals
         self.serial_queue.serial_queue_failed.connect(self.serial_queue_failed)
