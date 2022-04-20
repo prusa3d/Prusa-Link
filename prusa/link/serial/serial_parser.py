@@ -23,7 +23,7 @@ from typing import Dict, Callable, Any, Union
 from blinker import Signal  # type: ignore
 from sortedcontainers import SortedKeyList  # type: ignore
 
-from ...structures.mc_singleton import MCSingleton
+from ..printer_adapter.structures.mc_singleton import MCSingleton
 
 log = logging.getLogger(__name__)
 

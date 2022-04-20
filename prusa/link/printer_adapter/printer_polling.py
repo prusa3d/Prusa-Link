@@ -12,9 +12,9 @@ from packaging.version import Version
 from prusa.connect.printer import Printer
 
 from .informers.job import Job
-from .input_output.serial.helpers import wait_for_instruction, \
+from ..serial.helpers import wait_for_instruction, \
     enqueue_matchable
-from .input_output.serial.serial_parser import SerialParser
+from ..serial.serial_parser import SerialParser
 from .structures.model_classes import NetworkInfo, Telemetry, PrintMode
 from .structures.regular_expressions import SN_REGEX, PRINTER_TYPE_REGEX, \
     FW_REGEX, NOZZLE_REGEX, D3_OUTPUT_REGEX, VALID_SN_REGEX, \
@@ -23,7 +23,7 @@ from .. import errors
 from .const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE, \
     SLOW_POLL_INTERVAL, FAST_POLL_INTERVAL, PRINT_STATE_PAIRING, \
     PRINT_MODE_ID_PAIRING
-from .input_output.serial.serial_queue import \
+from ..serial.serial_queue import \
     SerialQueue
 from .model import Model
 from .structures.item_updater import ItemUpdater, \

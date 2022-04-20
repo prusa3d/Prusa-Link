@@ -2,7 +2,7 @@
 import re
 from typing import List
 
-from .input_output.serial.serial_parser import SerialParser
+from ..serial.serial_parser import SerialParser
 from .printer_polling import PrinterPolling
 from .structures.regular_expressions import PRINT_INFO_REGEX, \
     CONFIRMATION_REGEX

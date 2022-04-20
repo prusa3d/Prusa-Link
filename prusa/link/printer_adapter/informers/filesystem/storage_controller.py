@@ -13,8 +13,8 @@ from prusa.connect.printer.files import File
 from .mounts import FSMounts, DirMounts
 from .sd_card import SDCard
 from ..state_manager import StateManager
-from ...input_output.serial.serial_queue import SerialQueue
-from ...input_output.serial.serial_parser import SerialParser
+from ....serial.serial_queue import SerialQueue
+from ....serial.serial_parser import SerialParser
 from ...model import Model
 from ....sdk_augmentation.file import SDFile
 

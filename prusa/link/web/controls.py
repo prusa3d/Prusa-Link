@@ -6,7 +6,7 @@ from prusa.connect.printer.const import State
 from .lib.core import app
 from .lib.auth import check_api_digest
 
-from ..printer_adapter.input_output.serial.helpers import enqueue_instruction
+from ..serial.helpers import enqueue_instruction
 from ..printer_adapter.const import FEEDRATE_XY, FEEDRATE_E, POSITION_X, \
     POSITION_Y, POSITION_Z, MIN_TEMP_NOZZLE_E, PRINT_SPEED, PRINT_FLOW
 

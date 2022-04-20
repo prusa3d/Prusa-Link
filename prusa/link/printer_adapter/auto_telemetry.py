@@ -2,9 +2,9 @@
 from re import Match
 from time import time
 
-from .input_output.serial.serial_queue import SerialQueue
-from .input_output.serial.serial_parser import SerialParser
-from .input_output.serial.helpers import \
+from ..serial.serial_queue import SerialQueue
+from ..serial.serial_parser import SerialParser
+from ..serial.helpers import \
         enqueue_instruction, wait_for_instruction
 from .const import REPORTING_TIMEOUT
 from .model import Model
