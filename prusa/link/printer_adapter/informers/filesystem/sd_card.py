@@ -101,13 +101,13 @@ class SDCard(ThreadedUpdatable):
         """
         Updates the file list on the SD Card.
         Except:
-        - when the printer state is not READY
+        - when the printer state is not IDLE
         - when we already have a file listing and no FlashAir is connected
         - When FlashAir is connected and configured, but it hasn't been long
           enough from the previous update
         """
-        # Update only if READY
-        if self.state_manager.get_state() != State.READY:
+        # Update only if IDLE
+        if self.state_manager.get_state() != State.IDLE:
             return
 
         due_for_update = time() - self.data.last_updated > SD_FILESCAN_INTERVAL

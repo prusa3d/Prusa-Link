@@ -40,7 +40,7 @@ class StateChange:
                  from_states: Dict[State, Union[Source, None]] = None,
                  default_source: Source = None,
                  reason: str = None,
-                 prepared: bool = False):
+                 ready: bool = False):
 
         self.reason = reason
         self.to_states: Dict[State, Union[Source, None]] = {}
@@ -53,7 +53,7 @@ class StateChange:
 
         self.command_id = command_id
         self.default_source = default_source
-        self.prepared = prepared
+        self.ready = ready
 
 
 def state_influencer(state_change: StateChange = None):
@@ -114,7 +114,7 @@ class StateManager(metaclass=MCSingleton):
         #                                           command_id: int,
         #                                           source: Sources
         #                                           reason: str
-        #                                           prepared: bool
+        #                                           ready: bool
 
         self.model.state_manager = StateManagerData(
             # The ACTUAL states considered when reporting
@@ -336,7 +336,7 @@ class StateManager(metaclass=MCSingleton):
                 command_id = None
                 source = None
                 reason = None
-                prepared = False
+                ready = False
 
                 if self.data.printing_state is not None:
                     log.debug("We are printing - %s", self.data.printing_state)
@@ -352,7 +352,7 @@ class StateManager(metaclass=MCSingleton):
                         command_id = self.expected_state_change.command_id
                     source = self.get_expected_source()
                     reason = self.expected_state_change.reason
-                    prepared = self.expected_state_change.prepared
+                    ready = self.expected_state_change.ready
                     if reason is not None:
                         log.debug("Reason for %s: %s", self.get_state(),
                                   reason)
@@ -369,7 +369,7 @@ class StateManager(metaclass=MCSingleton):
                     command_id=command_id,
                     source=source,
                     reason=reason,
-                    prepared=prepared)
+                    ready=ready)
                 self.post_state_change_signal.send(self)
 
     def fan_error(self, sender, match: re.Match):
@@ -629,7 +629,7 @@ class StateManager(metaclass=MCSingleton):
                         State.FINISHED: Source.MARLIN,
                         State.STOPPED: Source.MARLIN,
                     },
-                    prepared=False))
+                    ready=False))
     def instruction_confirmed(self):
         """
         Instruction confirmation shall clear all temporary states
@@ -665,9 +665,9 @@ class StateManager(metaclass=MCSingleton):
                         State.FINISHED: Source.USER,
                         State.STOPPED: Source.USER,
                     },
-                    prepared=True))
-    def printer_prepared(self):
-        """Printer has been prepared after being stopped or after """
+                    ready=True))
+    def printer_ready(self):
+        """Printer has been ready after being stopped or after """
         if self.data.printing_state in {State.FINISHED, State.STOPPED}:
             self.data.printing_state = None
 

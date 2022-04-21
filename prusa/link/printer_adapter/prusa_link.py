@@ -695,7 +695,7 @@ class PrusaLink:
                       source=None,
                       command_id=None,
                       reason=None,
-                      prepared=False):
+                      ready=False):
         """Connects the state manager state change to Prusa Connect"""
         assert sender is not None
         assert from_state is not None
@@ -715,7 +715,7 @@ class PrusaLink:
 
         # No other trigger exists for these older printers
         # The printer will dip into BUSY for MBL, so lets use that
-        if to_state in {State.PRINTING, State.READY} and \
+        if to_state in {State.PRINTING, State.IDLE} and \
                 PrinterType(self.printer.type) in MK25_PRINTERS:
             self.printer_polling.invalidate_mbl()
 
@@ -738,12 +738,12 @@ class PrusaLink:
             if to_state == State.FINISHED:
                 Thread(target=self.check_printer,
                        args=("Done, remove print",
-                             self.state_manager.printer_prepared),
+                             self.state_manager.printer_ready),
                        daemon=True).start()
             if to_state == State.STOPPED:
                 Thread(target=self.check_printer,
                        args=("Stopped, clear sheet",
-                             self.state_manager.printer_prepared),
+                             self.state_manager.printer_ready),
                        daemon=True).start()
 
         extra_data = {}
@@ -754,7 +754,7 @@ class PrusaLink:
                                command_id=command_id,
                                source=source,
                                job_id=self.model.job.get_job_id_for_api(),
-                               prepared=prepared,
+                               ready=ready,
                                **extra_data)
 
     def time_printing_updated(self, sender, time_printing):

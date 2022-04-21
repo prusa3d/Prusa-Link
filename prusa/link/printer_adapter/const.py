@@ -25,7 +25,7 @@ PRINTER_TYPES = {
 
 DATA_PATH = path.abspath(path.join(str(files('prusa.link')), 'data'))
 
-BASE_STATES = {State.READY, State.BUSY}
+BASE_STATES = {State.IDLE, State.BUSY}
 PRINTING_STATES = {State.PRINTING, State.PAUSED, State.FINISHED, State.STOPPED}
 
 MK25_PRINTERS = {PrinterType.I3MK25, PrinterType.I3MK25S}
