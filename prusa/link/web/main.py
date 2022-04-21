@@ -35,7 +35,7 @@ from ..printer_adapter.command_handlers import PausePrint, StopPrint,\
 log = logging.getLogger(__name__)
 
 PRINTER_STATES = {
-    State.READY: "Operational",
+    State.IDLE: "Operational",
     State.BUSY: "Busy",
     State.PRINTING: "Printing",
     State.PAUSED: "Paused",
@@ -178,12 +178,11 @@ def api_printer(req):
     sd_ready = prusa_link.sd_ready
     printer = prusa_link.printer
     mounts = printer.fs.mounts
-    operational = tel.state in (State.READY, State.FINISHED, State.STOPPED)
+    operational = tel.state in (State.IDLE, State.FINISHED, State.STOPPED)
 
     space_info = mounts[LOCAL_MOUNT_NAME].get_space_info()
     free_space = space_info["free_space"]
     total_space = space_info["total_space"]
-
     return JSONResponse(
         **{
             "temperature": {
@@ -209,10 +208,12 @@ def api_printer(req):
                     "pausing": tel.state == State.PAUSED,
                     "sdReady": sd_ready,
                     "error": tel.state == State.ERROR,
-                    "ready": tel.state == State.READY,
+                    # Compatibility, READY will be changed to IDLE
+                    "ready": tel.state == State.IDLE,
                     "closedOrError": False,
                     "finished": tel.state == State.FINISHED,
-                    "prepared": printer.prepared
+                    # Compatibility, PREPARED will be changed to READY
+                    "prepared": printer.ready
                 }
             },
             "telemetry": {
