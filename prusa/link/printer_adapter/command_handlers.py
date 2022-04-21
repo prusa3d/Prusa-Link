@@ -178,7 +178,7 @@ class StopPrint(TryUntilState):
 
         self._try_until_state(
             gcode="M603",
-            desired_states={State.STOPPED, State.READY, State.FINISHED})
+            desired_states={State.STOPPED, State.IDLE, State.FINISHED})
 
         return dict(job_id=job_id)
 

@@ -81,6 +81,7 @@
      * Report mesh bed leveling data
      * Use the print mode to report the right print stats row to connect
      * Make sure fan errors send reason, improve their behavior a little
+     * READY state changed to IDLE, PREPARED state changed to READY
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
