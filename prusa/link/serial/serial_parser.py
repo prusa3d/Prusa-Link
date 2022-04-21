@@ -77,10 +77,11 @@ class SerialParser(metaclass=MCSingleton):
                 if match:
                     chosen_pairing = pairing
                     break
-            log.debug("Match not found for")
 
         if chosen_pairing is not None:
             chosen_pairing.fire(match=match)
+        else:
+            log.debug("Match not found for %s", line)
 
     def add_handler(self, regexp: re.Pattern,
                     handler: Callable[[Any, re.Match], None],
