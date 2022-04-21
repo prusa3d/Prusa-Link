@@ -61,8 +61,8 @@ ERROR_REASON_REGEX = re.compile(
     r"(Error:("
     r"(?P<temp>(0: )?Heaters switched off\. "
     r"M((?P<mintemp>IN)|(?P<maxtemp>AX))TEMP (?P<bed>BED )?triggered!)|"
-    r"(?P<runaway>( ((?P<hotend_runaway>HOTEND)|(?P<heatbed_runaway>HEATBED)))?"
-    r" THERMAL RUNAWAY( \( PREHEAT "
+    r"(?P<runaway>( ((?P<hotend_runaway>HOTEND)|"
+    r"(?P<heatbed_runaway>HEATBED)))? THERMAL RUNAWAY( \( ?PREHEAT "
     r"((?P<preheat_hotend>HOTEND)|(?P<preheat_heatbed>HEATBED))\))?)))")
 
 ATTENTION_REASON_REGEX = re.compile(
