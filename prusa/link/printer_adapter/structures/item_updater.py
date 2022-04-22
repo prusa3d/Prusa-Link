@@ -176,13 +176,13 @@ class ItemUpdater:
         self.refresh_queue = Queue()
 
         self.refresher_thread = Thread(target=self._refresher,
-                                       name="printer_info_refresher",
+                                       name="polling",
                                        daemon=True)
         self.invalidator_thread = Thread(target=self._process_invalidations,
-                                         name="printer_info_invalidator",
+                                         name="item_invalidator",
                                          daemon=True)
         self.timeout_thread = Thread(target=self._process_timeouts,
-                                     name="printer_info_timeout",
+                                     name="polling_timeout",
                                      daemon=True)
 
         self.watched_items = {}
