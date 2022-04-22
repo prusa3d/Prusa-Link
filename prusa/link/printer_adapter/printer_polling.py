@@ -447,13 +447,13 @@ class PrinterPolling:
 
         raise RuntimeError("Failed to gather print info")
 
-    def _parse_print_state(self, groups):
+    @staticmethod
+    def _parse_print_state(groups):
         """Parse a printer tracked state depending on which match group
-        is filled"""
-        # Depending on a group present, a state is set
+        is present"""
         for group, state in PRINT_STATE_PAIRING.items():
             if groups[group] is not None:
-                return self.item_updater.set_value(self.print_state, state)
+                return state
         return None
 
     def _parse_mixed_path(self, groups):
