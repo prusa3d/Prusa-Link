@@ -20,7 +20,7 @@ from ..structures.module_data_classes import StateManagerData
 from ..structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, FAN_ERROR_REGEX, \
-    ERROR_REASON_REGEX, ATTENTION_REASON_REGEX
+    ERROR_REASON_REGEX, ATTENTION_REASON_REGEX, FAN_REGEX
 from ...config import Config, Settings
 from ...errors import get_printer_error_states, HW
 
@@ -146,7 +146,11 @@ class StateManager(metaclass=MCSingleton):
         # When this value isn't none, a fan error has been observed
         # but not yet reported, the value shall be the name of the fan which
         # caused the error
+        # New: clear once the error is known resolved
         self.fan_error_name = None
+
+        # A thing to detect a false positive attention
+        self.resuming_from_fan_error = False
 
         # At startup, we must avoid going to the READY state, until
         # we are sure about not printing
@@ -375,6 +379,54 @@ class StateManager(metaclass=MCSingleton):
         """
         assert sender is not None
         self.fan_error_name = match.group("fan_name")
+        self.serial_parser.add_handler(FAN_REGEX, self.fan_error_resolver)
+
+        log.debug("%s fan error has been observed.", self.fan_error_name)
+        self.expect_change(
+            StateChange(to_states={State.ATTENTION: Source.FIRMWARE},
+                        reason=f"{self.fan_error_name} fan error"))
+
+        state = self.get_state()
+        if state not in {State.PRINTING, State.ERROR}:
+            self.attention()
+
+    def fan_error_resolver(self, sender, match):
+        """
+        If the fan speeds are indicative of a fan error being resolved
+        clears the fan error
+
+        This is very rudimentary, it only counts with one fan
+        failing at a time, and it will quit the attention only if
+        the firmware/user spins up the fan that's been reported
+        or on print resume
+        weird edge cases expected"""
+        assert sender is not None
+
+        extruder_fan_rpm = int(match.group("extruder_rpm"))
+        extruder_fan_power = int(match.group("extruder_power"))
+        print_fan_rpm = int(match.group("print_rpm"))
+        print_fan_power = int(match.group("print_power"))
+
+        extruder_fan_works = extruder_fan_rpm > extruder_fan_power > 0
+        print_fan_works = print_fan_rpm > print_fan_power > 0
+        fan_name = self.fan_error_name
+
+        if (fan_name == "Extruder" and extruder_fan_works) or \
+                (fan_name == "Print" and print_fan_works):
+            self.expect_change(
+                StateChange(
+                    from_states={State.ATTENTION: Source.USER},
+                    reason=f"{fan_name} fan error resolved"))
+            self._cancel_fan_error()
+            self.clear_attention()
+            if self.data.printing_state == State.PAUSED:
+                self.resuming_from_fan_error = True
+
+    def _cancel_fan_error(self):
+        """Removes the fan error"""
+        self.fan_error_name = None
+        self.serial_parser.remove_handler(
+            FAN_ERROR_REGEX, self.fan_error_resolver)
 
     def error_handler(self):
         """
@@ -543,12 +595,21 @@ class StateManager(metaclass=MCSingleton):
             self.unsure_whether_printing = False
             self.data.printing_state = State.PAUSED
 
+        if self.fan_error_name is not None:
+            self.data.override_state = State.ATTENTION
+
     @state_influencer(StateChange(to_states={State.PRINTING: Source.USER}))
     def resumed(self):
         """If we were paused, sets the printing state to PRINTING"""
         if self.data.printing_state == State.PAUSED:
             self.unsure_whether_printing = False
             self.data.printing_state = State.PRINTING
+
+        if self.fan_error_name is not None:
+            self._cancel_fan_error()
+
+        if self.resuming_from_fan_error:
+            self.resuming_from_fan_error = False
 
     @state_influencer(StateChange(from_states={State.PRINTING: Source.USER}))
     def stopped(self):
@@ -584,11 +645,19 @@ class StateManager(metaclass=MCSingleton):
             if self.data.printing_state in {State.STOPPED, State.FINISHED}:
                 self.data.printing_state = None
 
-        if (self.data.override_state is not None
-                and self.data.override_state != State.ERROR):
-            # If we have override state, but it's not an error, get rid of em
-            log.debug("No longer having state %s", self.data.override_state)
+        self._clear_attention()
+
+    def _clear_attention(self):
+        """Clears the ATTENTION state, if the conditions are right"""
+        if (self.data.override_state == State.ATTENTION and
+                self.fan_error_name is None):
+            log.debug("Clearing ATTENTION")
             self.data.override_state = None
+
+    @state_influencer(StateChange(from_states={State.ATTENTION: Source.USER}))
+    def clear_attention(self):
+        """Calls the internal method for clearing the attention state"""
+        self._clear_attention()
 
     @state_influencer(
         StateChange(to_states={State.READY: Source.MARLIN},
@@ -607,16 +676,13 @@ class StateManager(metaclass=MCSingleton):
         """
         Sets the override state to ATTENTION, if we haven't just sent an M0
         for stopped or finished print.
-        Includes a workaround for fan error info
         """
-        if self.fan_error_name is not None:
-            log.debug(
-                "%s fan error has been observed before, reporting "
-                "it now", self.fan_error_name)
+        if self.resuming_from_fan_error:
             self.expect_change(
-                StateChange(to_states={State.ATTENTION: Source.FIRMWARE},
-                            reason=f"{self.fan_error_name} fan error"))
-            self.fan_error_name = None
+                StateChange(
+                    to_states={State.ATTENTION: Source.MARLIN},
+                    reason="Most likely a false positive. "
+                           "Sorry about that 😅"))
 
         if self.data.printing_state not in {State.FINISHED, State.STOPPED}:
             log.debug("Overriding the state with ATTENTION")
