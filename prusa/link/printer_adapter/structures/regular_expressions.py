@@ -18,15 +18,14 @@ PERCENT_REGEX = re.compile(r"^(?P<percent>\d{0,3})%$")
 VALID_USERNAME_REGEX = re.compile(r"^[!#-9;-~][ -!#-9;-~]{1,254}[!#-9;-~]$")
 VALID_PASSWORD_REGEX = re.compile(r"^[^ ].{6,}[^ ]$")
 
-BEGIN_FILES_REGEX = re.compile(r"^Begin file list$")
-END_FILES_REGEX = re.compile(r"^End file list$")
-
-LFN_CAPTURE = re.compile(r"(?P<dir_enter>^DIR_ENTER: (?P<sdn>/[^ ]*/) "
-                         r"\"(?P<ldn>[^\"]*)\"$)|"
-                         r"(?P<file>^(?P<sfn>.*\.(?P<extension>GCO|G)) "
-                         r"((0x(?P<m_time>[0-9a-fA-F]+) ?)|(?P<size>\d+ ?)|"
-                         r"(\"(?P<lfn>[^\"]*)\") ?)*$)|"
-                         r"(?P<dir_exit>^DIR_EXIT$)")
+LFN_CAPTURE = re.compile(
+    r"^(?P<begin>Begin file list)|"
+    r"(?P<dir_enter>DIR_ENTER: (?P<sdn>/[^ ]*/) \"(?P<ldn>[^\"]*)\")|"
+    r"(?P<file>(?P<sfn>.*\.(?P<extension>GCO|G)) "
+    r"((0x(?P<m_time>[0-9a-fA-F]+) ?)|(?P<size>\d+ ?)|"
+    r"(\"(?P<lfn>[^\"]*)\") ?)*)|"
+    r"(?P<dir_exit>DIR_EXIT)|"
+    r"(?P<end>End file list)$")
 
 SD_PRESENT_REGEX = re.compile(r"^echo:((?P<ok>SD card ok)|"
                               r"(?P<fail>SD init fail))$")
