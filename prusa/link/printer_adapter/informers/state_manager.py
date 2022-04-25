@@ -152,7 +152,7 @@ class StateManager(metaclass=MCSingleton):
         # A thing to detect a false positive attention
         self.resuming_from_fan_error = False
 
-        # At startup, we must avoid going to the READY state, until
+        # At startup, we must avoid going to the IDLE state, until
         # we are sure about not printing
         self.unsure_whether_printing = True
 
@@ -536,7 +536,7 @@ class StateManager(metaclass=MCSingleton):
 
     def reset(self):
         """
-        On printer reset, the printer is not ready yet, so set the base state
+        On printer reset, the printer is not idle yet, so set the base state
         to busy. After reset it surely can't carry on printing so take care of
         that as well
         :return:
@@ -583,8 +583,8 @@ class StateManager(metaclass=MCSingleton):
 
     @state_influencer(StateChange(to_states={State.BUSY: Source.MARLIN}))
     def busy(self):
-        """If we were ready, sets te base state to BUSY"""
-        if self.data.base_state == State.READY:
+        """If we were idle, sets te base state to BUSY"""
+        if self.data.base_state == State.IDLE:
             self.data.base_state = State.BUSY
 
     # Cannot distinguish pauses from the user and the gcode
@@ -621,7 +621,7 @@ class StateManager(metaclass=MCSingleton):
             self.data.printing_state = State.STOPPED
 
     @state_influencer(
-        StateChange(to_states={State.READY: Source.MARLIN},
+        StateChange(to_states={State.IDLE: Source.MARLIN},
                     from_states={
                         State.ATTENTION: Source.USER,
                         State.ERROR: Source.MARLIN,
@@ -639,7 +639,7 @@ class StateManager(metaclass=MCSingleton):
             return
 
         if self.data.base_state == State.BUSY:
-            self.data.base_state = State.READY
+            self.data.base_state = State.IDLE
 
         if not self.settings.printer.prompt_clean_sheet:
             if self.data.printing_state in {State.STOPPED, State.FINISHED}:
@@ -660,7 +660,7 @@ class StateManager(metaclass=MCSingleton):
         self._clear_attention()
 
     @state_influencer(
-        StateChange(to_states={State.READY: Source.MARLIN},
+        StateChange(to_states={State.IDLE: Source.MARLIN},
                     from_states={
                         State.FINISHED: Source.USER,
                         State.STOPPED: Source.USER,
@@ -713,7 +713,7 @@ class StateManager(metaclass=MCSingleton):
         log.debug("Overriding the state with ERROR")
         self.data.override_state = State.ERROR
 
-    @state_influencer(StateChange(to_states={State.READY: Source.SERIAL}))
+    @state_influencer(StateChange(to_states={State.IDLE: Source.SERIAL}))
     def serial_error_resolved(self):
         """Resets the error state if there is any"""
         if self.data.override_state == State.ERROR:

@@ -36,6 +36,7 @@ log = logging.getLogger(__name__)
 
 PRINTER_STATES = {
     State.IDLE: "Operational",
+    State.READY: "Operational",
     State.BUSY: "Busy",
     State.PRINTING: "Printing",
     State.PAUSED: "Paused",
@@ -44,6 +45,9 @@ PRINTER_STATES = {
     State.ERROR: "Error",
     State.ATTENTION: "Error"
 }
+
+# From which states the printer can be set to READY state
+STATES_TO_READY = [State.IDLE, State.FINISHED, State.STOPPED]
 
 CONFIRM_TEXT = """
     <p>This action may disrupt any ongoing print jobs (depending on your
@@ -242,6 +246,31 @@ def api_printer_sd(req):
     """Returns sd state."""
     # pylint: disable=unused-argument
     return JSONResponse(ready=app.daemon.prusa_link.sd_ready)
+
+
+@app.route('/api/printer/ready', method=state.METHOD_POST)
+@check_api_digest
+def api_set_ready(req):
+    """Set printer state to READY, if printer is in allowed state"""
+    # pylint: disable=unused-argument
+    printer = app.daemon.prusa_link.printer
+    if printer.state in STATES_TO_READY:
+        printer.set_printer_ready(printer.command)
+        return Response(status_code=state.HTTP_OK)
+    return Response(status_code=state.HTTP_CONFLICT)
+
+
+@app.route('/api/printer/ready', method=state.METHOD_DELETE)
+@check_api_digest
+def api_cancel_ready(req):
+    """Set printer state back to IDLE from READY"""
+    # pylint: disable=unused-argument
+    printer = app.daemon.prusa_link.printer
+    if printer.state == State.READY:
+        printer.cancel_printer_ready(printer.command)
+        return Response(status_code=state.HTTP_OK)
+    return Response(status_code=state.HTTP_CONFLICT)
+
 
 
 @app.route('/api/timelapse')
