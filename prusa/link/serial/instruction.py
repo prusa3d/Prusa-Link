@@ -4,7 +4,6 @@ serial queue
 """
 import logging
 import re
-from enum import Enum
 from threading import Event
 from time import time
 from typing import List, Optional
@@ -73,7 +72,7 @@ class Instruction:
     # pylint: disable=no-self-use
     def output_captured(self, sender, match):
         """
-        Output captured event handler, this type does not capture anything
+        Output _captured event handler, this type does not capture anything
         though
         """
         assert sender is not None
@@ -111,26 +110,26 @@ class MatchableInstruction(Instruction):
                  **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Output captured between command submission and confirmation
+        # Output _captured between command submission and confirmation
         self.capture_matching = capture_matching
-        self.captured: List[re.Match] = []
+        self._captured: List[re.Match] = []
 
         self.capturing_regexps = [capture_matching]
 
     def output_captured(self, sender, match):
-        """Appends captured output to the instructions captured list"""
+        """Appends _captured output to the instructions _captured list"""
         assert sender is not None
-        self.captured.append(match)
+        self._captured.append(match)
 
     def match(self, index=0):
         """If match with an index exists, return it, otherwise return None"""
-        if self.captured and len(self.captured) > index:
-            return self.captured[index]
+        if self._captured and len(self._captured) > index:
+            return self._captured[index]
         return None
 
     def get_matches(self):
-        """Returns the list of all captured matches"""
-        return self.captured
+        """Returns the list of all _captured matches"""
+        return self._captured
 
 
 class MandatoryMatchableInstruction(MatchableInstruction):
@@ -140,78 +139,7 @@ class MandatoryMatchableInstruction(MatchableInstruction):
     """
     def confirm(self, force=False) -> bool:
         # Yes, matchables HAVE TO match now!
-        if not self.captured and not force:
-            log.warning(
-                "Instruction %s did not capture its expected output, "
-                "so it REFUSES to be confirmed!", self.message)
-            return False
-        return super().confirm()
-
-
-class CollectingInstruction(Instruction):
-    """
-    Same as Instruction, but captures output only after begin_regex matches
-    only captures match object of capture_regex
-    and ends the capture after end_regex matches
-    the start and end matches shall be omitted
-
-    Also refuses confirmation if nothing gets matched.
-    """
-    class States(Enum):
-        """
-        State of a capturing instruction that needs a start and an end match
-        """
-        NOT_CAPTURING_YET = 0
-        CAPTURING = 1
-        ENDED = 2
-
-    def __init__(self, begin_regex: re.Pattern, capture_regex: re.Pattern,
-                 end_regex: re.Pattern, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Output captured between begin and end regex,
-        # which matched capture regex
-        self.end_regex = end_regex
-        self.capture_regex = capture_regex
-        self.begin_regex = begin_regex
-        self.captured: List[re.Match] = []
-        self.state = self.States.NOT_CAPTURING_YET
-
-        self.capturing_regexps = [
-            self.begin_regex, self.capture_regex, self.end_regex
-        ]
-
-    def output_captured(self, sender, match: re.Match):
-        """
-        Overrides the default output capturing method.
-        Starts capturing only after the begin_match
-        then captures everything matching capture_match
-        and this gets ended by the end_match.
-        """
-        # The order of these blocks is important, it prevents the
-        # begin and end matches from also matching with the capture regex
-        assert sender is not None
-        if self.state == self.States.CAPTURING:
-            end_match = self.end_regex.match(match.string)
-            if end_match:
-                self.state = self.States.ENDED
-
-        if self.state == self.States.CAPTURING:
-            capture_match = self.capture_regex.match(match.string)
-            if capture_match:
-                self.captured.append(capture_match)
-
-        if self.state == self.States.NOT_CAPTURING_YET:
-            begin_match = self.begin_regex.match(match.string)
-            if begin_match:
-                self.state = self.States.CAPTURING
-
-    def confirm(self, force=False) -> bool:
-        """
-        Determines, whether the instruction agrees with being confirmed
-        """
-        # Yes, collecting HAVE TO match now!
-        if self.state != self.States.ENDED and not force:
+        if not self._captured and not force:
             log.warning(
                 "Instruction %s did not capture its expected output, "
                 "so it REFUSES to be confirmed!", self.message)

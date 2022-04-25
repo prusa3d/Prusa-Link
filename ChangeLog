@@ -84,6 +84,7 @@
      * READY state changed to IDLE, PREPARED state changed to READY
      * Added endpoint for set/cancel printer READY state
      * Re-registration can be done only with deleted token
+     * Fix SD Card module race conditions
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder

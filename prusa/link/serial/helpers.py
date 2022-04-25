@@ -4,8 +4,7 @@ from threading import Event
 from typing import List, Callable
 
 from ..serial.instruction import \
-    Instruction, MandatoryMatchableInstruction, CollectingInstruction, \
-    MatchableInstruction
+    Instruction, MandatoryMatchableInstruction, MatchableInstruction
 from .serial_queue import SerialQueue
 from ..printer_adapter.const import QUIT_INTERVAL
 
@@ -65,33 +64,6 @@ def enqueue_matchable(queue: SerialQueue,
                                                 capture_matching=regexp,
                                                 to_checksum=to_checksum)
     queue.enqueue_one(instruction, to_front=to_front)
-    return instruction
-
-
-def enqueue_collecting(queue: SerialQueue,
-                       message: str,
-                       begin_regex: re.Pattern,
-                       capture_regex: re.Pattern,
-                       end_regex: re.Pattern,
-                       to_checksum=False) -> CollectingInstruction:
-    """
-    Creates a collecting instruction, which it enqueues right away
-    :param queue: the queue to enqueue into
-    :param message: the gcode you wish to send to the printer
-    :param begin_regex: the regular expression that will start the capture
-    :param capture_regex: the regular expression to use to capture output
-    :param end_regex: the regular expression that will stop the capture
-    :param to_checksum: Whether to number and checksum the instruction (use
-    only for print instructions!)
-    :return the enqueued instruction
-    """
-    # pylint: disable=too-many-arguments
-    instruction = CollectingInstruction(begin_regex,
-                                        capture_regex,
-                                        end_regex,
-                                        message=message,
-                                        to_checksum=to_checksum)
-    queue.enqueue_one(instruction)
     return instruction
 
 
