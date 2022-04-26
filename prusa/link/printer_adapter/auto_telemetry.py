@@ -39,6 +39,8 @@ class AutoTelemetry(ThreadedUpdatable):
         self.last_seen_fans = time()
         self.last_seen_temps = time()
 
+        self.turn_reporting_on()
+
     def temps_recorded(self, sender, match: Match):
         """
         Reset the timeout for temperatures
