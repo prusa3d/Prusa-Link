@@ -16,8 +16,8 @@ from prusa.connect.printer.const import Source
 
 from .auto_telemetry import AutoTelemetry
 from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
-    ResetPrinter, ResumePrint, StartPrint, StopPrint, LoadFilamentMK3, \
-    UnloadFilamentMK3
+    ResetPrinter, ResumePrint, StartPrint, StopPrint, LoadFilament, \
+    UnloadFilament
 from .command_queue import CommandQueue
 from .informers.filesystem.sd_card import SDState
 from .informers.job import Job, JobState
@@ -418,28 +418,15 @@ class PrusaLink:
         return self.command_queue.do_command(command)
 
     def load_filament(self, caller: SDKCommand):
-        """
-        Load filament
-        """
-        telemetry = self.model.last_telemetry
-        if telemetry.state == State.PRINTING:
-            raise RuntimeError("Can't load filament while printing")
-        command = LoadFilamentMK3(parameters=caller.kwargs,
-                                  telemetry=telemetry,
-                                  command_id=caller.command_id)
+        """Load filament"""
+        command = LoadFilament(parameters=caller.kwargs,
+                               command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
     def unload_filament(self, caller: SDKCommand):
-        """
-        Unload filament
-        """
-        telemetry = self.model.last_telemetry
-        if telemetry.state == State.PRINTING:
-            raise RuntimeError("Can't unload filament while printing")
-
-        command = UnloadFilamentMK3(parameters=caller.kwargs,
-                                    telemetry=telemetry,
-                                    command_id=caller.command_id)
+        """Unload filament"""
+        command = UnloadFilament(parameters=caller.kwargs,
+                                 command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
     # --- FW Command handlers ---
