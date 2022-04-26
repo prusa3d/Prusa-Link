@@ -34,6 +34,8 @@ JOB_ONGOING_STATES = {State.PRINTING, State.PAUSED}
 JOB_ENDING_STATES = BASE_STATES.union(
     {State.FINISHED, State.STOPPED, State.ERROR})
 
+JITTER_THRESHOLD = 0.5
+
 # --- Intervals ---
 # Values are in seconds
 
