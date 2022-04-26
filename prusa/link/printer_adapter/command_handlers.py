@@ -19,13 +19,11 @@ from .command import Command
 from .informers.state_manager import StateChange
 from .const import STATE_CHANGE_TIMEOUT, QUIT_INTERVAL, RESET_PIN, \
     PRINTER_BOOT_WAIT, SERIAL_QUEUE_TIMEOUT
-from ..serial.helpers import enqueue_list_from_str
+from ..serial.helpers import enqueue_list_from_str, enqueue_instruction
 from .structures.model_classes import JobState
 from .structures.regular_expressions import REJECTION_REGEX, \
     OPEN_RESULT_REGEX, PRINTER_BOOT_REGEX
 from .util import file_is_on_sd
-
-from ..serial.helpers import enqueue_instruction
 
 log = logging.getLogger(__name__)
 
@@ -98,67 +96,6 @@ class TryUntilState(Command):
     @abc.abstractmethod
     def _run_command(self):
         ...
-
-
-def prepare_temperatures(parameters, serial_queue, telemetry):
-    """Set temperatures for load/unload filament"""
-    target_nozzle_print = parameters["nozzle_temperature"]
-    target_bed = parameters["bed_temperature"]
-
-    # Extrusion temperature = 90% of target nozzle temperature
-    target_nozzle_extrude = target_nozzle_print * 0.9
-
-    gcode_bed_temperature = f'M140 S{target_bed}'
-
-    # Nozzle temperatures for extrude and print
-    gcode_extrude_temperature = f'M109 S{target_nozzle_extrude}'
-    gcode_print_temperature = f'M104 S{target_nozzle_print}'
-
-    enqueue_instruction(serial_queue, gcode_bed_temperature)
-
-    # This is hack, because M109 waits for heating and cooling, regardless
-    # parameters - Marlin issue: "Parameters S and R are treated identically."
-    if telemetry.temp_nozzle < target_nozzle_extrude:
-        enqueue_instruction(serial_queue, gcode_extrude_temperature)
-    enqueue_instruction(serial_queue, gcode_print_temperature)
-
-
-class LoadFilamentMK3(Command):
-    """Class for load filament command"""
-
-    command_name = "load_filament"
-
-    def __init__(self, parameters: Optional[Dict], telemetry, **kwargs):
-        super().__init__(**kwargs)
-        self.parameters = parameters
-        self.telemetry = telemetry
-
-    def _run_command(self):
-        """
-        Set target temperature according given material and load filament
-        """
-        prepare_temperatures(self.parameters, self.serial_queue,
-                             self.telemetry)
-        enqueue_instruction(self.serial_queue, "M701")
-
-
-class UnloadFilamentMK3(Command):
-    """Class for unload filament command"""
-
-    command_name = "unload_filament"
-
-    def __init__(self, parameters: Optional[Dict], telemetry, **kwargs):
-        super().__init__(**kwargs)
-        self.parameters = parameters
-        self.telemetry = telemetry
-
-    def _run_command(self):
-        """
-        Set target temperature according given material and unload filament
-        """
-        prepare_temperatures(self.parameters, self.serial_queue,
-                             self.telemetry)
-        enqueue_instruction(self.serial_queue, "M702")
 
 
 class StopPrint(TryUntilState):
@@ -326,16 +263,11 @@ class ExecuteGcode(Command):
         if self.force:
             log.debug("Force sending gcode: '%s'", self.gcode)
 
-        is_printing = self.model.state_manager.printing_state == \
-            State.PRINTING
-        error_exists = self.model.state_manager.override_state is not None
+        state = self.model.state_manager.current_state
         if not self.force:
-            if is_printing:
-                self.failed("I'm sorry Dave but I'm afraid "
-                            f"I can't run '{self.gcode}' while printing.")
-            elif error_exists:
-                self.failed("Printer is in an error state, "
-                            "cannot execute commands")
+            if state in {State.PRINTING, State.ATTENTION, State.ERROR}:
+                self.failed(f"Can't run '{self.gcode}' while in "
+                            f"f{state.name} state.")
 
         self.state_manager.expect_change(
             StateChange(command_id=self.command_id,
@@ -367,6 +299,73 @@ class ExecuteGcode(Command):
     @staticmethod
     def _get_state_change(default_source):
         return StateChange(default_source=default_source)
+
+
+class FilamentCommand(Command):
+    """The shared code for Loading and Unloading of filament"""
+
+    def __init__(self, parameters: Optional[Dict], **kwargs):
+        super().__init__(**kwargs)
+        self.parameters = parameters
+
+    def prepare_for_load_unload(self):
+        """
+        Check if the state allows for this operation
+        Set temperatures for load/unload filament, wait only if it's colder
+
+        Does not block, the assumption being that the command
+        we're preheating for will wait for its completion
+        """
+        state = self.model.state_manager.current_state
+        if state in {State.PRINTING, State.ATTENTION, State.ERROR}:
+            self.failed(f"Can't run {self.command_name} while in "
+                        f"{state.name} state.")
+
+        target_bed = self.parameters["bed_temperature"]
+        target_print_temp = self.parameters["nozzle_temperature"]
+        # Extrusion temperature = 90% of target nozzle temperature
+        target_extrude_temp = target_print_temp * 0.9
+
+        # Heat up the bed
+        enqueue_instruction(self.serial_queue, f"M140 S{target_bed}")
+
+        # M109 is supposed to wait only for heating
+        # when the S argument is given. Since it's broken,
+        # let's check ourselves and skip waiting if we're hotter than required
+        temp_nozzle = self.model.last_telemetry.temp_nozzle
+        if temp_nozzle is None or temp_nozzle < target_extrude_temp:
+            enqueue_instruction(self.serial_queue,
+                                f"M109 S{target_print_temp}")
+        enqueue_instruction(self.serial_queue,
+                            f"M104 S{target_extrude_temp}")
+
+    @abc.abstractmethod
+    def _run_command(self):
+        ...
+
+
+class LoadFilament(FilamentCommand):
+    """Class for load filament command"""
+
+    command_name = "load_filament"
+
+    def _run_command(self):
+        """Load filament - see FilamentCommand"""
+        # The load and unload have the same preheat
+        self.prepare_for_load_unload()
+        self.do_instruction("M701")
+
+
+class UnloadFilament(FilamentCommand):
+    """Class for unload filament command"""
+
+    command_name = "unload_filament"
+
+    def _run_command(self):
+        """Unload filament - see FilamentCommand"""
+        # The load and unload have the same preheat
+        self.prepare_for_load_unload()
+        self.do_instruction("M702")
 
 
 class ResetPrinter(Command):
