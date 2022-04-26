@@ -51,6 +51,25 @@ class InterestingLogRotator(metaclass=MCSingleton):
         self.log_buffer = deque(maxlen=LOG_BUFFER_SIZE)
         self.additional_messages_to_print = 0
         self.log_lock = Lock()
+        self.skipped_loggers = set()
+
+    def skip_logger(self, logger_to_skip):
+        """
+        Add a skipped logger to the set of skipped ones
+        Reset cached skip values
+        """
+        with self.log_lock:
+            name = logger_to_skip.name
+            self.skipped_loggers.add(name)
+
+            # Reset the skip caches of all the loggers
+            for logger in logging.getLogger().manager.loggerDict.values():
+                if isinstance(logger, InterestingLogger):
+                    logger._skipped = None
+
+    def is_skipped(self, logger_name):
+        """Is the logger name in the skipped set?"""
+        return logger_name in self.skipped_loggers
 
     def process_log_entry(self, got_printed, level, msg, *args, **kwargs):
         """
@@ -117,14 +136,40 @@ class InterestingLogger(Logger):
         super().__init__(name, level)
 
         self.log_rotator = InterestingLogRotator.get_instance()
+        self._skipped = None
+
+    def is_skipped(self):
+        """
+        Recursively figure out if we are supposed to skip appending
+        to log_rotator. Cache the result
+        """
+        if self._skipped is not None:
+            return self._skipped
+
+        # Lock our log modification lock - a bit hacky
+        with self.log_rotator.log_lock:
+            if self.log_rotator.is_skipped(self.name):
+                self._skipped = True
+            elif isinstance(self.parent, logging.RootLogger):
+                self._skipped = False
+            else:
+                if isinstance(self.parent, InterestingLogger):
+                    self._skipped = self.parent.is_skipped()
+                else:
+                    # Should not get triggered ever
+                    log.warning("Unsupported logger found: %s",
+                                self.parent.name)
+                    return False
+            return self._skipped
 
     def debug(self, msg, *args, **kwargs):
         """
         As a normal debug, with the added functionality of this class
         documented in the Class docstring
         """
-        self.log_rotator.process_log_entry(self.isEnabledFor(DEBUG), DEBUG,
-                                           msg, *args, **kwargs)
+        if not self.is_skipped():
+            self.log_rotator.process_log_entry(self.isEnabledFor(DEBUG), DEBUG,
+                                               msg, *args, **kwargs)
         super().debug(msg, *args, **kwargs)
 
     def info(self, msg, *args, **kwargs):
@@ -132,8 +177,9 @@ class InterestingLogger(Logger):
         As a normal info, with the added functionality of this class
         documented in the Class docstring
         """
-        self.log_rotator.process_log_entry(self.isEnabledFor(INFO), INFO, msg,
-                                           *args, **kwargs)
+        if not self.is_skipped():
+            self.log_rotator.process_log_entry(
+                self.isEnabledFor(INFO), INFO, msg, *args, **kwargs)
         super().info(msg, *args, **kwargs)
 
     def warning(self, msg, *args, **kwargs):
@@ -141,8 +187,9 @@ class InterestingLogger(Logger):
         As a normal warning, with the added functionality of this class
         documented in the Class docstring
         """
-        self.log_rotator.process_log_entry(self.isEnabledFor(WARNING), WARNING,
-                                           msg, *args, **kwargs)
+        if not self.is_skipped():
+            self.log_rotator.process_log_entry(
+                self.isEnabledFor(WARNING), WARNING, msg, *args, **kwargs)
         super().warning(msg, *args, **kwargs)
 
     def error(self, msg, *args, **kwargs):
@@ -150,8 +197,9 @@ class InterestingLogger(Logger):
         As a normal error, with the added functionality of this class
         documented in the Class docstring
         """
-        self.log_rotator.process_log_entry(self.isEnabledFor(ERROR), ERROR,
-                                           msg, *args, **kwargs)
+        if not self.is_skipped():
+            self.log_rotator.process_log_entry(
+                self.isEnabledFor(ERROR), ERROR, msg, *args, **kwargs)
         super().error(msg, *args, **kwargs)
 
     def critical(self, msg, *args, **kwargs):
@@ -159,8 +207,9 @@ class InterestingLogger(Logger):
         As a normal critical, with the added functionality of this class
         documented in the Class docstring
         """
-        self.log_rotator.process_log_entry(self.isEnabledFor(CRITICAL),
-                                           CRITICAL, msg, *args, **kwargs)
+        if not self.is_skipped():
+            self.log_rotator.process_log_entry(
+                self.isEnabledFor(CRITICAL), CRITICAL, msg, *args, **kwargs)
         super().critical(msg, *args, **kwargs)
 
     def log(self, level, msg, *args, **kwargs):
@@ -168,6 +217,7 @@ class InterestingLogger(Logger):
         As a normal log, with the added functionality of this class
         documented in the Class docstring
         """
-        self.log_rotator.process_log_entry(self.isEnabledFor(level), level,
-                                           msg, *args, **kwargs)
+        if not self.is_skipped():
+            self.log_rotator.process_log_entry(
+                self.isEnabledFor(level), level, msg, *args, **kwargs)
         super().log(level, msg, *args, **kwargs)

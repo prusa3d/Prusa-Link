@@ -5,8 +5,10 @@ As of now only DNS-SD is supported
 import logging
 import socket
 
+import zeroconf
 from zeroconf import Zeroconf, ServiceInfo, NonUniqueNameException
 
+from .interesting_logger import InterestingLogRotator
 from ..config import Config
 
 log = logging.getLogger(__name__)
@@ -19,6 +21,9 @@ class ServiceDiscovery:
     """
     def __init__(self, config: Config):
         """Loads configuration and inits Zeroconf"""
+        # Leave out service discovery logs from the interesting log
+        # was sending too many messages
+        InterestingLogRotator.get_instance().skip_logger(zeroconf._logger.log)
         self.zeroconf = Zeroconf()
         self.port = config.http.port
         self.hostname = socket.gethostname()

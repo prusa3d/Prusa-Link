@@ -85,6 +85,7 @@
      * Added endpoint for set/cancel printer READY state
      * Re-registration can be done only with deleted token
      * Fix SD Card module race conditions
+     * Make it possible to hide certain loggers from interesting log
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
