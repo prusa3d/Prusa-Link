@@ -10,6 +10,7 @@ from typing import List
 from packaging.version import Version
 
 from prusa.connect.printer import Printer
+from .informers.filesystem.sd_card import SDCard
 
 from .informers.job import Job
 from ..serial.helpers import wait_for_instruction, \
@@ -22,7 +23,7 @@ from .structures.regular_expressions import SN_REGEX, PRINTER_TYPE_REGEX, \
 from .. import errors
 from .const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE, \
     SLOW_POLL_INTERVAL, FAST_POLL_INTERVAL, PRINT_STATE_PAIRING, \
-    PRINT_MODE_ID_PAIRING
+    PRINT_MODE_ID_PAIRING, FLASH_AIR_INTERVAL
 from ..serial.serial_queue import \
     SerialQueue
 from .model import Model
@@ -42,7 +43,7 @@ class PrinterPolling:
 
     # pylint: disable=too-many-statements, too-many-arguments
     def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
-                 printer: Printer, model: Model, job: Job):
+                 printer: Printer, model: Model, job: Job, sd_card: SDCard):
         super().__init__()
         self.item_updater = ItemUpdater()
 
@@ -51,6 +52,7 @@ class PrinterPolling:
         self.printer = printer
         self.model = model
         self.job = job
+        self.sd_card = sd_card
 
         # Printer info (for init and SEND_INFO)
 
@@ -137,6 +139,15 @@ class PrinterPolling:
             on_fail_interval=None
         )
         self.item_updater.add_watched_item(self.mbl)
+
+        self.flash_air = WatchedItem(
+            "flash_air",
+            gather_function=self._get_flash_air,
+            write_function=self._set_flash_air,
+            validation_function=lambda value: isinstance(value, bool)
+        )
+        self.item_updater.add_watched_item(self.flash_air)
+        self.item_updater.set_value(self.flash_air, False)
 
         # Telemetry
         self.speed_multiplier = WatchedItem(
@@ -255,11 +266,13 @@ class PrinterPolling:
         self.flow_multiplier.interval = SLOW_POLL_INTERVAL
         self.speed_multiplier.interval = SLOW_POLL_INTERVAL
         self.print_progress.interval = SLOW_POLL_INTERVAL
+        self.flash_air.interval = None
 
         self.item_updater.cancel_scheduled_invalidation(self.nozzle_diameter)
         self.item_updater.schedule_invalidation(self.flow_multiplier)
         self.item_updater.schedule_invalidation(self.speed_multiplier)
         self.item_updater.schedule_invalidation(self.print_progress)
+        self.item_updater.cancel_scheduled_invalidation(self.flash_air)
 
     def polling_ok(self):
         """Re-starts polling of some values"""
@@ -267,11 +280,13 @@ class PrinterPolling:
         self.flow_multiplier.interval = FAST_POLL_INTERVAL
         self.speed_multiplier.interval = FAST_POLL_INTERVAL
         self.print_progress.interval = None
+        self.flash_air.interval = FLASH_AIR_INTERVAL
 
         self.item_updater.schedule_invalidation(self.nozzle_diameter)
         self.item_updater.schedule_invalidation(self.flow_multiplier)
         self.item_updater.schedule_invalidation(self.speed_multiplier)
         self.item_updater.cancel_scheduled_invalidation(self.print_progress)
+        self.item_updater.schedule_invalidation(self.flash_air)
 
     def ensure_job_id(self):
         """
@@ -401,6 +416,11 @@ class PrinterPolling:
                 values = [float(val) for val in str_values]
                 data["data"].append(values)
         return data
+
+    def _get_flash_air(self):
+        """Determines if the Flash Air functionality is on"""
+        match = self.do_matchable("D3 Ax0fbb C1", D3_OUTPUT_REGEX)
+        return match.group("data") == "01"
 
     def _get_print_mode(self):
         """Gets the print mode from the printer"""
@@ -669,6 +689,10 @@ class PrinterPolling:
     def _set_job_id(self, value):
         """Set the job id"""
         self.job.job_id_from_eeprom(value)
+
+    def _set_flash_air(self, value):
+        """Passes the flash air value to sd updater"""
+        self.sd_card.set_flash_air(value)
 
     def _set_temps(self, value):
         """Write the temps to the model"""
