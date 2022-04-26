@@ -66,6 +66,9 @@ def api_connection(req):
 @check_api_digest
 def api_connection_set(req):
     """Returns URL for Connect registration completion"""
+    if app.settings.service_connect.token:
+        return JSONResponse(status_code=state.HTTP_CONFLICT)
+
     service_connect = app.daemon.settings.service_connect
     printer_settings = app.daemon.settings.printer
     printer = app.daemon.prusa_link.printer
