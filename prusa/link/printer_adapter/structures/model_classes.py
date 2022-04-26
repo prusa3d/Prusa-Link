@@ -11,6 +11,9 @@ from pydantic import BaseModel
 from prusa.connect.printer.const import State
 
 
+JITTERY_TEMPERATURES = {"temp_nozzle", "temp_bed"}
+
+
 class Telemetry(BaseModel):
     """The Telemetry model"""
     # time_estimated is deprecated, kept for compatibility
