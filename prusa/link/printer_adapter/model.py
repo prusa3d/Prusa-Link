@@ -3,9 +3,9 @@ from threading import Lock
 
 from prusa.connect.printer.const import State
 
-from .const import PRINTING_STATES
+from .const import PRINTING_STATES, JITTER_THRESHOLD
 from .structures.mc_singleton import MCSingleton
-from .structures.model_classes import Telemetry
+from .structures.model_classes import Telemetry, JITTERY_TEMPERATURES
 from .structures.module_data_classes import \
     FilePrinterData, StateManagerData, JobData, IPUpdaterData, SDCardData, \
     MountsData, PrintStatsData
@@ -43,6 +43,9 @@ class Model(metaclass=MCSingleton):
         """
         Telemetry is special, to report only the most recent values,
         each read it gets reset
+
+        The last telemetry is not being reset, so the recent values can be
+        read for web etc.
         """
         with self.lock:
             self._telemetry.state = self.state_manager.current_state
@@ -66,18 +69,41 @@ class Model(metaclass=MCSingleton):
 
     def set_telemetry(self, new_telemetry: Telemetry):
         """
-        Merges the new data into the cumulative telemetry.
-        The second telemetry is not being reset. It is useful for monitoring
+        Filters jitter and unchanged data
+        Updates the telemetries with new data
         """
         with self.lock:
             # let's merge them, instead of overwriting
-            merge = self._telemetry.dict()
-            merge.update(new_telemetry.dict(exclude_none=True))
-            self._telemetry = Telemetry(**merge)
+            last_telemetry_dict = self._last_telemetry.dict()
 
-            second_merge = self._last_telemetry.dict()
-            second_merge.update(new_telemetry.dict(exclude_none=True))
-            self._last_telemetry = Telemetry(**second_merge)
+            new_telemetry_dict = new_telemetry.dict(exclude_none=True)
+            for key, value in new_telemetry_dict.items():
+                to_update = False
+                if key in JITTERY_TEMPERATURES:
+                    old = last_telemetry_dict[key]
+                    new = value
+                    if new is not None:
+                        if old is None:
+                            to_update = True
+                        else:
+                            assert isinstance(new, float)
+                            assert isinstance(old, float)
+                            if abs(old - new) > JITTER_THRESHOLD:
+                                to_update = True
+                elif value != last_telemetry_dict[key]:
+                    to_update = True
+
+                if to_update:
+                    setattr(self._telemetry, key, value)
+                    setattr(self._last_telemetry, key, value)
+
+    def reset_telemetry(self):
+        """
+        Resets the telemetry, so the newly acquired values get sent even
+        if they're  the same as the old ones
+        """
+        with self.lock:
+            self._last_telemetry = Telemetry()
 
     @property
     def last_telemetry(self):
