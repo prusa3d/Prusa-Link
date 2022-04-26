@@ -656,6 +656,7 @@ class PrusaLink:
         self.lcd_printer.reset_error_grace()
         self.printer_polling.invalidate_printer_info()
         self.ip_updater.send_ip_to_printer()
+        self.model.reset_telemetry()
 
     @property
     def sd_ready(self):

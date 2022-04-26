@@ -11,6 +11,9 @@ from pydantic import BaseModel
 from prusa.connect.printer.const import State
 
 
+JITTER_FILTERED = {"temp_nozzle", "temp_bed"}  # have to have float values
+
+
 class Telemetry(BaseModel):
     """The Telemetry model"""
     # time_estimated is deprecated, kept for compatibility
