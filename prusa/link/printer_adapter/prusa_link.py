@@ -134,8 +134,12 @@ class PrusaLink:
                                          self.serial_parser,
                                          self.state_manager, self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
-        self.printer_polling = PrinterPolling(self.serial_queue, self.serial_parser,
-                                              self.printer, self.model, self.job)
+        self.printer_polling = PrinterPolling(self.serial_queue,
+                                              self.serial_parser,
+                                              self.printer,
+                                              self.model,
+                                              self.job,
+                                              self.storage.sd_card)
         self.command_queue = CommandQueue()
 
         self.serial_parser.add_handler(
