@@ -2,6 +2,7 @@
 Contains almost every constant for the printer communication part of
 PrusaLink
 """
+import uuid
 from os import path
 from typing import List
 from json import load
@@ -11,6 +12,9 @@ from packaging.version import Version
 
 from prusa.connect.printer.const import State, PrinterType
 from .structures.model_classes import PrintState, PrintMode
+
+
+instance_id = uuid.uuid4()
 
 PRINTER_TYPES = {
     250: PrinterType.I3MK25,
@@ -62,6 +66,8 @@ EXIT_TIMEOUT = 15
 ERROR_REASON_TIMEOUT = 2
 PATH_WAIT_TIMEOUT = 10
 SLEEP_SCREEN_TIMEOUT = 20
+SELF_PING_TIMEOUT = 5
+SELF_PING_RETRY_INTERVAL = 10
 
 # --- Lcd queue ---
 LCD_QUEUE_SIZE = 30
@@ -96,7 +102,7 @@ BLACKLISTED_PATHS = [
     "/tmp",
 ]
 BLACKLISTED_NAMES = [SD_MOUNT_NAME]
-SFN_TO_LFN_EXTENSIONS = {"GCO": "gcode", "G": "g"}
+SFN_TO_LFN_EXTENSIONS = {"GCO": "gcode", "G": "g", "GC": "gc"}
 
 RESET_PIN = 22  # RPi gpio pin for resetting printer
 SUPPORTED_FIRMWARE = "3.10.1"

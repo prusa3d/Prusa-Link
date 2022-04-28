@@ -25,7 +25,7 @@ from .lib.view import package_to_api
 from .lib.files import get_os_path, gcode_analysis, gcode_analysis_sd
 
 from ..printer_adapter.const import LOGS_PATH, LOGS_FILES, GZ_SUFFIX, \
-        LOCAL_MOUNT_NAME
+        LOCAL_MOUNT_NAME, instance_id
 from ..printer_adapter.informers.job import JobState, Job
 from ..printer_adapter.informers.state_manager import StateManager
 from ..printer_adapter.command import CommandFailed
@@ -79,7 +79,16 @@ CMD_RESTART = dict(  # yapf bypass
     resource="/api/system/commands/core/restart")
 
 
-@app.route('/')
+@app.route('/', method=state.METHOD_HEAD)
+def instance(req):
+    """Return an instance ID for pairing instances"""
+    # pylint: disable=unused-argument
+    response = Response()
+    response.add_header("Instance-ID", str(instance_id))
+    return response
+
+
+@app.route('/', method=state.METHOD_GET)
 @check_config
 @check_digest(REALM)
 def index(req):
