@@ -8,7 +8,8 @@ from .lib.auth import check_api_digest
 
 from ..serial.helpers import enqueue_instruction
 from ..printer_adapter.const import FEEDRATE_XY, FEEDRATE_E, POSITION_X, \
-    POSITION_Y, POSITION_Z, MIN_TEMP_NOZZLE_E, PRINT_SPEED, PRINT_FLOW
+    POSITION_Y, POSITION_Z, MIN_TEMP_NOZZLE_E, PRINT_SPEED, PRINT_FLOW, \
+    TEMP_BED, TEMP_NOZZLE
 
 
 def jog(req, serial_queue):
@@ -101,17 +102,6 @@ def disable_steppers(serial_queue):
     enqueue_instruction(serial_queue, gcode)
 
 
-def set_target_temperature(req, serial_queue):
-    """Target temperature set command"""
-    targets = req.json.get('targets')
-
-    # Compability with OctoPrint, which uses more tools, here only tool0
-    tool = targets['tool0']
-
-    gcode = f'M104 S{tool}'
-    enqueue_instruction(serial_queue, gcode)
-
-
 def extrude(req, serial_queue):
     """Extrude given amount of filament in mm, negative value will retract"""
     amount = req.json.get('amount')
@@ -186,7 +176,24 @@ def api_tool(req):
     status = state.HTTP_NO_CONTENT
 
     if command == 'target':
-        set_target_temperature(req, serial_queue)
+        targets = req.json.get('targets')
+
+        # Compability with OctoPrint, which uses more tools, here only tool0
+        tool = targets['tool0']
+        if tool > TEMP_NOZZLE['max']:
+
+            status = state.HTTP_BAD_REQUEST
+            title = "Temperature too high"
+            msg = f"Maximum nozzle temperature is {TEMP_NOZZLE['max']}°C"
+            errors_ = {
+                'title': title,
+                'message': msg
+            }
+
+            return JSONResponse(status_code=status, **errors_)
+
+        gcode = f'M104 S{tool}'
+        enqueue_instruction(serial_queue, gcode)
 
     elif command == 'extrude':
         if tel.state is not State.PRINTING and \
@@ -210,6 +217,18 @@ def api_bed(req):
     target = req.json.get('target')
 
     if command == 'target':
+        if target > TEMP_BED['max']:
+
+            status = state.HTTP_BAD_REQUEST
+            title = "Temperature too high"
+            msg = f"Maximum heatbed temperature is {TEMP_BED['max']}°C"
+            errors_ = {
+                'title': title,
+                'message': msg
+            }
+
+            return JSONResponse(status_code=status, **errors_)
+
         gcode = f'M140 S{target}'
         enqueue_instruction(serial_queue, gcode)
 
