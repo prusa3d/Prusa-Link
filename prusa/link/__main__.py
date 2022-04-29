@@ -7,12 +7,12 @@ from os import kill, geteuid, path, mkdir, chmod
 from grp import getgrnam
 from pwd import getpwnam
 from signal import SIGTERM, SIGKILL
-from time import time, sleep
+from time import sleep
 from cProfile import Profile
 
 from daemon import DaemonContext  # type: ignore
 from lockfile.pidlockfile import PIDLockFile  # type: ignore
-from .printer_adapter.const import EXIT_TIMEOUT, QUIT_INTERVAL
+from .printer_adapter.const import EXIT_TIMEOUT
 from .config import Config
 from .printer_adapter.interesting_logger import InterestingLogRotator, \
     InterestingLogger
@@ -75,25 +75,28 @@ def check_process(pid):
         return False
 
 
+def wait_process(pid, timeout=1):
+    """Wait for process with timeout. Return True if process was terminated."""
+    sleep_amount = 0.1
+    for _ in range(timeout / sleep_amount):
+        if not check_process(pid):
+            return True
+        sleep(sleep_amount)
+    return False
+
+
 def stop(pid):
     """Tries to stop PrusaLink nicely, if it times out, uses SIGKILL"""
     kill(pid, SIGTERM)
-    timeout_at = time() + EXIT_TIMEOUT
-    while time() <= timeout_at:
-        if not check_process(pid):
-            break
-        sleep(QUIT_INTERVAL)
+    if wait_process(pid, EXIT_TIMEOUT):
+        return
 
-    # If we timed out, kill the process
-    if time() >= timeout_at:
-        log.warning("Failed to stop - SIGKIL will be used!")
-        try:
-            kill(pid, SIGKILL)
-        except ProcessLookupError:
-            log.warning("Could not find a prcess with pid %s " "to kill", pid)
-        else:
-            # Give the OS some time
-            sleep(1)
+    log.warning("Failed to stop - SIGKIL will be used!")
+    try:
+        kill(pid, SIGKILL)
+    except ProcessLookupError:
+        log.warning("Could not find a prcess with pid %s to kill", pid)
+    wait_process(pid, EXIT_TIMEOUT)
 
 
 def main():
