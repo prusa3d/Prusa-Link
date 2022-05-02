@@ -139,12 +139,18 @@ def api_settings_set(req):
     return JSONResponse(status_code=status, **kwargs)
 
 
-@app.route('/api/settings/apikey')
+@app.route('/api/settings/apikey', method=state.METHOD_POST)
 @check_api_digest
 def regenerate_api_key(req):
     """Regenerate api key and save it to settings and config file"""
     # pylint: disable=unused-argument
-    api_key = token_urlsafe(10)
+    api_key = req.json.get('api-key')
+    if api_key:
+        if len(api_key) < 7:
+            message = "Api-Key must be at least 7 characters long"
+            return JSONResponse(status_code=state.HTTP_BAD_REQUEST, message=message)
+    else:
+        api_key = token_urlsafe(10)
     app.daemon.settings.service_local.api_key = api_key
     app.daemon.settings.update_sections()
     save_settings()

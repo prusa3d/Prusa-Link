@@ -1,7 +1,6 @@
 """Configuration wizard library."""
 from threading import Event
 import logging
-from secrets import token_urlsafe
 from socket import gethostbyname
 from urllib.request import urlopen
 
@@ -84,7 +83,7 @@ class Wizard:
         if _app.api_key:
             self.api_key = _app.api_key
         else:
-            self.api_key = token_urlsafe(10)
+            self.api_key = ''
 
         # network
         self.net_hostname = _app.settings.network.hostname
@@ -128,7 +127,7 @@ class Wizard:
             errors['password'] = True
         if password != repassword:
             errors['repassword'] = True
-        if len(self.api_key) < 7:
+        if self.api_key and len(self.api_key) < 7:
             errors['api_key'] = True
         self.errors['auth'] = errors
         return not errors
