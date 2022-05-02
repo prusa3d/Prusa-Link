@@ -60,6 +60,10 @@
       - Fixed storage tabs behavior
       - Avoid unnecessary requests to BE for file metadata
       - Hardcode storages list to printers
+      - Removed page `Temperatures`
+      - Fix formatting of percentages
+      - Reworked text styles
+      - Changed white color to light gray
      * Differentiate between FW and ID errors in the wizard, update texts
      * Fix ID error being swapped with the FW error
      * Fixed download ref, added total storage space info
