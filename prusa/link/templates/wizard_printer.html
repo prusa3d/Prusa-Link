@@ -10,7 +10,7 @@
           <h1>Setup Printer</h1>
 
           <form method="post" id="form">
-            <p>Please fill the name of the printer, which will be used at Prusa Connect, location where the printer placed and serial number of your printer if not already filled.</p>
+            <p>Please, fill up the name of the printer, which will be used at PrusaLink, and location, where the printer is placed.</p>
 
             {% set errors = wizard.errors.get('printer', {}) %}
             <div class="form-group row">
@@ -39,7 +39,7 @@
                     <a href="/wizard/auth" class="btn btn-back btn-outline-light"><img src="../img/arrow-left.svg" height="16" /> BACK | Authorization</a>
                   </div>
                   <div class="col-xs-auto">
-                    <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Setup printer | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
+                    <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Setup Connect | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
                   </div>
               </div>
             </div>
