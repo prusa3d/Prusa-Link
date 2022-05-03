@@ -16,7 +16,7 @@ from prusa.connect.printer.const import TransferType, State
 from prusa.connect.printer.errors import HTTP, API, TOKEN, INTERNET
 
 from .structures.model_classes import JobState
-from .const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL, SLEEP_SCREEN_TIMEOUT, \
+from ..const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL, SLEEP_SCREEN_TIMEOUT, \
     PRINTING_STATES
 from .model import Model
 from ..serial.helpers import enqueue_instruction, \

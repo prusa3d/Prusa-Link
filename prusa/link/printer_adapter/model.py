@@ -3,7 +3,7 @@ from threading import Lock
 
 from prusa.connect.printer.const import State
 
-from .const import PRINTING_STATES, JITTER_THRESHOLD
+from ..const import PRINTING_STATES, JITTER_THRESHOLD
 from .structures.mc_singleton import MCSingleton
 from .structures.model_classes import Telemetry, JITTERY_TEMPERATURES
 from .structures.module_data_classes import \

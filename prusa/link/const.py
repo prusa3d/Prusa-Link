@@ -11,7 +11,7 @@ from importlib.resources import files  # type: ignore
 from packaging.version import Version
 
 from prusa.connect.printer.const import State, PrinterType
-from .structures.model_classes import PrintState, PrintMode
+from .printer_adapter.structures.model_classes import PrintState, PrintMode
 
 
 instance_id = uuid.uuid4()

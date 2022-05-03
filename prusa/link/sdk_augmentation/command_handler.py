@@ -1,7 +1,7 @@
 """Contains implementation of the CommandHandler class"""
 from prusa.connect.printer import Command
 
-from ..printer_adapter.const import QUIT_INTERVAL
+from ..const import QUIT_INTERVAL
 from ..printer_adapter.updatable import prctl_name, Thread
 
 

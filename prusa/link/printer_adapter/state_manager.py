@@ -11,18 +11,18 @@ from prusa.connect.printer import Printer
 from prusa.connect.printer.const import State, Source
 from ..const import STATE_HISTORY_SIZE, ERROR_REASON_TIMEOUT
 
-from ...serial.serial_parser import \
+from ..serial.serial_parser import \
     SerialParser
 from ..interesting_logger import InterestingLogRotator
-from ..model import Model
-from ..structures.mc_singleton import MCSingleton
-from ..structures.module_data_classes import StateManagerData
-from ..structures.regular_expressions import \
+from .model import Model
+from .structures.mc_singleton import MCSingleton
+from .structures.module_data_classes import StateManagerData
+from .structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, FAN_ERROR_REGEX, \
     ERROR_REASON_REGEX, ATTENTION_REASON_REGEX, FAN_REGEX
-from ...config import Config, Settings
-from ...errors import get_printer_error_states, HW
+from ..config import Config, Settings
+from ..errors import get_printer_error_states, HW
 
 log = logging.getLogger(__name__)
 

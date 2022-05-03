@@ -18,13 +18,13 @@ from ..serial.helpers import \
     enqueue_instruction, wait_for_instruction
 from .model import Model
 from .print_stats import PrintStats
-from .const import STATS_EVERY, \
+from ..const import STATS_EVERY, \
     PRINT_QUEUE_SIZE, TAIL_COMMANDS, QUIT_INTERVAL
 from .structures.mc_singleton import MCSingleton
 from .structures.regular_expressions import \
     POWER_PANIC_REGEX, ERROR_REGEX, ERROR_REASON_REGEX, CANCEL_REGEX, \
     PAUSED_REGEX, RESUMED_REGEX
-from .util import get_clean_path, get_gcode, get_print_stats_gcode
+from ..util import get_clean_path, get_gcode, get_print_stats_gcode
 from .updatable import prctl_name, Thread
 
 log = logging.getLogger(__name__)

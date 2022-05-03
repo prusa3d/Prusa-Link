@@ -6,7 +6,7 @@ from ..serial.serial_queue import SerialQueue
 from ..serial.serial_parser import SerialParser
 from ..serial.helpers import \
         enqueue_instruction, wait_for_instruction
-from .const import REPORTING_TIMEOUT
+from ..const import REPORTING_TIMEOUT
 from .model import Model
 from .structures.model_classes import Telemetry
 from .structures.regular_expressions import \

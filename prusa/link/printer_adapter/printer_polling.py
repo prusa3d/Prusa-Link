@@ -10,9 +10,9 @@ from typing import List
 from packaging.version import Version
 
 from prusa.connect.printer import Printer
-from .informers.filesystem.sd_card import SDCard
+from .filesystem.sd_card import SDCard
 
-from .informers.job import Job
+from .job import Job
 from ..serial.helpers import wait_for_instruction, \
     enqueue_matchable
 from ..serial.serial_parser import SerialParser
@@ -21,7 +21,7 @@ from .structures.regular_expressions import SN_REGEX, PRINTER_TYPE_REGEX, \
     FW_REGEX, NOZZLE_REGEX, D3_OUTPUT_REGEX, VALID_SN_REGEX, \
     PERCENT_REGEX, PRINT_INFO_REGEX, M27_OUTPUT_REGEX, MBL_REGEX
 from .. import errors
-from .const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE, \
+from ..const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE, \
     SLOW_POLL_INTERVAL, FAST_POLL_INTERVAL, PRINT_STATE_PAIRING, \
     PRINT_MODE_ID_PAIRING, FLASH_AIR_INTERVAL
 from ..serial.serial_queue import \
@@ -29,7 +29,7 @@ from ..serial.serial_queue import \
 from .model import Model
 from .structures.item_updater import ItemUpdater, \
     WatchedItem, WatchedGroup, SideEffectOnly
-from .util import make_fingerprint
+from ..util import make_fingerprint
 
 log = logging.getLogger(__name__)
 
