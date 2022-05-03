@@ -14,7 +14,7 @@ from zeroconf import Zeroconf, ServiceInfo, NonUniqueNameException
 
 from .const import SELF_PING_TIMEOUT, SELF_PING_RETRY_INTERVAL, instance_id
 from .interesting_logger import InterestingLogRotator
-from ..config import Config
+from .config import Config
 
 log = logging.getLogger(__name__)
 
@@ -49,7 +49,6 @@ class ServiceDiscovery:
                 return response.headers["Instance-ID"] == str(instance_id)
         except (HTTPError, URLError):
             return False
-
 
     def register(self):
         """

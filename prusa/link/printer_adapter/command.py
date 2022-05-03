@@ -7,8 +7,8 @@ from typing import Any, Dict
 from prusa.connect.printer.const import Source
 
 from .file_printer import FilePrinter
-from .informers.job import Job
-from .informers.state_manager import StateManager
+from .job import Job
+from .state_manager import StateManager
 from ..serial.serial_adapter import SerialAdapter
 from ..serial.serial_queue import \
     MonitoredSerialQueue

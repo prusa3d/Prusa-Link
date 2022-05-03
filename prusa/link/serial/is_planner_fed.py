@@ -9,11 +9,11 @@ from enum import Enum
 from typing import Optional, Deque
 
 from ..config import Config
-from ..printer_adapter.const import QUEUE_SIZE, \
+from ..const import QUEUE_SIZE, \
     DEFAULT_THRESHOLD, USE_DYNAMIC_THRESHOLD, IGNORE_ABOVE, HEAP_RATIO
 from ..printer_adapter.structures.heap import MinHeap, MaxHeap, \
     HeapItem
-from ..printer_adapter.util import ensure_directory, get_clean_path
+from ..util import ensure_directory, get_clean_path
 
 log = logging.getLogger(__name__)
 

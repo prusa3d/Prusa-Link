@@ -9,15 +9,15 @@ from pyric.pyw import Card  # type: ignore
 
 from blinker import Signal  # type: ignore
 
-from ...serial.helpers import \
+from .. import errors
+from ..serial.helpers import \
     enqueue_instruction, wait_for_instruction
-from ...serial.serial_queue import SerialQueue
-from ..model import Model
+from ..serial.serial_queue import SerialQueue
+from .model import Model
 from ..const import IP_UPDATE_INTERVAL, IP_WRITE_TIMEOUT
-from ..structures.module_data_classes import IPUpdaterData
-from ..updatable import ThreadedUpdatable
+from .structures.module_data_classes import IPUpdaterData
+from .updatable import ThreadedUpdatable
 from ..util import get_local_ip, get_local_ip6
-from ... import errors
 
 log = logging.getLogger(__name__)
 

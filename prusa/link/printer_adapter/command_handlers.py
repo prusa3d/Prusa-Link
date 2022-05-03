@@ -16,14 +16,14 @@ from typing import Optional, Dict, Set
 from prusa.connect.printer.const import State, Source, Event as EventConst
 
 from .command import Command
-from .informers.state_manager import StateChange
-from .const import STATE_CHANGE_TIMEOUT, QUIT_INTERVAL, RESET_PIN, \
+from .state_manager import StateChange
+from ..const import STATE_CHANGE_TIMEOUT, QUIT_INTERVAL, RESET_PIN, \
     PRINTER_BOOT_WAIT, SERIAL_QUEUE_TIMEOUT
 from ..serial.helpers import enqueue_list_from_str, enqueue_instruction
 from .structures.model_classes import JobState
 from .structures.regular_expressions import REJECTION_REGEX, \
     OPEN_RESULT_REGEX, PRINTER_BOOT_REGEX
-from .util import file_is_on_sd
+from ..util import file_is_on_sd
 
 log = logging.getLogger(__name__)
 

@@ -2,10 +2,10 @@
 import logging
 from time import time
 
-from .const import TAIL_COMMANDS
+from ..const import TAIL_COMMANDS
 from .model import Model
 from .structures.module_data_classes import PrintStatsData
-from .util import get_gcode
+from ..util import get_gcode
 
 log = logging.getLogger(__name__)
 

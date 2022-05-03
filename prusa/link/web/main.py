@@ -24,10 +24,10 @@ from .lib.auth import check_api_digest, check_config, REALM
 from .lib.view import package_to_api
 from .lib.files import get_os_path, gcode_analysis, gcode_analysis_sd
 
-from ..printer_adapter.const import LOGS_PATH, LOGS_FILES, GZ_SUFFIX, \
-        LOCAL_MOUNT_NAME, instance_id
-from ..printer_adapter.informers.job import JobState, Job
-from ..printer_adapter.informers.state_manager import StateManager
+from ..const import LOGS_PATH, LOGS_FILES, GZ_SUFFIX, LOCAL_MOUNT_NAME, \
+    instance_id
+from ..printer_adapter.job import JobState, Job
+from ..printer_adapter.state_manager import StateManager
 from ..printer_adapter.command import CommandFailed
 from ..printer_adapter.command_handlers import PausePrint, StopPrint,\
     ResumePrint, StartPrint
