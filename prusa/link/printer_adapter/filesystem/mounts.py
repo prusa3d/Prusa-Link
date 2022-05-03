@@ -8,12 +8,12 @@ from typing import Set, List
 
 from blinker import Signal  # type: ignore
 
-from ...model import Model
-from ...structures.module_data_classes import MountsData
-from ....config import Config
-from ...const import BLACKLISTED_PATHS, \
-    BLACKLISTED_NAMES, BLACKLISTED_TYPES, QUIT_INTERVAL, DIR_RESCAN_INTERVAL
-from ...updatable import ThreadedUpdatable
+from ..model import Model
+from ..updatable import ThreadedUpdatable
+from ..structures.module_data_classes import MountsData
+from ...config import Config
+from ...const import BLACKLISTED_PATHS, BLACKLISTED_NAMES, BLACKLISTED_TYPES, \
+    QUIT_INTERVAL, DIR_RESCAN_INTERVAL
 from ...util import get_clean_path, ensure_directory
 
 log = logging.getLogger(__name__)

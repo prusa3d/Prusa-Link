@@ -6,7 +6,7 @@ from prusa.connect.printer.metadata import FDMMetaData, estimated_to_seconds
 from prusa.connect.printer.const import GCODE_EXTENSIONS
 
 from .core import app
-from ...printer_adapter.const import SD_MOUNT_NAME
+from ...const import SD_MOUNT_NAME
 
 
 def get_os_path(abs_path):

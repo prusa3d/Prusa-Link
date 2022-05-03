@@ -8,7 +8,7 @@ from queue import Queue, Empty
 from threading import Event, RLock
 
 from .command import Command, CommandFailed
-from .const import QUIT_INTERVAL
+from ..const import QUIT_INTERVAL
 from .updatable import prctl_name, Thread
 
 log = logging.getLogger(__name__)

@@ -14,19 +14,19 @@ from blinker import Signal  # type: ignore
 from prusa.connect.printer.const import State
 
 from ..state_manager import StateManager
-from ....serial.serial_queue import SerialQueue
-from ....serial.serial_parser import SerialParser
-from ....serial.helpers import wait_for_instruction, enqueue_matchable
-from ...model import Model
-from ...structures.model_classes import SDState
-from ...structures.module_data_classes import SDCardData
-from ...structures.regular_expressions import SD_PRESENT_REGEX, \
+from ...serial.serial_queue import SerialQueue
+from ...serial.serial_parser import SerialParser
+from ...serial.helpers import wait_for_instruction, enqueue_matchable
+from ..model import Model
+from ..structures.model_classes import SDState
+from ..structures.module_data_classes import SDCardData
+from ..structures.regular_expressions import SD_PRESENT_REGEX, \
     SD_EJECTED_REGEX, LFN_CAPTURE
 from ...const import SD_INTERVAL, SD_FILESCAN_INTERVAL, SD_MOUNT_NAME, \
     SFN_TO_LFN_EXTENSIONS, MAX_FILENAME_LENGTH
-from ...updatable import ThreadedUpdatable
+from ..updatable import ThreadedUpdatable
 from ...util import fat_datetime_to_tuple
-from ....sdk_augmentation.file import SDFile
+from ...sdk_augmentation.file import SDFile
 
 log = logging.getLogger(__name__)
 

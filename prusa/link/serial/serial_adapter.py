@@ -7,7 +7,7 @@ from blinker import Signal  # type: ignore
 
 from .serial_parser import SerialParser
 from . import serial
-from ..printer_adapter.const import PRINTER_BOOT_WAIT, SERIAL_REOPEN_TIMEOUT
+from ..const import PRINTER_BOOT_WAIT, SERIAL_REOPEN_TIMEOUT
 from ..printer_adapter.structures.mc_singleton import MCSingleton
 from ..printer_adapter.updatable import prctl_name, Thread
 from .. import errors

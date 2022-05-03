@@ -12,10 +12,9 @@ from cProfile import Profile
 
 from daemon import DaemonContext  # type: ignore
 from lockfile.pidlockfile import PIDLockFile  # type: ignore
-from .printer_adapter.const import EXIT_TIMEOUT
+from .const import EXIT_TIMEOUT
 from .config import Config
-from .printer_adapter.interesting_logger import InterestingLogRotator, \
-    InterestingLogger
+from .interesting_logger import InterestingLogRotator, InterestingLogger
 from .printer_adapter.updatable import Thread
 
 # pylint: disable=wrong-import-position, wrong-import-order

@@ -9,7 +9,7 @@ from logging import Logger, NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
 from multiprocessing import RLock
 
 from .const import LOG_BUFFER_SIZE, AFTERMATH_LOG_SIZE
-from .structures.mc_singleton import MCSingleton
+from .printer_adapter.structures.mc_singleton import MCSingleton
 
 log = logging.getLogger("interesting_logger")
 

@@ -9,7 +9,7 @@ from cProfile import Profile
 
 import prctl  # type: ignore
 
-from .util import loop_until
+from ..util import loop_until
 
 
 def prctl_name():

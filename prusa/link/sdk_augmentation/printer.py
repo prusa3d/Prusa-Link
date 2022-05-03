@@ -13,7 +13,7 @@ from prusa.connect.printer import Command
 from ..printer_adapter.lcd_printer import LCDPrinter
 from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
-from ..printer_adapter.util import file_is_on_sd
+from ..util import file_is_on_sd
 from ..printer_adapter.updatable import prctl_name, Thread
 from .command_handler import CommandHandler
 from .. import errors, __version__
