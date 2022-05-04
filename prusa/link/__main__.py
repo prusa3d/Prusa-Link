@@ -77,7 +77,7 @@ def check_process(pid):
 def wait_process(pid, timeout=1):
     """Wait for process with timeout. Return True if process was terminated."""
     sleep_amount = 0.1
-    for _ in range(timeout / sleep_amount):
+    for _ in range(int(timeout / sleep_amount)):
         if not check_process(pid):
             return True
         sleep(sleep_amount)
