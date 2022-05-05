@@ -11,7 +11,7 @@ from prusa.connect.printer import Command as SDKCommand, DownloadMgr
 
 from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType, State, \
-    PrinterType, Event as EventType
+    Event as EventType
 from prusa.connect.printer.const import Source
 
 from .auto_telemetry import AutoTelemetry
@@ -708,7 +708,7 @@ class PrusaLink:
         # No other trigger exists for these older printers
         # The printer will dip into BUSY for MBL, so lets use that
         if to_state in {State.PRINTING, State.IDLE} and \
-                PrinterType(self.printer.type) in MK25_PRINTERS:
+                self.printer.type in MK25_PRINTERS:
             self.printer_polling.invalidate_mbl()
 
         # The states should be completely re-done i'm told. So this janky
