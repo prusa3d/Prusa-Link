@@ -35,11 +35,9 @@ class AutoTelemetry(ThreadedUpdatable):
         self.serial_parser.add_handler(
             FAN_REGEX, self.fans_recorded)
 
-        self.last_seen_positions = time()
-        self.last_seen_fans = time()
-        self.last_seen_temps = time()
-
-        self.turn_reporting_on()
+        self.last_seen_positions = 0.
+        self.last_seen_fans = 0.
+        self.last_seen_temps = 0.
 
     def temps_recorded(self, sender, match: Match):
         """
