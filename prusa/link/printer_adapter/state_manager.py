@@ -13,7 +13,6 @@ from ..const import STATE_HISTORY_SIZE, ERROR_REASON_TIMEOUT
 
 from ..serial.serial_parser import \
     SerialParser
-from ..interesting_logger import InterestingLogRotator
 from .model import Model
 from .structures.mc_singleton import MCSingleton
 from .structures.module_data_classes import StateManagerData
@@ -693,7 +692,6 @@ class StateManager(metaclass=MCSingleton):
     def error(self):
         """Sets the override state to ERROR"""
         log.debug("Overriding the state with ERROR")
-        InterestingLogRotator.trigger("the printer going into an error state.")
         self.data.override_state = State.ERROR
 
     @state_influencer(StateChange(from_states={State.ERROR: Source.USER}))
