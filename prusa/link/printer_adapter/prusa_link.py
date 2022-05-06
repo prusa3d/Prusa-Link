@@ -2,6 +2,7 @@
 import logging
 import multiprocessing
 import os
+import re
 from threading import Event, enumerate as enumerate_threads
 from time import time
 from typing import Dict, Any
@@ -21,7 +22,7 @@ from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
 from .command_queue import CommandQueue
 from .filesystem.sd_card import SDState
 from .job import Job, JobState
-from ..serial.helpers import enqueue_instruction
+from ..serial.helpers import enqueue_instruction, enqueue_matchable
 from ..interesting_logger import InterestingLogRotator
 from .print_stat_doubler import PrintStatDoubler
 from .printer_polling import PrinterPolling
@@ -31,6 +32,7 @@ from .ip_updater import IPUpdater
 from .state_manager import StateManager, StateChange
 from .filesystem.storage_controller import StorageController
 from .lcd_printer import LCDPrinter
+from ..serial.serial import SerialException
 from ..serial.serial_queue import MonitoredSerialQueue
 from ..serial.serial_adapter import SerialAdapter
 from ..serial.serial_parser import SerialParser
@@ -255,6 +257,11 @@ class PrusaLink:
                     InterestingLogRotator.trigger("a debugging command")
                 elif command.startswith("faststop"):
                     self.stop(True)
+                elif command == "break comms":
+                    result = enqueue_matchable(
+                        self.serial_queue,
+                        "M117 Breaking",
+                        re.compile(r"something the printer will not tell us"))
 
                 if result:
                     print(result)
@@ -293,7 +300,10 @@ class PrusaLink:
         self.serial_queue.stop()
 
         if was_printing and not fast:
-            self.serial.write(b"M603\n")
+            try:
+                self.serial.write(b"M603\n")
+            except SerialException:
+                pass
 
         self.serial.stop()
         log.debug("Stop signalled")
@@ -649,13 +659,16 @@ class PrusaLink:
         assert match is not None
         was_printing = self.state_manager.get_state() in PRINTING_STATES
         self.file_printer.stop_print()
+        self.file_printer.wait_stopped()
         self.serial_queue.printer_reset(was_printing)
 
         # file printer stop print needs to happen before this
         self.state_manager.reset()
         self.lcd_printer.reset_error_grace()
         self.printer_polling.invalidate_printer_info()
-        self.ip_updater.send_ip_to_printer()
+        # Don't wait for the instruction confirmation, we'de be blocking the
+        # thread supposed to provide it
+        self.ip_updater.send_ip_to_printer(timeout=0)
         self.model.reset_telemetry()
 
     @property

@@ -21,8 +21,7 @@ from .print_stats import PrintStats
 from ..const import STATS_EVERY, \
     PRINT_QUEUE_SIZE, TAIL_COMMANDS, QUIT_INTERVAL
 from .structures.mc_singleton import MCSingleton
-from .structures.regular_expressions import \
-    POWER_PANIC_REGEX, ERROR_REGEX, ERROR_REASON_REGEX, CANCEL_REGEX, \
+from .structures.regular_expressions import POWER_PANIC_REGEX, CANCEL_REGEX, \
     PAUSED_REGEX, RESUMED_REGEX
 from ..util import get_clean_path, get_gcode, get_print_stats_gcode
 from .updatable import prctl_name, Thread
@@ -63,15 +62,8 @@ class FilePrinter(metaclass=MCSingleton):
             gcode_number=0)
         self.data = self.model.file_printer
 
-        self.serial_queue.serial_queue_failed.connect(
-            lambda sender: self.stop_print(), weak=False)
-
         self.serial_parser.add_handler(
             POWER_PANIC_REGEX, lambda sender, match: self.power_panic())
-        self.serial_parser.add_handler(
-            ERROR_REGEX, lambda sender, match: self.printer_error())
-        self.serial_parser.add_handler(
-            ERROR_REASON_REGEX, lambda sender, match: self.printer_error())
         self.serial_parser.add_handler(CANCEL_REGEX,
                                        lambda sender, match: self.stop_print())
         self.serial_parser.add_handler(PAUSED_REGEX,
@@ -184,6 +176,12 @@ class FilePrinter(metaclass=MCSingleton):
             self.data.enqueued.clear()
 
             if self.data.stopped_forcefully:
+                self.serial_queue.flush_print_queue()
+                self.data.enqueued.clear()  # Ensure this gets cleared
+                # This results in double stop on 3.10 hopefully will get
+                # changed
+                # Prevents the print head from stopping in the print
+                enqueue_instruction(self.serial_queue, "M603", to_front=True)
                 self.print_stopped_signal.send(self)
             else:
                 self.print_finished_signal.send(self)
@@ -281,10 +279,6 @@ class FilePrinter(metaclass=MCSingleton):
             TAIL_COMMANDS)
         return do_stats and (divisible or print_ending)
 
-    def printer_error(self):
-        """Reacts to a hard printer error by stopping the serial print"""
-        self.stop_print()
-
     def wait_for_unpause(self):
         """
         Loops until some other thread flips a flag back, to resume the
@@ -314,9 +308,3 @@ class FilePrinter(metaclass=MCSingleton):
             self.data.stopped_forcefully = True
             self.data.printing = False
             self.data.paused = False
-            self.thread.join()
-            self.serial_queue.flush_print_queue()
-            self.data.enqueued.clear()  # Ensure this gets cleared
-            # This results in double stop on 3.10 hopefully will get changed
-            # Prevents the print head from stopping in the print
-            enqueue_instruction(self.serial_queue, "M603", to_front=True)
