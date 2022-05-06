@@ -95,6 +95,7 @@
      * Fixed maximum temperature check for nozzle and heatbed
      * Api-Key is implicitly None, can be set in wizard or using endpoint
      * Start PrusaLink even without a connection to the printer
+     * Start sending telemetry slowly after a period of inactivity
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder

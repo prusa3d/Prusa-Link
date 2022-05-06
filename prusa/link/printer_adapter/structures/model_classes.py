@@ -8,11 +8,6 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from prusa.connect.printer.const import State
-
-
-JITTERY_TEMPERATURES = {"temp_nozzle", "temp_bed"}
-
 
 class Telemetry(BaseModel):
     """The Telemetry model"""
@@ -41,8 +36,6 @@ class Telemetry(BaseModel):
     odometer_z: Optional[int] = None
     odometer_e: Optional[int] = None
     material: Optional[str] = None
-    state: Optional[State] = None
-    job_id: Optional[int] = None
 
 
 class NetworkInfo(BaseModel):

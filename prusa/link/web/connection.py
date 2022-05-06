@@ -17,7 +17,7 @@ def api_connection(req):
     # pylint: disable=unused-argument
     service_connect = app.daemon.settings.service_connect
     cfg = app.daemon.cfg
-    tel = app.daemon.prusa_link.model.last_telemetry
+    printer_state = app.daemon.prusa_link.printer.state
 
     # Registration code from Connect - if code exists, there's registration
     # in progress
@@ -37,7 +37,7 @@ def api_connection(req):
                 "baudrate": cfg.printer.baudrate,
                 "port": cfg.printer.port,
                 "printerProfile": "_default",
-                "state": PRINTER_STATES[tel.state],
+                "state": PRINTER_STATES[printer_state],
             },
             "options": {
                 "ports": [cfg.printer.port],

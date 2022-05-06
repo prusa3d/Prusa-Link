@@ -452,7 +452,7 @@ class LCDPrinter(metaclass=MCSingleton):
             if LAN.ok:
                 self.idle_display.enable()
                 ip = self.model.ip_updater.local_ip
-                speed = self.model.last_telemetry.speed
+                speed = self.model.latest_telemetry.speed
                 conditions = dict(ip=ip, speed=speed)
                 if self.idle_display.conditions != conditions:
                     self.idle_display.conditions = conditions

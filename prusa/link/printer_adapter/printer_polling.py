@@ -13,6 +13,7 @@ from prusa.connect.printer import Printer
 from .filesystem.sd_card import SDCard
 
 from .job import Job
+from .telemetry_passer import TelemetryPasser
 from ..serial.helpers import wait_for_instruction, \
     enqueue_matchable
 from ..serial.serial_parser import SerialParser
@@ -43,7 +44,9 @@ class PrinterPolling:
 
     # pylint: disable=too-many-statements, too-many-arguments
     def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
-                 printer: Printer, model: Model, job: Job, sd_card: SDCard):
+                 printer: Printer, model: Model,
+                 telemetry_passer: TelemetryPasser,
+                 job: Job, sd_card: SDCard):
         super().__init__()
         self.item_updater = ItemUpdater()
 
@@ -51,6 +54,7 @@ class PrinterPolling:
         self.serial_parser = serial_parser
         self.printer = printer
         self.model = model
+        self.telemetry_passer = telemetry_passer
         self.job = job
         self.sd_card = sd_card
 
@@ -232,6 +236,19 @@ class PrinterPolling:
             write_function=self._set_sd_seconds_printing)
         self.item_updater.add_watched_item(self.sd_seconds_printing)
 
+        self.telemetry = WatchedGroup([
+            self.speed_multiplier,
+            self.flow_multiplier,
+            self.print_progress,
+            self.speed_adjusted_secs_remaining,
+            self.speed_agnostic_mins_remaining,
+            self.print_state,
+            self.mixed_path,
+            self.byte_position,
+            self.progress_from_bytes,
+            self.sd_seconds_printing
+        ])
+
     def start(self):
         """Starts the item updater"""
         self.item_updater.start()
@@ -247,6 +264,10 @@ class PrinterPolling:
     def invalidate_printer_info(self):
         """Invalidates all of printer info related watched values"""
         self.item_updater.invalidate_group(self.printer_info)
+
+    def invalidate_telemetry(self):
+        """Invalidates every value of Telemetry gathered by the poller"""
+        self.item_updater.invalidate_group(self.telemetry)
 
     def invalidate_network_info(self):
         """Invalidates just the network info"""
@@ -560,8 +581,8 @@ class PrinterPolling:
         speed multiplier
         """
         speed_agnostic_mins_remaining = value
-        if self.model.last_telemetry.speed is not None:
-            speed_multiplier = self.model.last_telemetry.speed / 100
+        if self.model.latest_telemetry.speed is not None:
+            speed_multiplier = self.model.latest_telemetry.speed / 100
         else:
             speed_multiplier = 1
         inverse_speed_multiplier = 1 / speed_multiplier
@@ -702,18 +723,18 @@ class PrinterPolling:
         if "set_ntemp" in value and "set_btemp" in value:
             telemetry.target_nozzle = float(value["set_ntemp"])
             telemetry.target_bed = float(value["set_btemp"])
-        self.model.set_telemetry(telemetry)
+        self.telemetry_passer.set_telemetry(telemetry)
 
     def _set_positions(self, value):
         """Write the position values to the model"""
-        self.model.set_telemetry(
+        self.telemetry_passer.set_telemetry(
             Telemetry(axis_x=float(value["x"]),
                       axis_y=float(value["y"]),
                       axis_z=float(value["z"])))
 
     def _set_fans(self, value):
         """Write the fan values to the model"""
-        self.model.set_telemetry(
+        self.telemetry_passer.set_telemetry(
             Telemetry(fan_extruder=int(value["extruder_rpm"]),
                       fan_print=int(value["print_rpm"]),
                       target_fan_extruder=int(value["extruder_power"]),
@@ -721,23 +742,23 @@ class PrinterPolling:
 
     def _set_speed_multiplier(self, value):
         """Write the speed multiplier to model"""
-        self.model.set_telemetry(Telemetry(speed=value))
+        self.telemetry_passer.set_telemetry(Telemetry(speed=value))
 
     def _set_flow_multiplier(self, value):
         """Write the flow multiplier to model"""
-        self.model.set_telemetry(Telemetry(flow=value))
+        self.telemetry_passer.set_telemetry(Telemetry(flow=value))
 
     def _set_print_progress(self, value):
         """Write the progress"""
-        self.model.set_telemetry(Telemetry(progress=value))
+        self.telemetry_passer.set_telemetry(Telemetry(progress=value))
 
     def _set_speed_adjusted_secs_remaining(self, value):
         """sets the time remaining adjusted for speed"""
-        self.model.set_telemetry(Telemetry(time_estimated=value))
+        self.telemetry_passer.set_telemetry(Telemetry(time_estimated=value))
 
     def _set_sd_seconds_printing(self, value):
         """sets the time we've been printing"""
-        self.model.set_telemetry(Telemetry(time_printing=value))
+        self.telemetry_passer.set_telemetry(Telemetry(time_printing=value))
 
     def _set_progress_from_bytes(self, value):
         """
@@ -751,7 +772,7 @@ class PrinterPolling:
                 "position in the file. "
                 "Progress: %s%% Byte %s/%s", value,
                 self.byte_position.value[0], self.byte_position.value[1])
-            self.model.set_telemetry(Telemetry(progress=value))
+            self.telemetry_passer.set_telemetry(Telemetry(progress=value))
 
 
     # -- Signal handlers --
