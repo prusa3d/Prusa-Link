@@ -150,27 +150,32 @@ class IPUpdater(ThreadedUpdatable):
                 "The new one is %s", new_ip6)
             self.data.local_ip6 = new_ip6
 
-    def send_ip_to_printer(self, ip_address=None, reset=False):
+    def send_ip_to_printer(self, ip_address=None, reset=False,
+                           timeout: float = IP_WRITE_TIMEOUT):
         """
         Uses the M552 gcode, to set the ip for displaying in the printer
         support menu
         :param ip_address: the ip to send to the printer, if unfilled, use the
         current one
         :param reset: whether to reset the IP to blank even if other is known
+        :param timeout: if supplied changes the timeout from the default
+                        IP_WRITE_TIMEOUT
         """
         if ip_address is None:
             ip_address = self.data.local_ip
 
-        timeout_at = time() + IP_WRITE_TIMEOUT
         if ip_address is None or reset:
             instruction = enqueue_instruction(self.serial_queue,
                                               "M552 P0.0.0.0")
         else:
             instruction = enqueue_instruction(self.serial_queue,
                                               f"M552 P{ip_address}")
-        wait_for_instruction(
-            instruction,
-            lambda: not self.quit_evt.is_set() and time() < timeout_at)
+
+        if timeout > 0:
+            timeout_at = time() + timeout
+            wait_for_instruction(
+                instruction,
+                lambda: not self.quit_evt.is_set() and time() < timeout_at)
 
     def proper_stop(self):
         """
