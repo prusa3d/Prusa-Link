@@ -8,11 +8,12 @@ import logging
 import re
 from collections import deque
 from threading import Lock, Event
-from time import time, sleep
+from time import time
 from typing import Optional, Deque, List
 
 from blinker import Signal  # type: ignore
 
+from .serial import SerialException
 from ..interesting_logger import InterestingLogRotator
 from ..config import Config
 from .serial_adapter import SerialAdapter
@@ -25,7 +26,7 @@ from .instruction import Instruction
 from .is_planner_fed import IsPlannerFed
 from .serial_parser import SerialParser
 from ..printer_adapter.structures.mc_singleton import MCSingleton
-from ..const import PRINTER_BOOT_WAIT, QUIT_INTERVAL, RX_SIZE, MAX_INT, \
+from ..const import QUIT_INTERVAL, RX_SIZE, MAX_INT, \
     SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT, HISTORY_LENGTH
 from .. import errors
 from ..printer_adapter.updatable import prctl_name, Thread
@@ -165,9 +166,14 @@ class SerialQueue(metaclass=MCSingleton):
         Checks it can get a lock and that the state is right for writing,
         if yes, calls send to send an instruction to serial
         """
-        with self.write_lock:
-            if self.can_write():
-                self._send()
+        try:
+            with self.write_lock:
+                if self.can_write():
+                    self._send()
+        # Need to leave our write lock unlocked
+        # when recovering from a serial error
+        except SerialException:
+            self.serial_adapter.renew_serial_connection()
 
     def get_data(self, instruction):
         """
@@ -446,6 +452,8 @@ class SerialQueue(metaclass=MCSingleton):
                 if not instruction.to_checksum:
                     new_queue.append(instruction)
             self.priority_queue = new_queue
+            self.recovery_list.clear()
+            self._throw_out_current_instruction()
 
     def _flush_queues(self):
         """
@@ -456,9 +464,7 @@ class SerialQueue(metaclass=MCSingleton):
         if self.current_instruction is not None:
             # To flush the one instruction, that has not yet been confirmed
             # but has been sent, use the usual way
-            self.current_instruction.confirm(force=True)
-            self._teardown_output_capture()
-            self.current_instruction = None
+            self._throw_out_current_instruction()
             self.next_instruction()
         while self.current_instruction is not None:
             # obviously don't send the other ones,
@@ -467,6 +473,13 @@ class SerialQueue(metaclass=MCSingleton):
             self.current_instruction.confirm(force=True)
             self.current_instruction = None
             self.next_instruction()
+
+    def _throw_out_current_instruction(self):
+        """Throws out the currently executed instruction"""
+        if self.current_instruction is not None:
+            self.current_instruction.confirm(force=True)
+            self._teardown_output_capture()
+            self.current_instruction = None
 
     def _worst_case_scenario(self):
         """
@@ -497,7 +510,6 @@ class SerialQueue(metaclass=MCSingleton):
         prctl_name()
         with self.write_lock:
             self._flush_queues()
-            sleep(PRINTER_BOOT_WAIT)
 
             final_instruction = None
 
@@ -575,7 +587,8 @@ class MonitoredSerialQueue(SerialQueue):
         Called periodically. If the confirmation wait times out, calls
         the appropriate handler
         """
-        if self.get_current_delay() > SERIAL_QUEUE_TIMEOUT:
+        if self.get_current_delay() > SERIAL_QUEUE_TIMEOUT and \
+                errors.SERIAL.ok:
             # The printer did not respond in time, lets assume it forgot
             # what it was supposed to do
             log.info("Timed out waiting for confirmation of %s after %ssec.",
