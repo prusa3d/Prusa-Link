@@ -332,7 +332,7 @@ class FilamentCommand(Command):
         # M109 is supposed to wait only for heating
         # when the S argument is given. Since it's broken,
         # let's check ourselves and skip waiting if we're hotter than required
-        temp_nozzle = self.model.last_telemetry.temp_nozzle
+        temp_nozzle = self.model.latest_telemetry.temp_nozzle
         if temp_nozzle is None or temp_nozzle < target_extrude_temp:
             enqueue_instruction(self.serial_queue,
                                 f"M109 S{target_print_temp}")

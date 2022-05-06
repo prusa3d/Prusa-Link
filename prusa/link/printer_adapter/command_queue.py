@@ -8,6 +8,7 @@ from queue import Queue, Empty
 from threading import Event, RLock
 
 from .command import Command, CommandFailed
+from .telemetry_passer import TelemetryPasser
 from ..const import QUIT_INTERVAL
 from .updatable import prctl_name, Thread
 
@@ -64,6 +65,8 @@ class CommandQueue:
         Block until the command gets processed, pass what it returns
         :param command: The command to be processed
         """
+        TelemetryPasser.get_instance().activity_observed()
+
         if not self.running:
             log.warning("Don't wait for commands enqueued in a non-"
                         "running command queue")

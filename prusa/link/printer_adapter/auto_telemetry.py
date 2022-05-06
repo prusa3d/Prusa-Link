@@ -2,6 +2,7 @@
 from re import Match
 from time import time
 
+from .telemetry_passer import TelemetryPasser
 from ..serial.serial_queue import SerialQueue
 from ..serial.serial_parser import SerialParser
 from ..serial.helpers import \
@@ -23,11 +24,12 @@ class AutoTelemetry(ThreadedUpdatable):
     update_interval = 10
 
     def __init__(self, serial_parser: SerialParser, serial_queue: SerialQueue,
-                 model: Model):
+                 model: Model, telemetry_passer: TelemetryPasser):
         super().__init__()
         self.serial_parser = serial_parser
         self.serial_queue = serial_queue
         self.model: Model = model
+        self.telemetry_passer = telemetry_passer
         self.serial_parser.add_handler(
             TEMPERATURE_REGEX, self.temps_recorded)
         self.serial_parser.add_handler(
@@ -54,7 +56,7 @@ class AutoTelemetry(ThreadedUpdatable):
         if "set_ntemp" in values and "set_btemp" in values:
             telemetry.target_nozzle = float(values["set_ntemp"])
             telemetry.target_bed = float(values["set_btemp"])
-        self.model.set_telemetry(telemetry)
+        self.telemetry_passer.set_telemetry(telemetry)
 
     def positions_recorded(self, sender, match: Match):
         """
@@ -65,7 +67,7 @@ class AutoTelemetry(ThreadedUpdatable):
         self.last_seen_positions = time()
 
         values = match.groupdict()
-        self.model.set_telemetry(
+        self.telemetry_passer.set_telemetry(
             Telemetry(axis_x=float(values["x"]),
                       axis_y=float(values["y"]),
                       axis_z=float(values["z"])))
@@ -79,7 +81,7 @@ class AutoTelemetry(ThreadedUpdatable):
         self.last_seen_fans = time()
 
         values = match.groupdict()
-        self.model.set_telemetry(
+        self.telemetry_passer.set_telemetry(
             Telemetry(fan_extruder=int(values["extruder_rpm"]),
                       fan_print=int(values["print_rpm"]),
                       target_fan_extruder=int(values["extruder_power"]),
