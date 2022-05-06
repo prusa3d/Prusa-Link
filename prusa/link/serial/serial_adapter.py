@@ -58,17 +58,17 @@ class SerialAdapter(metaclass=MCSingleton):
         If open, closes the serial port, for usb prevents unnecessary
         device resets and finally tries to open the serial again
         """
-        if self.is_open():
-            self.serial.close()
+        with self.write_lock:
+            if self.is_open():
+                self.serial.close()
 
-        self.serial = serial.Serial(port=self.port,
-                                    baudrate=self.baudrate,
-                                    timeout=self.timeout)
+            self.serial = serial.Serial(port=self.port,
+                                        baudrate=self.baudrate,
+                                        timeout=self.timeout)
 
-        # Tried to predict, whether the printer was going to restart on serial
-        # connect, but it proved unreliable
-        log.debug("Waiting for the printer to boot")
-        sleep(PRINTER_BOOT_WAIT)
+            # Prediction if using USB was unreliable using termios flags
+            log.debug("Waiting for the printer to boot")
+            sleep(PRINTER_BOOT_WAIT)
 
     def renew_serial_connection(self, starting: bool = False):
         """
@@ -77,38 +77,38 @@ class SerialAdapter(metaclass=MCSingleton):
 
         If it succeeds, generates a signal to remove the rest of the app
         """
+
         if self.is_open():
             raise RuntimeError("Don't reconnect what is not disconnected")
 
-        with self.write_lock:
-            while self.running:
-                if starting:
-                    starting = False
-                else:
-                    self.failed_signal.send(self)
+        while self.running:
+            if starting:
+                starting = False
+            else:
+                self.failed_signal.send(self)
 
-                try:
-                    self._reopen()
-                except (
+            try:
+                self._reopen()
+            except (
                 serial.SerialException, FileNotFoundError, OSError) as err:
-                    errors.SERIAL.ok = False
-                    log.debug(str(err))
-                    log.warning(
-                        "Opening of the serial port %s failed. Retrying",
-                        self.port)
-                    sleep(SERIAL_REOPEN_TIMEOUT)
-                except Exception:  # pylint: disable=broad-except
-                    # The same as above, just a different warning
-                    errors.SERIAL.ok = False
-                    log.warning("Opening of the serial port failed for a "
-                                "different reason than what's expected. "
-                                "Please report this!")
-                    sleep(SERIAL_REOPEN_TIMEOUT)
-                else:
-                    if self.running and not errors.SERIAL.ok:
-                        self.renewed_signal.send(self)
-                    errors.SERIAL.ok = True
-                    break
+                errors.SERIAL.ok = False
+                log.debug(str(err))
+                log.warning("Opening of the serial port %s failed. Retrying",
+                            self.port)
+                sleep(SERIAL_REOPEN_TIMEOUT)
+            except Exception:  # pylint: disable=broad-except
+                # The same as above, just a different warning
+                errors.SERIAL.ok = False
+                log.exception("Opening of the serial port failed for a "
+                              "different reason than what's expected. "
+                              "Please report this!")
+                sleep(SERIAL_REOPEN_TIMEOUT)
+            else:
+                break
+
+        if self.running and not errors.SERIAL.ok:
+            errors.SERIAL.ok = True
+            self.renewed_signal.send(self)
 
     def _read_continually(self):
         """Ran in a thread, reads stuff over an over"""
