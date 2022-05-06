@@ -100,7 +100,7 @@ class Model(metaclass=MCSingleton):
     def reset_telemetry(self):
         """
         Resets the telemetry, so the newly acquired values get sent even
-        if they're  the same as the old ones
+        if they're the same as the old ones
         """
         with self.lock:
             self._last_telemetry = Telemetry()
