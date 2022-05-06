@@ -95,8 +95,12 @@ class Serial:
 
     def close(self):
         """Close the port."""
-        os.close(self.fd)
-        self.fd = None
+        try:
+            os.close(self.fd)
+        except OSError:
+            pass
+        finally:
+            self.fd = None
 
     def __read(self, timeout):
         """Fill internal buffer by read from file descriptor."""
@@ -104,8 +108,10 @@ class Serial:
             ready = select([self.fd], [], [], timeout)
             if ready[0] and self.fd:
                 read_bytes = os.read(self.fd, 1024)
+                if not read_bytes:
+                    raise SerialException("The serial became disconnected.")
                 self.__buffer += read_bytes
-        except (BlockingIOError, InterruptedError) as err:
+        except (BlockingIOError, InterruptedError, TypeError) as err:
             self.close()
             raise SerialException(f"read failed: {err}") from err
 
