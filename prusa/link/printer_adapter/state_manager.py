@@ -702,18 +702,23 @@ class StateManager(metaclass=MCSingleton):
             log.debug("Cancelling the ERROR state override")
             self.data.override_state = None
 
-    @state_influencer(StateChange(to_states={State.ERROR: Source.SERIAL}))
+    @state_influencer(
+        StateChange(to_states={State.ERROR: Source.SERIAL},
+                    reason="Communication with the printer has failed"))
     def serial_error(self):
         """
         Also sets the override state to ERROR but has a different
         default source
         """
-        log.debug("Overriding the state with ERROR")
+        log.debug("Serial ERROR overrode state")
         self.data.override_state = State.ERROR
 
-    @state_influencer(StateChange(to_states={State.IDLE: Source.SERIAL}))
+    @state_influencer(
+        StateChange(to_states={State.IDLE: Source.SERIAL},
+                    reason="Re-established the communication "
+                           "with the printer"))
     def serial_error_resolved(self):
         """Resets the error state if there is any"""
         if self.data.override_state == State.ERROR:
-            log.debug("Removing the ERROR state")
+            log.debug("Serial ERROR resolved, removing override")
             self.data.override_state = None
