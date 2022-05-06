@@ -27,7 +27,6 @@ from .lib.files import get_os_path, gcode_analysis, gcode_analysis_sd
 from ..const import LOGS_PATH, LOGS_FILES, GZ_SUFFIX, LOCAL_MOUNT_NAME, \
     instance_id
 from ..printer_adapter.job import JobState, Job
-from ..printer_adapter.state_manager import StateManager
 from ..printer_adapter.command import CommandFailed
 from ..printer_adapter.command_handlers import PausePrint, StopPrint,\
     ResumePrint, StartPrint
@@ -187,11 +186,11 @@ def api_printer(req):
     """Returns printer telemetry info"""
     # pylint: disable=unused-argument
     prusa_link = app.daemon.prusa_link
-    tel = prusa_link.model.last_telemetry
+    tel = prusa_link.model.latest_telemetry
     sd_ready = prusa_link.sd_ready
     printer = prusa_link.printer
     mounts = printer.fs.mounts
-    operational = tel.state in (State.IDLE, State.FINISHED, State.STOPPED)
+    operational = printer.state in (State.IDLE, State.FINISHED, State.STOPPED)
 
     space_info = mounts[LOCAL_MOUNT_NAME].get_space_info()
     free_space = space_info["free_space"]
@@ -212,19 +211,19 @@ def api_printer(req):
                 "ready": sd_ready
             },
             "state": {
-                "text": PRINTER_STATES[tel.state],
+                "text": PRINTER_STATES[printer.state],
                 "flags": {
                     "operational": operational,
-                    "paused": tel.state == State.PAUSED,
-                    "printing": tel.state == State.PRINTING,
+                    "paused": printer.state == State.PAUSED,
+                    "printing": printer.state == State.PRINTING,
                     "cancelling": False,
-                    "pausing": tel.state == State.PAUSED,
+                    "pausing": printer.state == State.PAUSED,
                     "sdReady": sd_ready,
-                    "error": tel.state == State.ERROR,
+                    "error": printer.state == State.ERROR,
                     # Compatibility, READY will be changed to IDLE
-                    "ready": tel.state == State.IDLE,
+                    "ready": printer.state == State.IDLE,
                     "closedOrError": False,
-                    "finished": tel.state == State.FINISHED,
+                    "finished": printer.state == State.FINISHED,
                     # Compatibility, PREPARED will be changed to READY
                     "prepared": printer.ready
                 }
@@ -298,7 +297,7 @@ def api_timelapse(req):
 def api_job(req):
     """Returns info about actual printing job"""
     # pylint: disable=unused-argument
-    tel = app.daemon.prusa_link.model.last_telemetry
+    tel = app.daemon.prusa_link.model.latest_telemetry
     job = app.daemon.prusa_link.model.job
     printer = app.daemon.prusa_link.printer
     is_printing = job.job_state == JobState.IN_PROGRESS
@@ -362,7 +361,7 @@ def api_job(req):
                 "printSpeed": tel.speed,
                 "flow_factor": tel.flow,
             },
-            "state": PRINTER_STATES[tel.state]
+            "state": PRINTER_STATES[printer.state]
         })
 
 
@@ -372,39 +371,40 @@ def api_job_command(req):
     """Send command for job control"""
     # pylint: disable=too-many-branches
     job = Job.get_instance()
-    manager = StateManager.get_instance()
+    job_data = app.daemon.prusa_link.model.job
+    printer_state = app.daemon.prusa_link.printer.state
 
     command = req.json.get("command")
     command_queue = app.daemon.prusa_link.command_queue
 
     try:
         if command == "pause":
-            if job.data.job_state != JobState.IN_PROGRESS:
+            if job_data.job_state != JobState.IN_PROGRESS:
                 raise errors.NotPrinting()
 
             action = req.json.get("action")
-            if action == 'pause' and manager.get_state() == State.PRINTING:
+            if action == 'pause' and printer_state == State.PRINTING:
                 command_queue.do_command(PausePrint())
-            elif action == 'resume' and manager.get_state() == State.PAUSED:
+            elif action == 'resume' and printer_state == State.PAUSED:
                 command_queue.do_command(ResumePrint())
             elif action == 'toogle':
-                if manager.get_state() == State.PAUSED:
+                if printer_state == State.PAUSED:
                     command_queue.do_command(ResumePrint())
-                elif manager.get_state() == State.PRINTING:
+                elif printer_state == State.PRINTING:
                     command_queue.do_command(PausePrint())
 
         elif command == "cancel":
-            if job.data.job_state == JobState.IN_PROGRESS:
+            if job_data.job_state == JobState.IN_PROGRESS:
                 command_queue.do_command(StopPrint())
-            elif job.data.job_state == JobState.IDLE:
+            elif job_data.job_state == JobState.IDLE:
                 job.deselect_file()
             else:
                 raise errors.NotPrinting()
 
         elif command == "start":
-            if job.data.job_state != JobState.IDLE:
+            if job_data.job_state != JobState.IDLE:
                 raise errors.CurrentlyPrinting()
-            if job.data.selected_file_path:
+            if job_data.selected_file_path:
                 command_queue.do_command(
                     StartPrint(job.data.selected_file_path))
     except CommandFailed as err:

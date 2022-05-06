@@ -4,11 +4,10 @@ import multiprocessing
 import os
 import re
 from threading import Event, enumerate as enumerate_threads
-from time import time
 from typing import Dict, Any
 from enum import Enum
 
-from prusa.connect.printer import Command as SDKCommand, DownloadMgr
+from prusa.connect.printer import Command as SDKCommand, DownloadMgr, errors
 
 from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType, State, \
@@ -22,6 +21,7 @@ from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
 from .command_queue import CommandQueue
 from .filesystem.sd_card import SDState
 from .job import Job, JobState
+from .telemetry_passer import TelemetryPasser
 from ..serial.helpers import enqueue_instruction, enqueue_matchable
 from ..interesting_logger import InterestingLogRotator
 from .print_stat_doubler import PrintStatDoubler
@@ -40,13 +40,12 @@ from .model import Model
 from ..service_discovery import ServiceDiscovery
 from .structures.item_updater import WatchedItem
 from .structures.model_classes import Telemetry, PrintState
-from ..const import PRINTING_STATES, TELEMETRY_IDLE_INTERVAL, \
-    TELEMETRY_PRINTING_INTERVAL, SD_MOUNT_NAME, \
-    PATH_WAIT_TIMEOUT, BASE_STATES, MK25_PRINTERS
+from ..const import PRINTING_STATES, SD_MOUNT_NAME, PATH_WAIT_TIMEOUT, \
+    BASE_STATES, MK25_PRINTERS
 from .structures.regular_expressions import \
     PRINTER_BOOT_REGEX, PAUSE_PRINT_REGEX, \
     RESUME_PRINT_REGEX, MBL_TRIGGER_REGEX
-from ..util import loop_until, make_fingerprint, get_print_stats_gcode
+from ..util import make_fingerprint, get_print_stats_gcode
 from .updatable import prctl_name, Thread
 from ..config import Config, Settings
 from ..errors import HW
@@ -136,10 +135,12 @@ class PrusaLink:
                                          self.serial_parser,
                                          self.state_manager, self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
+        self.telemetry_passer = TelemetryPasser(self.model, self.printer)
         self.printer_polling = PrinterPolling(self.serial_queue,
                                               self.serial_parser,
                                               self.printer,
                                               self.model,
+                                              self.telemetry_passer,
                                               self.job,
                                               self.storage.sd_card)
         self.command_queue = CommandQueue()
@@ -196,30 +197,24 @@ class PrusaLink:
         self.printer_polling.mbl.value_changed_signal.connect(
             self.mbl_data_changed)
 
-        # Update the bare minimum of things for initial info
-        self.ip_updater.update()
+        errors.API.resolved_cb = self.connection_renewed
 
-        # Bind this after the initial info is sent so it doesn't get
-        # sent twice
+        # get the ip, then poll the rest of the network info
+        self.ip_updater.update()
         self.ip_updater.updated_signal.connect(self.ip_updated)
 
         # Leave the non-polled telemetry split from the rest
         self.auto_telemetry = AutoTelemetry(
-            self.serial_parser, self.serial_queue, self.model)
+            self.serial_parser, self.serial_queue, self.model,
+            self.telemetry_passer)
         self.auto_telemetry.start()
 
-        # Start individual informer threads after updating manually, so nothing
-        # will race with itself
         self.printer_polling.start()
         self.storage.start()
         self.ip_updater.start()
         self.lcd_printer.start()
         self.command_queue.start()
-        self.last_sent_telemetry = time()
-        self.telemetry_thread = Thread(target=self.keep_sending_telemetry,
-                                       name="telemetry_passer",
-                                       daemon=True)
-        self.telemetry_thread.start()
+        self.telemetry_passer.start()
         self.printer.start()
         # Start this last, as it might start printing right away
         self.file_printer.start()
@@ -283,10 +278,10 @@ class PrusaLink:
         self.quit_evt.set()
         self.file_printer.stop()
         self.command_queue.stop()
+        self.telemetry_passer.stop()
         self.printer.stop_loop()
         self.printer.indicate_stop()
         self.printer_polling.stop()
-        self.telemetry_thread.join()
         self.storage.stop()
         self.lcd_printer.stop(fast)
         # This is for pylint to stop complaining, I'd like stop(fast) more
@@ -311,6 +306,7 @@ class PrusaLink:
         if not fast:
             self.service_discovery.unregister()
             self.file_printer.wait_stopped()
+            self.telemetry_passer.wait_stopped()
             self.printer.wait_stopped()
             self.printer_polling.wait_stopped()
             self.storage.wait_stopped()
@@ -560,7 +556,7 @@ class PrusaLink:
         """
         gcode = get_print_stats_gcode()
         enqueue_instruction(self.serial_queue, gcode)
-        self.model.set_telemetry(Telemetry(
+        self.telemetry_passer.set_telemetry(Telemetry(
             progress=0,
             time_printing=0
         ))
@@ -666,10 +662,11 @@ class PrusaLink:
         self.state_manager.reset()
         self.lcd_printer.reset_error_grace()
         self.printer_polling.invalidate_printer_info()
-        # Don't wait for the instruction confirmation, we'de be blocking the
+        self.printer_polling.invalidate_telemetry()
+        # Don't wait for the instruction confirmation, we'd be blocking the
         # thread supposed to provide it
         self.ip_updater.send_ip_to_printer(timeout=0)
-        self.model.reset_telemetry()
+        self.telemetry_passer.wipe_telemetry()
 
     @property
     def sd_ready(self):
@@ -765,8 +762,8 @@ class PrusaLink:
     def time_printing_updated(self, sender, time_printing):
         """Connects the serial print print timer with telemetry"""
         assert sender is not None
-        self.model.set_telemetry(new_telemetry=Telemetry(
-            time_printing=time_printing))
+        self.telemetry_passer.set_telemetry(
+            new_telemetry=Telemetry(time_printing=time_printing))
 
     def serial_queue_failed(self, sender):
         """Handles the serial queue failure by resetting the printer"""
@@ -789,29 +786,6 @@ class PrusaLink:
         assert sender is not None
         self.state_manager.serial_error_resolved()
 
-    # --- Telemetry sending ---
-
-    def get_telemetry_interval(self):
-        """
-        Depending on the state, gets one of the intervals to send
-        telemetry in
-        """
-        if self.model.state_manager.current_state in PRINTING_STATES:
-            return TELEMETRY_PRINTING_INTERVAL
-        return TELEMETRY_IDLE_INTERVAL
-
-    def keep_sending_telemetry(self):
-        """Runs a loop in a thread to pass the telemetry from model to SDK"""
-        prctl_name()
-        loop_until(self.quit_evt, self.get_telemetry_interval,
-                   self.send_telemetry)
-
-    def send_telemetry(self):
-        """
-        Passes the telemetry from the model, where it accumulated to the
-        SDK for sending
-        """
-        if self.printer.queue.empty():
-            telemetry = self.model.get_and_reset_telemetry()
-            kwargs = telemetry.dict(exclude={"state"}, exclude_none=True)
-            self.printer.telemetry(**kwargs)
+    def connection_renewed(self, _):
+        """Reacts to the connection with connect being ok again"""
+        self.telemetry_passer.resend_latest_telemetry()
