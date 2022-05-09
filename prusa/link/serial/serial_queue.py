@@ -272,8 +272,6 @@ class SerialQueue(metaclass=MCSingleton):
 
         self._hookup_output_capture()
         self.current_instruction.sent()
-
-        log.debug("%s sent", instruction.data.decode('ASCII'))
         self.serial_adapter.write(self.current_instruction.data)
 
     def _enqueue(self, instruction: Instruction, to_front=False):
@@ -292,7 +290,7 @@ class SerialQueue(metaclass=MCSingleton):
         """
 
         with self.write_lock:
-            log.debug("%s enqueued.  %s", instruction,
+            log.debug("%s enqueued %s", instruction,
                       'to the front' if to_front else '')
 
             self._enqueue(instruction, to_front)
