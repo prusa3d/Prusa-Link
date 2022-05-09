@@ -96,6 +96,7 @@
      * Api-Key is implicitly None, can be set in wizard or using endpoint
      * Start PrusaLink even without a connection to the printer
      * Start sending telemetry slowly after a period of inactivity
+     * Files can be printed without selecting first, fixed job printTime info in api/job
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
