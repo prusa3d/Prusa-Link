@@ -354,8 +354,8 @@ def api_job(req):
             "progress": {
                 "completion": progress,
                 "filepos": 0,
-                "printTime": tel.time_printing if is_printing else None,
-                "printTimeLeft": tel.time_remaining if is_printing else None,
+                "printTime": time_printing if is_printing else None,
+                "printTimeLeft": time_remaining if is_printing else None,
                 "printTimeLeftOrigin": "estimate",
                 "pos_z_mm": tel.axis_z,
                 "printSpeed": tel.speed,

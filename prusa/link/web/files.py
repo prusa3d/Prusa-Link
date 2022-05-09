@@ -342,7 +342,14 @@ def api_start_print(req, target, path):
                 command_queue = app.daemon.prusa_link.command_queue
                 command_queue.do_command(
                     StartPrint(job.data.selected_file_path))
+            return Response(status_code=state.HTTP_NO_CONTENT)
 
+    elif command == 'print':
+        if job.data.job_state == JobState.IDLE:
+            job.set_file_path(path, path_incomplete=False,
+                              prepend_sd_mountpoint=False)
+            command_queue = app.daemon.prusa_link.command_queue
+            command_queue.do_command(StartPrint(path))
             return Response(status_code=state.HTTP_NO_CONTENT)
 
         # job_state != IDLE
