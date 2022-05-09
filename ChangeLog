@@ -97,6 +97,7 @@
      * Start PrusaLink even without a connection to the printer
      * Start sending telemetry slowly after a period of inactivity
      * Files can be printed without selecting first, fixed job printTime info in api/job
+     * Don't wait for a printer to boot when running through the EINSY pins
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
