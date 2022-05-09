@@ -15,6 +15,7 @@ from zeroconf import Zeroconf, ServiceInfo, NonUniqueNameException
 from .const import SELF_PING_TIMEOUT, SELF_PING_RETRY_INTERVAL, instance_id
 from .interesting_logger import InterestingLogRotator
 from .config import Config
+from .printer_adapter.updatable import Thread, prctl_name
 
 log = logging.getLogger(__name__)
 
@@ -34,6 +35,10 @@ class ServiceDiscovery:
         self.hostname = socket.gethostname()
         self.number = 0
 
+        self.thread = Thread(target=self._register, daemon=True,
+                             name="zeroconf")
+        self.thread.start()
+
     @staticmethod
     def _get_port_part(port):
         """Return the port part of an url"""
@@ -50,7 +55,7 @@ class ServiceDiscovery:
         except (HTTPError, URLError):
             return False
 
-    def register(self):
+    def _register(self):
         """
         Registers services provided by us to be discoverable
 
@@ -58,6 +63,7 @@ class ServiceDiscovery:
         one _http, because we have a web server
         and one _prusa-link because why not
         """
+        prctl_name()
         # Wait for our own instance to be reachable on the configured port
         # if not, just try again
         while not self.is_on_port(self.port):

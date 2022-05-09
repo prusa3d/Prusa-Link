@@ -80,9 +80,6 @@ class PrusaLink:
         self.model = Model()
 
         self.service_discovery = ServiceDiscovery(self.cfg)
-        self.sd_registerer = Thread(target=self.service_discovery.register,
-                                    daemon=True)
-        self.sd_registerer.start()
 
         self.serial_parser = SerialParser()
 
