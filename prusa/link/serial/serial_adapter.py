@@ -1,5 +1,8 @@
 """Contains implementation of the Serial class"""
 import logging
+import os
+import re
+from pathlib import Path
 from threading import Lock
 from time import sleep
 
@@ -44,10 +47,34 @@ class SerialAdapter(metaclass=MCSingleton):
 
         self.running = True
 
+        self.through_rpi_port = False
+        self.through_rpi_port = self.is_rpi_port()
+
         self.read_thread = Thread(target=self._read_continually,
                                   name="serial_read_thread",
                                   daemon=True)
         self.read_thread.start()
+
+    def is_rpi_port(self):
+        """Figure out, whether we're running through the Einsy RPi port"""
+        try:
+            port_name = Path(self.port).name
+            if not port_name.startswith("ttyAMA"):
+                return False
+            sys_path = Path(f"/sys/class/tty/{port_name}")
+            link_path = os.readlink(str(sys_path))
+            device_path = sys_path.parent.joinpath(link_path).resolve()
+            path_regexp = re.compile(r"^/sys/devices/platform/soc/"
+                                     r"[^.]*\.serial/tty/ttyAMA\d+$")
+            match = path_regexp.match(str(device_path))
+            if match is None:
+                return False
+        except Exception:  # pylint: disable=broad-except
+            log.exception("Exception when checking if we're connected through "
+                          "the Einsy pins. Assuming we're not.")
+            return False
+        else:
+            return True
 
     def is_open(self):
         """Returns bool indicating whether there's a serial connection"""
@@ -66,9 +93,12 @@ class SerialAdapter(metaclass=MCSingleton):
                                         baudrate=self.baudrate,
                                         timeout=self.timeout)
 
-            # Prediction if using USB was unreliable using termios flags
-            log.debug("Waiting for the printer to boot")
-            sleep(PRINTER_BOOT_WAIT)
+            if self.through_rpi_port:
+                log.debug("Think we're connected through the Einsy pins, "
+                          "skipping waiting for boot")
+            else:
+                log.debug("Waiting for the printer to boot")
+                sleep(PRINTER_BOOT_WAIT)
 
     def renew_serial_connection(self, starting: bool = False):
         """
