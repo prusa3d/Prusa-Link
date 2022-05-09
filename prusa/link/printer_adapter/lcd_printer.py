@@ -360,8 +360,9 @@ class LCDPrinter(metaclass=MCSingleton):
                 # No scrolling errors, just a screen worth of explanations
                 # and another one for the IP address
                 text = ERROR_MESSAGES[error][:19].ljust(19)
-                if LAN.ok:
-                    text += f"see {self.model.ip_updater.local_ip}".ljust(19)
+                ip = self.model.ip_updater.local_ip
+                if ip is not None:
+                    text += f"see {ip}".ljust(19)
                 else:
                     text += "No IP".ljust(19)
                 self.error_display.set_text(text,
