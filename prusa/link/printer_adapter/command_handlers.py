@@ -273,8 +273,10 @@ class ExecuteGcode(Command):
             StateChange(command_id=self.command_id,
                         default_source=self.source))
 
-        # Get only non-empty lines
-        line_list = [line for line in self.gcode.split("\n") if line.strip()]
+        line_list = []
+        for line in self.gcode.split("\n"):
+            if line.strip():
+                line_list.append(line.replace("\r", ""))
 
         # try running every line
         # Do this manually as it's the only place where a list
