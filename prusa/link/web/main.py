@@ -138,6 +138,26 @@ def api_log(req, filename):
     return FileResponse(path_, content_type="text/plain", headers=headers_)
 
 
+@app.route('/api/v1/info')
+@check_api_digest
+def api_info(req):
+    """Returns information about the printer"""
+    # pylint: disable=unused-argument
+    service_connect = app.daemon.settings.service_connect
+    printer_settings = app.daemon.settings.printer
+
+    info = {
+        'name': printer_settings.name.replace("\"", ""),
+        'location': printer_settings.location.replace("\"", ""),
+        'farm_mode': printer_settings.farm_mode,
+        'serial': app.daemon.prusa_link.printer.sn,
+        'hostname': service_connect.hostname,
+        'port': service_connect.port
+    }
+
+    return JSONResponse(**info)
+
+
 @app.route('/api/version')
 @check_api_digest
 def api_version(req):
