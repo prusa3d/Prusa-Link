@@ -218,6 +218,8 @@ class StartPrint(Command):
         Converts connect path to os path
         :param path:
         """
+        if self.printer.fs.get(path) is None:
+            self.failed(f"The file at {path} does not exist.")
         os_path = self.printer.fs.get_os_path(path)
         self.file_printer.print(os_path)
 
