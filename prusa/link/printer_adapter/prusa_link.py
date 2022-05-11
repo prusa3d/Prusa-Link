@@ -319,20 +319,6 @@ class PrusaLink:
         self.stopped_event.set()
         log.info("Stop completed%s", ' fast!' if fast else '')
 
-    # pylint: disable=no-self-use
-    def check_printer(self, message: str, callback):
-        """Demand an encoder click from the poor user"""
-        log.error("DEPRECATED / needs re-implementation")
-        assert message is not None
-        # FIXME: Get rid of this, or make it official
-        # Let's get rid of a possible comms desync, by asking for a specific
-        # info instead of just OK
-        # get_nozzle_diameter(self.serial_queue, lambda: self.running)
-        # Now we need attention
-        # instruction = enqueue_instruction(self.serial_queue, f"M0 {message}")
-        # wait_for_instruction(instruction)
-        callback()
-
     # --- Download callbacks ---
     def printed_file_cb(self):
         """Return absolute path of the currently printed file."""
@@ -732,18 +718,6 @@ class PrusaLink:
         else:
             self.printer.download_mgr.buffer_size = DownloadMgr.BIG_BUFFER
             self.printer.download_mgr.throttle = 0
-
-        if self.settings.printer.prompt_clean_sheet:
-            if to_state == State.FINISHED:
-                Thread(target=self.check_printer,
-                       args=("Done, remove print",
-                             self.state_manager.printer_ready),
-                       daemon=True).start()
-            if to_state == State.STOPPED:
-                Thread(target=self.check_printer,
-                       args=("Stopped, clear sheet",
-                             self.state_manager.printer_ready),
-                       daemon=True).start()
 
         extra_data = {}
         if reason is not None:
