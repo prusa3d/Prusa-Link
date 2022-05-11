@@ -38,6 +38,18 @@ from ..util import make_fingerprint, get_d3_code
 log = logging.getLogger(__name__)
 
 
+class InfoGroup(WatchedGroup):
+    """A WatchedGroup with a flag for sending"""
+
+    def __init__(self, *args, **kwargs):
+        self.to_send = False
+        super().__init__(*args, **kwargs)
+
+    def mark_for_send(self):
+        """Marks printer info for sending"""
+        self.to_send = True
+
+
 class PrinterPolling:
     """
     Sets up the tracked values for info_updater
@@ -121,7 +133,7 @@ class PrinterPolling:
         )
         self.item_updater.add_watched_item(self.active_sheet)
 
-        self.printer_info = WatchedGroup([
+        self.printer_info = InfoGroup([
             self.network_info, self.printer_type, self.firmware_version,
             self.nozzle_diameter, self.serial_number, self.sheet_settings,
             self.active_sheet
@@ -152,8 +164,10 @@ class PrinterPolling:
             if item.name in {"active_sheet", "sheet_settings"}:
                 continue
 
-            item.became_valid_signal.connect(lambda value: self._send_info(),
-                                              weak=False)
+            item.value_changed_signal.connect(
+                lambda value: self.printer_info.mark_for_send(), weak=False)
+        self.printer_info.became_valid_signal.connect(
+            lambda item: self._send_info_if_changed(), weak=False)
 
         self.mbl = WatchedItem(
             "mbl",
@@ -917,12 +931,10 @@ class PrinterPolling:
         """Needs to exist because we cannot assign in lambdas"""
         errors.JOB_ID.ok = value
 
-    def _send_info(self):
+    def _send_info_if_changed(self):
         """
-        Sends info on every value change
-
-        If the printer is not initialized yet, does not send anything
+        Sends printer info if a value change marked it for sending
         """
         # This relies on update being called after became_valid_signal
-        if self.printer_info.valid:
+        if self.printer_info.valid and self.printer_info.to_send:
             self.printer.event_cb(**self.printer.get_info())
