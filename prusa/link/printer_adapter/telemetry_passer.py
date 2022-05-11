@@ -29,8 +29,7 @@ QUEUE_LENGTH_LIMIT = 4
 JITTERY_TEMPERATURES = {"temp_nozzle", "temp_bed"}
 ACTIVATING_CHANGES = {"target_nozzle", "target_bed", "axis_x", "axis_y",
                       "axis_z", "target_fan_print", "speed"}
-NOT_PRINTING_IGNORED = {"time_printing", "time_estimated",
-                        "time_remaining", "progress"}
+NOT_PRINTING_IGNORED = {"time_printing", "time_remaining", "progress"}
 PRINTING_IGNORED = {"axis_x", "axis_y"}
 
 
