@@ -640,9 +640,8 @@ class StateManager(metaclass=MCSingleton):
         if self.data.base_state == State.BUSY:
             self.data.base_state = State.IDLE
 
-        if not self.settings.printer.prompt_clean_sheet:
-            if self.data.printing_state in {State.STOPPED, State.FINISHED}:
-                self.data.printing_state = None
+        if self.data.printing_state in {State.STOPPED, State.FINISHED}:
+            self.data.printing_state = None
 
         self._clear_attention()
 
