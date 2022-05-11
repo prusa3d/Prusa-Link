@@ -21,6 +21,7 @@ from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
 from .command_queue import CommandQueue
 from .filesystem.sd_card import SDState
 from .job import Job, JobState
+from .structures.module_data_classes import Sheet
 from .telemetry_passer import TelemetryPasser
 from ..serial.helpers import enqueue_instruction, enqueue_matchable
 from ..interesting_logger import InterestingLogRotator
@@ -193,6 +194,10 @@ class PrusaLink:
             self.progress_broken)
         self.printer_polling.mbl.value_changed_signal.connect(
             self.mbl_data_changed)
+        self.printer_polling.sheet_settings.value_changed_signal.connect(
+            self.sheet_settings_changed)
+        self.printer_polling.active_sheet.value_changed_signal.connect(
+            self.active_sheet_changed)
 
         errors.API.resolved_cb = self.connection_renewed
 
@@ -443,9 +448,28 @@ class PrusaLink:
 
     def mbl_data_changed(self, data):
         """Sends the mesh bed leveling data to Connect"""
+        self.printer.mbl = data["data"]
         self.printer.event_cb(event=EventType.MESH_BED_DATA,
                               source=Source.MARLIN,
-                              mbl_data=data["data"])
+                              mbl=data["data"])
+
+    def sheet_settings_changed(self, printer_sheets):
+        """Sends the new sheet settings"""
+        sdk_sheets = []
+        for sheet in printer_sheets:
+            sheet: Sheet
+            sdk_sheets.append(dict(name=sheet.name, z_offset=sheet.z_offset))
+        self.printer.sheet_settings = sdk_sheets
+        self.printer.event_cb(event=EventType.INFO,
+                              source=Source.MARLIN,
+                              sheet_settings=sdk_sheets)
+
+    def active_sheet_changed(self, active_sheet):
+        """Sends the new active sheet"""
+        self.printer.active_sheet = active_sheet
+        self.printer.event_cb(event=EventType.INFO,
+                              source=Source.MARLIN,
+                              active_sheet=active_sheet)
 
     def job_info_updated(self, sender):
         """On job info update, sends the updated job info to the Connect"""
@@ -697,6 +721,10 @@ class PrusaLink:
 
         if from_state in PRINTING_STATES and to_state in BASE_STATES:
             self._reset_print_stats()
+
+        # Was printing. Statistics probably changed, let's poll those now
+        if from_state == State.PRINTING:
+            self.printer_polling.invalidate_statistics()
 
         # No other trigger exists for these older printers
         # The printer will dip into BUSY for MBL, so lets use that
