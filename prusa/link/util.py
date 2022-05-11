@@ -163,3 +163,19 @@ def get_print_stats_gcode(quiet_percent=-1, quiet_left=-1,
     """Returns the gcode for setting print stats"""
     return (f"M73 Q{quiet_percent} S{quiet_left} "
             f"P{normal_percent} R{normal_left} ")
+
+
+def get_d3_code(address: int, byte_count: int):
+    """
+    Gets the D-Code for reading the eeprom
+    :param address: - address in hex
+    :param byte_count: - the number of bytes to read
+
+    Address reference:
+    https://github.com/prusa3d/Prusa-Firmware/blob/MK3/Firmware/eeprom.cpp
+    """
+    if not 0 < int(byte_count) < 1000:
+        raise AttributeError("Cannot read that many bytes")
+    if address >= 2**16:
+        raise AttributeError("The address needs to be two bytes long")
+    return f"D3 Ax{format(address, 'x').upper()} C{byte_count}"

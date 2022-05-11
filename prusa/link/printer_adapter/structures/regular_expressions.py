@@ -96,7 +96,8 @@ M27_OUTPUT_REGEX = re.compile(
 PRINT_INFO_REGEX = re.compile(
     r"^(?P<mode>(SILENT)|(NORMAL)) MODE: "
     r"Percent done: (?P<progress>-?\d+); "
-    r"print time remaining in mins: (?P<remaining>-?\d+) ?.*$")
+    r"[pP]rint time remaining in mins: (?P<remaining>-?\d+); "
+    r"Change in mins: (?P<change_in>-?\d+)")
 HEATING_REGEX = re.compile(
     r"^T:(?P<ntemp>\d+\.\d+) E:\d+ B:(?P<btemp>\d+\.\d+)$")
 HEATING_HOTEND_REGEX = re.compile(

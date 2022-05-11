@@ -110,3 +110,12 @@ class PrintStatsData(BaseModel):
     has_inbuilt_stats: bool
     total_gcode_count: int  # is not computed for files containg reporting
     #                         to speed stuff up
+
+
+class Sheet(BaseModel):
+    """Data available for sheets in the printer EEPROM"""
+    name: str = ""
+    z_offset: float = 0.0
+    # temps at the time of calibration
+    bed_temp: int = 0
+    pinda_temp: int = 0

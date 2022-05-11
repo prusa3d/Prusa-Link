@@ -4,6 +4,7 @@ Hope I can get most of printer polling to use this mechanism.
 """
 import logging
 import re
+import struct
 from datetime import timedelta
 from typing import List
 
@@ -13,24 +14,26 @@ from prusa.connect.printer import Printer
 from .filesystem.sd_card import SDCard
 
 from .job import Job
+from .structures.module_data_classes import Sheet
 from .telemetry_passer import TelemetryPasser
 from ..serial.helpers import wait_for_instruction, \
     enqueue_matchable
 from ..serial.serial_parser import SerialParser
-from .structures.model_classes import NetworkInfo, Telemetry, PrintMode
+from .structures.model_classes import NetworkInfo, Telemetry, PrintMode, \
+    EEPROMParams
 from .structures.regular_expressions import SN_REGEX, PRINTER_TYPE_REGEX, \
     FW_REGEX, NOZZLE_REGEX, D3_OUTPUT_REGEX, VALID_SN_REGEX, \
     PERCENT_REGEX, PRINT_INFO_REGEX, M27_OUTPUT_REGEX, MBL_REGEX
 from .. import errors
 from ..const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE, \
     SLOW_POLL_INTERVAL, FAST_POLL_INTERVAL, PRINT_STATE_PAIRING, \
-    PRINT_MODE_ID_PAIRING, FLASH_AIR_INTERVAL
+    PRINT_MODE_ID_PAIRING, VERY_SLOW_POLL_INTERVAL
 from ..serial.serial_queue import \
     SerialQueue
 from .model import Model
 from .structures.item_updater import ItemUpdater, \
     WatchedItem, WatchedGroup, SideEffectOnly
-from ..util import make_fingerprint
+from ..util import make_fingerprint, get_d3_code
 
 log = logging.getLogger(__name__)
 
@@ -106,9 +109,22 @@ class PrinterPolling:
             lambda item: self._set_sn_error(False), weak=False)
         self.item_updater.add_watched_item(self.serial_number)
 
+        self.sheet_settings = WatchedItem(
+            "sheet_settings",
+            gather_function=self._get_sheet_settings
+        )
+        self.item_updater.add_watched_item(self.sheet_settings)
+
+        self.active_sheet = WatchedItem(
+            "active_sheet",
+            gather_function=self.get_active_sheet
+        )
+        self.item_updater.add_watched_item(self.active_sheet)
+
         self.printer_info = WatchedGroup([
             self.network_info, self.printer_type, self.firmware_version,
-            self.nozzle_diameter, self.serial_number
+            self.nozzle_diameter, self.serial_number, self.sheet_settings,
+            self.active_sheet
         ])
 
         self.job_id = WatchedItem(
@@ -133,6 +149,9 @@ class PrinterPolling:
 
         # TODO: Put this outside
         for item in self.printer_info:
+            if item.name in {"active_sheet", "sheet_settings"}:
+                continue
+
             item.became_valid_signal.connect(lambda value: self._send_info(),
                                               weak=False)
 
@@ -191,22 +210,19 @@ class PrinterPolling:
                                                 ))
         self.item_updater.add_watched_item(self.progress_broken)
 
-        # These two times remaining update together through this
-        # convertor or whatever it is
-        self.speed_adjusted_secs_remaining = WatchedItem(
-            "speed_adjusted_secs_remaining",
-            validation_function=self._validate_time_remaining,
-            write_function=self._set_speed_adjusted_secs_remaining)
-        self.item_updater.add_watched_item(self.speed_adjusted_secs_remaining)
+        self.time_remaining = WatchedItem(
+            "time_remaining",
+            validation_function=self._validate_time_till,
+            write_function=self._set_time_remaining)
+        self.item_updater.add_watched_item(self.time_remaining)
 
-        # Once this is set, the write function passes the value to the other
-        # watched item
-        self.speed_agnostic_mins_remaining = WatchedItem(
-            "speed_agnostic_mins_remaining",
-            validation_function=self._validate_time_remaining,
-            write_function=self._get_speed_adjusted_mins_remaining
+        self.filament_change_in = WatchedItem(
+            "filament_change_in",
+            validation_function=self._validate_time_till,
+            write_function=self._set_filament_change_in,
+            on_fail_interval=None
         )
-        self.item_updater.add_watched_item(self.speed_agnostic_mins_remaining)
+        self.item_updater.add_watched_item(self.filament_change_in)
 
         # M27 results
         # These are sometimes auto reported, but due to some technical
@@ -236,12 +252,25 @@ class PrinterPolling:
             write_function=self._set_sd_seconds_printing)
         self.item_updater.add_watched_item(self.sd_seconds_printing)
 
+        self.total_filament = WatchedItem(
+            "total_filament",
+            gather_function=self._get_total_filament,
+            write_function=self._set_total_filament,
+            on_fail_interval=SLOW_POLL_INTERVAL)
+        self.item_updater.add_watched_item(self.total_filament)
+
+        self.total_print_time = WatchedItem(
+            "total_print_time",
+            gather_function=self._get_total_print_time,
+            write_function=self._set_total_print_time,
+            on_fail_interval=SLOW_POLL_INTERVAL)
+        self.item_updater.add_watched_item(self.total_print_time)
+
         self.telemetry = WatchedGroup([
             self.speed_multiplier,
             self.flow_multiplier,
             self.print_progress,
-            self.speed_adjusted_secs_remaining,
-            self.speed_agnostic_mins_remaining,
+            self.time_remaining,
             self.print_state,
             self.mixed_path,
             self.byte_position,
@@ -281,18 +310,27 @@ class PrinterPolling:
         """Invalidates the mbl_data, so it will get updated."""
         self.item_updater.invalidate(self.mbl)
 
+    def invalidate_statistics(self):
+        """Invalidates the statistics, so they get updated."""
+        self.item_updater.invalidate(self.total_filament)
+        self.item_updater.invalidate(self.total_print_time)
+
     def polling_not_ok(self):
         """Stops polling of some values"""
         self.nozzle_diameter.interval = None
         self.flow_multiplier.interval = SLOW_POLL_INTERVAL
         self.speed_multiplier.interval = SLOW_POLL_INTERVAL
         self.print_progress.interval = SLOW_POLL_INTERVAL
+        self.sheet_settings.interval = None
+        self.active_sheet.interval = None
         self.flash_air.interval = None
 
         self.item_updater.cancel_scheduled_invalidation(self.nozzle_diameter)
         self.item_updater.schedule_invalidation(self.flow_multiplier)
         self.item_updater.schedule_invalidation(self.speed_multiplier)
         self.item_updater.schedule_invalidation(self.print_progress)
+        self.item_updater.cancel_scheduled_invalidation(self.sheet_settings)
+        self.item_updater.cancel_scheduled_invalidation(self.active_sheet)
         self.item_updater.cancel_scheduled_invalidation(self.flash_air)
 
     def polling_ok(self):
@@ -301,12 +339,16 @@ class PrinterPolling:
         self.flow_multiplier.interval = FAST_POLL_INTERVAL
         self.speed_multiplier.interval = FAST_POLL_INTERVAL
         self.print_progress.interval = None
-        self.flash_air.interval = FLASH_AIR_INTERVAL
+        self.sheet_settings.interval = VERY_SLOW_POLL_INTERVAL
+        self.active_sheet.interval = SLOW_POLL_INTERVAL
+        self.flash_air.interval = VERY_SLOW_POLL_INTERVAL
 
         self.item_updater.schedule_invalidation(self.nozzle_diameter)
         self.item_updater.schedule_invalidation(self.flow_multiplier)
         self.item_updater.schedule_invalidation(self.speed_multiplier)
         self.item_updater.cancel_scheduled_invalidation(self.print_progress)
+        self.item_updater.schedule_invalidation(self.sheet_settings)
+        self.item_updater.schedule_invalidation(self.active_sheet)
         self.item_updater.schedule_invalidation(self.flash_air)
 
     def ensure_job_id(self):
@@ -411,11 +453,55 @@ class PrinterPolling:
         match = self.do_matchable("PRUSA SN", SN_REGEX, to_front=True)
         return match.group("sn")
 
+    def _get_sheet_settings(self):
+        """Gets all the sheet settings from the EEPROM"""
+        # TODO: How do we deal with default settings?
+        matches = self.do_multimatch(
+            get_d3_code(*EEPROMParams.SHEET_SETTINGS.value),
+            D3_OUTPUT_REGEX, to_front=True)
+
+        sheets: List[Sheet] = []
+        str_data = ""
+        for match in matches:
+            str_data += match.group("data").replace(" ", "")
+
+        data = bytes.fromhex(str_data)
+        for i in range(0, 8*11, 11):
+            sheet_data = data[i:i+11]
+
+            z_offset_u16 = struct.unpack("H", sheet_data[7:9])[0]
+            max_uint16 = 2**16-1
+            if z_offset_u16 in {0, max_uint16}:
+                z_offset_workaround = max_uint16
+            else:
+                z_offset_workaround = z_offset_u16 - 1
+            z_offset = (z_offset_workaround-max_uint16)/400
+
+            sheets.append(Sheet(
+                name=sheet_data[:7].decode("ascii"),
+                z_offset=z_offset,
+                bed_temp=struct.unpack("B", sheet_data[9:10])[0],
+                pinda_temp=struct.unpack("B", sheet_data[10:11])[0],
+            ))
+
+        return sheets
+
+    def get_active_sheet(self):
+        """Gets the active sheet from the EEPROM"""
+        matches = self.do_matchable(
+            get_d3_code(*EEPROMParams.ACTIVE_SHEET.value),
+            D3_OUTPUT_REGEX, to_front=True)
+
+        str_data = matches.group("data").replace(" ", "")
+        data = bytes.fromhex(str_data)
+        active_sheet = struct.unpack("B", data)[0]
+        return active_sheet
+
     def _get_job_id(self):
         """Gets the current job_id from the printer"""
-        match = self.do_matchable("D3 Ax0D05 C4",
-                                  D3_OUTPUT_REGEX,
-                                  to_front=True)
+        match = self.do_matchable(
+            get_d3_code(*EEPROMParams.JOB_ID.value),
+            D3_OUTPUT_REGEX, to_front=True)
         return int(match.group("data").replace(" ", ""), base=16)
 
     def _get_mbl(self):
@@ -435,19 +521,20 @@ class PrinterPolling:
                 line = match.group("mbl_row")
                 str_values = line.split()
                 values = [float(val) for val in str_values]
-                data["data"].append(values)
+                data["data"].extend(values)
         return data
 
     def _get_flash_air(self):
         """Determines if the Flash Air functionality is on"""
-        match = self.do_matchable("D3 Ax0fbb C1", D3_OUTPUT_REGEX)
+        match = self.do_matchable(
+            get_d3_code(*EEPROMParams.FLASH_AIR.value), D3_OUTPUT_REGEX)
         return match.group("data") == "01"
 
     def _get_print_mode(self):
         """Gets the print mode from the printer"""
-        match = self.do_matchable("D3 Ax0fff C1",
-                                  D3_OUTPUT_REGEX,
-                                  to_front=True)
+        match = self.do_matchable(
+            get_d3_code(*EEPROMParams.PRINT_MODE.value),
+            D3_OUTPUT_REGEX, to_front=True)
         index = int(match.group("data").replace(" ", ""), base=16)
         return PRINT_MODE_ID_PAIRING[index]
 
@@ -532,13 +619,21 @@ class PrinterPolling:
                 self.valid = False
                 self.progress = -1
                 self.remaining = -1
+                self.filament_change_in = -1
 
         silent, normal = PrintInfo(), PrintInfo()
         for match in matches:
             groups = match.groupdict()
             info = PrintInfo()
             info.progress = int(groups["progress"])
-            info.remaining = int(groups["remaining"])
+            # Convert both time values to seconds and adjust by print speed
+            secs_remaining_unadjusted = int(groups["remaining"]) * 60
+            info.remaining = self._speed_adjust_time_value(
+                secs_remaining_unadjusted)
+            secs_change_in_unadjusted = int(groups["change_in"]) * 60
+            info.filament_change_in = self._speed_adjust_time_value(
+                secs_change_in_unadjusted)
+
             try:
                 info.valid = self._validate_progress(info.progress)
             except ValueError:
@@ -566,34 +661,52 @@ class PrinterPolling:
         # just to set off handlers that depend on the validation failing
         if use_normal:
             self.item_updater.set_value(self.print_progress, normal.progress)
-            self.item_updater.set_value(self.speed_agnostic_mins_remaining,
-                                        normal.remaining)
+            self.item_updater.set_value(self.time_remaining, normal.remaining)
+            self.item_updater.set_value(self.filament_change_in,
+                                        normal.filament_change_in)
         else:
             self.item_updater.set_value(self.print_progress, silent.progress)
-            self.item_updater.set_value(self.speed_agnostic_mins_remaining,
-                                        silent.remaining)
+            self.item_updater.set_value(self.time_remaining, silent.remaining)
+            self.item_updater.set_value(self.filament_change_in,
+                                        silent.filament_change_in)
 
     # -- From other watched items --
-
-    def _get_speed_adjusted_mins_remaining(self, value):
-        """
-        The minutes remaining are naively multiplied by the inverse of the
-        speed multiplier
-        """
-        speed_agnostic_mins_remaining = value
+    def _speed_adjust_time_value(self, value):
+        "Multiplies tha value by the inverse of the speed multiplier"
         if self.model.latest_telemetry.speed is not None:
             speed_multiplier = self.model.latest_telemetry.speed / 100
         else:
             speed_multiplier = 1
         inverse_speed_multiplier = 1 / speed_multiplier
 
-        mins_remaining = int(speed_agnostic_mins_remaining *
-                             inverse_speed_multiplier)
-        log.debug("Mins without speed considering %s, mins otherwise %s",
-                  speed_agnostic_mins_remaining, mins_remaining)
-        secs_remaining = mins_remaining * 60
-        self.item_updater.set_value(self.speed_adjusted_secs_remaining,
-                                    secs_remaining)
+        adjusted_value = int(value * inverse_speed_multiplier)
+        log.debug("Secs without speed scaling %s, secs otherwise %s",
+                  value, adjusted_value)
+        return adjusted_value
+
+    def _eeprom_little_endian_uint32(self, dcode):
+        """
+        Reads and decodes the D-Code specified little-endian uint32_t
+        eeprom variable
+        """
+        match = self.do_matchable(dcode,
+                                  D3_OUTPUT_REGEX,
+                                  to_front=True)
+        str_data = match.group("data").replace(" ", "")
+        data = bytes.fromhex(str_data)
+        return struct.unpack("<I", data)[0]
+
+    def _get_total_filament(self):
+        """Gets the total filament used from the eeprom"""
+        total_filament = self._eeprom_little_endian_uint32(
+            get_d3_code(*EEPROMParams.TOTAL_FILAMENT.value))
+        return total_filament * 1000
+
+    def _get_total_print_time(self):
+        """Gets the total print time from the eeprom"""
+        total_minutes = self._eeprom_little_endian_uint32(
+            get_d3_code(*EEPROMParams.TOTAL_PRINT_TIME.value))
+        return total_minutes * 60
 
     # -- Validate --
 
@@ -638,17 +751,12 @@ class PrinterPolling:
     def _validate_mbl(value):
         """Validates the mesh bed leveling data"""
         num_x, num_y = value["shape"]
+        number_of_points = num_x * num_y
         data = value["data"]
-        if len(data) != num_y:
+        if len(data) != number_of_points:
             raise ValueError(f"The mbl data matrix was reported to have "
-                             f"{num_y} rows, but only {len(data)} "
-                             f"were observed")
-        for i, row in enumerate(data):
-            if len(row) != num_x:
-                raise ValueError(f"The mbl data matrix was reported to have "
-                                 f"{num_x} values per row, but only "
-                                 f"{len(row)} were observed on row with"
-                                 f" index {i}.")
+                             f"{num_x} x {num_y} values, but "
+                             f"{len(data)} were observed.")
         return True
 
     @staticmethod
@@ -668,13 +776,13 @@ class PrinterPolling:
         return True
 
     @staticmethod
-    def _validate_time_remaining(value):
+    def _validate_time_till(value):
         """
-        Validates both time values because negative time
-        remaining is impossible
+        Validates both time values because negative time till something
+         is impossible
         """
         if value < 0:
-            raise ValueError("There cannot be negative time remaining")
+            raise ValueError("There cannot be negative time till something")
         return True
 
     # -- Write --
@@ -752,9 +860,14 @@ class PrinterPolling:
         """Write the progress"""
         self.telemetry_passer.set_telemetry(Telemetry(progress=value))
 
-    def _set_speed_adjusted_secs_remaining(self, value):
-        """sets the time remaining adjusted for speed"""
-        self.telemetry_passer.set_telemetry(Telemetry(time_estimated=value))
+    def _set_time_remaining(self, value):
+        """Sets the time remaining adjusted for speed"""
+        self.telemetry_passer.set_telemetry(Telemetry(time_remaining=value))
+
+    def _set_filament_change_in(self, value):
+        """Write the filament change in"""
+        self.telemetry_passer.set_telemetry(
+            Telemetry(filament_change_in=value))
 
     def _set_sd_seconds_printing(self, value):
         """sets the time we've been printing"""
@@ -774,6 +887,13 @@ class PrinterPolling:
                 self.byte_position.value[0], self.byte_position.value[1])
             self.telemetry_passer.set_telemetry(Telemetry(progress=value))
 
+    def _set_total_filament(self, value):
+        """Write the total filament used to model"""
+        self.telemetry_passer.set_telemetry(Telemetry(total_filament=value))
+
+    def _set_total_print_time(self, value):
+        """Write the total print time to model"""
+        self.telemetry_passer.set_telemetry(Telemetry(total_print_time=value))
 
     # -- Signal handlers --
 
