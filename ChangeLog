@@ -103,6 +103,7 @@
      * Add time to filament change tracking
      * Fix mbl data format
      * Add sheet settings tracking
+     * Return a better reason when print of a non existant file is requested
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
