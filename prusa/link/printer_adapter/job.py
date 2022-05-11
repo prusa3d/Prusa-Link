@@ -213,6 +213,8 @@ class Job(metaclass=MCSingleton):
             data["size"] = self.data.selected_file_size
         if self.data.from_sd is not None:
             data["from_sd"] = self.data.from_sd
+        if self.printer.mbl is not None:
+            data["mbl"] = self.printer.mbl
 
         return data
 

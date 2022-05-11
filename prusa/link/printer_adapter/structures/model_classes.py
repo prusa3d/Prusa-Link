@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 class Telemetry(BaseModel):
     """The Telemetry model"""
-    # time_estimated is deprecated, kept for compatibility
+    # time_remaining is deprecated, kept for compatibility
 
     temp_nozzle: Optional[float] = None
     temp_bed: Optional[float] = None
@@ -29,13 +29,15 @@ class Telemetry(BaseModel):
     flow: Optional[int] = None
     speed: Optional[int] = None
     time_printing: Optional[int] = None
-    time_estimated: Optional[int] = None
     time_remaining: Optional[int] = None
     odometer_x: Optional[int] = None
     odometer_y: Optional[int] = None
     odometer_z: Optional[int] = None
     odometer_e: Optional[int] = None
     material: Optional[str] = None
+    total_filament: Optional[int] = None
+    total_print_time: Optional[int] = None
+    filament_change_in: Optional[int] = None
 
 
 class NetworkInfo(BaseModel):
@@ -88,3 +90,14 @@ class PrintMode(Enum):
     SILENT = "SILENT"
     NORMAL = "NORMAL"
     AUTO = "AUTO"
+
+
+class EEPROMParams(Enum):
+    """List of EEPROM addresses read by PrusaLink"""
+    JOB_ID = 0x0D05, 4
+    FLASH_AIR = 0x0FBB, 1
+    PRINT_MODE = 0x0FFF, 1
+    SHEET_SETTINGS = 0x0D49, 88
+    ACTIVE_SHEET = 0x0DA1, 1
+    TOTAL_FILAMENT = 0x0FF1, 4
+    TOTAL_PRINT_TIME = 0x0FED, 4
