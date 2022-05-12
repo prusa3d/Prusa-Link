@@ -7,7 +7,7 @@
 <div class="container">
     <div class="row">
         <div class="col-md-12">
-            <h1>Prusa Connect settings</h1>
+            <h1>PrusaConnect settings</h1>
             <form method="post" action="/wizard/connect/skip" id="skip"></form>
             <form method="post" id="form">
                 <p>Please check connect settings for your printer.</p>
@@ -18,7 +18,7 @@
                     <div class="col-sm-10">
                         <input type="text" class="form-control {{ 'is-invalid' if errors.get('hostname') else '' }}" id="hostname" name="hostname" value="{{ wizard.connect_hostname or '' }}" required>
                         <div class="invalid-feedback">
-                            Can't resolve Prusa Connect hostname.
+                            Can't resolve PrusaConnect hostname.
                         </div>
                     </div>
                 </div>
@@ -41,7 +41,7 @@
                 {% if errors.get('connection') %}
                 <div class="is-invalid"></div>
                 <div class="invalid-feedback">
-                    Can't connect to Prusa Connect.
+                    Can't connect to PrusaConnect.
                 </div>
                 {% endif %}
 

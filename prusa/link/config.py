@@ -206,7 +206,7 @@ class Settings(Get):
     """This class handles prusa_printer_settings.ini configuration file.
 
     File prusa_printer_settings.ini is official Prusa settings file, which has
-    shared format between all printers, and Prusa Connect can generate it.
+    shared format between all printers, and PrusaConnect can generate it.
     """
     instance = None
 

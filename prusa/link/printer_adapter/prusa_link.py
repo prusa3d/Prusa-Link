@@ -626,22 +626,22 @@ class PrusaLink:
         self.printer_polling.invalidate_network_info()
 
     def dir_mount(self, sender, path):
-        """Connects a dir being mounted to Prusa Connect events"""
+        """Connects a dir being mounted to PrusaConnect events"""
         assert sender is not None
         self.printer.mount(path, os.path.basename(path))
 
     def dir_unmount(self, sender, path):
-        """Connects a dir being unmounted to Prusa Connect events"""
+        """Connects a dir being unmounted to PrusaConnect events"""
         assert sender is not None
         self.printer.unmount(os.path.basename(path))
 
     def sd_mount(self, sender, files: File):
-        """Connects the sd being mounted to Prusa Connect events"""
+        """Connects the sd being mounted to PrusaConnect events"""
         assert sender is not None
         self.printer.fs.mount(SD_MOUNT_NAME, files, "", use_inotify=False)
 
     def sd_unmount(self, sender):
-        """Connects the sd being unmounted to Prusa Connect events"""
+        """Connects the sd being unmounted to PrusaConnect events"""
         assert sender is not None
         self.printer.fs.unmount(SD_MOUNT_NAME)
 
@@ -705,7 +705,7 @@ class PrusaLink:
                       command_id=None,
                       reason=None,
                       ready=False):
-        """Connects the state manager state change to Prusa Connect"""
+        """Connects the state manager state change to PrusaConnect"""
         assert sender is not None
         assert from_state is not None
         assert to_state is not None
