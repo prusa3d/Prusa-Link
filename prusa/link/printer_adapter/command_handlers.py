@@ -205,9 +205,9 @@ class StartPrint(Command):
             self._load_file(short_path)
             self._start_print()
         else:
-            if self.printer.fs.get(path) is None:
-                self.failed(f"The file at {path} does not exist.")
-            self._start_file_print(str(path))
+            if self.printer.fs.get(self.path_string) is None:
+                self.failed(f"The file at {self.path_string} does not exist.")
+            self._start_file_print(self.path_string)
 
         self.job.set_file_path(str(path),
                                path_incomplete=False,
