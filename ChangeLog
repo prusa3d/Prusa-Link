@@ -104,6 +104,7 @@
      * Fix mbl data format
      * Add sheet settings tracking
      * Return a better reason when print of a non existant file is requested
+     * Api-Key form is hidden in wizard by default -> None if not set
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder

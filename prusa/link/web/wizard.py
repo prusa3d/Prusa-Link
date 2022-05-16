@@ -68,6 +68,8 @@ def wizard_auth_post(req):
     password = form.get('password', '')
     repassword = form.get('repassword', '')
     app.wizard.api_key = form.get('api_key', '').strip()
+    app.wizard.use_api_key = form.get('use_api_key')
+
     if not app.wizard.check_credentials(password, repassword):
         redirect('/wizard/auth')
     app.wizard.set_digest(password)
@@ -173,6 +175,8 @@ def wizard_finish_post(req):
     """Show wizard status and link to homepage."""
     # pylint: disable=unused-argument
     wizard = app.wizard
+    if not wizard.use_api_key:
+        wizard.api_key = ''
     printer = wizard.daemon.prusa_link.printer
     wizard.write_settings(app.settings)
 
