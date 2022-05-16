@@ -19,7 +19,9 @@
           <h3>Authorization</h3>
           <ul>
             <li>Username: <span class="white">{{ wizard.username }}</span></li>
-            <li>Api-Key: <span class="white">{{ wizard.api_key }}</span></li>
+              {% if wizard.use_api_key %}
+                <li>Api-Key: <span class="white">{{ wizard.api_key }}</span></li>
+              {% endif %}
           </ul>
 
           <h3>Network</h3>
