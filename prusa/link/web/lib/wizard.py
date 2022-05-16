@@ -3,6 +3,7 @@ from threading import Event
 import logging
 from socket import gethostbyname
 from urllib.request import urlopen
+from secrets import token_urlsafe
 
 from poorwsgi.digest import hexdigest
 from prusa.connect.printer import Printer
@@ -78,12 +79,13 @@ class Wizard:
         self.serial = None
 
         # auth
+        self.use_api_key = False
         self.username = _app.settings.service_local.username
         self.digest = None
         if _app.api_key:
             self.api_key = _app.api_key
         else:
-            self.api_key = ''
+            self.api_key = token_urlsafe(10)
 
         # network
         self.net_hostname = _app.settings.network.hostname
