@@ -331,7 +331,8 @@ class FilamentCommand(Command):
         target_extrude_temp = target_print_temp * 0.9
 
         # Heat up the bed
-        enqueue_instruction(self.serial_queue, f"M140 S{target_bed}")
+        enqueue_instruction(self.serial_queue, f"M140 S{target_bed}",
+                            to_front=True)
 
         # M109 is supposed to wait only for heating
         # when the S argument is given. Since it's broken,
@@ -339,9 +340,9 @@ class FilamentCommand(Command):
         temp_nozzle = self.model.latest_telemetry.temp_nozzle
         if temp_nozzle is None or temp_nozzle < target_extrude_temp:
             enqueue_instruction(self.serial_queue,
-                                f"M109 S{target_print_temp}")
-        enqueue_instruction(self.serial_queue,
-                            f"M104 S{target_extrude_temp}")
+                                f"M109 S{target_extrude_temp}", to_front=True)
+        enqueue_instruction(self.serial_queue, f"M104 S{target_print_temp}",
+                            to_front=True)
 
     @abc.abstractmethod
     def _run_command(self):
@@ -357,6 +358,11 @@ class LoadFilament(FilamentCommand):
         """Load filament - see FilamentCommand"""
         # The load and unload have the same preheat
         self.prepare_for_load_unload()
+        # A little workaround for M701 not actually supporting our use case
+        enqueue_instruction(self.serial_queue, "M300 P500 S1",
+                            to_front=True)
+        enqueue_instruction(self.serial_queue, "M0 Insert the filament",
+                            to_front=True)
         self.do_instruction("M701")
 
 
