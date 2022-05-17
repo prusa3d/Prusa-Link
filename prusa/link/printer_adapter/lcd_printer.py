@@ -27,7 +27,8 @@ from .structures.mc_singleton import MCSingleton
 from .structures.regular_expressions import LCD_UPDATE_REGEX
 from .updatable import prctl_name, Thread
 from ..config import Settings
-from ..errors import Categories, TAILS, LAN, RPI_ENABLED, ID, FW, SN, JOB_ID
+from ..errors import Categories, LAN, RPI_ENABLED, ID, FW, SN, JOB_ID, HEADS, \
+    PHY, DEVICE
 
 log = logging.getLogger(__name__)
 
@@ -49,7 +50,10 @@ ERROR_MESSAGES = {
     TOKEN: "Error bad token",
     # This needs updating, but currently there's nothing better to say
     API: "HTTP error 4xx",
-    INTERNET: "No internet access"
+    INTERNET: "No Internet access",
+    LAN: "No LAN access",
+    PHY: "No usable NIC",
+    DEVICE: "No network hardware"
 }
 
 FROM_TRANSFER_TYPES = {
@@ -635,8 +639,8 @@ class LCDPrinter(metaclass=MCSingleton):
 
         order = [Categories.NETWORK, Categories.HARDWARE, Categories.PRINTER]
 
-        for tail_name in order:
-            error = TAILS[tail_name]
+        for head_name in order:
+            error = HEADS[head_name]
 
             while True:
                 if not error.ok and not is_ignored(error):
