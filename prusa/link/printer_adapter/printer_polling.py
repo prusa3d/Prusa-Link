@@ -16,6 +16,7 @@ from .filesystem.sd_card import SDCard
 from .job import Job
 from .structures.module_data_classes import Sheet
 from .telemetry_passer import TelemetryPasser
+from ..config import Settings
 from ..serial.helpers import wait_for_instruction, \
     enqueue_matchable
 from ..serial.serial_parser import SerialParser
@@ -27,7 +28,7 @@ from .structures.regular_expressions import SN_REGEX, PRINTER_TYPE_REGEX, \
 from .. import errors
 from ..const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE, \
     SLOW_POLL_INTERVAL, FAST_POLL_INTERVAL, PRINT_STATE_PAIRING, \
-    PRINT_MODE_ID_PAIRING, VERY_SLOW_POLL_INTERVAL
+    PRINT_MODE_ID_PAIRING, VERY_SLOW_POLL_INTERVAL, PRINTER_CONFIG_TYPES
 from ..serial.serial_queue import \
     SerialQueue
 from .model import Model
@@ -61,7 +62,7 @@ class PrinterPolling:
     def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
                  printer: Printer, model: Model,
                  telemetry_passer: TelemetryPasser,
-                 job: Job, sd_card: SDCard):
+                 job: Job, sd_card: SDCard, settings: Settings):
         super().__init__()
         self.item_updater = ItemUpdater()
 
@@ -72,6 +73,7 @@ class PrinterPolling:
         self.telemetry_passer = telemetry_passer
         self.job = job
         self.sd_card = sd_card
+        self.settings = settings
 
         # Printer info (for init and SEND_INFO)
 
@@ -749,6 +751,16 @@ class PrinterPolling:
         printer_type = PRINTER_TYPES[value]
         if self.printer.type is not None and printer_type != self.printer.type:
             log.error("The printer type changed. ")
+            raise RuntimeError(f"Printer type cannot change! Original: "
+                               f"{self.printer.sn} current: {value}.")
+
+        # FIXME: This shows unsupported printer even for existing MK3 printers!
+        settings_type = self.settings.printer.type
+        if settings_type and \
+                PRINTER_CONFIG_TYPES[settings_type] != printer_type:
+            log.error("The printer type does not match the one in config. "
+                      "Upgrading the printer without re-registration is not "
+                      "yet supported.")
             raise RuntimeError(f"Printer type cannot change! Original: "
                                f"{self.printer.sn} current: {value}.")
         return True

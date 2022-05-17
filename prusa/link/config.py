@@ -9,6 +9,8 @@ from typing import Iterable
 
 from extendparser.get import Get
 
+from .const import PRINTER_CONFIG_TYPES
+
 CONNECT = 'connect.prusa3d.com'
 
 LOG_FORMAT_FOREGROUND = \
@@ -221,12 +223,12 @@ class Settings(Get):
         # [printer]
         self.printer = Model(
             self.get_section('printer',
-                             (('type', str, 'MK3'), ('name', str, ''),
+                             (('type', str, ''), ('name', str, ''),
                               ('location', str, ''),
                               ('farm_mode', bool, False))))
 
-        if self.printer.type != 'MK3':
-            raise ValueError("Settings file for different printer!")
+        if self.printer.type and self.printer.type not in PRINTER_CONFIG_TYPES:
+            raise ValueError("Settings file for an unsupported printer")
 
         # [network]
         self.network = Model(

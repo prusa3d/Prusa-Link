@@ -140,7 +140,8 @@ class PrusaLink:
                                               self.model,
                                               self.telemetry_passer,
                                               self.job,
-                                              self.storage.sd_card)
+                                              self.storage.sd_card,
+                                              self.settings)
         self.command_queue = CommandQueue()
 
         self.serial_parser.add_handler(

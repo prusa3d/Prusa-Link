@@ -30,7 +30,7 @@ def check_printer(fun):
 
 
 def check_step(step):
-    """"Check a step of the wizard. If it was not OK, redirect back to it."""
+    """Check a step of the wizard. If it was not OK, redirect back to it."""
     def wrapper(fun):
         @wraps(fun)
         def handler(req):
