@@ -8,6 +8,8 @@ from typing import List
 from json import load
 
 from importlib.resources import files  # type: ignore
+
+from bidict import bidict
 from packaging.version import Version
 
 from prusa.connect.printer.const import State, PrinterType
@@ -26,6 +28,13 @@ PRINTER_TYPES = {
     302: PrinterType.I3MK3S,
     20302: PrinterType.I3MK3S,
 }
+
+PRINTER_CONFIG_TYPES = bidict({
+    "MK2.5": PrinterType.I3MK25,
+    "MK2.5S": PrinterType.I3MK25S,
+    "MK3": PrinterType.I3MK3,
+    "MK3S": PrinterType.I3MK3S
+})
 
 DATA_PATH = path.abspath(path.join(str(files('prusa.link')), 'data'))
 
