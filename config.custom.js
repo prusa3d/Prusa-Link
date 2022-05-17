@@ -9,6 +9,7 @@ module.exports = (env, args) => {
         WITH_CONTROLS: true,
         WITH_LOGS: true,
         WITH_FONT: true,
+        WITH_V1_API: true,
         ...env,
     };
     return webpackConfig(config, args);
