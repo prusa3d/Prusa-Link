@@ -22,6 +22,8 @@ class Categories(Enum):
     PRINTER = "Printer"
     NETWORK = "Network"
     HARDWARE = "Hardware"
+    # Just making separate categories for everything because this system sucks
+    UPGRADED = "Upgraded"
 
 
 OK_MSG = {"ok": True, "message": "OK"}
@@ -49,16 +51,20 @@ SN = ErrorState("SN", "Serial number cannot be obtained", prev=JOB_ID)
 
 HW = ErrorState("HW", "Firmware detected a hardware issue")
 
+UPGRADED = ErrorState("Upgraded", "Printer upgraded, re-register it")
+
 # first and last elements for all available error state chains
 HEADS = {
     Categories.PRINTER: SERIAL,
     Categories.NETWORK: DEVICE,
-    Categories.HARDWARE: HW
+    Categories.HARDWARE: HW,
+    Categories.UPGRADED: UPGRADED
 }
 TAILS = {
     Categories.PRINTER: SN,
     Categories.NETWORK: API,
-    Categories.HARDWARE: HW
+    Categories.HARDWARE: HW,
+    Categories.UPGRADED: UPGRADED
 }
 
 
