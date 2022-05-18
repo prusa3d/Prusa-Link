@@ -10,7 +10,7 @@ from prusa.connect.printer import Printer
 
 from ..lib.core import app
 from ..lib.auth import REALM
-from ...const import PRINTER_CONFIG_TYPES
+from ...const import PRINTER_CONF_TYPES
 from ...serial.helpers import enqueue_instruction
 from ...printer_adapter.structures.regular_expressions import VALID_SN_REGEX, \
     VALID_USERNAME_REGEX, VALID_PASSWORD_REGEX, NEW_SN_REGEX
@@ -92,6 +92,7 @@ class Wizard:
         self.net_hostname = _app.settings.network.hostname
 
         # printer
+        self.printer_type = _app.settings.printer.type
         self.printer_name = _app.settings.printer.name
         self.printer_location = _app.settings.printer.location
 
@@ -187,7 +188,7 @@ class Wizard:
         settings.network.hostname = self.net_hostname
 
         # printer
-        printer_type = PRINTER_CONFIG_TYPES.inverse[
+        printer_type = PRINTER_CONF_TYPES.inverse[
             self.daemon.prusa_link.printer.type]
         settings.printer.type = f'{printer_type}'
         settings.printer.name = f'"{self.printer_name}"'
