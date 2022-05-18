@@ -28,7 +28,7 @@ from .structures.regular_expressions import SN_REGEX, PRINTER_TYPE_REGEX, \
 from .. import errors
 from ..const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE, \
     SLOW_POLL_INTERVAL, FAST_POLL_INTERVAL, PRINT_STATE_PAIRING, \
-    PRINT_MODE_ID_PAIRING, VERY_SLOW_POLL_INTERVAL, PRINTER_CONFIG_TYPES
+    PRINT_MODE_ID_PAIRING, VERY_SLOW_POLL_INTERVAL
 from ..serial.serial_queue import \
     SerialQueue
 from .model import Model
@@ -330,6 +330,11 @@ class PrinterPolling:
         """Invalidates the statistics, so they get updated."""
         self.item_updater.invalidate(self.total_filament)
         self.item_updater.invalidate(self.total_print_time)
+
+    def schedule_printer_type_invalidation(self):
+        """Marks printer_type gor gathering in X seconds"""
+        self.item_updater.schedule_invalidation(self.printer_type,
+                                                SLOW_POLL_INTERVAL)
 
     def polling_not_ok(self):
         """Stops polling of some values"""
@@ -750,19 +755,10 @@ class PrinterPolling:
 
         printer_type = PRINTER_TYPES[value]
         if self.printer.type is not None and printer_type != self.printer.type:
-            log.error("The printer type changed. ")
+            log.error("The printer type changed while running.")
             raise RuntimeError(f"Printer type cannot change! Original: "
                                f"{self.printer.sn} current: {value}.")
 
-        # FIXME: This shows unsupported printer even for existing MK3 printers!
-        settings_type = self.settings.printer.type
-        if settings_type and \
-                PRINTER_CONFIG_TYPES[settings_type] != printer_type:
-            log.error("The printer type does not match the one in config. "
-                      "Upgrading the printer without re-registration is not "
-                      "yet supported.")
-            raise RuntimeError(f"Printer type cannot change! Original: "
-                               f"{self.printer.sn} current: {value}.")
         return True
 
     @staticmethod

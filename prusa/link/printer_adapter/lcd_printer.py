@@ -28,7 +28,7 @@ from .structures.regular_expressions import LCD_UPDATE_REGEX
 from .updatable import prctl_name, Thread
 from ..config import Settings
 from ..errors import Categories, LAN, RPI_ENABLED, ID, FW, SN, JOB_ID, HEADS, \
-    PHY, DEVICE
+    PHY, DEVICE, UPGRADED
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +45,7 @@ ERROR_MESSAGES = {
     ID: "Unsupported printer",
     FW: "Err unsupported FW",
     SN: "Err obtaining S/N",
+    UPGRADED: "Upgraded - re-reg.",
     JOB_ID: "Err reading job id",
     HTTP: "HTTP error 5xx",
     TOKEN: "Error bad token",
@@ -637,7 +638,8 @@ class LCDPrinter(metaclass=MCSingleton):
             use_connect = self.settings.use_connect()
             return not use_connect and evaluated_error in connect_errors
 
-        order = [Categories.NETWORK, Categories.HARDWARE, Categories.PRINTER]
+        order = [Categories.UPGRADED, Categories.NETWORK, Categories.HARDWARE,
+                 Categories.PRINTER]
 
         for head_name in order:
             error = HEADS[head_name]

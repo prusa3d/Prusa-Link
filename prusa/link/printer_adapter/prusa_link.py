@@ -42,14 +42,14 @@ from ..service_discovery import ServiceDiscovery
 from .structures.item_updater import WatchedItem
 from .structures.model_classes import Telemetry, PrintState
 from ..const import PRINTING_STATES, SD_MOUNT_NAME, PATH_WAIT_TIMEOUT, \
-    BASE_STATES, MK25_PRINTERS
+    BASE_STATES, MK25_PRINTERS, PRINTER_CONF_TYPES, PRINTER_TYPES
 from .structures.regular_expressions import \
     PRINTER_BOOT_REGEX, PAUSE_PRINT_REGEX, \
     RESUME_PRINT_REGEX, MBL_TRIGGER_REGEX
 from ..util import make_fingerprint, get_print_stats_gcode
 from .updatable import prctl_name, Thread
 from ..config import Config, Settings
-from ..errors import HW
+from ..errors import HW, UPGRADED
 from ..sdk_augmentation.printer import MyPrinter
 
 log = logging.getLogger(__name__)
@@ -78,6 +78,7 @@ class PrusaLink:
         self.quit_evt = Event()
         self.stopped_event = Event()
         HW.ok = True
+        UPGRADED.ok = True
         self.model = Model()
 
         self.service_discovery = ServiceDiscovery(self.cfg)
@@ -183,6 +184,8 @@ class PrusaLink:
         self.storage.dir_unmounted_signal.connect(self.dir_unmount)
         self.storage.sd_mounted_signal.connect(self.sd_mount)
         self.storage.sd_unmounted_signal.connect(self.sd_unmount)
+        self.printer_polling.printer_type.became_valid_signal.connect(
+            self.printer_type_changed)
         self.printer_polling.print_state.became_valid_signal.connect(
             self.print_state_changed
         )
@@ -490,6 +493,34 @@ class PrusaLink:
         self.printer.job_id = job_id
         self.printer_polling.ensure_job_id()
 
+    def printer_type_changed(self, item):
+        """Watches for printer type mismatches"""
+        if not self.settings.printer.type:
+            return
+
+        settings_type = PRINTER_CONF_TYPES[self.settings.printer.type]
+        detected_type = PRINTER_TYPES[item.value]
+        if not settings_type or settings_type == detected_type:
+            UPGRADED.ok = True
+            return
+
+        if self.settings.use_connect():
+            log.warning("Configured printer type does not match the one "
+                        "of the printer")
+            UPGRADED.ok = False
+            # Keep this getter spinning, so we get called again
+            self.printer_polling.schedule_printer_type_invalidation()
+        else:
+            # If not using connect, update the type straight away
+            self.settings.printer.type = PRINTER_CONF_TYPES.inverse[
+                detected_type]
+            self.settings.update_sections(connect_skip=True)
+            with open(self.cfg.printer.settings, 'w',
+                      encoding='utf-8') as ini:
+                self.settings.write(ini)
+
+            UPGRADED.ok = True
+
     def print_state_changed(self, item: WatchedItem):
         """Handles the newly observed print state"""
         assert item.value is not None
@@ -614,6 +645,8 @@ class PrusaLink:
 
     def printer_registered(self, token):
         """Store settings with updated token when printer was registered."""
+        printer_type_string = PRINTER_CONF_TYPES.inverse[self.printer.type]
+        self.settings.printer.type = printer_type_string
         self.settings.service_connect.token = token
         self.settings.update_sections()
         with open(self.cfg.printer.settings, 'w', encoding='utf-8') as ini:

@@ -29,7 +29,7 @@ PRINTER_TYPES = {
     20302: PrinterType.I3MK3S,
 }
 
-PRINTER_CONFIG_TYPES = bidict({
+PRINTER_CONF_TYPES = bidict({
     "MK2.5": PrinterType.I3MK25,
     "MK2.5S": PrinterType.I3MK25S,
     "MK3": PrinterType.I3MK3,

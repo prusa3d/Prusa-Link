@@ -9,7 +9,7 @@ from typing import Iterable
 
 from extendparser.get import Get
 
-from .const import PRINTER_CONFIG_TYPES
+from .const import PRINTER_CONF_TYPES
 
 CONNECT = 'connect.prusa3d.com'
 
@@ -227,7 +227,7 @@ class Settings(Get):
                               ('location', str, ''),
                               ('farm_mode', bool, False))))
 
-        if self.printer.type and self.printer.type not in PRINTER_CONFIG_TYPES:
+        if self.printer.type and self.printer.type not in PRINTER_CONF_TYPES:
             raise ValueError("Settings file for an unsupported printer")
 
         # [network]
