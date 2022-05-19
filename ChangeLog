@@ -107,6 +107,7 @@
      * Api-Key form is hidden in wizard by default -> None if not set
      * Fix the LCD printer going through errors in the wrong order
      * Make printer settings reflect the actual printer type
+     * Fixed doubled gcode extensions when custom name is used
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder

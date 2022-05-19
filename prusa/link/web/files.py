@@ -480,7 +480,9 @@ def api_download(req, target):
     log.debug('select=%s, print=%s', to_select, to_print)
 
     if new_filename:
-        path = join(path, new_filename + ".gcode")
+        if not new_filename.endswith(const.GCODE_EXTENSIONS):
+            new_filename += '.gcode'
+        path = join(path, new_filename)
     else:
         path = join(path, filename)
 
