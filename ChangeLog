@@ -31,7 +31,7 @@
     * Added printer name and location validation to wizard
     * Reworked errors in validation of printer name and location in Link settings
     * Reworked validation of correct S/N write
-    * Modified username and password length validation
+    * Modified username length and password length and format validation
     * Use "Sync|->:" and "Sync->|:" to signify which way is the current transfer going
     * Add DNS service discovery compatible with prusa-slicer
     * Support file upload cancels from prusa-slicer (once PoorWSGI updates)

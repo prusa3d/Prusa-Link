@@ -16,7 +16,16 @@ NOZZLE_REGEX = re.compile(r"^(?P<size>\d\.\d+)$")
 PERCENT_REGEX = re.compile(r"^(?P<percent>\d{0,3})%$")
 
 VALID_USERNAME_REGEX = re.compile(r"^[!#-9;-~][ -!#-9;-~]{1,254}[!#-9;-~]$")
-VALID_PASSWORD_REGEX = re.compile(r"^[^ ].{6,}[^ ]$")
+
+# Three options of the password format
+# >= 8 chars, one lowercase letter, one uppercase letter, one number
+PASS_OPT1 = r"((?=.*[a-z])(?=.*[A-Z])(?=.*\d))[\w]{8,}$"
+# >= 8 chars, one non-alphanumeric character
+PASS_OPT2 = r"((?=.*\W)(?=.*[\w])[\w\W]{8,})$"
+# >= 15 chars
+PASS_OPT3 = r"[\w\W]{15,}$"
+
+VALID_PASSWORD_REGEX = re.compile(f"^({PASS_OPT1}|{PASS_OPT2}|{PASS_OPT3})")
 
 LFN_CAPTURE = re.compile(
     r"^(?P<begin>Begin file list)|"

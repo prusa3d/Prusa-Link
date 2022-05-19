@@ -21,6 +21,8 @@ REALM = 'Administrator'
 USERNAME = "Username is shorter than 3 characters or in invalid format"
 USERNAME_SPACES = "Username cannot contain space at the beginning nor the end"
 PASSWORD = "New password is shorter than 8 characters or in invalid format"
+PASSWORD_SPACES = \
+    "New password cannot contain space at the beginning nor the end"
 REPASSWORD = "New passwords are not same"
 OLD_DIGEST = "Password is not correct"
 SAME_DIGEST = "Nothing to change. All credentials are same as old ones"
@@ -99,6 +101,8 @@ def valid_credentials(username, new_password, new_repassword, errors):
     if not VALID_USERNAME_REGEX.match(username):
         _errors['username'] = USERNAME
     if new_password:
+        if new_password.startswith(' ') or new_password.endswith(' '):
+            _errors['password_spaces'] = PASSWORD_SPACES
         if not VALID_PASSWORD_REGEX.match(new_password):
             _errors['password'] = PASSWORD
         if new_password != new_repassword:
