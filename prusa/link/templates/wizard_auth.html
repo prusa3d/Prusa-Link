@@ -9,8 +9,12 @@
       <div class="col-md-12">
           <h1>Authorization</h1>
           <form method="post" id="form">
-            <p>Prusa Link will use HTTP Digest authorization. Please set administration username and password.<br />
-              Username length must be at least <i>3 characters</i> and password at least <i>8 characters</i> long<br /></p>
+            <p>Prusa Link will use HTTP Digest authorization. Please set administration username and password.<br /></p>
+            <p>Username length must be at least <i>3 characters</i> long<br />
+              Password cannot contain spaces on the beggining nor the end and must meet at least one of these options:<br />
+              <li>Minimal length 8 characters, including one lowercase letter, one uppercase letter and one number</li>
+              <li>Minimal length 8 characters, including one non-alphanumeric character (e.g. @)</li>
+              <li>Minimal length 15 characters</li></p>
 
             {% set errors = wizard.errors.get('auth', {}) %}
             <div class="form-group row">
@@ -21,7 +25,7 @@
                   {% if errors.get('username_spaces') %}
                     <p>Username cannot contain space at the beginning nor the end</p>
                   {% elif errors.get('username') %}
-                    <p>Please provide a username with sufficient length and in valid format.</p>
+                    <p>Please provide a username in valid format and with sufficient length.</p>
                   {% endif %}
                 </div>
               </div>
@@ -30,9 +34,13 @@
             <div class="form-group row">
               <label for="password" class="col-sm-2 col-form-label">Password:</label>
               <div class="col-sm-10">
-                <input type="password" class="form-control {{ 'is-invalid' if errors.get('password') else '' }}" id="password" name="password" value="" required>
+                <input type="password" class="form-control {{ 'is-invalid' if errors.get('password') or errors.get('password_spaces') else '' }}" id="password" name="password" value="" required>
                 <div class="invalid-feedback">
-                  Please provide a strong password with sufficient length.
+                  {% if errors.get('password_spaces') %}
+                    <p>Password cannot contain space at the beginning nor the end</p>
+                  {% elif errors.get('password') %}
+                    <p>Please provide a strong password in correct format and with sufficient length.</p>
+                  {% endif %}
                 </div>
               </div>
             </div>
