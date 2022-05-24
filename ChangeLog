@@ -109,6 +109,7 @@
      * Make printer settings reflect the actual printer type
      * Fixed doubled gcode extensions when custom name is used
      * Added nozzle diameter info to api/v1/info
+     * TLS is changed from int to bool
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
