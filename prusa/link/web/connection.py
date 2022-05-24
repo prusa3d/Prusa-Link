@@ -77,7 +77,7 @@ def api_connection_set(req):
     connect = req.json.get('connect')
     hostname = connect.get('hostname')
     port = connect.get('port')
-    tls = connect.get('tls')
+    tls = bool(connect.get('tls'))
 
     app.settings.service_connect.hostname = hostname
     app.settings.service_connect.port = port

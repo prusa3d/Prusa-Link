@@ -240,7 +240,7 @@ class Settings(Get):
                 'service::connect',
                 (
                     ('hostname', str, CONNECT),
-                    ('tls', int, 1),
+                    ('tls', bool, True),
                     ('port', int,
                      0),  # 0 means 443 with tls, or 80 without tls
                     ('token', str, ''))))
