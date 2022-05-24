@@ -150,6 +150,7 @@ def api_info(req):
         'name': printer_settings.name.replace("\"", ""),
         'location': printer_settings.location.replace("\"", ""),
         'farm_mode': printer_settings.farm_mode,
+        'nozzle_diameter': app.daemon.prusa_link.printer.nozzle_diameter,
         'serial': app.daemon.prusa_link.printer.sn,
         'hostname': service_connect.hostname,
         'port': service_connect.port
