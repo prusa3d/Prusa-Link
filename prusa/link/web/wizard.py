@@ -118,7 +118,7 @@ def wizard_connect_post(req):
                             keep_blank_values=app.keep_blank_values,
                             strict_parsing=app.strict_parsing)
         app.wizard.connect_hostname = form.get('hostname', '').strip()
-        app.wizard.connect_tls = int('tls' in form)
+        app.wizard.connect_tls = 'tls' in form
         app.wizard.connect_port = form.getfirst('port', 0, try_int)
         if not app.wizard.check_connect():
             redirect('/wizard/connect')
