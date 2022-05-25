@@ -709,7 +709,6 @@ class PrusaLink:
         self.state_manager.reset()
         self.lcd_printer.reset_error_grace()
         self.printer_polling.invalidate_printer_info()
-        self.printer_polling.invalidate_telemetry()
         # Don't wait for the instruction confirmation, we'd be blocking the
         # thread supposed to provide it
         self.ip_updater.send_ip_to_printer(timeout=0)
