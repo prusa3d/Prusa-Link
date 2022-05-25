@@ -51,7 +51,7 @@ from .structures.regular_expressions import \
 from ..util import make_fingerprint, get_print_stats_gcode
 from .updatable import prctl_name, Thread
 from ..config import Config, Settings
-from ..conditions import HW, UPGRADED
+from ..conditions import HW, UPGRADED, use_connect_errors
 from ..sdk_augmentation.printer import MyPrinter
 
 log = logging.getLogger(__name__)
@@ -77,8 +77,8 @@ class PrusaLink:
         self.cfg: Config = cfg
         log.info('Starting adapter for port %s', self.cfg.printer.port)
         self.settings: Settings = settings
-        if self.settings.use_connect():
-            COND_TRACKER.add_tracked_condition_tree(INTERNET)
+
+        use_connect_errors(self.settings.use_connect())
 
         self.quit_evt = Event()
         self.stopped_event = Event()
