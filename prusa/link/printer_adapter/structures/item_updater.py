@@ -55,7 +55,7 @@ class WatchedItem(Watchable):
 
         self.scheduled = False  # Are we scheduled for a value refresh
         # Imprecise timing intended
-        self.interval = interval  # If set, gets invalidated each interval
+        self._interval = interval  # If set, gets invalidated each interval
         self.on_fail_interval = on_fail_interval  # Refresh reschedule timeout
         self.timeout = timeout  # How long can we be invalid, before timing out
 
@@ -95,6 +95,16 @@ class WatchedItem(Watchable):
         self.value_changed_signal = Signal()  # sender is the value
         # Combined gather error signal
         self.val_err_timeout_signal = Signal()
+
+    @property
+    def interval(self):
+        """Gets the gather interval"""
+        return self._interval
+
+    @interval.setter
+    def interval(self, new_interval):
+        """Sets the gather interval"""
+        self._interval = new_interval
 
 
 class WatchedGroup(Watchable):
@@ -205,12 +215,13 @@ class ItemUpdater:
         self.timeout_thread.join()
         self.refresher_thread.join()
 
-    def add_watched_item(self, item: WatchedItem):
+    def add_watched_item(self, item: WatchedItem, invalidate=True):
         """
         Only invalid items can be added for now
         """
         self.watched_items[item.name] = item
-        self.invalidate(item)
+        if invalidate:
+            self.invalidate(item)
 
     def get_watched_item(self, name: str) -> WatchedItem:
         """Get a watched item by its name"""
