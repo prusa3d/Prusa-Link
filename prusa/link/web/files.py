@@ -31,7 +31,7 @@ from ..printer_adapter.prusa_link import TransferCallbackState
 from ..const import PATH_WAIT_TIMEOUT, LOCAL_MOUNT_NAME
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.job import JobState, Job
-from .. import errors
+from .. import conditions
 
 log = logging.getLogger(__name__)
 HEADER_DATETIME_FORMAT = "%a, %d %b %Y %X GMT"
@@ -42,11 +42,11 @@ def check_filename(filename):
 
     # Filename length, including suffix must be <= 248 characters
     if filename_too_long(filename):
-        raise errors.FilenameTooLong()
+        raise conditions.FilenameTooLong()
 
     # File name cannot contain any of forbidden characters e.g. '\'
     if forbidden_characters(filename):
-        raise errors.ForbiddenCharacters()
+        raise conditions.ForbiddenCharacters()
 
 
 def check_foldername(foldername):
@@ -54,11 +54,11 @@ def check_foldername(foldername):
 
     # All foldername lengths in path must be <= 255 characters
     if foldername_too_long(foldername):
-        raise errors.FoldernameTooLong()
+        raise conditions.FoldernameTooLong()
 
     # Foldername cannot contain any of forbidden characters e.g. '\'
     if forbidden_characters(foldername):
-        raise errors.ForbiddenCharacters()
+        raise conditions.ForbiddenCharacters()
 
 
 def partfilepath(filename):
@@ -99,7 +99,7 @@ class GCodeFile(FileIO):
             event_cb = app.daemon.prusa_link.printer.event_cb
             event_cb(const.Event.TRANSFER_STOPPED, const.Source.USER)
             self.transfer.type = const.TransferType.NO_TRANSFER
-            raise errors.TransferStopped()
+            raise conditions.TransferStopped()
         if self.printer.state == const.State.PRINTING \
                 and not self.job_data.from_sd:
             sleep(0.01)
@@ -120,7 +120,7 @@ class GCodeFile(FileIO):
 def callback_factory(req):
     """Factory for creating file_callback."""
     if req.content_length <= 0:
-        raise errors.LengthRequired()
+        raise conditions.LengthRequired()
 
     def gcode_callback(filename):
         """Check filename and upload possibility.
@@ -129,7 +129,7 @@ def callback_factory(req):
         form data.
         """
         if not filename:
-            raise errors.NoFileInRequest()
+            raise conditions.NoFileInRequest()
 
         check_filename(filename)
 
@@ -137,11 +137,11 @@ def callback_factory(req):
 
         if not filename.endswith(
                 const.GCODE_EXTENSIONS) or filename.startswith('.'):
-            raise errors.UnsupportedMediaError()
+            raise conditions.UnsupportedMediaError()
 
         # Content-Length is not file-size but it is good limit
         if get_local_free_space(dirname(part_path)) <= req.content_length:
-            raise errors.EntityTooLarge()
+            raise conditions.EntityTooLarge()
 
         transfer = app.daemon.prusa_link.printer.transfer
         # TODO: check if client is Slicer ;) and use another type
@@ -151,7 +151,7 @@ def callback_factory(req):
             transfer.size = req.content_length
             transfer.start_ts = time()
         except TransferRunningError as err:
-            raise errors.TransferConflict() from err
+            raise conditions.TransferConflict() from err
         return GCodeFile(part_path, transfer)
 
     return gcode_callback
@@ -162,9 +162,9 @@ def check_target(func):
     @wraps(func)
     def handler(req, target, *args, **kwargs):
         if target == 'sdcard':
-            raise errors.SDCardNotSupoorted()
+            raise conditions.SDCardNotSupoorted()
         if target != 'local':
-            raise errors.LocationNotFound()
+            raise conditions.LocationNotFound()
 
         return func(req, target, *args, **kwargs)
 
@@ -262,10 +262,10 @@ def api_upload(req, target):
     except TimeoutError as exception:
         log.error("Oh no. Upload of a file timed out")
         failed_upload_handler(transfer)
-        raise errors.RequestTimeout() from exception
+        raise conditions.RequestTimeout() from exception
 
     if 'file' not in form:
-        raise errors.NoFileInRequest()
+        raise conditions.NoFileInRequest()
 
     filename = form['file'].filename
     part_path = partfilepath(filename)
@@ -274,7 +274,7 @@ def api_upload(req, target):
         log.error("File uploading not complete")
         unlink(part_path)
         failed_upload_handler(transfer)
-        raise errors.FileSizeMismatch()
+        raise conditions.FileSizeMismatch()
 
     foldername = form.get('path', '/')
     check_foldername(foldername)
@@ -296,19 +296,19 @@ def api_upload(req, target):
     if exists(filepath) and job.data.job_state == JobState.IN_PROGRESS:
         if print_path == job.data.selected_file_path:
             unlink(part_path)
-            raise errors.FileCurrentlyPrinted()
+            raise conditions.FileCurrentlyPrinted()
 
     log.info("Store file to %s::%s", target, filepath)
     makedirs(foldername, exist_ok=True)
 
     if not job.printer.fs.wait_until_path(dirname(print_path),
                                           PATH_WAIT_TIMEOUT):
-        raise errors.ResponseTimeout()
+        raise conditions.ResponseTimeout()
     replace(part_path, filepath)
 
     if app.daemon.prusa_link.download_finished_cb(transfer) \
             == TransferCallbackState.NOT_IN_TREE:
-        raise errors.ResponseTimeout()
+        raise conditions.ResponseTimeout()
 
     if req.accept_json:
         data = app.daemon.prusa_link.printer.get_info()["files"]
@@ -327,7 +327,7 @@ def api_upload(req, target):
 def api_start_print(req, target, path):
     """Start print if no print job is running"""
     if target not in ('local', 'sdcard'):
-        raise errors.LocationNotFound()
+        raise conditions.LocationNotFound()
 
     command = req.json.get('command')
     job = Job.get_instance()
@@ -353,7 +353,7 @@ def api_start_print(req, target, path):
             return Response(status_code=state.HTTP_NO_CONTENT)
 
         # job_state != IDLE
-        raise errors.CurrentlyPrinting()
+        raise conditions.CurrentlyPrinting()
 
     # only select command is supported now
     return Response(status_code=state.HTTP_BAD_REQUEST)
@@ -369,7 +369,7 @@ def api_downloads(req, target, path):
     os_path = get_os_path(f"/{path}")
 
     if os_path is None:
-        raise errors.FileNotFound()
+        raise conditions.FileNotFound()
 
     headers = {"Content-Disposition": f"attachment;filename=\"{filename}\""}
     return FileResponse(os_path, headers=headers)
@@ -381,7 +381,7 @@ def api_resources(req, target, path):
     """Returns metadata from cache file."""
     # pylint: disable=unused-argument
     if target not in ('local', 'sdcard'):
-        raise errors.LocationNotFound()
+        raise conditions.LocationNotFound()
 
     path = '/' + path
 
@@ -397,7 +397,7 @@ def api_resources(req, target, path):
     if target == 'local':
         os_path = get_os_path(path)
         if not os_path or not exists(os_path):
-            raise errors.FileNotFound()
+            raise conditions.FileNotFound()
 
         meta = get_metadata(os_path)
         result['refs'] = local_refs(path, meta.thumbnails)
@@ -424,7 +424,7 @@ def api_delete(req, target, path):
 
     if job.data.selected_file_path == path:
         if job.data.job_state != JobState.IDLE:
-            raise errors.FileCurrentlyPrinted()
+            raise conditions.FileCurrentlyPrinted()
         job.deselect_file()
 
     os_path = get_os_path(path)
@@ -490,7 +490,7 @@ def api_download(req, target):
 
     if job.data.job_state == JobState.IN_PROGRESS and \
             path == job.data.selected_file_path:
-        raise errors.FileCurrentlyPrinted()
+        raise conditions.FileCurrentlyPrinted()
 
     download_mgr.start(const.TransferType.FROM_WEB, path, url, to_print,
                        to_select)
@@ -548,13 +548,13 @@ def api_modify(req, target):
 
     if job.data.job_state == JobState.IN_PROGRESS and \
             source == get_os_path(job.data.selected_file_path):
-        raise errors.FileCurrentlyPrinted()
+        raise conditions.FileCurrentlyPrinted()
 
     if source == destination:
-        raise errors.DestinationSameAsSource
+        raise conditions.DestinationSameAsSource
 
     if not exists(source):
-        raise errors.FileNotFound
+        raise conditions.FileNotFound
 
     if not exists(path):
         try:
@@ -586,15 +586,15 @@ def api_thumbnails(req, path):
     }
     os_path = get_os_path('/' + path)
     if not os_path or not exists(os_path):
-        raise errors.FileNotFound()
+        raise conditions.FileNotFound()
 
     meta = FDMMetaData(get_os_path('/' + path))
     if not meta.is_cache_fresh():
-        raise errors.FileNotFound()
+        raise conditions.FileNotFound()
 
     meta.load_cache()
     if not meta.thumbnails:
-        raise errors.FileNotFound()
+        raise conditions.FileNotFound()
 
     biggest = b''
     for data in meta.thumbnails.values():

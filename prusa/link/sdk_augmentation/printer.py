@@ -5,10 +5,11 @@ from typing import Dict, Any
 from time import sleep
 
 from prusa.connect.printer.const import Source
+from prusa.connect.printer.command import Command
 from prusa.connect.printer.metadata import FDMMetaData
 from prusa.connect.printer.files import File
+from prusa.connect.printer.conditions import API, HTTP, TOKEN, CondState
 from prusa.connect.printer import Printer as SDKPrinter, const
-from prusa.connect.printer import Command
 
 from ..printer_adapter.lcd_printer import LCDPrinter
 from ..printer_adapter.model import Model
@@ -16,7 +17,7 @@ from ..printer_adapter.structures.mc_singleton import MCSingleton
 from ..util import file_is_on_sd
 from ..printer_adapter.updatable import prctl_name, Thread
 from .command_handler import CommandHandler
-from .. import errors, __version__
+from .. import __version__
 
 log = getLogger("connect-printer")
 
@@ -46,12 +47,12 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         """
 
         if 500 > res.status_code >= 400:
-            errors.API.ok = False
+            API.state = CondState.NOK
         elif res.status_code == 503:
-            errors.HTTP.ok = False
+            HTTP.state = CondState.NOK
 
         res = super().parse_command(res)
-        errors.API.ok = True  # already done in SDK but lets be double sure
+        API.state = CondState.OK  # already done in SDK but lets be double sure
 
         return res
 
@@ -71,7 +72,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
                                              settings.service_connect.tls,
                                              settings.service_connect.port)
         self.token = settings.service_connect.token
-        errors.TOKEN.ok = True
+        TOKEN.state = CondState.OK
 
     def get_file_info(self, caller: Command) -> Dict[str, Any]:
         """Return file info for a given file

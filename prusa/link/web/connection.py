@@ -2,8 +2,9 @@
 from poorwsgi import state
 from poorwsgi.response import JSONResponse
 from prusa.connect.printer.const import RegistrationStatus
+from prusa.connect.printer.conditions import COND_TRACKER, INTERNET
 
-from .. import errors
+from .. import conditions
 
 from .main import PRINTER_STATES
 from .lib.core import app
@@ -56,8 +57,8 @@ def api_connection(req):
                 "code": code
             },
             "states": {
-                "printer": errors.printer_status(),
-                "connect": errors.connect_status()
+                "printer": conditions.printer_status(),
+                "connect": conditions.connect_status()
             }
         })
 
@@ -107,6 +108,7 @@ def api_connection_delete(req):
     """Cancel Connect registration and delete token from ini file"""
     # pylint: disable=unused-argument
     app.settings.service_connect.token = ""
+    COND_TRACKER.remove_tracked_condition_tree(INTERNET)
 
     app.settings.update_sections()
     app.daemon.prusa_link.printer.set_connect(app.settings)

@@ -38,7 +38,6 @@ class StateManagerData(BaseModel):
     last_state: State
     current_state: State
     state_history: Deque[State]
-    error_count: int
     awaiting_error_reason: bool
 
 
