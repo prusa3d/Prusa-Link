@@ -7,12 +7,14 @@ from threading import Event, enumerate as enumerate_threads
 from typing import Dict, Any
 from enum import Enum
 
-from prusa.connect.printer import Command as SDKCommand, DownloadMgr, errors
+from prusa.connect.printer import Command as SDKCommand, DownloadMgr
 
 from prusa.connect.printer.files import File
 from prusa.connect.printer.const import Command as CommandType, State, \
     Event as EventType
 from prusa.connect.printer.const import Source
+from prusa.connect.printer.conditions import API, COND_TRACKER, INTERNET, \
+    CondState
 
 from .auto_telemetry import AutoTelemetry
 from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
@@ -49,7 +51,7 @@ from .structures.regular_expressions import \
 from ..util import make_fingerprint, get_print_stats_gcode
 from .updatable import prctl_name, Thread
 from ..config import Config, Settings
-from ..errors import HW, UPGRADED
+from ..conditions import HW, UPGRADED
 from ..sdk_augmentation.printer import MyPrinter
 
 log = logging.getLogger(__name__)
@@ -75,10 +77,13 @@ class PrusaLink:
         self.cfg: Config = cfg
         log.info('Starting adapter for port %s', self.cfg.printer.port)
         self.settings: Settings = settings
+        if self.settings.use_connect():
+            COND_TRACKER.add_tracked_condition_tree(INTERNET)
+
         self.quit_evt = Event()
         self.stopped_event = Event()
-        HW.ok = True
-        UPGRADED.ok = True
+        HW.state = CondState.OK
+        UPGRADED.state = CondState.OK
         self.model = Model()
 
         self.service_discovery = ServiceDiscovery(self.cfg)
@@ -203,7 +208,7 @@ class PrusaLink:
         self.printer_polling.active_sheet.value_changed_signal.connect(
             self.active_sheet_changed)
 
-        errors.API.resolved_cb = self.connection_renewed
+        API.add_fixed_handler(self.connection_renewed)
 
         # get the ip, then poll the rest of the network info
         self.ip_updater.update()
@@ -501,13 +506,13 @@ class PrusaLink:
         settings_type = PRINTER_CONF_TYPES[self.settings.printer.type]
         detected_type = PRINTER_TYPES[item.value]
         if not settings_type or settings_type == detected_type:
-            UPGRADED.ok = True
+            UPGRADED.state = CondState.OK
             return
 
         if self.settings.use_connect():
             log.warning("Configured printer type does not match the one "
                         "of the printer")
-            UPGRADED.ok = False
+            UPGRADED.state = CondState.NOK
             # Keep this getter spinning, so we get called again
             self.printer_polling.schedule_printer_type_invalidation()
         else:
@@ -648,6 +653,7 @@ class PrusaLink:
         printer_type_string = PRINTER_CONF_TYPES.inverse[self.printer.type]
         self.settings.printer.type = printer_type_string
         self.settings.service_connect.token = token
+        COND_TRACKER.add_tracked_condition_tree(INTERNET)
         self.settings.update_sections()
         with open(self.cfg.printer.settings, 'w', encoding='utf-8') as ini:
             self.settings.write(ini)
@@ -819,6 +825,6 @@ class PrusaLink:
         assert sender is not None
         self.state_manager.serial_error_resolved()
 
-    def connection_renewed(self, _):
+    def connection_renewed(self, *_):
         """Reacts to the connection with connect being ok again"""
         self.telemetry_passer.resend_latest_telemetry()

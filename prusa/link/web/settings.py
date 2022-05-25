@@ -11,7 +11,7 @@ from .lib.wizard import valid_sn_format, new_sn_format, sn_write_success, \
     execute_sn_gcode, INVALID_CHARACTERS, PRINTER_MISSING_NAME, \
     PRINTER_INVALID_CHARACTERS
 
-from .. import errors
+from ..conditions import SN
 
 errors_titles = {
     'username_spaces': 'Spaces in username',
@@ -175,7 +175,7 @@ def api_sn(req):
     status = state.HTTP_CONFLICT
     msg = "Printer already has a valid S/N"
 
-    if not errors.SN.ok:
+    if SN:
         serial = req.json.get('serial')
         if valid_sn_format(serial):
             execute_sn_gcode(serial, serial_queue)

@@ -13,7 +13,8 @@ from typing import Callable, List
 import unidecode
 from prusa.connect.printer import Printer
 from prusa.connect.printer.const import TransferType, State
-from prusa.connect.printer.errors import HTTP, API, TOKEN, INTERNET
+from prusa.connect.printer.conditions import HTTP, API, TOKEN, INTERNET, \
+    COND_TRACKER
 
 from .structures.model_classes import JobState
 from ..const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL, SLEEP_SCREEN_TIMEOUT, \
@@ -27,8 +28,8 @@ from .structures.mc_singleton import MCSingleton
 from .structures.regular_expressions import LCD_UPDATE_REGEX
 from .updatable import prctl_name, Thread
 from ..config import Settings
-from ..errors import Categories, LAN, RPI_ENABLED, ID, FW, SN, JOB_ID, HEADS, \
-    PHY, DEVICE, UPGRADED
+from ..conditions import LAN, RPI_ENABLED, ID, FW, SN, JOB_ID, PHY, DEVICE, \
+    UPGRADED
 
 log = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ class LCDLine:
     """Info about the text to show"""
     def __init__(self, text, delay=2.0):
         self.text: str = text
-        self.delay: int = delay
+        self.delay: float = delay
 
 
 class DisplayThing:
@@ -348,7 +349,7 @@ class LCDPrinter(metaclass=MCSingleton):
         """
         Should an error display be activated? And what should it say?
         """
-        error = self._get_error()
+        error = COND_TRACKER.get_worst()
         error_grace_ended = time() - self.ignore_errors_to > 0
         if error is None:
             self.error_display.disable("Errors resolved")
@@ -358,7 +359,7 @@ class LCDPrinter(metaclass=MCSingleton):
             # An error has been discovered, tell the user what it is
             self.error_display.enable()
 
-            conditions = dict(lan=LAN.ok, error=error)
+            conditions = dict(lan=LAN.state, error=error)
             if self.error_display.conditions != conditions:
                 self.error_display.conditions = conditions
 
@@ -384,10 +385,10 @@ class LCDPrinter(metaclass=MCSingleton):
         Should a welcome display be shown? What should it say?
         """
         wizard_needed = self.settings.is_wizard_needed()
-        if wizard_needed and LAN.ok:
+        if wizard_needed and LAN:
             self.wizard_display.enable()
             ip = self.model.ip_updater.local_ip
-            conditions = dict(lan=LAN.ok, wizard_needed=wizard_needed,
+            conditions = dict(lan=LAN.state, wizard_needed=wizard_needed,
                               ip=ip)
             if self.wizard_display.conditions != conditions:
                 self.wizard_display.conditions = conditions
@@ -455,7 +456,7 @@ class LCDPrinter(metaclass=MCSingleton):
 
     def _check_idle(self):
         if time() - self.idle_from > SLEEP_SCREEN_TIMEOUT:
-            if LAN.ok:
+            if LAN:
                 self.idle_display.enable()
                 ip = self.model.ip_updater.local_ip
                 speed = self.model.latest_telemetry.speed
@@ -622,36 +623,6 @@ class LCDPrinter(metaclass=MCSingleton):
         """Adds a handler to the LCDPrinter event queue"""
         self.event_queue.put(handler)
         self.notiff_event.set()
-
-    def _get_error(self):
-        """
-        Gets an error.
-        We can display only one at a time, this decides which one
-        Returns None if no error is found
-        """
-        def is_ignored(evaluated_error):
-            """
-            Ignore connect errors when it's not even configured
-            Ignore errors that prevent us from displaying stuff
-            """
-            connect_errors = {HTTP, TOKEN, API, INTERNET}
-            use_connect = self.settings.use_connect()
-            return not use_connect and evaluated_error in connect_errors
-
-        order = [Categories.UPGRADED, Categories.NETWORK, Categories.HARDWARE,
-                 Categories.PRINTER]
-
-        for head_name in order:
-            error = HEADS[head_name]
-
-            while True:
-                if not error.ok and not is_ignored(error):
-                    return error
-
-                if error.next is None:
-                    break
-
-                error = error.next
 
     def reset_error_grace(self):
         """

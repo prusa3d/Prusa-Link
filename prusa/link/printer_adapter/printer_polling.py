@@ -11,11 +11,13 @@ from typing import List
 from packaging.version import Version
 
 from prusa.connect.printer import Printer
+from prusa.connect.printer.conditions import CondState
 from .filesystem.sd_card import SDCard
 
 from .job import Job
 from .structures.module_data_classes import Sheet
 from .telemetry_passer import TelemetryPasser
+from ..conditions import SN, ID, FW, JOB_ID
 from ..config import Settings
 from ..serial.helpers import wait_for_instruction, \
     enqueue_matchable
@@ -25,7 +27,6 @@ from .structures.model_classes import NetworkInfo, Telemetry, PrintMode, \
 from .structures.regular_expressions import SN_REGEX, PRINTER_TYPE_REGEX, \
     FW_REGEX, NOZZLE_REGEX, D3_OUTPUT_REGEX, VALID_SN_REGEX, \
     PERCENT_REGEX, PRINT_INFO_REGEX, M27_OUTPUT_REGEX, MBL_REGEX
-from .. import errors
 from ..const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE, \
     SLOW_POLL_INTERVAL, FAST_POLL_INTERVAL, PRINT_STATE_PAIRING, \
     PRINT_MODE_ID_PAIRING, VERY_SLOW_POLL_INTERVAL
@@ -922,22 +923,22 @@ class PrinterPolling:
     @staticmethod
     def _set_sn_error(value):
         """Needs to exist because we cannot assign in lambdas"""
-        errors.SN.ok = value
+        SN.state = CondState(value)
 
     @staticmethod
     def _set_id_error(value):
         """Needs to exist because we cannot assign in lambdas"""
-        errors.ID.ok = value
+        ID.state = CondState(value)
 
     @staticmethod
     def _set_fw_error(value):
         """Needs to exist because we cannot assign in lambdas"""
-        errors.FW.ok = value
+        FW.state = CondState(value)
 
     @staticmethod
     def _set_job_id_error(value):
         """Needs to exist because we cannot assign in lambdas"""
-        errors.JOB_ID.ok = value
+        JOB_ID.state = CondState(value)
 
     def _send_info_if_changed(self):
         """

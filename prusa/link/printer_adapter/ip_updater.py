@@ -8,8 +8,9 @@ from pyric import pyw  # type: ignore
 from pyric.pyw import Card  # type: ignore
 
 from blinker import Signal  # type: ignore
+from prusa.connect.printer.conditions import CondState
 
-from .. import errors
+from ..conditions import LAN
 from ..serial.helpers import \
     enqueue_instruction, wait_for_instruction
 from ..serial.serial_queue import SerialQueue
@@ -100,7 +101,7 @@ class IPUpdater(ThreadedUpdatable):
         old_ip6 = self.data.local_ip6
         self.update_ip()
         self.update_ip6()
-        errors.LAN.ok = self.data.local_ip is not None
+        LAN.state = CondState(self.data.local_ip is not None)
 
         if old_ip != self.data.local_ip or old_ip6 != self.data.local_ip6:
             self.update_additional_info(self.data.local_ip)

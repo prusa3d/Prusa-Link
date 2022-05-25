@@ -7,6 +7,7 @@ from typing import Union, Dict, Optional
 
 from blinker import Signal  # type: ignore
 from prusa.connect.printer import Printer
+from prusa.connect.printer.conditions import CondState, Condition
 
 from prusa.connect.printer.const import State, Source
 from ..const import STATE_HISTORY_SIZE, ERROR_REASON_TIMEOUT
@@ -21,7 +22,7 @@ from .structures.regular_expressions import \
     START_PRINT_REGEX, PRINT_DONE_REGEX, ERROR_REGEX, FAN_ERROR_REGEX, \
     ERROR_REASON_REGEX, ATTENTION_REASON_REGEX, FAN_REGEX
 from ..config import Config, Settings
-from ..errors import get_printer_error_states, HW
+from ..conditions import HW, SERIAL
 
 log = logging.getLogger(__name__)
 
@@ -187,36 +188,25 @@ class StateManager(metaclass=MCSingleton):
         for regex, handler in regex_handlers.items():
             self.serial_parser.add_handler(regex, handler)
 
-        for state in get_printer_error_states():
-            state.detected_cb = self.link_error_detected
-            state.resolved_cb = self.link_error_resolved
-
-        self.count_errors()
-        log.debug("error count = %s", self.data.error_count)
+        for state in SERIAL:
+            state.add_broke_handler(self.link_error_detected)
+            state.add_fixed_handler(self.link_error_resolved)
 
         super().__init__()
 
-    def count_errors(self):
-        """Re-counts the currently present errors"""
-        self.data.error_count = 0
-        error_states = get_printer_error_states()
-        for state in error_states:
-            if state.ok is not None and not state.ok:
-                self.data.error_count += 1
-
-    def link_error_detected(self, old_value):
+    def link_error_detected(self, condition: Condition, old_value: CondState):
         """increments an error counter once an error gets detected"""
-        assert old_value in {True, False, None}
-        self.data.error_count += 1
-        log.debug("Error count increased to %s", self.data.error_count)
-        self.error()
+        if old_value == CondState.OK:
+            log.debug("Condition %s broke, causing an ERROR state",
+                      condition.name)
+            self.error()
 
-    def link_error_resolved(self, old_value):
+    def link_error_resolved(self, condition: Condition, old_value: CondState):
         """decrements an error counter once an error gets resolved"""
-        if old_value is not None and not old_value:
-            self.data.error_count -= 1
-            log.debug("Error count decreased to %s", self.data.error_count)
-            if self.data.error_count == 0:
+        if old_value == CondState.NOK:
+            log.debug("Condition %s fixed", condition.name)
+            if SERIAL.successors_ok():
+                log.debug("All printer conditions are OK")
                 self.error_resolved()
 
     def file_printer_started_printing(self):
@@ -452,7 +442,7 @@ class StateManager(metaclass=MCSingleton):
         self.expect_change(
             StateChange(to_states={State.ERROR: Source.MARLIN}, reason=reason))
 
-        HW.ok = False
+        HW.state = CondState.NOK
 
     def attention_reason_handler(self, sender, match: re.Match):
         """
@@ -515,7 +505,7 @@ class StateManager(metaclass=MCSingleton):
             self.expect_change(
                 StateChange(to_states={State.ERROR: Source.MARLIN},
                             reason="404 Reason not found"))
-            HW.ok = False
+            HW.state = CondState.NOK
         self.data.awaiting_error_reason = False
 
     # --- State changing methods ---
@@ -540,7 +530,7 @@ class StateManager(metaclass=MCSingleton):
         that as well
         :return:
         """
-        HW.ok = True
+        HW.state = CondState.OK
         self.busy()
         self.stopped_or_not_printing()
 
@@ -697,7 +687,7 @@ class StateManager(metaclass=MCSingleton):
     def error_resolved(self):
         """Removes the override ERROR state"""
         if self.data.override_state == State.ERROR and \
-                self.data.error_count == 0:
+                SERIAL.successors_ok():
             log.debug("Cancelling the ERROR state override")
             self.data.override_state = None
 

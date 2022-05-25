@@ -12,8 +12,10 @@ from time import time
 from typing import Optional, Deque, List
 
 from blinker import Signal  # type: ignore
+from prusa.connect.printer.conditions import CondState
 
 from .serial import SerialException
+from ..conditions import RPI_ENABLED, SERIAL
 from ..interesting_logger import InterestingLogRotator
 from ..config import Config
 from .serial_adapter import SerialAdapter
@@ -28,7 +30,6 @@ from .serial_parser import SerialParser
 from ..printer_adapter.structures.mc_singleton import MCSingleton
 from ..const import QUIT_INTERVAL, RX_SIZE, MAX_INT, \
     SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT, HISTORY_LENGTH
-from .. import errors
 from ..printer_adapter.updatable import prctl_name, Thread
 
 log = logging.getLogger(__name__)
@@ -380,7 +381,7 @@ class SerialQueue(metaclass=MCSingleton):
             if not force:
                 # If a message was successfully confirmed, the rpi port
                 # had to be ok imo
-                errors.RPI_ENABLED.ok = True
+                RPI_ENABLED.state = CondState.OK
             self.instruction_confirmed_signal.send(self)
             with self.write_lock:
                 instruction = self.current_instruction
@@ -486,7 +487,7 @@ class SerialQueue(metaclass=MCSingleton):
         """
         self.has_failed = True
         log.error("Communication failed. Aborting...")
-        errors.RPI_ENABLED.ok = False
+        RPI_ENABLED.state = CondState.NOK
         self.serial_queue_failed.send(self)
 
     def printer_reset(self, was_printing):
@@ -585,8 +586,7 @@ class MonitoredSerialQueue(SerialQueue):
         Called periodically. If the confirmation wait times out, calls
         the appropriate handler
         """
-        if self.get_current_delay() > SERIAL_QUEUE_TIMEOUT and \
-                errors.SERIAL.ok:
+        if self.get_current_delay() > SERIAL_QUEUE_TIMEOUT and SERIAL:
             # The printer did not respond in time, lets assume it forgot
             # what it was supposed to do
             log.info("Timed out waiting for confirmation of %s after %ssec.",
