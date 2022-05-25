@@ -10,8 +10,8 @@ from .lib.auth import REALM
 from .lib.core import app
 from .lib.view import generate_page
 from .lib.wizard import execute_sn_gcode, sn_write_success
-
-from .. import errors
+from .. import conditions
+from ..conditions import SN
 
 
 def check_printer(fun):
@@ -22,7 +22,7 @@ def check_printer(fun):
         daemon = app.wizard.daemon
         if not daemon.prusa_link \
                 or not daemon.prusa_link.printer \
-                or not errors.SN.ok:
+                or not SN:
             redirect('/wizard')
         return fun(req)
 
@@ -47,7 +47,8 @@ def check_step(step):
 @app.route('/wizard')
 def wizard_root(req):
     """First wizard page."""
-    return generate_page(req, "wizard.html", wizard=app.wizard, errors=errors)
+    return generate_page(req, "wizard.html", wizard=app.wizard,
+                         conditions=conditions)
 
 
 @app.route('/wizard/auth')

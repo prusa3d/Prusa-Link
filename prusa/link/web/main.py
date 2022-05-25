@@ -17,7 +17,7 @@ from prusa.connect.printer import __version__ as sdk_version
 from prusa.connect.printer.const import State
 from prusa.connect.printer.metadata import get_metadata
 
-from .. import __version__, errors
+from .. import __version__, conditions
 
 from .lib.core import app
 from .lib.auth import check_api_digest, check_config, REALM
@@ -401,7 +401,7 @@ def api_job_command(req):
     try:
         if command == "pause":
             if job_data.job_state != JobState.IN_PROGRESS:
-                raise errors.NotPrinting()
+                raise conditions.NotPrinting()
 
             action = req.json.get("action")
             if action == 'pause' and printer_state == State.PRINTING:
@@ -420,11 +420,11 @@ def api_job_command(req):
             elif job_data.job_state == JobState.IDLE:
                 job.deselect_file()
             else:
-                raise errors.NotPrinting()
+                raise conditions.NotPrinting()
 
         elif command == "start":
             if job_data.job_state != JobState.IDLE:
-                raise errors.CurrentlyPrinting()
+                raise conditions.CurrentlyPrinting()
             if job_data.selected_file_path:
                 command_queue.do_command(
                     StartPrint(job.data.selected_file_path))

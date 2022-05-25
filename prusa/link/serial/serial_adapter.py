@@ -7,14 +7,15 @@ from threading import Lock
 from time import sleep
 
 from blinker import Signal  # type: ignore
+from prusa.connect.printer.conditions import CondState
 
 from .serial import SerialException
 from .serial_parser import SerialParser
 from . import serial
+from ..conditions import SERIAL
 from ..const import PRINTER_BOOT_WAIT, SERIAL_REOPEN_TIMEOUT
 from ..printer_adapter.structures.mc_singleton import MCSingleton
 from ..printer_adapter.updatable import prctl_name, Thread
-from .. import errors
 
 log = logging.getLogger(__name__)
 
@@ -121,14 +122,14 @@ class SerialAdapter(metaclass=MCSingleton):
                 self._reopen()
             except (
                 serial.SerialException, FileNotFoundError, OSError) as err:
-                errors.SERIAL.ok = False
+                SERIAL.state = CondState.NOK
                 log.debug(str(err))
                 log.warning("Opening of the serial port %s failed. Retrying",
                             self.port)
                 sleep(SERIAL_REOPEN_TIMEOUT)
             except Exception:  # pylint: disable=broad-except
                 # The same as above, just a different warning
-                errors.SERIAL.ok = False
+                SERIAL.state = CondState.NOK
                 log.exception("Opening of the serial port failed for a "
                               "different reason than what's expected. "
                               "Please report this!")
@@ -136,8 +137,8 @@ class SerialAdapter(metaclass=MCSingleton):
             else:
                 break
 
-        if self.running and not errors.SERIAL.ok:
-            errors.SERIAL.ok = True
+        if self.running and not SERIAL:
+            SERIAL.state = CondState.OK
             self.renewed_signal.send(self)
 
     def _read_continually(self):

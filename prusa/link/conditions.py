@@ -9,9 +9,8 @@ from enum import Enum
 from typing import Optional
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, TextResponse
-
-from prusa.connect.printer.errors import ErrorState, INTERNET, HTTP, TOKEN, \
-    API
+from prusa.connect.printer.conditions import Condition, COND_TRACKER, \
+    INTERNET, HTTP, TOKEN
 
 assert HTTP is not None
 assert TOKEN is not None
@@ -28,107 +27,66 @@ class Categories(Enum):
 
 OK_MSG = {"ok": True, "message": "OK"}
 
-DEVICE = ErrorState("Device",
-                    "Eth|WLAN device does not exist",
-                    short_msg="No WLAN device")
-PHY = ErrorState("Phy",
-                 "Eth|WLAN device is not connected",
-                 prev=DEVICE,
-                 short_msg="No WLAN conn")
-LAN = ErrorState("Lan",
-                 "Eth|WLAN has no IP address",
-                 prev=PHY,
-                 short_msg="No WLAN IP addr")
+ROOT = Condition("Root", "The root of everything, it's almost always OK")
 
-INTERNET.prev = LAN
+DEVICE = Condition("Device", "Eth|WLAN device does not exist",
+                   short_msg="No WLAN device", parent=ROOT, priority=1020)
+PHY = Condition("Phy", "Eth|WLAN device is not connected",
+                parent=DEVICE, short_msg="No WLAN conn", priority=1010)
+LAN = Condition("Lan", "Eth|WLAN has no IP address",
+                parent=PHY, short_msg="No WLAN IP addr", priority=1000)
 
-SERIAL = ErrorState("Port", "Serial device does not exist")
-RPI_ENABLED = ErrorState("RPIenabled", "RPi port is not enabled", prev=SERIAL)
-ID = ErrorState("ID", "Device is not supported", prev=RPI_ENABLED)
-FW = ErrorState("Firmware", "Firmware is not up-to-date", prev=ID)
-JOB_ID = ErrorState("JobID", "Job ID cannot be obtained", prev=FW)
-SN = ErrorState("SN", "Serial number cannot be obtained", prev=JOB_ID)
+INTERNET.set_parent(LAN)
 
-HW = ErrorState("HW", "Firmware detected a hardware issue")
+SERIAL = Condition("Port", "Serial device does not exist",
+                   parent=ROOT, priority=570)
+RPI_ENABLED = Condition("RPIenabled", "RPi port is not enabled",
+                        parent=SERIAL, priority=560)
+ID = Condition("ID", "Device is not supported",
+               parent=RPI_ENABLED, priority=550)
+UPGRADED = Condition("Upgraded", "Printer upgraded, re-register it",
+                     parent=ID, priority=540)
+FW = Condition("Firmware", "Firmware is not up-to-date",
+               parent=RPI_ENABLED, priority=530)
+JOB_ID = Condition("JobID", "Job ID cannot be obtained",
+                   parent=RPI_ENABLED, priority=520)
+SN = Condition("SN", "Serial number cannot be obtained",
+               parent=RPI_ENABLED, priority=510)
+HW = Condition("HW", "Firmware detected a hardware issue",
+               parent=RPI_ENABLED, priority=500)
 
-UPGRADED = ErrorState("Upgraded", "Printer upgraded, re-register it")
-
-# first and last elements for all available error state chains
-HEADS = {
-    Categories.PRINTER: SERIAL,
-    Categories.NETWORK: DEVICE,
-    Categories.HARDWARE: HW,
-    Categories.UPGRADED: UPGRADED
-}
-TAILS = {
-    Categories.PRINTER: SN,
-    Categories.NETWORK: API,
-    Categories.HARDWARE: HW,
-    Categories.UPGRADED: UPGRADED
-}
+COND_TRACKER.add_tracked_condition_tree(ROOT)
 
 
 def status():
     """Return a dict with representation of all current error states """
-    result = []
-    for head in HEADS.values():
-        chain = {}
-        current = head
-        while current is not None:
-            chain[current.name] = (current.ok, current.long_msg)
-            current = current.next
-        result.append(chain)
+    result = {}
+    for condition in reversed(list(ROOT)):
+        result[condition.name] = (condition.state.name, condition.long_msg)
     return result
 
 
 def printer_status():
     """Returns a dict with representation of current printer error states"""
-    if TAILS[Categories.PRINTER].ok and TAILS[Categories.HARDWARE].ok:
+    if SERIAL.successors_ok():
         return OK_MSG
     result = {}
     printer = itertools.chain(HW, SERIAL)
-    for error in printer:
-        if not error.ok:
-            return {"ok": False, "message": error.long_msg}
+    for condition in printer:
+        if not condition:
+            return {"ok": False, "message": condition.long_msg}
     return result
 
 
 def connect_status():
     """Returns a dict with representation of current Connect error states"""
-    if TAILS[Categories.NETWORK].ok:
+    if DEVICE.successors_ok():
         return OK_MSG
     result = {}
-    for error in DEVICE:
-        if not error.ok:
-            return {"ok": False, "message": error.long_msg}
+    for condition in DEVICE:
+        if not condition:
+            return {"ok": False, "message": condition.long_msg}
     return result
-
-
-def get_error_states_for_head(head):
-    """Gets the string of errors starting at the one given"""
-    error_states = []
-    current = head
-    while current is not None:
-        error_states.append(current)
-        current = current.next
-    return error_states
-
-
-def get_printer_error_states():
-    """
-    Proxy for getting errors that cause the printer to report
-    being in an ERROR state"""
-    errors = get_error_states_for_head(SERIAL)
-    errors.extend(get_error_states_for_head(HW))
-    return errors
-
-
-def get_all_error_states():
-    """Return a list of all ErrorStates"""
-    error_states = []
-    for head in HEADS.values():
-        error_states.extend(get_error_states_for_head(head))
-    return error_states
 
 
 class LinkError(RuntimeError):

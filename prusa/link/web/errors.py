@@ -8,12 +8,12 @@ from poorwsgi.response import make_response
 
 from .lib.view import generate_page
 from .lib.core import app
-from .. import errors
+from .. import conditions
 
 log = logging.getLogger(__name__)
 
 
-def response_error(req, error: errors.LinkError):
+def response_error(req, error: conditions.LinkError):
     """Create response from LinkError"""
     error.set_url(req)
     if req.accept_json:
@@ -37,7 +37,7 @@ def internal_server_error(req):
         traceback = format_tb(traceback)
         log.error('\n%s%s', ''.join(traceback), repr(exception))
 
-    error = errors.InternalServerError()
+    error = conditions.InternalServerError()
     error.set_url(req)
 
     try:
@@ -63,86 +63,86 @@ def internal_server_error(req):
 @app.route('/error/forbidden')
 def forbidden(req):
     """Error handler 403 forbidden."""
-    return response_error(req, errors.ForbiddenError())
+    return response_error(req, conditions.ForbiddenError())
 
 
 @app.http_state(404)
 @app.route('/error/not-found')
 def not_found(req):
     """Error handler for 404 Not Found."""
-    return response_error(req, errors.NotFoundError())
+    return response_error(req, conditions.NotFoundError())
 
 
 @app.route('/error/no-file-in-request')
 def no_file_in_request(req):
     """Error handler for 400 File not found in request payload."""
-    return response_error(req, errors.NoFileInRequest())
+    return response_error(req, conditions.NoFileInRequest())
 
 
 @app.route('/error/file-size-mismatch')
 def file_size_mismatch(req):
     """Error handler for 400 File size mismatch."""
-    return response_error(req, errors.FileSizeMismatch())
+    return response_error(req, conditions.FileSizeMismatch())
 
 
 @app.route('/error/forbidden-characters')
 def forbidden_characters(req):
     """Error handler for 400 Forbidden Characters."""
-    return response_error(req, errors.ForbiddenCharacters())
+    return response_error(req, conditions.ForbiddenCharacters())
 
 
 @app.route('/error/filename-too-long')
 def filename_too_long(req):
     """Error handler for 400 Filename Too Long"""
-    return response_error(req, errors.FilenameTooLong())
+    return response_error(req, conditions.FilenameTooLong())
 
 
 @app.route('/error/foldername-too-long')
 def foldername_too_long(req):
     """Error handler for 400 Foldername Too Long"""
-    return response_error(req, errors.FoldernameTooLong())
+    return response_error(req, conditions.FoldernameTooLong())
 
 
 @app.route('/error/sdcard-not-supported')
 def sdcard_not_supported(req):
     """Error handler for 404 Some operations are not possible on SDCard."""
-    return response_error(req, errors.SDCardNotSupoorted())
+    return response_error(req, conditions.SDCardNotSupoorted())
 
 
 @app.route('/error/location-not-found')
 def location_not_found(req):
     """Error handler for 404 Location from url not found."""
-    return response_error(req, errors.LocationNotFound())
+    return response_error(req, conditions.LocationNotFound())
 
 
 @app.route('/error/file-currently-printed')
 def file_currently_printed(req):
     """Error handler for 409 File is currently printed."""
-    return response_error(req, errors.FileCurrentlyPrinted())
+    return response_error(req, conditions.FileCurrentlyPrinted())
 
 
 @app.route('/error/transfer-conflict')
 def transfer_conflict(req):
     """Error handler for 409 Already in transfer process."""
-    return response_error(req, errors.TransferConflict())
+    return response_error(req, conditions.TransferConflict())
 
 
 @app.route('/error/entity-too-large')
 def entity_too_large(req):
     """Error handler for 413 Payload Too Large"""
-    return response_error(req, errors.EntityTooLarge())
+    return response_error(req, conditions.EntityTooLarge())
 
 
 @app.route('/error/unsupported-media-type')
 def unsupported_media_type(req):
     """Error handler for 415 Unsupported Media Type"""
-    return response_error(req, errors.UnsupportedMediaError())
+    return response_error(req, conditions.UnsupportedMediaError())
 
 
 @app.route('/error/response-timeout')
 def response_timeout(req):
     """Error handler for 500 Response Timeout"""
-    return response_error(req, errors.ResponseTimeout())
+    return response_error(req, conditions.ResponseTimeout())
 
 
 @app.http_state(410)
@@ -166,10 +166,10 @@ def service_unavailable(req):
     traceback = format_tb(traceback)
     log.error('\n%s%s', ''.join(traceback), repr(error))
 
-    return response_error(req, errors.PrinterUnavailable())
+    return response_error(req, conditions.PrinterUnavailable())
 
 
-@app.error_handler(errors.LinkError)
+@app.error_handler(conditions.LinkError)
 def link_error_handler(req, error):
     """Handle LinkError exception and generate right response."""
     return response_error(req, error)

@@ -34,11 +34,8 @@
             </ul>
             <li>Errors state:</li>
             <ul>
-            {%- for error in errors %}
-            {%- for key, (state, msg) in error.items() %}
+            {%- for key, (state, msg) in errors.items() %}
             <li>{{ key }}: <span class="white">{{ msg if state == False else state }}</span></li>
-            {%- endfor %}
-            <br>
             {%- endfor %}
             </ul>
         </ul>
