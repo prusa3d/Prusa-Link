@@ -3,14 +3,14 @@
 For more information see prusalink_states.txt.
 """
 
-import itertools
 from enum import Enum
 
 from typing import Optional
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, TextResponse
 from prusa.connect.printer.conditions import Condition, COND_TRACKER, \
-    INTERNET, HTTP, TOKEN
+    INTERNET, HTTP, TOKEN, ConditionTracker
+from .config import Settings
 
 assert HTTP is not None
 assert TOKEN is not None
@@ -45,21 +45,37 @@ RPI_ENABLED = Condition("RPIenabled", "RPi port is not enabled",
 ID = Condition("ID", "Device is not supported",
                parent=RPI_ENABLED, priority=550)
 UPGRADED = Condition("Upgraded", "Printer upgraded, re-register it",
-                     parent=ID, priority=540)
+                     parent=ID, priority=500)
 FW = Condition("Firmware", "Firmware is not up-to-date",
+               parent=RPI_ENABLED, priority=540)
+SN = Condition("SN", "Serial number cannot be obtained",
                parent=RPI_ENABLED, priority=530)
 JOB_ID = Condition("JobID", "Job ID cannot be obtained",
                    parent=RPI_ENABLED, priority=520)
-SN = Condition("SN", "Serial number cannot be obtained",
-               parent=RPI_ENABLED, priority=510)
 HW = Condition("HW", "Firmware detected a hardware issue",
-               parent=RPI_ENABLED, priority=500)
+               parent=RPI_ENABLED, priority=510)
 
 COND_TRACKER.add_tracked_condition_tree(ROOT)
 
+NET_TRACKER = ConditionTracker()
+NET_TRACKER.add_tracked_condition_tree(DEVICE)
+
+PRINTER_TRACKER = ConditionTracker()
+PRINTER_TRACKER.add_tracked_condition_tree(SERIAL)
+
+
+def use_connect_errors(use_connect):
+    """Set whether to use Connect related errors or not"""
+    if use_connect:
+        COND_TRACKER.add_tracked_condition_tree(INTERNET)
+        NET_TRACKER.add_tracked_condition_tree(INTERNET)
+    else:
+        COND_TRACKER.remove_tracked_condition_tree(INTERNET)
+        NET_TRACKER.remove_tracked_condition_tree(INTERNET)
+
 
 def status():
-    """Return a dict with representation of all current error states """
+    """Return a dict with representation of all current conditions"""
     result = {}
     for condition in reversed(list(ROOT)):
         result[condition.name] = (condition.state.name, condition.long_msg)
@@ -67,26 +83,21 @@ def status():
 
 
 def printer_status():
-    """Returns a dict with representation of current printer error states"""
-    if SERIAL.successors_ok():
+    """Returns a representation of the currently broken printer condition"""
+    worst = PRINTER_TRACKER.get_worst()
+    if worst is None:
         return OK_MSG
-    result = {}
-    printer = itertools.chain(HW, SERIAL)
-    for condition in printer:
-        if not condition:
-            return {"ok": False, "message": condition.long_msg}
-    return result
+    return {"ok": False, "message": worst.long_msg}
 
 
 def connect_status():
-    """Returns a dict with representation of current Connect error states"""
-    if DEVICE.successors_ok():
+    """Returns a representation of the currently broken Connect condition"""
+    worst = NET_TRACKER.get_worst()
+    if worst is None:
+        if not Settings.instance.use_connect():
+            return {"ok": True, "message": "Connect isn't configured"}
         return OK_MSG
-    result = {}
-    for condition in DEVICE:
-        if not condition:
-            return {"ok": False, "message": condition.long_msg}
-    return result
+    return {"ok": False, "message": worst.long_msg}
 
 
 class LinkError(RuntimeError):
