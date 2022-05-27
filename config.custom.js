@@ -8,7 +8,6 @@ module.exports = (env, args) => {
         WITH_SETTINGS: true,
         WITH_CONTROLS: true,
         WITH_LOGS: true,
-        WITH_FONT: true,
         WITH_V1_API: true,
         ...env,
     };
