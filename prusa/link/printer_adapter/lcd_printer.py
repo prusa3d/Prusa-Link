@@ -28,8 +28,7 @@ from .structures.mc_singleton import MCSingleton
 from .structures.regular_expressions import LCD_UPDATE_REGEX
 from .updatable import prctl_name, Thread
 from ..config import Settings
-from ..conditions import LAN, RPI_ENABLED, ID, FW, SN, JOB_ID, PHY, DEVICE, \
-    UPGRADED
+from ..conditions import LAN, ID, FW, SN, JOB_ID, PHY, DEVICE, UPGRADED
 
 log = logging.getLogger(__name__)
 
@@ -42,7 +41,6 @@ ERROR_TONE = ["M300 P600 S5"]
 UPLOAD_TONE = ["M300 P14 S50"]
 
 ERROR_MESSAGES = {
-    RPI_ENABLED: "Err Enable RPi port",
     ID: "Unsupported printer",
     FW: "Err unsupported FW",
     SN: "Err obtaining S/N",
@@ -353,9 +351,11 @@ class LCDPrinter(metaclass=MCSingleton):
         error_grace_ended = time() - self.ignore_errors_to > 0
         if error is None:
             self.error_display.disable("Errors resolved")
-        if not error_grace_ended:
+        elif not error_grace_ended:
             self.error_display.disable("Please wait...")
-        if error is not None and error_grace_ended:
+        elif error not in ERROR_MESSAGES:
+            self.error_display.disable()
+        elif error is not None and error_grace_ended:
             # An error has been discovered, tell the user what it is
             self.error_display.enable()
 
