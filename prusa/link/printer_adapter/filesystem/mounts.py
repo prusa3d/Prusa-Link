@@ -155,9 +155,8 @@ class FSMounts(Mounts):
     thread_name = "fs_mounts_thread"
     update_interval = 0  # The waiting is done in epoll timeout instead of here
 
-    def __init__(self, model: Model, mountpoints=None):
-        if mountpoints:
-            FSMounts.paths_to_mount = mountpoints
+    def __init__(self, model: Model, cfg: Config):
+        FSMounts.paths_to_mount = list(cfg.printer.mountpoints)
 
         model.fs_mounts = MountsData(blacklisted_paths=[],
                                      blacklisted_names=[],
@@ -222,7 +221,7 @@ class DirMounts(Mounts):
     having the fs_type of "directory".
     """
     def __init__(self, model: Model, cfg: Config):
-        DirMounts.paths_to_mount = cfg.printer.directories
+        DirMounts.paths_to_mount = list(cfg.printer.directories)
 
         model.dir_mounts = MountsData(blacklisted_paths=[],
                                       blacklisted_names=[],
