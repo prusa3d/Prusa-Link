@@ -11,6 +11,7 @@ from time import time
 
 from prusa.connect.printer import Printer
 from prusa.connect.printer.const import State
+from ..config import Settings
 from ..const import TELEMETRY_IDLE_INTERVAL, \
     TELEMETRY_PRINTING_INTERVAL, TELEMETRY_SLEEPING_INTERVAL, \
     JITTER_THRESHOLD, PRINTING_STATES, TELEMETRY_SLEEP_AFTER
@@ -114,8 +115,20 @@ class TelemetryPasser(metaclass=MCSingleton):
         Passes the telemetry to the SDK
         and pushes the newer telemetry into the sent telemetry
         """
+        if not Settings.instance.use_connect():
+            log.debug("Connect isn't configured -> no telemetry")
+            return
+
+        if not self.printer.is_initialised():
+            log.debug("Printer isn't initialised -> no telemetry")
+            return
+
+        if Settings.instance.is_wizard_needed():
+            log.debug("Wizard has not been completed yet -> no telemetry")
+            return
+
         if self.printer.queue.qsize() >= QUEUE_LENGTH_LIMIT:
-            log.debug("SDK queue looks stuck, not passing telemetry to it")
+            log.debug("SDK queue looks stuck -> no telemetry")
             return
 
         with self.lock:
