@@ -46,7 +46,7 @@ class StorageController:
         self.sd_card.sd_mounted_signal.connect(self.sd_mounted)
         self.sd_card.sd_unmounted_signal.connect(self.sd_unmounted)
 
-        self.fs_mounts = FSMounts(self.model)
+        self.fs_mounts = FSMounts(self.model, cfg)
         self.dir_mounts = DirMounts(self.model, cfg)
         self.fs_mounts.mounted_signal.connect(self.dir_mounted)
         self.fs_mounts.unmounted_signal.connect(self.dir_unmounted)
