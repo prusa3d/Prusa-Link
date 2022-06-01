@@ -11,7 +11,8 @@ from ..const import REPORTING_TIMEOUT
 from .model import Model
 from .structures.model_classes import Telemetry
 from .structures.regular_expressions import \
-        TEMPERATURE_REGEX, POSITION_REGEX, FAN_REGEX
+    TEMPERATURE_REGEX, POSITION_REGEX, FAN_REGEX, HEATING_REGEX, \
+    HEATING_HOTEND_REGEX
 from .updatable import ThreadedUpdatable
 
 
@@ -32,6 +33,10 @@ class AutoTelemetry(ThreadedUpdatable):
         self.telemetry_passer = telemetry_passer
         self.serial_parser.add_handler(
             TEMPERATURE_REGEX, self.temps_recorded)
+        self.serial_parser.add_handler(
+            HEATING_REGEX, self.temps_recorded)
+        self.serial_parser.add_handler(
+            HEATING_HOTEND_REGEX, self.temps_recorded)
         self.serial_parser.add_handler(
             POSITION_REGEX, self.positions_recorded)
         self.serial_parser.add_handler(
