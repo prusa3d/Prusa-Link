@@ -52,7 +52,6 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
             HTTP.state = CondState.NOK
 
         res = super().parse_command(res)
-        API.state = CondState.OK  # already done in SDK but lets be double sure
 
         return res
 
