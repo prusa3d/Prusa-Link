@@ -83,7 +83,6 @@ class PrusaLink:
         self.quit_evt = Event()
         self.stopped_event = Event()
         HW.state = CondState.OK
-        UPGRADED.state = CondState.OK
         self.model = Model()
 
         self.service_discovery = ServiceDiscovery(self.cfg)
@@ -524,7 +523,7 @@ class PrusaLink:
                       encoding='utf-8') as ini:
                 self.settings.write(ini)
 
-            UPGRADED.ok = True
+            UPGRADED.state = CondState.OK
 
     def print_state_changed(self, item: WatchedItem):
         """Handles the newly observed print state"""
