@@ -170,7 +170,6 @@ class Config(Get):
 
     def set_global_log_level(self, args):
         """Set default global log level from command line."""
-        # pylint: disable=no-self-use
         if args.debug:
             log_level = "DEBUG"
         elif args.info:
@@ -222,10 +221,9 @@ class Settings(Get):
 
         # [printer]
         self.printer = Model(
-            self.get_section('printer',
-                             (('type', str, ''), ('name', str, ''),
-                              ('location', str, ''),
-                              ('farm_mode', bool, False))))
+            self.get_section('printer', (('type', str, ''), ('name', str, ''),
+                                         ('location', str, ''),
+                                         ('farm_mode', bool, False))))
 
         if self.printer.type and self.printer.type not in PRINTER_CONF_TYPES:
             raise ValueError("Settings file for an unsupported printer")

@@ -14,6 +14,8 @@ from ..util import loop_until
 
 def prctl_name():
     """Set system thread name with python thread name."""
+    # pylint: disable=deprecated-method
+    # No current_thread is not deprecated, but currentThread is :-(
     prctl.set_name(f"prusal#{current_thread().name}")
 
 
