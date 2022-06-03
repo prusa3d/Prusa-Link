@@ -69,7 +69,6 @@ class Instruction:
         self.sent_event.set()
         self.sent_at = time()
 
-    # pylint: disable=no-self-use
     def output_captured(self, sender, match):
         """
         Output _captured event handler, this type does not capture anything
