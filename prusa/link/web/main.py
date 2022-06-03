@@ -4,8 +4,10 @@ from os.path import basename, join, getsize, getmtime
 from os import listdir
 from subprocess import Popen
 from sys import version
+from io import BytesIO
 
 import logging
+import base64
 
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, EmptyResponse, FileResponse,\
@@ -145,15 +147,17 @@ def api_info(req):
     # pylint: disable=unused-argument
     service_connect = app.daemon.settings.service_connect
     printer_settings = app.daemon.settings.printer
+    printer = app.daemon.prusa_link.printer
 
     info = {
         'name': printer_settings.name.replace("\"", ""),
         'location': printer_settings.location.replace("\"", ""),
         'farm_mode': printer_settings.farm_mode,
-        'nozzle_diameter': app.daemon.prusa_link.printer.nozzle_diameter,
-        'serial': app.daemon.prusa_link.printer.sn,
+        'nozzle_diameter': printer.nozzle_diameter,
+        'serial': printer.sn,
         'hostname': service_connect.hostname,
-        'port': service_connect.port
+        'port': service_connect.port,
+        'active_camera': bool(printer.camera)
     }
 
     return JSONResponse(**info)
@@ -481,3 +485,25 @@ def api_system_commands_execute(req, source, action):
                             message='Available sources: "core"')
 
     return JSONResponse(core=[], custom=[])
+
+
+@app.route("/api/camera", method=state.METHOD_POST)
+@check_api_digest
+def camera_capture(req):
+    """Capture an image from a camera and return it in endpoint"""
+    resolution = req.json.get('resolution')
+    if resolution:
+        width = resolution.get('width')
+        height = resolution.get('height')
+    else:
+        width = 640
+        height = 640
+
+    camera = app.daemon.prusa_link.printer.camera
+    camera.resolution = (width, height)
+    byte_stream = BytesIO()
+
+    camera.capture(byte_stream, 'png')
+
+    coded = base64.b64encode(byte_stream.getvalue())
+    return Response(base64.decodebytes(coded), content_type='image/png')
