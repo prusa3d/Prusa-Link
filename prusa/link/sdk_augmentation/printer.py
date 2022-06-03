@@ -20,7 +20,13 @@ from .command_handler import CommandHandler
 from .. import __version__
 
 log = getLogger("connect-printer")
+ON_RPI = False
 
+try:
+    import picamera # type: ignore
+    ON_RPI = True
+except ModuleNotFoundError:
+    log.debug("This system is not RPi, camera is not active")
 
 class MyPrinter(SDKPrinter, metaclass=MCSingleton):
     """
@@ -38,6 +44,9 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.loop_thread = Thread(target=self.loop, name="loop")
         self.__inotify_running = False
         self.inotify_thread = Thread(target=self.inotify_loop, name="inotify")
+        self.camera = None
+        if ON_RPI:
+            self.camera = picamera.PiCamera()
 
     def parse_command(self, res):
         """Parse telemetry response.
