@@ -199,6 +199,10 @@ class StateManager(metaclass=MCSingleton):
         if old_value == CondState.OK:
             log.debug("Condition %s broke, causing an ERROR state",
                       condition.name)
+            if self.expected_state_change is None:
+                self.expect_change(StateChange(
+                    to_states={State.ERROR: Source.SERIAL},
+                    reason=condition.short_msg))
             self.error()
 
     def link_error_resolved(self, condition: Condition, old_value: CondState):
