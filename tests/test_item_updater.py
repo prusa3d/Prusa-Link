@@ -3,6 +3,7 @@
 # pylint:disable=redefined-outer-name too-many-locals too-many-statements
 
 import logging
+import math
 from threading import Event
 from time import time, sleep
 from unittest import mock
@@ -98,7 +99,7 @@ def test_basics(updater_instance: ItemUpdater):
                              write_function=write)
     basic_item.became_valid_signal.connect(valid)
     basic_item.became_invalid_signal.connect(invalidated)
-    updater_instance.add_watched_item(basic_item)
+    updater_instance.add_item(basic_item)
 
     # Reminder that invalidation is only signalled when going from a
     # valid state, so not at the beginning
@@ -135,21 +136,21 @@ def test_group(updater_instance: ItemUpdater):
     item_1_valid = EventSetMock(spec={})
     item_2_valid = EventSetMock(spec={})
     item_2_invalidated = EventSetMock(spec={})
-    watched_item_1 = WatchedItem("watched_item_1",
+    item_1 = WatchedItem("item_1",
                                  gather_function=gather_1,
                                  write_function=Mock())
-    watched_item_1.became_valid_signal.connect(item_1_valid)
-    watched_item_2 = WatchedItem("watched_item_2",
+    item_1.became_valid_signal.connect(item_1_valid)
+    item_2 = WatchedItem("item_2",
                                  gather_function=gather_2,
                                  write_function=Mock())
-    watched_item_2.became_valid_signal.connect(item_2_valid)
-    watched_item_2.became_invalid_signal.connect(item_2_invalidated)
-    watched_group = WatchedGroup([watched_item_1, watched_item_2])
+    item_2.became_valid_signal.connect(item_2_valid)
+    item_2.became_invalid_signal.connect(item_2_invalidated)
+    watched_group = WatchedGroup([item_1, item_2])
     watched_group.became_valid_signal.connect(group_valid)
     watched_group.became_invalid_signal.connect(group_invalidated)
 
-    updater_instance.add_watched_item(watched_item_1)
-    updater_instance.add_watched_item(watched_item_2)
+    updater_instance.add_item(item_1)
+    updater_instance.add_item(item_2)
 
     group_valid.assert_not_called()
 
@@ -166,13 +167,13 @@ def test_group(updater_instance: ItemUpdater):
     group_valid.assert_called_once()
     group_invalidated.assert_not_called()
 
-    updater_instance.invalidate(watched_item_1)
+    updater_instance.invalidate(item_1)
 
     assert group_invalidated.event.wait(THRESHOLD)
 
     group_invalidated.assert_called_once()
 
-    updater_instance.invalidate(watched_item_2)
+    updater_instance.invalidate(item_2)
 
     assert item_2_invalidated.event.wait(THRESHOLD)
 
@@ -203,116 +204,103 @@ def test_scheduled_invalidation(updater_instance: ItemUpdater):
     time_of_start = 0.0  # set up later to time()
     results = {}
 
-    watched_item_1 = WatchedItem("watched_item_1",
-                                 gather_function=Mock(),
-                                 write_function=lambda value: None)
-    watched_item_2 = WatchedItem("watched_item_2",
-                                 gather_function=Mock(),
-                                 write_function=Mock())
-    watched_item_2.became_invalid_signal.connect(
+    item_1 = WatchedItem("item_1",
+                         gather_function=Mock(),
+                         write_function=lambda value: None)
+    item_2 = WatchedItem("item_2", gather_function=Mock())
+    item_2.became_invalid_signal.connect(
         lambda item: results.update({2: time() - time_of_start}), weak=False)
-    watched_item_3 = WatchedItem("watched_item_3",
-                                 gather_function=Mock(),
-                                 write_function=Mock())
-    watched_item_3.became_invalid_signal.connect(
+    item_3 = WatchedItem("item_3", gather_function=Mock())
+    item_3.became_invalid_signal.connect(
         lambda item: results.update({3: time() - time_of_start}), weak=False)
-    watched_item_4 = WatchedItem("watched_item_4",
-                                 gather_function=Mock(),
-                                 write_function=Mock())
-    watched_item_4.became_invalid_signal.connect(
+    item_4 = WatchedItem("item_4", gather_function=Mock())
+    item_4.became_invalid_signal.connect(
         lambda item: results.update({4: time() - time_of_start}), weak=False)
-    watched_item_5 = WatchedItem("watched_item_5",
-                                 gather_function=Mock(),
-                                 write_function=Mock())
-    watched_item_5.became_invalid_signal.connect(
+    item_5 = WatchedItem("item_5", gather_function=Mock())
+    item_5.became_invalid_signal.connect(
         lambda item: results.update({5: time() - time_of_start}), weak=False)
-    watched_item_6 = WatchedItem("watched_item_6",
-                                 gather_function=Mock(),
-                                 write_function=Mock())
-    watched_item_6.became_invalid_signal.connect(
+    item_6 = WatchedItem("item_6", gather_function=Mock())
+    item_6.became_invalid_signal.connect(
         lambda item: results.update({6: time() - time_of_start}), weak=False)
-    watched_item_7 = WatchedItem("watched_item_7",
-                                 gather_function=Mock(),
-                                 write_function=Mock(),
-                                 interval=base_interval)
-    watched_item_7.became_invalid_signal.connect(
+    item_7 = WatchedItem("item_7",
+                         gather_function=Mock(),
+                         interval=base_interval)
+    item_7.became_invalid_signal.connect(
         lambda item: results.update({7: time() - time_of_start}), weak=False)
-    watched_item_8 = WatchedItem("watched_item_8",
-                                 gather_function=Mock(),
-                                 write_function=Mock(),
-                                 interval=base_interval)
-    watched_item_8.became_invalid_signal.connect(
+    item_8 = WatchedItem("item_8",
+                         gather_function=Mock(),
+                         interval=base_interval)
+    item_8.became_invalid_signal.connect(
         lambda item: results.update({8: time() - time_of_start}), weak=False)
-    watched_item_9 = WatchedItem("watched_item_9",
-                                 gather_function=Mock(),
-                                 write_function=Mock(),
-                                 interval=base_interval)
-    watched_item_9.became_invalid_signal.connect(
+    item_9 = WatchedItem("item_9",
+                         gather_function=Mock(),
+                         interval=base_interval)
+    item_9.became_invalid_signal.connect(
         lambda item: results.update({9: time() - time_of_start}), weak=False)
 
     group_valid = EventSetMock(spec={})
     watched_group = WatchedGroup([
-        watched_item_1, watched_item_2, watched_item_3, watched_item_4,
-        watched_item_5, watched_item_6, watched_item_7, watched_item_8,
-        watched_item_9
+        item_1, item_2, item_3, item_4,
+        item_5, item_6, item_7, item_8,
+        item_9
     ])
     watched_group.became_valid_signal.connect(group_valid)
 
-    updater_instance.add_watched_item(watched_item_1)
-    updater_instance.add_watched_item(watched_item_2)
-    updater_instance.add_watched_item(watched_item_3)
-    updater_instance.add_watched_item(watched_item_4)
-    updater_instance.add_watched_item(watched_item_5)
-    updater_instance.add_watched_item(watched_item_6)
-    updater_instance.add_watched_item(watched_item_7)
-    updater_instance.add_watched_item(watched_item_8)
-    updater_instance.add_watched_item(watched_item_9)
+    updater_instance.add_item(item_1)
+    updater_instance.add_item(item_2)
+    updater_instance.add_item(item_3)
+    updater_instance.add_item(item_4)
+    updater_instance.add_item(item_5)
+    updater_instance.add_item(item_6)
+    updater_instance.add_item(item_7)
+    updater_instance.add_item(item_8)
+    updater_instance.add_item(item_9)
 
     assert group_valid.event.wait(THRESHOLD)
 
     # set intervals after the items become valid for them to not auto schedule
-    watched_item_2.interval = base_interval
-    watched_item_3.interval = base_interval
-    watched_item_4.interval = base_interval
-    watched_item_5.interval = base_interval
-    watched_item_6.interval = base_interval
+    item_2.interval = base_interval
+    item_3.interval = base_interval
+    item_4.interval = base_interval
+    item_5.interval = base_interval
+    item_6.interval = base_interval
 
     time_of_start = time()
 
     failed = False
     try:
-        updater_instance.schedule_invalidation(watched_item_1)
+        updater_instance.schedule_invalidation(item_1)
     # pylint: disable=broad-except
     except Exception:
         failed = True
     assert failed, "Scheduling invalidation without an interval has to error"
 
-    updater_instance.schedule_invalidation(watched_item_2)
-    updater_instance.schedule_invalidation(watched_item_3,
+    updater_instance.schedule_invalidation(item_2)
+    updater_instance.schedule_invalidation(item_3,
                                            base_interval + refresh_offset)
 
-    updater_instance.schedule_invalidation(watched_item_4)
-    updater_instance.schedule_invalidation(watched_item_5)
-    updater_instance.schedule_invalidation(watched_item_6)
-    updater_instance.schedule_invalidation(watched_item_8,
+    updater_instance.schedule_invalidation(item_4)
+    updater_instance.schedule_invalidation(item_5)
+    updater_instance.schedule_invalidation(item_6)
+    updater_instance.schedule_invalidation(item_8,
                                            interval=base_interval)
-    updater_instance.schedule_invalidation(watched_item_8,
+    updater_instance.schedule_invalidation(item_8,
                                            interval=base_interval)
 
     sleep(refresh_offset)
-    updater_instance.cancel_scheduled_invalidation(watched_item_8)
-    updater_instance.schedule_invalidation(watched_item_4)
-    updater_instance.schedule_invalidation(watched_item_5, force=True)
-    updater_instance.set_value(watched_item_6, 6)
-    updater_instance.set_value(watched_item_9, 9)
+    updater_instance.cancel_scheduled_invalidation(item_8)
+    updater_instance.schedule_invalidation(item_4)
+    updater_instance.schedule_invalidation(item_5, force=True)
+    updater_instance.set_value(item_6, 6)
+    updater_instance.set_value(item_9, 9)
 
     # Reset the intervals to none, so the items won't auto re-schedule
-    watched_item_2.interval = None
-    watched_item_3.interval = None
-    watched_item_4.interval = None
-    watched_item_5.interval = None
-    watched_item_6.interval = None
-    watched_item_7.interval = None
+    item_2.interval = None
+    item_3.interval = None
+    item_4.interval = None
+    item_5.interval = None
+    item_6.interval = None
+    item_7.interval = None
 
     # a "busy" wait in a test is fine
     times_out_at = time() + refresh_offset + THRESHOLD
@@ -343,21 +331,19 @@ def test_validation(updater_instance: ItemUpdater, validator):
     valid_errored = EventSetMock(spec={})
     valid_item = WatchedItem("valid_item",
                              gather_function=Mock(return_value=42),
-                             write_function=Mock(),
                              validation_function=validator)
     valid_item.became_valid_signal.connect(valid_valid)
     valid_item.validation_error_signal.connect(valid_errored)
-    updater_instance.add_watched_item(valid_item)
+    updater_instance.add_item(valid_item)
 
     invalid_valid = EventSetMock(spec={})
     invalid_errored = EventSetMock(spec={})
     invalid_item = WatchedItem("invalid_item",
                                gather_function=Mock(return_value=69),
-                               write_function=Mock(),
                                validation_function=validator)
     invalid_item.became_valid_signal.connect(invalid_valid)
     invalid_item.validation_error_signal.connect(invalid_errored)
-    updater_instance.add_watched_item(invalid_item)
+    updater_instance.add_item(invalid_item)
 
     assert valid_valid.event.wait(THRESHOLD)
     assert invalid_errored.event.wait(THRESHOLD)
@@ -387,15 +373,15 @@ def test_gather_error(updater_instance: ItemUpdater):
     item.error_refreshing_signal.connect(item_errored)
 
     time_of_start = time()
-    updater_instance.add_watched_item(item)
+    updater_instance.add_item(item)
     assert item_errored.event.wait(threshold)
     item_errored.event.clear()
     assert item_errored.event.wait(fail_interval + threshold)
     assert fail_interval < time() - time_of_start < fail_interval + threshold
 
     write_mock.assert_not_called()
-    updater_instance.cancel_scheduled_invalidation("item")
-    updater_instance.set_value("item", 42)
+    updater_instance.cancel_scheduled_invalidation(item)
+    updater_instance.set_value(item, 42)
     assert write_mock.event.wait(threshold)
 
 
@@ -418,90 +404,84 @@ def test_timeouts(updater_instance: ItemUpdater, validator):
     stuck_gatherer = WaitingMock()
 
     item_1_timeout_mock = EventSetMock(spec={})
-    watched_item_1 = WatchedItem("watched_item_1",
-                                 gather_function=stuck_gatherer,
-                                 write_function=Mock(),
-                                 timeout=base_interval)
-    watched_item_1.timed_out_signal.connect(item_1_timeout_mock)
+    item_1 = WatchedItem("item_1",
+                         gather_function=stuck_gatherer,
+                         timeout=base_interval)
+    item_1.timed_out_signal.connect(item_1_timeout_mock)
 
     item_2_timeout_mock = EventSetMock(spec={})
-    watched_item_2 = WatchedItem("watched_item_2",
-                                 gather_function=Mock(return_value=69),
-                                 write_function=Mock(),
-                                 timeout=base_interval,
-                                 on_fail_interval=1000,
-                                 validation_function=validator)
-    watched_item_2.timed_out_signal.connect(item_2_timeout_mock)
+    item_2 = WatchedItem("item_2",
+                         gather_function=Mock(return_value=69),
+                         timeout=base_interval,
+                         on_fail_interval=1000,
+                         validation_function=validator)
+    item_2.timed_out_signal.connect(item_2_timeout_mock)
 
     item_3_timeout_mock = EventSetMock(spec={})
-    watched_item_3 = WatchedItem("watched_item_3",
-                                 gather_function=Mock(return_value=69),
-                                 write_function=Mock(),
-                                 timeout=base_interval,
-                                 on_fail_interval=1000,
-                                 validation_function=validator)
-    watched_item_3.timed_out_signal.connect(item_3_timeout_mock)
+    item_3 = WatchedItem("item_3",
+                         gather_function=Mock(return_value=69),
+                         timeout=base_interval,
+                         on_fail_interval=1000,
+                         validation_function=validator)
+    item_3.timed_out_signal.connect(item_3_timeout_mock)
 
     item_4_timeout_mock = EventSetMock(spec={})
-    watched_item_4 = WatchedItem("watched_item_4",
-                                 gather_function=stuck_gatherer,
-                                 write_function=Mock(),
-                                 timeout=base_interval)
-    watched_item_4.timed_out_signal.connect(item_4_timeout_mock)
+    item_4 = WatchedItem("item_4",
+                         gather_function=stuck_gatherer,
+                         timeout=base_interval)
+    item_4.timed_out_signal.connect(item_4_timeout_mock)
 
     item_5_timeout_mock = EventSetMock(spec={})
     item_5_valid_mock = EventSetMock(spec={})
-    watched_item_5 = WatchedItem("watched_item_5",
-                                 gather_function=stuck_gatherer,
-                                 write_function=Mock(),
-                                 timeout=base_interval)
-    watched_item_5.timed_out_signal.connect(item_5_timeout_mock)
-    watched_item_5.became_valid_signal.connect(item_5_valid_mock)
+    item_5 = WatchedItem("item_5",
+                         gather_function=stuck_gatherer,
+                         timeout=base_interval)
+    item_5.timed_out_signal.connect(item_5_timeout_mock)
+    item_5.became_valid_signal.connect(item_5_valid_mock)
 
     item_6_timeout_mock = EventSetMock(spec={})
-    watched_item_6 = WatchedItem("watched_item_6",
-                                 gather_function=Mock(return_value=42),
-                                 write_function=Mock(),
-                                 timeout=base_interval)
-    watched_item_6.timed_out_signal.connect(item_6_timeout_mock)
+    item_6 = WatchedItem("item_6",
+                         gather_function=Mock(return_value=42),
+                         timeout=base_interval)
+    item_6.timed_out_signal.connect(item_6_timeout_mock)
 
     time_of_start = time()
-    updater_instance.add_watched_item(watched_item_1)
+    updater_instance.add_item(item_1)
     assert item_1_timeout_mock.event.wait(base_interval + THRESHOLD)
     assert base_interval < time() - time_of_start < base_interval + THRESHOLD
     stuck_gatherer.event.set()
     stuck_gatherer.event.clear()
 
     time_of_start = time()
-    updater_instance.add_watched_item(watched_item_2)
+    updater_instance.add_item(item_2)
     assert item_2_timeout_mock.event.wait(base_interval + THRESHOLD)
     assert base_interval < time() - time_of_start < base_interval + THRESHOLD
-    updater_instance.set_value(watched_item_2, 42)
+    updater_instance.set_value(item_2, 42)
     # make sure this does not get invalidated
-    updater_instance.cancel_scheduled_invalidation(watched_item_2)
+    updater_instance.cancel_scheduled_invalidation(item_2)
 
     time_of_start = time()
-    updater_instance.add_watched_item(watched_item_3)
+    updater_instance.add_item(item_3)
     assert item_3_timeout_mock.event.wait(base_interval + THRESHOLD)
     assert base_interval < time() - time_of_start < base_interval + THRESHOLD
-    updater_instance.set_value(watched_item_3, 42)
+    updater_instance.set_value(item_3, 42)
     # make sure this does not get invalidated
-    updater_instance.cancel_scheduled_invalidation(watched_item_3)
+    updater_instance.cancel_scheduled_invalidation(item_3)
 
-    updater_instance.add_watched_item(watched_item_4)
+    updater_instance.add_item(item_4)
     sleep(wait_interval)
-    updater_instance.set_value(watched_item_4, 1)
+    updater_instance.set_value(item_4, 1)
     assert not item_4_timeout_mock.event.wait(base_interval + THRESHOLD)
     stuck_gatherer.event.set()
     stuck_gatherer.event.clear()
 
     time_of_start = time()
-    updater_instance.add_watched_item(watched_item_5)
+    updater_instance.add_item(item_5)
     sleep(wait_interval)
     stuck_gatherer.event.set()
     stuck_gatherer.event.clear()
     assert item_5_valid_mock.event.wait(THRESHOLD)
-    updater_instance.invalidate(watched_item_5)
+    updater_instance.invalidate(item_5)
     assert item_5_timeout_mock.event.wait(base_interval + THRESHOLD)
     # It is important that it's not less than the offset interval
     offset_with_threshold = offset_interval + THRESHOLD
@@ -509,7 +489,7 @@ def test_timeouts(updater_instance: ItemUpdater, validator):
     stuck_gatherer.event.set()
     stuck_gatherer.event.clear()
 
-    updater_instance.add_watched_item(watched_item_6)
+    updater_instance.add_item(item_6)
     assert not item_6_timeout_mock.event.wait(base_interval + THRESHOLD)
 
 
@@ -522,22 +502,18 @@ def test_empty_group():
 def test_group_invalidation(updater_instance: ItemUpdater):
     """Test that group invalidation invalidates every member"""
     item_1_invalidated = EventSetMock(spec={})
-    watched_item_1 = WatchedItem("watched_item_1",
-                                 gather_function=Mock(),
-                                 write_function=Mock())
-    watched_item_1.became_invalid_signal.connect(item_1_invalidated)
+    item_1 = WatchedItem("item_1", gather_function=Mock())
+    item_1.became_invalid_signal.connect(item_1_invalidated)
     item_2_invalidated = EventSetMock(spec={})
-    watched_item_2 = WatchedItem("watched_item_2",
-                                 gather_function=Mock(),
-                                 write_function=Mock())
-    watched_item_2.became_invalid_signal.connect(item_2_invalidated)
-    group = WatchedGroup([watched_item_1, watched_item_2])
+    item_2 = WatchedItem("item_2", gather_function=Mock())
+    item_2.became_invalid_signal.connect(item_2_invalidated)
+    group = WatchedGroup([item_1, item_2])
 
     group_validated = EventSetMock(spec={})
     group.became_valid_signal.connect(group_validated)
 
-    updater_instance.add_watched_item(watched_item_1)
-    updater_instance.add_watched_item(watched_item_2)
+    updater_instance.add_item(item_1)
+    updater_instance.add_item(item_2)
 
     assert group_validated.event.wait(THRESHOLD)
 
@@ -548,17 +524,14 @@ def test_group_invalidation(updater_instance: ItemUpdater):
 
 def test_garb(updater_instance: ItemUpdater):
     """
-    Tests that item addressing by an invalid type fails and
-    that that addressing a non existing item throws a key error
-    Test that giving a non tracked item to the Item updater throws an error
+    Tests that addressing a non existing item throws a ValueError error
+    Tests that adding a garbage for tracking fails
     """
-    item = WatchedItem("item", gather_function=Mock(), write_function=Mock())
-    with pytest.raises(TypeError):
-        updater_instance.schedule_invalidation(42)
-    with pytest.raises(KeyError):
-        updater_instance.schedule_invalidation("foo")
+    item = WatchedItem("item", gather_function=Mock())
     with pytest.raises(ValueError):
         updater_instance.schedule_invalidation(item)
+    with pytest.raises(TypeError):
+        updater_instance.add_item(42)
 
 
 def test_valid_group_init(updater_instance: ItemUpdater):
@@ -568,19 +541,15 @@ def test_valid_group_init(updater_instance: ItemUpdater):
     :return:
     """
     item_1_valid = EventSetMock(spec={})
-    watched_item_1 = WatchedItem("watched_item_1",
-                                 gather_function=Mock(),
-                                 write_function=Mock())
-    watched_item_1.became_valid_signal.connect(item_1_valid)
+    item_1 = WatchedItem("item_1", gather_function=Mock())
+    item_1.became_valid_signal.connect(item_1_valid)
 
     item_2_valid = EventSetMock(spec={})
-    watched_item_2 = WatchedItem("watched_item_2",
-                                 gather_function=Mock(),
-                                 write_function=Mock())
-    watched_item_2.became_valid_signal.connect(item_2_valid)
+    item_2 = WatchedItem("item_2", gather_function=Mock())
+    item_2.became_valid_signal.connect(item_2_valid)
 
-    updater_instance.add_watched_item(watched_item_1)
-    updater_instance.add_watched_item(watched_item_2)
+    updater_instance.add_item(item_1)
+    updater_instance.add_item(item_2)
 
     assert item_1_valid.event.wait(THRESHOLD)
     assert item_2_valid.event.wait(THRESHOLD)
@@ -588,11 +557,11 @@ def test_valid_group_init(updater_instance: ItemUpdater):
     group_valid = EventSetMock(spec={})
     group_invalid = EventSetMock(spec={})
 
-    group = WatchedGroup([watched_item_1, watched_item_2])
+    group = WatchedGroup([item_1, item_2])
     group.became_valid_signal.connect(group_valid)
     group.became_valid_signal.connect(group_invalid)
 
-    updater_instance.invalidate(watched_item_1)
+    updater_instance.invalidate(item_1)
 
     assert group_invalid.event.wait(THRESHOLD)
     assert group_valid.event.wait(THRESHOLD)
@@ -604,21 +573,49 @@ def test_valid_item_doesnt_gather(updater_instance: ItemUpdater):
     does not actually gather
     """
     item_1_gather = WaitingMock()
-    watched_item_1 = WatchedItem("watched_item_1",
-                                 gather_function=item_1_gather,
-                                 write_function=Mock())
+    item_1 = WatchedItem("item_1", gather_function=item_1_gather)
 
-    item_2_gather = EventSetMock(return_value=42)
-    watched_item_2 = WatchedItem("watched_item_2",
-                                 gather_function=item_2_gather,
-                                 write_function=Mock())
+    item_2_gather = EventSetMock(spec={}, return_value=69)
+    item_2 = WatchedItem("item_2", gather_function=item_2_gather)
 
-    updater_instance.add_watched_item(watched_item_1)
-    updater_instance.add_watched_item(watched_item_2)
+    updater_instance.add_item(item_1)
+    updater_instance.add_item(item_2)
 
-    updater_instance.set_value(watched_item_2, 42)
+    updater_instance.set_value(item_2, 42)
     item_1_gather.event.set()
 
     # Check that even when the get got unstuck an already valid item
     # does not gather (Or should it?)
     assert not item_2_gather.event.wait(THRESHOLD)
+
+
+def test_subclasses_work(updater_instance: ItemUpdater):
+    """Tests a subclass validates when being added to the Updater"""
+    class MyItem(WatchedItem):
+        """Just a WatchedItem subclass for the test"""
+
+    my_item = MyItem("my_item")
+    updater_instance.add_item(my_item)
+    assert my_item in updater_instance.items
+
+
+def test_disabling(updater_instance: ItemUpdater):
+    """
+    Can we disable and enable the item updating without affecting
+    any interval logic?
+    """
+    item_gather = EventSetMock(spec={})
+    item = WatchedItem("item", gather_function=item_gather, interval=0.2)
+
+    updater_instance.add_item(item, start_tracking=False)
+    assert not item_gather.event.wait(THRESHOLD)
+    assert item.interval == 0.2
+    updater_instance.disable(item)
+    assert item.interval is None
+    item.interval = 0.3
+    assert item.interval is None
+    updater_instance.enable(item)
+    assert item_gather.event.wait(THRESHOLD)
+    assert item.invalidate_at <= time() + item.interval
+    updater_instance.disable(item)
+    assert item.invalidate_at == math.inf

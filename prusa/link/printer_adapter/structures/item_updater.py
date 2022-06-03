@@ -6,7 +6,7 @@ from multiprocessing import Event
 from queue import PriorityQueue, Queue, Empty
 from threading import Thread, RLock
 from time import time
-from typing import Callable, Any, Optional, Union, Iterable
+from typing import Callable, Any, Optional, Iterable
 
 from blinker import Signal  # type: ignore
 
@@ -56,6 +56,8 @@ class WatchedItem(Watchable):
         self.scheduled = False  # Are we scheduled for a value refresh
         # Imprecise timing intended
         self._interval = interval  # If set, gets invalidated each interval
+        self.disabled = False  # If True, the interval is overridden with None
+
         self.on_fail_interval = on_fail_interval  # Refresh reschedule timeout
         self.timeout = timeout  # How long can we be invalid, before timing out
 
@@ -98,12 +100,14 @@ class WatchedItem(Watchable):
 
     @property
     def interval(self):
-        """Gets the gather interval"""
+        """Returns the interval only if the thing is on"""
+        if self.disabled:
+            return None
         return self._interval
 
     @interval.setter
     def interval(self, new_interval):
-        """Sets the gather interval"""
+        """Sets the interval independently of whether the item is off or not"""
         self._interval = new_interval
 
 
@@ -195,7 +199,7 @@ class ItemUpdater:
                                      name="polling_timeout",
                                      daemon=True)
 
-        self.watched_items = {}
+        self.items = set()
 
     def start(self):
         """Starts up the governing threads"""
@@ -215,17 +219,19 @@ class ItemUpdater:
         self.timeout_thread.join()
         self.refresher_thread.join()
 
-    def add_watched_item(self, item: WatchedItem, invalidate=True):
+    def add_item(self, item: WatchedItem, start_tracking=True):
         """
         Only invalid items can be added for now
+        :param item: The item to add to watched ones
+        :param start_tracking: Whether to invalidate the item.
+            Without this, the item does not gather its value and has to be
+            invalidated manually
         """
-        self.watched_items[item.name] = item
-        if invalidate:
+        if not issubclass(type(item), WatchedItem):
+            raise TypeError("Can't track something, that isn't a WatchedItem.")
+        self.items.add(item)
+        if start_tracking:
             self.invalidate(item)
-
-    def get_watched_item(self, name: str) -> WatchedItem:
-        """Get a watched item by its name"""
-        return self.watched_items[name]
 
     def invalidate_group(self, group: WatchedGroup):
         """
@@ -234,7 +240,7 @@ class ItemUpdater:
         for group_item in group:
             self.invalidate(group_item)
 
-    def invalidate(self, ambiguous_item: Union[WatchedItem, str]):
+    def invalidate(self, item: WatchedItem):
         """
         Invalidates the item, putting it into the queue for validation
         If the object has a timeout, sets up the timer for it
@@ -245,7 +251,7 @@ class ItemUpdater:
         If the item already is invalidated but is not scheduled for a refresh,
         it gets scheduled
         """
-        item = self._convert_to_watched_item(ambiguous_item)
+        self._validate_is_tracked(item)
 
         with item.lock:
             log.debug("Item %s has been invalidated", item.name)
@@ -257,14 +263,35 @@ class ItemUpdater:
             if not item.scheduled:
                 self._enqueue_refresh(item)
 
-    def set_value(self, ambiguous_item: Union[WatchedItem, str], value):
+    def disable(self, item: WatchedItem):
+        """Disables the item polling without changing its interval"""
+
+        self._validate_is_tracked(item)
+
+        with item.lock:
+            if item.disabled:
+                return
+            item.disabled = True
+            self.cancel_scheduled_invalidation(item)
+
+    def enable(self, item: WatchedItem):
+        """Enables the item polling without changing its interval"""
+        self._validate_is_tracked(item)
+
+        with item.lock:
+            if not item.disabled:
+                return
+            item.disabled = False
+            self.invalidate(item)
+
+    def set_value(self, item: WatchedItem, value):
         """
         Validates the value and writes it
 
         Forcefully re-schedules invalidation. This can be used to enable
         polling, when auto reporting stops for example
         """
-        item = self._convert_to_watched_item(ambiguous_item)
+        self._validate_is_tracked(item)
 
         with item.lock:
             try:
@@ -285,10 +312,8 @@ class ItemUpdater:
                           item.name, value)
                 self._set_value(item, value)
 
-    def schedule_invalidation(self,
-                              ambiguous_item: Union[WatchedItem, str],
-                              interval=None,
-                              force=False):
+    def schedule_invalidation(self, item: WatchedItem,
+                              interval=None,force=False):
         """
         Schedules an item invalidation at a certain time
         Will not shift already scheduled invalidation unless forced to
@@ -296,8 +321,7 @@ class ItemUpdater:
         If an already invalid item is scheduled for example after a
         gather/validation error, it is just added to the refresh queue without
         emitting any additional signals
-        :param ambiguous_item: The item to schedule invalidation for.
-                     Can be WatchedItem or str
+        :param item: The item to schedule invalidation for.
         :param interval: How long in the future should we invalidate?
                          If left empty, the default is used, if that's None
                          an error will be raised
@@ -305,7 +329,7 @@ class ItemUpdater:
                       re-scheduled unless this is True
 
         """
-        item = self._convert_to_watched_item(ambiguous_item)
+        self._validate_is_tracked(item)
 
         with item.lock:
             if item.invalidate_at != inf and not force:
@@ -329,15 +353,14 @@ class ItemUpdater:
             self.invalidate_timers.put((item.invalidate_at, item))
             self.invalidate_queue_event.set()
 
-    def cancel_scheduled_invalidation(self, ambiguous_item: Union[WatchedItem,
-                                                                  str]):
+    def cancel_scheduled_invalidation(self, item: WatchedItem):
         """
         Cancels the scheduled invalidation. The timer itself cannot
         be cancelled, but the invalidate_at value has to match before
         anything is executed. Changing it to infinity will accomplish
         that nicely
         """
-        item = self._convert_to_watched_item(ambiguous_item)
+        self._validate_is_tracked(item)
 
         with item.lock:
             log.debug("Cancelling scheduled invalidation of item %s ",
@@ -359,18 +382,10 @@ class ItemUpdater:
             item.timed_out_signal.send(item)
             item.val_err_timeout_signal.send(item)
 
-    def _convert_to_watched_item(
-            self, ambiguous_item: Union[WatchedItem, str]) -> WatchedItem:
-        if isinstance(ambiguous_item, str):
-            return self.get_watched_item(ambiguous_item)
-        if isinstance(ambiguous_item, WatchedItem):
-            if ambiguous_item.name not in self.watched_items or \
-                    self.watched_items[ambiguous_item.name] != ambiguous_item:
-                raise ValueError(
-                    f"Item {ambiguous_item.name} is not tracked "
-                    f"by this ItemUpdater instance.", )
-            return ambiguous_item
-        raise TypeError("Supply a WatchedItem or its name")
+    def _validate_is_tracked(self, item: WatchedItem):
+        if item not in self.items:
+            raise ValueError(
+                f"Item {item.name} is not tracked by this instance.")
 
     def _gather(self, item: WatchedItem):
         """
