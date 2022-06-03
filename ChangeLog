@@ -110,6 +110,7 @@
      * Fixed doubled gcode extensions when custom name is used
      * Added nozzle diameter info to api/v1/info
      * TLS is changed from int to bool
+     * Added endpoint for capture an image from a camera
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
