@@ -52,30 +52,6 @@ class InfoGroup(WatchedGroup):
         self.to_send = True
 
 
-class SwitchableWatchedItem(WatchedItem):
-    """
-    A normal watch item where the interval can be turned off,
-    so it returns none, but then turned back on again, so it returns the
-    original value
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.disabled = False
-
-    @property
-    def interval(self):
-        """Returns the interval only if the thing is on"""
-        if self.disabled:
-            return None
-        return self._interval
-
-    @interval.setter
-    def interval(self, new_interval):
-        """Sets the interval independently of whether the item is off or not"""
-        self._interval = new_interval
-
-
 class PrinterPolling:
     """
     Sets up the tracked values for info_updater
@@ -102,11 +78,11 @@ class PrinterPolling:
 
         # Printer info (for init and SEND_INFO)
 
-        self.network_info = SwitchableWatchedItem("network_info",
+        self.network_info = WatchedItem("network_info",
                                         gather_function=self._get_network_info,
                                         write_function=self._set_network_info)
 
-        self.printer_type = SwitchableWatchedItem(
+        self.printer_type = WatchedItem(
             "printer_type",
             gather_function=self._get_printer_type,
             write_function=self._set_printer_type,
@@ -116,7 +92,7 @@ class PrinterPolling:
         self.printer_type.val_err_timeout_signal.connect(
             lambda _: self._set_id_condition(CondState.NOK), weak=False)
 
-        self.firmware_version = SwitchableWatchedItem(
+        self.firmware_version = WatchedItem(
             "firmware_version",
             gather_function=self._get_firmware_version,
             write_function=self._set_firmware_version,
@@ -126,13 +102,13 @@ class PrinterPolling:
         self.firmware_version.val_err_timeout_signal.connect(
             lambda _: self._set_fw_condition(CondState.NOK), weak=False)
 
-        self.nozzle_diameter = SwitchableWatchedItem(
+        self.nozzle_diameter = WatchedItem(
             "nozzle_diameter",
             gather_function=self._get_nozzle_diameter,
             write_function=self._set_nozzle_diameter)
         self.nozzle_diameter.interval = 10
 
-        self.serial_number = SwitchableWatchedItem(
+        self.serial_number = WatchedItem(
             "serial_number",
             gather_function=self._get_serial_number,
             write_function=self._set_serial_number,
@@ -143,12 +119,12 @@ class PrinterPolling:
         self.serial_number.val_err_timeout_signal.connect(
             lambda _: self._set_sn_condition(CondState.NOK), weak=False)
 
-        self.sheet_settings = SwitchableWatchedItem(
+        self.sheet_settings = WatchedItem(
             "sheet_settings",
             gather_function=self._get_sheet_settings
         )
 
-        self.active_sheet = SwitchableWatchedItem(
+        self.active_sheet = WatchedItem(
             "active_sheet",
             gather_function=self.get_active_sheet
         )
@@ -160,7 +136,7 @@ class PrinterPolling:
         ])
 
         for item in self.printer_info:
-            self.item_updater.add_watched_item(item, invalidate=False)
+            self.item_updater.add_item(item, start_tracking=False)
 
         # TODO: Put this outside
         for item in self.printer_info:
@@ -175,7 +151,7 @@ class PrinterPolling:
 
         # Other stuff
 
-        self.job_id = SwitchableWatchedItem(
+        self.job_id = WatchedItem(
             "job_id",
             gather_function=self._get_job_id,
             write_function=self._set_job_id,
@@ -185,20 +161,20 @@ class PrinterPolling:
         self.job_id.val_err_timeout_signal.connect(
             lambda _: self._set_job_id_condition(CondState.NOK), weak=False)
 
-        self.print_mode = SwitchableWatchedItem(
+        self.print_mode = WatchedItem(
             "print_mode",
             gather_function=self._get_print_mode,
             interval=SLOW_POLL_INTERVAL
         )
 
-        self.mbl = SwitchableWatchedItem(
+        self.mbl = WatchedItem(
             "mbl",
             gather_function=self._get_mbl,
             validation_function=self._validate_mbl,
             on_fail_interval=None
         )
 
-        self.flash_air = SwitchableWatchedItem(
+        self.flash_air = WatchedItem(
             "flash_air",
             gather_function=self._get_flash_air,
             write_function=self._set_flash_air,
@@ -208,21 +184,21 @@ class PrinterPolling:
             self.job_id, self.print_mode, self.mbl, self.flash_air])
 
         for item in self.other_stuff:
-            self.item_updater.add_watched_item(item, invalidate=False)
+            self.item_updater.add_item(item, start_tracking=False)
 
         self.item_updater.set_value(self.flash_air, False)
         # Make silent the default for when we fail to get the value in time
         self.item_updater.set_value(self.print_mode, PrintMode.SILENT)
 
         # Telemetry
-        self.speed_multiplier = SwitchableWatchedItem(
+        self.speed_multiplier = WatchedItem(
             "speed_multiplier",
             gather_function=self._get_speed_multiplier,
             write_function=self._set_speed_multiplier,
             validation_function=self._validate_percent,
             interval=FAST_POLL_INTERVAL)
 
-        self.flow_multiplier = SwitchableWatchedItem(
+        self.flow_multiplier = WatchedItem(
             "flow_multiplier",
             gather_function=self._get_flow_multiplier,
             write_function=self._set_flow_multiplier,
@@ -234,26 +210,26 @@ class PrinterPolling:
         # Only the progress gets an interval
         # Its gatherer sets all the other values manually while other
         # get set in cascade, converted from sooner acquired values
-        self.print_progress = SwitchableWatchedItem(
+        self.print_progress = WatchedItem(
             "print_progress",
             gather_function=self._get_print_info,
             validation_function=self._validate_progress,
             write_function=self._set_print_progress
         )
 
-        self.progress_broken = SwitchableWatchedItem("progress_broken")
+        self.progress_broken = WatchedItem("progress_broken")
         self.print_progress.validation_error_signal.connect(
             lambda: self.item_updater.set_value(self.progress_broken, True))
         self.print_progress.became_valid_signal.connect(
             lambda: self.item_updater.set_value(self.progress_broken, False
                                                 ))
 
-        self.time_remaining = SwitchableWatchedItem(
+        self.time_remaining = WatchedItem(
             "time_remaining",
             validation_function=self._validate_time_till,
             write_function=self._set_time_remaining)
 
-        self.filament_change_in = SwitchableWatchedItem(
+        self.filament_change_in = WatchedItem(
             "filament_change_in",
             validation_function=self._validate_time_till,
             write_function=self._set_filament_change_in,
@@ -263,33 +239,33 @@ class PrinterPolling:
         # M27 results
         # These are sometimes auto reported, but due to some technical
         # limitations, I'm not able to read them when auto reported
-        self.print_state = SwitchableWatchedItem("print_state",
+        self.print_state = WatchedItem("print_state",
                                        gather_function=self._get_m27,
                                        interval=FAST_POLL_INTERVAL,
                                        on_fail_interval=SLOW_POLL_INTERVAL)
 
         # short (8.3) folder names, long file name (52 chars)
-        self.mixed_path = SwitchableWatchedItem("mixed_path")
+        self.mixed_path = WatchedItem("mixed_path")
 
-        self.byte_position = SwitchableWatchedItem("byte_position")
+        self.byte_position = WatchedItem("byte_position")
 
-        self.progress_from_bytes = SwitchableWatchedItem(
+        self.progress_from_bytes = WatchedItem(
             "progress_from_bytes",
             write_function=self._set_progress_from_bytes)
         self.byte_position.value_changed_signal.connect(
             self._get_progress_from_byte_position)
 
-        self.sd_seconds_printing = SwitchableWatchedItem(
+        self.sd_seconds_printing = WatchedItem(
             "sd_seconds_printing",
             write_function=self._set_sd_seconds_printing)
 
-        self.total_filament = SwitchableWatchedItem(
+        self.total_filament = WatchedItem(
             "total_filament",
             gather_function=self._get_total_filament,
             write_function=self._set_total_filament,
             on_fail_interval=SLOW_POLL_INTERVAL)
 
-        self.total_print_time = SwitchableWatchedItem(
+        self.total_print_time = WatchedItem(
             "total_print_time",
             gather_function=self._get_total_print_time,
             write_function=self._set_total_print_time,
@@ -311,7 +287,7 @@ class PrinterPolling:
         ])
 
         for item in self.telemetry:
-            self.item_updater.add_watched_item(item, invalidate=False)
+            self.item_updater.add_item(item, start_tracking=False)
 
         self.invalidate_printer_info()
 
@@ -330,9 +306,9 @@ class PrinterPolling:
     def invalidate_printer_info(self):
         """Invalidates all unnecessary watched items"""
         for item in *self.telemetry, *self.other_stuff, *self.printer_info:
-            self._disable(item)
+            self.item_updater.disable(item)
 
-        self._enable(self.printer_type)
+        self.item_updater.disable(self.printer_type)
         self.item_updater.invalidate_group(self.printer_info)
 
     def invalidate_network_info(self):
@@ -364,20 +340,6 @@ class PrinterPolling:
         elif item.interval is not None:
             self.item_updater.schedule_invalidation(item)
         item.interval = interval
-
-    def _disable(self, item: SwitchableWatchedItem):
-        """Disables the item polling without changing its interval"""
-        if item.disabled:
-            return
-        item.disabled = True
-        self.item_updater.cancel_scheduled_invalidation(item)
-
-    def _enable(self, item: SwitchableWatchedItem):
-        """Enables the item polling without changing its interval"""
-        if not item.disabled:
-            return
-        item.disabled = False
-        self.item_updater.invalidate(item)
 
     def polling_not_ok(self):
         """Stops polling of some values"""
@@ -414,8 +376,7 @@ class PrinterPolling:
                 self.job.write()
                 self.ensure_job_id()
 
-        self.item_updater.schedule_invalidation(ambiguous_item=self.job_id,
-                                                interval=1)
+        self.item_updater.schedule_invalidation(self.job_id, interval=1)
         self.job_id.became_valid_signal.connect(job_became_valid)
 
     # -- Gather --
@@ -970,7 +931,7 @@ class PrinterPolling:
         """
         Printer type became valid, set the condition and enable the fw check
         """
-        self._enable(self.firmware_version)
+        self.item_updater.enable(self.firmware_version)
         self._set_id_condition(CondState.OK)
 
     def _firmware_version_became_valid(self, _):
@@ -978,7 +939,7 @@ class PrinterPolling:
         Firmware version became valid, enable polling of the rest of the info
         """
         for item in self.printer_info:
-            self._enable(item)
+            self.item_updater.enable(item)
         self._set_fw_condition(CondState.OK)
 
     def _printer_info_became_valid(self, _):
@@ -988,7 +949,7 @@ class PrinterPolling:
         """
         self._send_info_if_changed()
         for item in *self.telemetry, *self.other_stuff:
-            self._enable(item)
+            self.item_updater.enable(item)
 
     def _send_info_if_changed(self):
         """
