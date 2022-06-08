@@ -26,7 +26,7 @@ from .lib.auth import check_api_digest, check_config, REALM
 from .lib.view import package_to_api
 from .lib.files import get_os_path, gcode_analysis, gcode_analysis_sd
 
-from ..const import LOGS_PATH, LOGS_FILES, GZ_SUFFIX, LOCAL_MOUNT_NAME, \
+from ..const import LOGS_PATH, LOGS_FILES, GZ_SUFFIX, LOCAL_STORAGE_NAME, \
     instance_id
 from ..printer_adapter.job import JobState, Job
 from ..printer_adapter.command import CommandFailed
@@ -214,10 +214,10 @@ def api_printer(req):
     tel = prusa_link.model.latest_telemetry
     sd_ready = prusa_link.sd_ready
     printer = prusa_link.printer
-    mounts = printer.fs.mounts
+    storage_dict = printer.fs.storage_dict
     operational = printer.state in (State.IDLE, State.FINISHED, State.STOPPED)
 
-    space_info = mounts[LOCAL_MOUNT_NAME].get_space_info()
+    space_info = storage_dict[LOCAL_STORAGE_NAME].get_space_info()
     free_space = space_info["free_space"]
     total_space = space_info["total_space"]
     return JSONResponse(

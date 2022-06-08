@@ -22,7 +22,7 @@ from ..structures.model_classes import SDState
 from ..structures.module_data_classes import SDCardData
 from ..structures.regular_expressions import SD_PRESENT_REGEX, \
     SD_EJECTED_REGEX, LFN_CAPTURE
-from ...const import SD_INTERVAL, SD_FILESCAN_INTERVAL, SD_MOUNT_NAME, \
+from ...const import SD_INTERVAL, SD_FILESCAN_INTERVAL, SD_STORAGE_NAME, \
     SFN_TO_LFN_EXTENSIONS, MAX_FILENAME_LENGTH
 from ..updatable import ThreadedUpdatable
 from ...util import fat_datetime_to_tuple
@@ -48,7 +48,7 @@ def alternative_filename(long_filename: str,
 
 def get_root():
     """Gets the root node for sd card files"""
-    return SDFile(name=SD_MOUNT_NAME, is_dir=True, ro=True)
+    return SDFile(name=SD_STORAGE_NAME, is_dir=True, ro=True)
 
 
 class FileTreeParser:
@@ -208,8 +208,8 @@ class SDCard(ThreadedUpdatable):
 
         self.tree_updated_signal = Signal()  # kwargs: tree: FileTree
         self.state_changed_signal = Signal()  # kwargs: sd_state: SDState
-        self.sd_mounted_signal = Signal()  # kwargs: files: SDFile
-        self.sd_unmounted_signal = Signal()
+        self.sd_attached_signal = Signal()  # kwargs: files: SDFile
+        self.sd_detached_signal = Signal()
 
         self.serial_parser = serial_parser
         self.serial_parser.add_handler(SD_PRESENT_REGEX, self.sd_inserted)
@@ -361,7 +361,7 @@ class SDCard(ThreadedUpdatable):
     def _sd_state_changed(self, new_state):
         """
         Transforms the internal state changes to Signals about sd card
-        (un)mounting. Also sets the internal state to the supplied one
+        attaching/detaching. Also sets the internal state to the supplied one
         :param new_state: the state to switch to
         """
         assert self.lock.locked()
@@ -371,12 +371,12 @@ class SDCard(ThreadedUpdatable):
         if self.data.sd_state in {SDState.INITIALISING, SDState.UNSURE} and \
                 new_state == SDState.PRESENT:
             log.debug("SD Card inserted")
-            self.sd_mounted_signal.send(self, files=self.data.files)
+            self.sd_attached_signal.send(self, files=self.data.files)
 
         elif self.data.sd_state == SDState.PRESENT and \
                 new_state in {SDState.ABSENT, SDState.INITIALISING}:
             log.debug("SD Card removed")
-            self.sd_unmounted_signal.send(self)
+            self.sd_detached_signal.send(self)
             self._set_files(FileTreeParser(matches=[]))
 
         self.data.sd_state = new_state

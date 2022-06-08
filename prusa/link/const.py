@@ -102,10 +102,10 @@ STATS_EVERY = 100
 TAIL_COMMANDS = 10  # how many commands after the last progress report
 PRINT_QUEUE_SIZE = 4
 
-# --- Mountpoints ---
+# --- Storage ---
 MAX_FILENAME_LENGTH = 52
-SD_MOUNT_NAME = "SD Card"
-LOCAL_MOUNT_NAME = "PrusaLink gcodes"
+SD_STORAGE_NAME = "SD Card"
+LOCAL_STORAGE_NAME = "PrusaLink gcodes"
 BLACKLISTED_TYPES: List[str] = []
 BLACKLISTED_PATHS = [
     "/dev",
@@ -113,7 +113,7 @@ BLACKLISTED_PATHS = [
     "/proc",
     "/tmp",
 ]
-BLACKLISTED_NAMES = [SD_MOUNT_NAME]
+BLACKLISTED_NAMES = [SD_STORAGE_NAME]
 SFN_TO_LFN_EXTENSIONS = {"GCO": "gcode", "G": "g", "GC": "gc"}
 
 RESET_PIN = 22  # RPi gpio pin for resetting printer

@@ -1,7 +1,7 @@
 """
 Contains implementation of the  controller for interfacing with the storage
 "subsystem", which included the linux filesystem and sd card file management,
-now only sd card and mountpoint tracking remain
+now only sd card and storage tracking remain
 """
 import logging
 from typing import Optional
@@ -10,7 +10,7 @@ from blinker import Signal  # type: ignore
 
 from prusa.connect.printer.files import File
 
-from .mounts import FSMounts, DirMounts
+from .storage import FilesystemStorage, FolderStorage
 from .sd_card import SDCard
 from ..state_manager import StateManager
 from ...serial.serial_queue import SerialQueue
@@ -31,10 +31,10 @@ class StorageController:
     def __init__(self, cfg, serial_queue: SerialQueue,
                  serial_parser: SerialParser, state_manager: StateManager,
                  model: Model):
-        self.dir_mounted_signal = Signal()
-        self.dir_unmounted_signal = Signal()
-        self.sd_mounted_signal = Signal()
-        self.sd_unmounted_signal = Signal()
+        self.folder_attached_signal = Signal()
+        self.folder_detached_signal = Signal()
+        self.sd_attached_signal = Signal()
+        self.sd_detached_signal = Signal()
 
         self.serial_parser = serial_parser
         self.serial_queue: SerialQueue = serial_queue
@@ -43,58 +43,58 @@ class StorageController:
 
         self.sd_card = SDCard(self.serial_queue, self.serial_parser,
                               self.state_manager, self.model)
-        self.sd_card.sd_mounted_signal.connect(self.sd_mounted)
-        self.sd_card.sd_unmounted_signal.connect(self.sd_unmounted)
+        self.sd_card.sd_attached_signal.connect(self.sd_attached)
+        self.sd_card.sd_detached_signal.connect(self.sd_detached)
 
-        self.fs_mounts = FSMounts(self.model, cfg)
-        self.dir_mounts = DirMounts(self.model, cfg)
-        self.fs_mounts.mounted_signal.connect(self.dir_mounted)
-        self.fs_mounts.unmounted_signal.connect(self.dir_unmounted)
-        self.dir_mounts.mounted_signal.connect(self.dir_mounted)
-        self.dir_mounts.unmounted_signal.connect(self.dir_unmounted)
+        self.filesystem_storage = FilesystemStorage(self.model, cfg)
+        self.folder_storage = FolderStorage(self.model, cfg)
+        self.filesystem_storage.attached_signal.connect(self.folder_attached)
+        self.filesystem_storage.detached_signal.connect(self.folder_detached)
+        self.folder_storage.attached_signal.connect(self.folder_attached)
+        self.folder_storage.detached_signal.connect(self.folder_detached)
 
         self.sd_tree: Optional[SDFile] = None
 
-    def dir_mounted(self, sender, path: str):
+    def folder_attached(self, sender, path: str):
         """Signal pass-through"""
         assert sender is not None
-        self.dir_mounted_signal.send(self, path=path)
+        self.folder_attached_signal.send(self, path=path)
 
-    def dir_unmounted(self, sender, path: str):
+    def folder_detached(self, sender, path: str):
         """Signal pass-through"""
         assert sender is not None
-        self.dir_unmounted_signal.send(self, path=path)
+        self.folder_detached_signal.send(self, path=path)
 
-    def sd_mounted(self, sender, files: File):
+    def sd_attached(self, sender, files: File):
         """Signal pass-through"""
         assert sender is not None
-        self.sd_mounted_signal.send(self, files=files)
+        self.sd_attached_signal.send(self, files=files)
 
-    def sd_unmounted(self, sender):
+    def sd_detached(self, sender):
         """Signal pass-through"""
         assert sender is not None
-        self.sd_unmounted_signal.send(self)
+        self.sd_detached_signal.send(self)
 
     def update(self):
         """Passes the call to update() to all its submodules"""
         self.sd_card.update()
-        self.fs_mounts.update()
-        self.dir_mounts.update()
+        self.filesystem_storage.update()
+        self.folder_storage.update()
 
     def start(self):
         """Starts submodules"""
         self.sd_card.start()
-        self.fs_mounts.start()
-        self.dir_mounts.start()
+        self.filesystem_storage.start()
+        self.folder_storage.start()
 
     def stop(self):
         """Stops submodules"""
         self.sd_card.stop()
-        self.fs_mounts.stop()
-        self.dir_mounts.stop()
+        self.filesystem_storage.stop()
+        self.folder_storage.stop()
 
     def wait_stopped(self):
         """SWait for storage submodules to quit"""
         self.sd_card.wait_stopped()
-        self.fs_mounts.wait_stopped()
-        self.dir_mounts.wait_stopped()
+        self.filesystem_storage.wait_stopped()
+        self.folder_storage.wait_stopped()
