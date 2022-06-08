@@ -12,7 +12,7 @@ from .structures.module_data_classes import JobData
 from ..serial.serial_parser import SerialParser
 from .model import Model
 from ..const import PRINTING_STATES, \
-    JOB_ENDING_STATES, BASE_STATES, JOB_ONGOING_STATES, SD_MOUNT_NAME
+    JOB_ENDING_STATES, BASE_STATES, JOB_ONGOING_STATES, SD_STORAGE_NAME
 from .structures.mc_singleton import MCSingleton
 from .structures.model_classes import JobState
 from .structures.regular_expressions import OPEN_RESULT_REGEX
@@ -74,12 +74,12 @@ class Job(metaclass=MCSingleton):
             self.set_file_path(
                 self.model.sd_card.mixed_to_lfn_paths[mixed_path.lower()],
                 path_incomplete=False,
-                prepend_sd_mountpoint=True)
+                prepend_sd_storage=True)
         else:
             log.debug("It has not been found in the SD card file tree.")
             self.set_file_path(mixed_path,
                                path_incomplete=True,
-                               prepend_sd_mountpoint=True)
+                               prepend_sd_storage=True)
 
     def job_started(self, command_id=None):
         """
@@ -150,24 +150,24 @@ class Job(metaclass=MCSingleton):
                             f"D3 Ax0D05 X{self.data.job_id:08x}",
                             to_front=True)
 
-    def set_file_path(self, path, path_incomplete, prepend_sd_mountpoint):
+    def set_file_path(self, path, path_incomplete, prepend_sd_storage):
         """
         Decides if the supplied file path is better, than what we had
         previously, and updates the job info file parameters accordingly
         :param path: the path/file name to assign to the job
         :param path_incomplete: flag for distinguishing between paths which
         could not be linked to an SD file and those which could
-        :param prepend_sd_mountpoint: Whether to prepend the SD Card
-        mountpoint name
+        :param prepend_sd_storage: Whether to prepend the SD Card
+        storage name
         """
-        # If asked to, prepend the SD mount name
-        if prepend_sd_mountpoint:
+        # If asked to, prepend the SD storage name
+        if prepend_sd_storage:
             # Path joins don't work on paths with leading slashes
             if path.startswith("/"):
                 path = path[1:]
-            log.debug("prepending %s, result = %s", SD_MOUNT_NAME,
-                      os.path.join(f"/{SD_MOUNT_NAME}", path))
-            path = os.path.join(f"/{SD_MOUNT_NAME}", path)
+            log.debug("prepending %s, result = %s", SD_STORAGE_NAME,
+                      os.path.join(f"/{SD_STORAGE_NAME}", path))
+            path = os.path.join(f"/{SD_STORAGE_NAME}", path)
 
         log.debug(
             "Processing a file path: %s, incomplete path=%s, "
@@ -190,7 +190,7 @@ class Job(metaclass=MCSingleton):
                     if 'size' in file_obj.attrs:
                         self.data.selected_file_size = \
                             file_obj.attrs["size"]
-            if path.startswith(os.path.join("/", SD_MOUNT_NAME)):
+            if path.startswith(os.path.join("/", SD_STORAGE_NAME)):
                 self.model.job.from_sd = True
             self.job_info_updated()
 
@@ -264,13 +264,13 @@ class Job(metaclass=MCSingleton):
         For Octoprint API to select a file to print
         supply only existing file paths
 
-        :param path: The connect path to a file, including the mountpoint name
+        :param path: The connect path to a file, including the storage name
         """
         if self.printer.fs.get(path) is None:
             raise RuntimeError(f"Cannot select a non existing file {path}")
         self.set_file_path(path,
                            path_incomplete=False,
-                           prepend_sd_mountpoint=False)
+                           prepend_sd_storage=False)
 
     def deselect_file(self):
         """

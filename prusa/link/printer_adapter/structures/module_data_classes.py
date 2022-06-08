@@ -94,12 +94,12 @@ class SDCardData(BaseModel):
     mixed_to_lfn_paths: Dict[str, str]
 
 
-class MountsData(BaseModel):
-    """Data of the Mounts class"""
+class StorageData(BaseModel):
+    """Data of the Storage class"""
     blacklisted_paths: List[str]
     blacklisted_names: List[str]
-    configured_mounts: Set[str]
-    mounted_set: Set[str]
+    configured_storage: Set[str]
+    attached_set: Set[str]
 
 
 class PrintStatsData(BaseModel):

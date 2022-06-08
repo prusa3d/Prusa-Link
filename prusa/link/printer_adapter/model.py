@@ -4,7 +4,7 @@ from .structures.mc_singleton import MCSingleton
 from .structures.model_classes import Telemetry
 from .structures.module_data_classes import \
     FilePrinterData, StateManagerData, JobData, IPUpdaterData, SDCardData, \
-    MountsData, PrintStatsData
+    StorageData, PrintStatsData
 
 
 class Model(metaclass=MCSingleton):
@@ -25,5 +25,5 @@ class Model(metaclass=MCSingleton):
         self.job: JobData
         self.ip_updater: IPUpdaterData
         self.sd_card: SDCardData
-        self.dir_mounts: MountsData
-        self.fs_mounts: MountsData
+        self.folder_storage: StorageData
+        self.filesystem_storage: StorageData

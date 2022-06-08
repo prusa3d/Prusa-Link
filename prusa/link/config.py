@@ -153,7 +153,7 @@ class Config(Get):
                     ("port", str, "/dev/ttyAMA0"),
                     ("baudrate", int, 115200),
                     ("settings", str, "./prusa_printer_settings.ini"),
-                    ("mountpoints", tuple, [], ':'),
+                    ("storage", tuple, [], ':'),
                     # relative to HOME
                     ("directories", tuple, ("./PrusaLink gcodes", ), ':'),
                 )))

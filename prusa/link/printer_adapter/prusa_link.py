@@ -43,7 +43,7 @@ from .model import Model
 from ..service_discovery import ServiceDiscovery
 from .structures.item_updater import WatchedItem
 from .structures.model_classes import Telemetry, PrintState
-from ..const import PRINTING_STATES, SD_MOUNT_NAME, PATH_WAIT_TIMEOUT, \
+from ..const import PRINTING_STATES, SD_STORAGE_NAME, PATH_WAIT_TIMEOUT, \
     BASE_STATES, MK25_PRINTERS, PRINTER_CONF_TYPES, PRINTER_TYPES
 from .structures.regular_expressions import \
     PRINTER_BOOT_REGEX, PAUSE_PRINT_REGEX, \
@@ -134,7 +134,7 @@ class PrusaLink:
         self.print_stats = PrintStats(self.model)
         self.file_printer = FilePrinter(self.serial_queue, self.serial_parser,
                                         self.model, self.cfg, self.print_stats)
-        self.storage = StorageController(cfg, self.serial_queue,
+        self.storage_controller = StorageController(cfg, self.serial_queue,
                                          self.serial_parser,
                                          self.state_manager, self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
@@ -145,7 +145,7 @@ class PrusaLink:
                                               self.model,
                                               self.telemetry_passer,
                                               self.job,
-                                              self.storage.sd_card,
+                                              self.storage_controller.sd_card,
                                               self.settings)
         self.command_queue = CommandQueue()
 
@@ -184,10 +184,12 @@ class PrusaLink:
             self.file_printer_finished_printing)
         self.file_printer.byte_position_signal.connect(
             self.byte_position_changed)
-        self.storage.dir_mounted_signal.connect(self.dir_mount)
-        self.storage.dir_unmounted_signal.connect(self.dir_unmount)
-        self.storage.sd_mounted_signal.connect(self.sd_mount)
-        self.storage.sd_unmounted_signal.connect(self.sd_unmount)
+        self.storage_controller.folder_attached_signal.\
+            connect(self.folder_attach)
+        self.storage_controller.folder_detached_signal.\
+            connect(self.folder_dettach)
+        self.storage_controller.sd_attached_signal.connect(self.sd_attach)
+        self.storage_controller.sd_detached_signal.connect(self.sd_dettach)
         self.printer_polling.printer_type.became_valid_signal.connect(
             self.printer_type_changed)
         self.printer_polling.print_state.became_valid_signal.connect(
@@ -220,7 +222,7 @@ class PrusaLink:
         self.auto_telemetry.start()
 
         self.printer_polling.start()
-        self.storage.start()
+        self.storage_controller.start()
         self.ip_updater.start()
         self.lcd_printer.start()
         self.command_queue.start()
@@ -292,7 +294,7 @@ class PrusaLink:
         self.printer.stop_loop()
         self.printer.indicate_stop()
         self.printer_polling.stop()
-        self.storage.stop()
+        self.storage_controller.stop()
         self.lcd_printer.stop(fast)
         # This is for pylint to stop complaining, I'd like stop(fast) more
         if fast:
@@ -319,7 +321,7 @@ class PrusaLink:
             self.telemetry_passer.wait_stopped()
             self.printer.wait_stopped()
             self.printer_polling.wait_stopped()
-            self.storage.wait_stopped()
+            self.storage_controller.wait_stopped()
             self.lcd_printer.wait_stopped()
             self.ip_updater.wait_stopped()
             self.auto_telemetry.wait_stopped()
@@ -664,25 +666,25 @@ class PrusaLink:
         assert sender is not None
         self.printer_polling.invalidate_network_info()
 
-    def dir_mount(self, sender, path):
-        """Connects a dir being mounted to PrusaConnect events"""
+    def folder_attach(self, sender, path):
+        """Connects a folder being attached to PrusaConnect events"""
         assert sender is not None
-        self.printer.mount(path, os.path.basename(path))
+        self.printer.attach(path, os.path.basename(path))
 
-    def dir_unmount(self, sender, path):
-        """Connects a dir being unmounted to PrusaConnect events"""
+    def folder_dettach(self, sender, path):
+        """Connects a folder being dettached to PrusaConnect events"""
         assert sender is not None
-        self.printer.unmount(os.path.basename(path))
+        self.printer.dettach(os.path.basename(path))
 
-    def sd_mount(self, sender, files: File):
-        """Connects the sd being mounted to PrusaConnect events"""
+    def sd_attach(self, sender, files: File):
+        """Connects the sd being attached to PrusaConnect events"""
         assert sender is not None
-        self.printer.fs.mount(SD_MOUNT_NAME, files, "", use_inotify=False)
+        self.printer.fs.attach(SD_STORAGE_NAME, files, "", use_inotify=False)
 
-    def sd_unmount(self, sender):
-        """Connects the sd being unmounted to PrusaConnect events"""
+    def sd_dettach(self, sender):
+        """Connects the sd being detached to PrusaConnect events"""
         assert sender is not None
-        self.printer.fs.unmount(SD_MOUNT_NAME)
+        self.printer.fs.dettach(SD_STORAGE_NAME)
 
     def instruction_confirmed(self, sender):
         """

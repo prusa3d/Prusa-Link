@@ -6,7 +6,7 @@ from prusa.connect.printer.metadata import FDMMetaData, estimated_to_seconds
 from prusa.connect.printer.const import GCODE_EXTENSIONS
 
 from .core import app
-from ...const import SD_MOUNT_NAME
+from ...const import SD_STORAGE_NAME
 
 
 def get_os_path(abs_path):
@@ -25,9 +25,9 @@ def get_os_path(abs_path):
     if not file_:
         return None
     abs_path = abs_path.strip(file_system.sep)
-    mount_name = abs_path.split(file_system.sep)[0]
-    mount = file_system.mounts[mount_name]
-    return file_.abs_path(mount.path_storage)
+    storage_name = abs_path.split(file_system.sep)[0]
+    storage = file_system.storage_dict[storage_name]
+    return file_.abs_path(storage.path_storage)
 
 
 def local_refs(path, thumbnails):
@@ -145,7 +145,7 @@ def file_to_api(node, origin='local', path='/', sort_by='folder,date'):
         result['size'] = node['size']
 
     if node['type'] == 'DIR':
-        if name == SD_MOUNT_NAME:
+        if name == SD_STORAGE_NAME:
             origin = 'sdcard'
 
         result['type'] = 'folder'

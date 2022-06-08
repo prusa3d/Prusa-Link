@@ -12,7 +12,7 @@ from typing import Callable
 
 import unidecode
 
-from .const import SD_MOUNT_NAME
+from .const import SD_STORAGE_NAME
 
 log = logging.getLogger(__name__)
 
@@ -121,8 +121,8 @@ def get_gcode(line):
 
 
 def file_is_on_sd(path_parts):
-    """Checks if the file path starts wit the sd cards' mount point name"""
-    return path_parts[1] == SD_MOUNT_NAME
+    """Checks if the file path starts wit the sd cards' storage name"""
+    return path_parts[1] == SD_STORAGE_NAME
 
 
 def make_fingerprint(sn):

@@ -58,8 +58,8 @@ class NetworkInfo(BaseModel):
 class FileType(Enum):
     """File type enum"""
     FILE = "FILE"
-    DIR = "DIR"
-    MOUNT = "MOUNT"
+    FOLDER = "FOLDER"
+    STORAGE = "STORAGE"
 
 
 class JobState(Enum):
