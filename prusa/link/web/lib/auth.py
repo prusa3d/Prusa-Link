@@ -12,6 +12,7 @@ from .core import app
 
 from ...printer_adapter.structures.regular_expressions import \
     VALID_USERNAME_REGEX, VALID_PASSWORD_REGEX
+from ...util import make_fingerprint
 
 log = logging.getLogger(__name__)
 
@@ -56,8 +57,16 @@ def check_api_digest(func):
     @wraps(func)
     def handler(req, *args, **kwargs):
         prusa_link = app.daemon.prusa_link
+        printer = prusa_link.printer
+
+        actual_fingerprint = make_fingerprint(printer.sn)
         if not prusa_link or not prusa_link.printer:
             raise HTTPException(state.HTTP_SERVICE_UNAVAILABLE)
+
+        if prusa_link.printer.fingerprint != actual_fingerprint:
+            res = Response(data="Different printer.",
+                           status_code=state.HTTP_FORBIDDEN)
+            raise HTTPException(res)
 
         if 'X-Api-Key' not in req.headers:
             check_digest(req)
