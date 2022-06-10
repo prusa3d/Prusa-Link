@@ -135,7 +135,7 @@ LOGS_FILES = ("auth.log", "daemon.log", "kern.log", "messages", "syslog",
 # --- Hardware limits for commands ---
 with open(path.join(DATA_PATH, "limits.json"), "r", encoding='utf-8') as file:
     limits = load(file)
-    limits_mk3 = limits['printer_types'][6]['parameters']
+    limits_mk3 = limits['printer_types'][0]['parameters']
 
 FEEDRATE_X = limits_mk3['feedrate_x']
 FEEDRATE_Y = limits_mk3['feedrate_y']

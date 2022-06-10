@@ -118,6 +118,124 @@
       "subversion": 1,
       "type": 1,
       "version": 3
+    },
+    {
+      "id": "1.2.5",
+      "is_manipulator": false,
+      "name": "Original Prusa i3 MK2.5",
+      "parameters": {
+        "extrusion": {
+          "max": 100,
+          "min": -10
+        },
+        "feedrate_e": {
+          "max": 100,
+          "min": 0
+        },
+        "feedrate_x": {
+          "max": 2700,
+          "min": 0
+        },
+        "feedrate_y": {
+          "max": 2700,
+          "min": 0
+        },
+        "feedrate_z": {
+          "max": 1000,
+          "min": 0
+        },
+        "min_temp_nozzle_e": 160,
+        "position_x": {
+          "max": 255,
+          "min": 0
+        },
+        "position_y": {
+          "max": 212.5,
+          "min": -4
+        },
+        "position_z": {
+          "max": 210,
+          "min": 0.15
+        },
+        "print_flow": {
+          "max": 999,
+          "min": 10
+        },
+        "print_speed": {
+          "max": 999,
+          "min": 10
+        },
+        "temp_bed": {
+          "max": 125,
+          "min": 0
+        },
+        "temp_nozzle": {
+          "max": 305,
+          "min": 0
+        }
+      },
+      "subversion": 0,
+      "type": 1,
+      "version": 2
+    },
+    {
+      "id": "1.2.6",
+      "is_manipulator": false,
+      "name": "Original Prusa i3 MK2.5S",
+      "parameters": {
+        "extrusion": {
+          "max": 100,
+          "min": -10
+        },
+        "feedrate_e": {
+          "max": 100,
+          "min": 0
+        },
+        "feedrate_x": {
+          "max": 2700,
+          "min": 0
+        },
+        "feedrate_y": {
+          "max": 2700,
+          "min": 0
+        },
+        "feedrate_z": {
+          "max": 1000,
+          "min": 0
+        },
+        "min_temp_nozzle_e": 160,
+        "position_x": {
+          "max": 255,
+          "min": 0
+        },
+        "position_y": {
+          "max": 212.5,
+          "min": -4
+        },
+        "position_z": {
+          "max": 210,
+          "min": 0.15
+        },
+        "print_flow": {
+          "max": 999,
+          "min": 10
+        },
+        "print_speed": {
+          "max": 999,
+          "min": 10
+        },
+        "temp_bed": {
+          "max": 125,
+          "min": 0
+        },
+        "temp_nozzle": {
+          "max": 305,
+          "min": 0
+        }
+      },
+      "subversion": 1,
+      "type": 1,
+      "version": 2
     }
   ]
 }
