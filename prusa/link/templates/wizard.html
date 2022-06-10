@@ -29,7 +29,7 @@
             {% set printer = wizard.daemon.prusa_link.printer %}
 
             <div class="img-center">
-                <img src="img/printers/{{ printer.type }}.svg" height="200" width="200" />
+                <img src="img/printers/{{ printer.type if printer.type else 'unknown_printer' }}.svg" height="200" width="200" />
             </div>
 
             <h2 class="align-center">{{ printer.type | printer_type }}</h2>
