@@ -181,11 +181,18 @@ def api_tool(req):
 
         # Compability with OctoPrint, which uses more tools, here only tool0
         tool = targets['tool0']
-        if tool > TEMP_NOZZLE['max']:
 
+        if not TEMP_NOZZLE['min'] <= tool <= TEMP_NOZZLE['max']:
             status = state.HTTP_BAD_REQUEST
-            title = "Temperature too high"
-            msg = f"Maximum nozzle temperature is {TEMP_NOZZLE['max']}°C"
+
+            if tool < TEMP_BED['min']:
+                title = "Temperature too low"
+                msg = f"Minimum nozzle temperature is {TEMP_NOZZLE['min']}°C"
+
+            elif tool > TEMP_BED['max']:
+                title = "Temperature too high"
+                msg = f"Maximum nozzle temperature is {TEMP_NOZZLE['max']}°C"
+
             errors_ = {
                 'title': title,
                 'message': msg
@@ -218,11 +225,17 @@ def api_bed(req):
     target = req.json.get('target')
 
     if command == 'target':
-        if target > TEMP_BED['max']:
-
+        if not TEMP_BED['min'] <= target <= TEMP_BED['max']:
             status = state.HTTP_BAD_REQUEST
-            title = "Temperature too high"
-            msg = f"Maximum heatbed temperature is {TEMP_BED['max']}°C"
+
+            if target < TEMP_BED['min']:
+                title = "Temperature too low"
+                msg = f"Minimum heatbed temperature is {TEMP_BED['min']}°C"
+
+            elif target > TEMP_BED['max']:
+                title = "Temperature too high"
+                msg = f"Maximum heatbed temperature is {TEMP_BED['max']}°C"
+
             errors_ = {
                 'title': title,
                 'message': msg
