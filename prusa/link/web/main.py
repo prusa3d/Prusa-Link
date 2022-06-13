@@ -491,6 +491,10 @@ def api_system_commands_execute(req, source, action):
 @check_api_digest
 def camera_capture(req):
     """Capture an image from a camera and return it in endpoint"""
+    camera = app.daemon.prusa_link.printer.camera
+    if not camera:
+        return JSONResponse(status_code=state.HTTP_CONFLICT, message="Camera is not available")
+
     resolution = req.json.get('resolution')
     if resolution:
         width = resolution.get('width')
@@ -499,7 +503,6 @@ def camera_capture(req):
         width = 640
         height = 640
 
-    camera = app.daemon.prusa_link.printer.camera
     camera.resolution = (width, height)
     byte_stream = BytesIO()
 
