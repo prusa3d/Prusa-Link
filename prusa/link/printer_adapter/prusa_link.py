@@ -51,7 +51,7 @@ from .structures.regular_expressions import \
 from ..util import make_fingerprint, get_print_stats_gcode
 from .updatable import prctl_name, Thread
 from ..config import Config, Settings
-from ..conditions import HW, UPGRADED, use_connect_errors
+from ..conditions import HW, UPGRADED, use_connect_errors, ROOT_COND
 from ..sdk_augmentation.printer import MyPrinter
 
 log = logging.getLogger(__name__)
@@ -149,6 +149,16 @@ class PrusaLink:
                                               self.settings)
         self.command_queue = CommandQueue()
 
+        # Set Transfer callbacks
+        self.printer.transfer.started_cb = self.lcd_printer.notify
+        self.printer.transfer.progress_cb = self.lcd_printer.notify
+        self.printer.transfer.stopped_cb = self.lcd_printer.notify
+        for state in ROOT_COND:
+            state.add_broke_handler(
+                lambda *_: self.lcd_printer.notify())
+            state.add_fixed_handler(
+                lambda *_: self.lcd_printer.notify())
+
         self.serial_parser.add_handler(
             MBL_TRIGGER_REGEX,
             lambda sender, match: self.printer_polling.invalidate_mbl()
@@ -208,6 +218,9 @@ class PrusaLink:
             self.sheet_settings_changed)
         self.printer_polling.active_sheet.value_changed_signal.connect(
             self.active_sheet_changed)
+        self.printer_polling.speed_multiplier.value_changed_signal.connect(
+            lambda val: self.lcd_printer.notify(), weak=False
+        )
 
         API.add_fixed_handler(self.connection_renewed)
 

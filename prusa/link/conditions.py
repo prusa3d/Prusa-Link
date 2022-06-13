@@ -3,8 +3,6 @@
 For more information see prusalink_states.txt.
 """
 
-from enum import Enum
-
 from typing import Optional
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, TextResponse
@@ -15,22 +13,12 @@ from .config import Settings
 assert HTTP is not None
 assert TOKEN is not None
 
-
-class Categories(Enum):
-    """Error categories, so we don't index them by order"""
-    PRINTER = "Printer"
-    NETWORK = "Network"
-    HARDWARE = "Hardware"
-    # Just making separate categories for everything because this system sucks
-    UPGRADED = "Upgraded"
-
-
 OK_MSG = {"ok": True, "message": "OK"}
 
-ROOT = Condition("Root", "The root of everything, it's almost always OK")
+ROOT_COND = Condition("Root", "The root of everything, it's almost always OK")
 
 DEVICE = Condition("Device", "Eth|WLAN device does not exist",
-                   short_msg="No WLAN device", parent=ROOT, priority=1020)
+                   short_msg="No WLAN device", parent=ROOT_COND, priority=1020)
 PHY = Condition("Phy", "Eth|WLAN device is not connected",
                 parent=DEVICE, short_msg="No WLAN conn", priority=1010)
 LAN = Condition("Lan", "Eth|WLAN has no IP address",
@@ -39,7 +27,7 @@ LAN = Condition("Lan", "Eth|WLAN has no IP address",
 INTERNET.set_parent(LAN)
 
 SERIAL = Condition("Port", "Serial device does not exist",
-                   parent=ROOT, priority=570)
+                   parent=ROOT_COND, priority=570)
 RPI_ENABLED = Condition("RPIenabled", "RPi port is not enabled",
                         parent=SERIAL, priority=560)
 ID = Condition("ID", "Device is not supported",
@@ -55,7 +43,7 @@ JOB_ID = Condition("JobID", "Job ID cannot be obtained",
 HW = Condition("HW", "Firmware detected a hardware issue",
                parent=RPI_ENABLED, priority=510)
 
-COND_TRACKER.add_tracked_condition_tree(ROOT)
+COND_TRACKER.add_tracked_condition_tree(ROOT_COND)
 
 NET_TRACKER = ConditionTracker()
 NET_TRACKER.add_tracked_condition_tree(DEVICE)
@@ -77,7 +65,7 @@ def use_connect_errors(use_connect):
 def status():
     """Return a dict with representation of all current conditions"""
     result = {}
-    for condition in reversed(list(ROOT)):
+    for condition in reversed(list(ROOT_COND)):
         result[condition.name] = (condition.state.name, condition.long_msg)
     return result
 

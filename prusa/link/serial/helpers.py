@@ -23,7 +23,8 @@ def wait_for_instruction(instruction,
     """
     while should_wait() and not should_wait_evt.is_set():
         if instruction.wait_for_confirmation(timeout=check_every):
-            break
+            return True
+    return False
 
 
 def enqueue_instruction(queue: SerialQueue,
