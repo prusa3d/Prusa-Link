@@ -6,7 +6,8 @@ from prusa.connect.printer.files import File
 
 class SDFile(File):
     """Adds a few useful methods for adding SD Files parsed from serial"""
-    def add_node(self, is_dir, path: Path, name, **attrs):
+
+    def add_node(self, is_dir, path: Path, name, sfn, **attrs):
         """
         Adds a file/dir node to a path, can add only into an existing dir
         node
@@ -18,12 +19,12 @@ class SDFile(File):
             if node is None:
                 raise FileNotFoundError(f"Can't find the node at {path} to add"
                                         f" the child named {name} to.")
-            node.add(is_dir=is_dir, name=name, ro=True, **attrs)
+            node.add(is_dir=is_dir, name=name, ro=True, sfn=sfn, **attrs)
 
-    def add_directory(self, path: Path, name, **attrs):
+    def add_directory(self, path: Path, name, sfn, **attrs):
         """Shorthand for adding directories"""
-        self.add_node(True, path, name, **attrs)
+        self.add_node(True, path, name, sfn=sfn, **attrs)
 
-    def add_file(self, path, name, **attrs):
+    def add_file(self, path, name, sfn, **attrs):
         """Shorthand for adding files"""
-        self.add_node(False, path, name, **attrs)
+        self.add_node(False, path, name, sfn=sfn, **attrs)

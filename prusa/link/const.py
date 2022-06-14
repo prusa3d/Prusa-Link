@@ -38,7 +38,7 @@ PRINTER_CONF_TYPES = bidict({
 
 DATA_PATH = path.abspath(path.join(str(files('prusa.link')), 'data'))
 
-BASE_STATES = {State.IDLE, State.BUSY}
+BASE_STATES = {State.IDLE, State.BUSY, State.READY}
 PRINTING_STATES = {State.PRINTING, State.PAUSED, State.FINISHED, State.STOPPED}
 
 MK25_PRINTERS = {PrinterType.I3MK25.value, PrinterType.I3MK25S.value}

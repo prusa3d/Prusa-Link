@@ -23,6 +23,7 @@ from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
 from .command_queue import CommandQueue
 from .filesystem.sd_card import SDState
 from .job import Job, JobState
+from .special_commands import SpecialCommands
 from .structures.module_data_classes import Sheet
 from .telemetry_passer import TelemetryPasser
 from ..serial.helpers import enqueue_instruction, enqueue_matchable
@@ -148,6 +149,9 @@ class PrusaLink:
                                               self.storage_controller.sd_card,
                                               self.settings)
         self.command_queue = CommandQueue()
+        self.special_commands = SpecialCommands(self.serial_parser,
+                                                self.command_queue,
+                                                self.lcd_printer)
 
         # Set Transfer callbacks
         self.printer.transfer.started_cb = self.lcd_printer.notify
@@ -177,6 +181,17 @@ class PrusaLink:
         self.serial_queue.instruction_confirmed_signal.connect(
             self.instruction_confirmed)
         self.serial_parser.add_handler(PRINTER_BOOT_REGEX, self.printer_reset)
+
+        # Set up the signals for special menu handling
+        # And for passthrough
+        self.special_commands.file_opened_signal.connect(self.job.file_opened)
+        self.special_commands.print_started_signal.connect(
+            lambda _: self.state_manager.printing(), weak=False)
+        self.storage_controller.menu_found_signal.connect(
+            self.special_commands.menu_folder_found)
+        self.storage_controller.sd_detached_signal.connect(
+            self.special_commands.menu_folder_gone)
+
         self.job.job_info_updated_signal.connect(self.job_info_updated)
         self.job.job_id_updated_signal.connect(self.job_id_updated)
         self.state_manager.pre_state_change_signal.connect(

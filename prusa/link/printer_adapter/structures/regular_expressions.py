@@ -41,8 +41,15 @@ SD_PRESENT_REGEX = re.compile(r"^echo:((?P<ok>SD card ok)|"
 SD_EJECTED_REGEX = re.compile(r"^(echo:SD card released)$")
 
 ANY_REGEX = re.compile(r".*")
-CONFIRMATION_REGEX = re.compile(r"^ok.*$")  # highest priority
+CONFIRMATION_REGEX = re.compile(r"^(ok.*)|(Done saving file\.)$")  # highest priority
+
+# ---CAUTION---
+# These are handled by special_commands component
+# If you use them without, you'll get false positive print starts
+# when the special menu is used
 FILE_OPEN_REGEX = re.compile(r"^echo:enqueing \"M23 (?P<sfn>[^\"]+)\"$")
+START_PRINT_REGEX = re.compile(r"^echo:enqueing \"M24\"$")
+# ----------------------------------------
 
 REJECTION_REGEX = re.compile(r"^(echo:Unknown command: (\"[^\"]*\"))|"
                              r"(Unknown \S code: .*)$")
@@ -54,7 +61,6 @@ PAUSED_REGEX = re.compile(r"^// action:paused$")
 RESUME_PRINT_REGEX = re.compile("^// action:resume$")
 RESUMED_REGEX = re.compile("^// action:resumed$")
 CANCEL_REGEX = re.compile("^// action:cancel$")
-START_PRINT_REGEX = re.compile(r"^echo:enqueing \"M24\"$")
 PRINT_DONE_REGEX = re.compile(r"^Done printing file$")
 # This girthy regexp tries to capture all error messages requiring printer
 # reset using M999 or manual button, with connect, only manual reset shall

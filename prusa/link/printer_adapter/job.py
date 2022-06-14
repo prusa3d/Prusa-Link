@@ -15,7 +15,6 @@ from ..const import PRINTING_STATES, \
     JOB_ENDING_STATES, BASE_STATES, JOB_ONGOING_STATES, SD_STORAGE_NAME
 from .structures.mc_singleton import MCSingleton
 from .structures.model_classes import JobState
-from .structures.regular_expressions import OPEN_RESULT_REGEX
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +29,6 @@ class Job(metaclass=MCSingleton):
         self.printer = printer
         self.serial_parser = serial_parser
         self.serial_queue = serial_queue
-        self.serial_parser.add_handler(OPEN_RESULT_REGEX, self.file_opened)
 
         # Unused
         self.job_id_updated_signal = Signal()  # kwargs: job_id: int
@@ -51,12 +49,11 @@ class Job(metaclass=MCSingleton):
         self.job_id_updated_signal.send(self,
                                         job_id=self.data.get_job_id_for_api())
 
-    def file_opened(self, sender, match: re.Match):
+    def file_opened(self, _, match: re.Match):
         """
         Handles the M23 output by extracting the mixed path and sends it
         for parsing
         """
-        assert sender is not None
         if match is not None and match.group("sdn_lfn") != "":
             mixed_path = match.group("sdn_lfn")
             self.process_mixed_path(mixed_path)
