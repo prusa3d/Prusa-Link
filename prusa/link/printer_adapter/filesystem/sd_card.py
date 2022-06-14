@@ -12,16 +12,16 @@ from time import time
 from blinker import Signal  # type: ignore
 
 from prusa.connect.printer.const import State
-
 from ..state_manager import StateManager
 from ...serial.serial_queue import SerialQueue
 from ...serial.serial_parser import SerialParser
-from ...serial.helpers import wait_for_instruction, enqueue_matchable
+from ...serial.helpers import wait_for_instruction, enqueue_matchable, \
+    enqueue_list_from_str
 from ..model import Model
 from ..structures.model_classes import SDState
 from ..structures.module_data_classes import SDCardData
 from ..structures.regular_expressions import SD_PRESENT_REGEX, \
-    SD_EJECTED_REGEX, LFN_CAPTURE
+    SD_EJECTED_REGEX, LFN_CAPTURE, CONFIRMATION_REGEX
 from ...const import SD_INTERVAL, SD_FILESCAN_INTERVAL, SD_STORAGE_NAME, \
     SFN_TO_LFN_EXTENSIONS, MAX_FILENAME_LENGTH
 from ..updatable import ThreadedUpdatable
@@ -149,6 +149,7 @@ class FileTreeParser:
         try:
             self.tree.add_file(self.current_dir,
                                long_file_name,
+                               short_filename,
                                filename_too_long=too_long,
                                **additional_properties)
         except FileNotFoundError as exception:
@@ -174,6 +175,7 @@ class FileTreeParser:
         try:
             self.tree.add_directory(self.current_dir.parent,
                                     self.current_dir.name,
+                                    short_dir_name,
                                     filename_too_long=too_long)
         except FileNotFoundError as exception:
             log.exception(exception)
@@ -210,6 +212,7 @@ class SDCard(ThreadedUpdatable):
         self.state_changed_signal = Signal()  # kwargs: sd_state: SDState
         self.sd_attached_signal = Signal()  # kwargs: files: SDFile
         self.sd_detached_signal = Signal()
+        self.menu_found_signal = Signal()  # kwargs: menu_sfn: str
 
         self.serial_parser = serial_parser
         self.serial_parser.add_handler(SD_PRESENT_REGEX, self.sd_inserted)
@@ -232,6 +235,25 @@ class SDCard(ThreadedUpdatable):
         self.lock = Lock()
 
         super().__init__()
+
+    def handle_special_menu(self, file_tree_parser):
+        """If the SD contains a special menu folder, add the menu items
+        and inform others that the menu exists."""
+        if "PrusaLink menu" not in file_tree_parser.tree.children:
+            return
+        node = file_tree_parser.tree.children["PrusaLink menu"]
+        if not node.is_dir:
+            return
+        menu_sfn = node.attrs["sfn"].lower()
+        if not "SETREADY.G" in node.children:
+            enqueue_list_from_str(self.serial_queue,
+                                  [f"M28 {menu_sfn}/setready.g",
+                                   "M84",
+                                   "M29"],
+                                  CONFIRMATION_REGEX,
+                                  to_front=True)
+        del file_tree_parser.tree.children["PrusaLink menu"]
+        self.menu_found_signal.send(menu_sfn=menu_sfn)
 
     def update(self):
         """
@@ -262,6 +284,8 @@ class SDCard(ThreadedUpdatable):
             return
 
         file_tree_parser = self._construct_file_tree()
+
+        self.handle_special_menu(file_tree_parser)
 
         to_decide_presence = False
 

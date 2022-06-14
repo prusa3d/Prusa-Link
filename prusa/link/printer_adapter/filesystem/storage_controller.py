@@ -35,6 +35,7 @@ class StorageController:
         self.folder_detached_signal = Signal()
         self.sd_attached_signal = Signal()
         self.sd_detached_signal = Signal()
+        self.menu_found_signal = Signal()
 
         self.serial_parser = serial_parser
         self.serial_queue: SerialQueue = serial_queue
@@ -45,6 +46,7 @@ class StorageController:
                               self.state_manager, self.model)
         self.sd_card.sd_attached_signal.connect(self.sd_attached)
         self.sd_card.sd_detached_signal.connect(self.sd_detached)
+        self.sd_card.menu_found_signal.connect(self.menu_found)
 
         self.filesystem_storage = FilesystemStorage(self.model, cfg)
         self.folder_storage = FolderStorage(self.model, cfg)
@@ -74,6 +76,10 @@ class StorageController:
         """Signal pass-through"""
         assert sender is not None
         self.sd_detached_signal.send(self)
+
+    def menu_found(self, _, menu_sfn):
+        """Secret menu has been found signal passthrough"""
+        self.menu_found_signal.send(menu_sfn=menu_sfn)
 
     def update(self):
         """Passes the call to update() to all its submodules"""

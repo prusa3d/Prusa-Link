@@ -115,7 +115,8 @@ class StopPrint(TryUntilState):
 
         self._try_until_state(
             gcode="M603",
-            desired_states={State.STOPPED, State.IDLE, State.FINISHED})
+            desired_states={State.STOPPED, State.IDLE,
+                            State.READY, State.FINISHED})
 
         return dict(job_id=job_id)
 
@@ -472,3 +473,14 @@ class JobInfo(Command):
 
         log.debug("Job Info retrieved: %s", response)
         return response
+
+
+class SetReady(Command):
+    """Class for setting the printer into READY"""
+    command_name = "set_ready"
+
+    def _run_command(self):
+        """Sets the printer into ready, if it's IDLE"""
+        if self.state_manager.get_state() not in {State.IDLE, State.READY}:
+            self.failed("Cannot get into READY from anywhere other than IDLE")
+        self.state_manager.ready()

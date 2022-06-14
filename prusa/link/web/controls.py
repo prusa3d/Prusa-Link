@@ -137,7 +137,8 @@ def api_printhead(req):
     """Control the printhead movement in XYZ axes"""
     serial_queue = app.daemon.prusa_link.serial_queue
     printer_state = app.daemon.prusa_link.model.state_manager.current_state
-    operational = printer_state in (State.IDLE, State.FINISHED, State.STOPPED)
+    operational = printer_state in (State.IDLE, State.READY,
+                                    State.FINISHED, State.STOPPED)
     command = req.json.get('command')
     status = state.HTTP_NO_CONTENT
 
