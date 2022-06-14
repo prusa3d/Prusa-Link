@@ -147,6 +147,35 @@ class BadRequestError(LinkError):
     status_code = state.HTTP_BAD_REQUEST
 
 
+class TemperatureTooLow(BadRequestError):
+    """400 Temperature is too low"""
+    title = "Temperature too low"
+    text = "Desired temperature is too low"
+    id = "temperature-too-low"
+
+
+class TemperatureTooHigh(BadRequestError):
+    """400 Temperature is too high"""
+    title = "Temperature too high"
+    text = "Desired temperature is too high"
+    id = "temperature-too-high"
+
+
+class ValueTooLow(BadRequestError):
+    """400 Generic value is too low"""
+    title = "Value too low"
+    text = "Desired value is too low"
+    id = "value-too-low"
+
+
+class ValueTooHigh(BadRequestError):
+    """400 Generic value is too high"""
+    title = "Value too high"
+    text = "Desired value is too high"
+    id = "value-too-high"
+
+
+
 class DestinationSameAsSource(BadRequestError):
     """400 Destination is same as source"""
     title = "Destination same as source"
