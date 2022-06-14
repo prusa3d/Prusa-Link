@@ -551,10 +551,10 @@ def api_modify(req, target):
         raise conditions.FileCurrentlyPrinted()
 
     if source == destination:
-        raise conditions.DestinationSameAsSource
+        raise conditions.DestinationSameAsSource()
 
     if not exists(source):
-        raise conditions.FileNotFound
+        raise conditions.FileNotFound()
 
     if not exists(path):
         try:

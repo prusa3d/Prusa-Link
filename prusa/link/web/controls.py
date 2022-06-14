@@ -7,28 +7,43 @@ from .lib.core import app
 from .lib.auth import check_api_digest
 
 from ..serial.helpers import enqueue_instruction
+from ..conditions import TemperatureTooLow, TemperatureTooHigh, ValueTooLow, \
+    ValueTooHigh, CurrentlyPrinting
 from ..const import FEEDRATE_XY, FEEDRATE_E, POSITION_X, POSITION_Y, \
     POSITION_Z, MIN_TEMP_NOZZLE_E, PRINT_SPEED, PRINT_FLOW, TEMP_BED, \
     TEMP_NOZZLE
 
 
+def check_temperature_limits(temperature, min_temperature, max_temperature):
+    """Check target temperature limits and raise error if out of limits"""
+    if temperature < min_temperature:
+        raise TemperatureTooLow()
+    if temperature > max_temperature:
+        raise TemperatureTooHigh()
+
+
+def check_value_limits(value, min_value, max_value):
+    """Check target value limits and raise error if out of limits"""
+    if value < min_value:
+        raise ValueTooLow
+    if value > max_value:
+        raise ValueTooHigh
+
+
+
 def jog(req, serial_queue):
     """XYZ movement command"""
     # pylint: disable=too-many-branches
-    absolute = req.json.get('absolute')
-    feedrate = req.json.get('feedrate')
 
     # Compatibility with OctoPrint, OP speed == Prusa feedrate in mm/min
-    if not feedrate:
-        feedrate = req.json.get('speed')
+    # If feedrate is not defined, use maximum value for E axis
+    feedrate = req.json.get('feedrate') or \
+               req.json.get('speed', FEEDRATE_XY['max'])
 
+    check_value_limits(feedrate, FEEDRATE_XY['min'], FEEDRATE_XY['max'])
+
+    absolute = req.json.get('absolute')
     axes = []
-
-    if not feedrate or feedrate > FEEDRATE_XY['max']:
-        feedrate = FEEDRATE_XY['max']
-
-    if feedrate < FEEDRATE_XY['min']:
-        feedrate = FEEDRATE_XY['min']
 
     # --- Coordinates ---
     x_axis = req.json.get('x')
@@ -37,26 +52,17 @@ def jog(req, serial_queue):
 
     if x_axis is not None:
         if absolute:
-            if x_axis < POSITION_X['min']:
-                x_axis = POSITION_X['min']
-            elif x_axis > POSITION_X['max']:
-                x_axis = POSITION_X['max']
+            check_value_limits(x_axis, POSITION_X['min'], POSITION_X['max'])
         axes.append(f'X{x_axis}')
 
     if y_axis is not None:
         if absolute:
-            if y_axis < POSITION_Y['min']:
-                y_axis = POSITION_Y['min']
-            elif y_axis > POSITION_Y['max']:
-                y_axis = POSITION_Y['max']
+            check_value_limits(y_axis, POSITION_Y['min'], POSITION_Y['max'])
         axes.append(f'Y{y_axis}')
 
     if z_axis is not None:
         if absolute:
-            if z_axis < POSITION_Z['min']:
-                z_axis = POSITION_Z['min']
-            elif z_axis > POSITION_Z['max']:
-                z_axis = POSITION_Z['max']
+            check_value_limits(z_axis, POSITION_Z['min'], POSITION_Z['max'])
         axes.append(f'Z{z_axis}')
 
     if absolute:
@@ -84,13 +90,8 @@ def home(req, serial_queue):
 
 def set_speed(req, serial_queue):
     """Speed set command"""
-    factor = req.json.get('factor')
-    if not factor:
-        factor = 100
-    elif factor < PRINT_SPEED['min']:
-        factor = PRINT_SPEED['min']
-    elif factor > PRINT_SPEED['max']:
-        factor = PRINT_SPEED['max']
+    factor = req.json.get('factor', 100)
+    check_value_limits(factor, PRINT_SPEED['min'], PRINT_SPEED['max'])
 
     gcode = f'M220 S{factor}'
     enqueue_instruction(serial_queue, gcode)
@@ -105,29 +106,17 @@ def disable_steppers(serial_queue):
 def extrude(req, serial_queue):
     """Extrude given amount of filament in mm, negative value will retract"""
     amount = req.json.get('amount')
-    feedrate = req.json.get('feedrate')
-
     # Compatibility with OctoPrint, OP speed == Prusa feedrate in mm/min
-    if not feedrate:
-        # If feedrate is not defined, use maximum value for E axis
-        feedrate = req.json.get('speed', FEEDRATE_E['max'])
+    # If feedrate is not defined, use maximum value for E axis
+    feedrate = req.json.get('feedrate') or \
+               req.json.get('speed', FEEDRATE_E['max'])
+
+    check_value_limits(feedrate, FEEDRATE_E['min'], FEEDRATE_E['max'])
 
     # M83 - relative movement for axis E
     enqueue_instruction(serial_queue, 'M83')
 
     gcode = f'G1 F{feedrate} E{amount}'
-    enqueue_instruction(serial_queue, gcode)
-
-
-def set_flowrate(req, serial_queue):
-    """Set flow rate factor to apply to extrusion of the tool"""
-    factor = req.json.get('factor')
-    if factor < PRINT_FLOW['min']:
-        factor = PRINT_FLOW['min']
-    elif factor > PRINT_FLOW['max']:
-        factor = PRINT_FLOW['max']
-
-    gcode = f'M221 S{factor}'
     enqueue_instruction(serial_queue, gcode)
 
 
@@ -148,20 +137,17 @@ def api_printhead(req):
         else:
             status = state.HTTP_CONFLICT
 
-    elif command == 'home':
+    if command == 'home':
         if operational:
             home(req, serial_queue)
         else:
             status = state.HTTP_CONFLICT
 
-    elif command == 'speed':
-        set_speed(req, serial_queue)
-
     # Compatibility with OctoPrint, OP feedrate == Prusa speed in %
-    elif command == 'feedrate':
+    if command in ('speed', 'feedrate'):
         set_speed(req, serial_queue)
 
-    elif command == "disable_steppers":
+    if command == "disable_steppers":
         disable_steppers(serial_queue)
 
     return JSONResponse(status_code=status)
@@ -183,36 +169,26 @@ def api_tool(req):
         # Compability with OctoPrint, which uses more tools, here only tool0
         tool = targets['tool0']
 
-        if not TEMP_NOZZLE['min'] <= tool <= TEMP_NOZZLE['max']:
-            status = state.HTTP_BAD_REQUEST
-
-            if tool < TEMP_BED['min']:
-                title = "Temperature too low"
-                msg = f"Minimum nozzle temperature is {TEMP_NOZZLE['min']}°C"
-
-            elif tool > TEMP_BED['max']:
-                title = "Temperature too high"
-                msg = f"Maximum nozzle temperature is {TEMP_NOZZLE['max']}°C"
-
-            errors_ = {
-                'title': title,
-                'message': msg
-            }
-
-            return JSONResponse(status_code=status, **errors_)
+        check_temperature_limits(tool, TEMP_NOZZLE['min'], TEMP_NOZZLE['max'])
 
         gcode = f'M104 S{tool}'
         enqueue_instruction(serial_queue, gcode)
 
-    elif command == 'extrude':
-        if printer_state is not State.PRINTING and \
-                tel.temp_nozzle >= MIN_TEMP_NOZZLE_E:
-            extrude(req, serial_queue)
-        else:
-            status = state.HTTP_CONFLICT
+    if command == 'extrude':
+        if tel.temp_nozzle < MIN_TEMP_NOZZLE_E:
+            raise TemperatureTooLow()
+        if printer_state is State.PRINTING:
+            raise CurrentlyPrinting()
 
-    elif command == 'flowrate':
-        set_flowrate(req, serial_queue)
+        extrude(req, serial_queue)
+
+    if command == 'flowrate':
+        factor = req.json.get('factor')
+
+        check_value_limits(factor, PRINT_FLOW['min'], PRINT_FLOW['max'])
+
+        gcode = f'M221 S{factor}'
+        enqueue_instruction(serial_queue, gcode)
 
     return JSONResponse(status_code=status)
 
@@ -223,26 +199,11 @@ def api_bed(req):
     """Control the heatbed temperature"""
     serial_queue = app.daemon.prusa_link.serial_queue
     command = req.json.get('command')
-    target = req.json.get('target')
 
     if command == 'target':
-        if not TEMP_BED['min'] <= target <= TEMP_BED['max']:
-            status = state.HTTP_BAD_REQUEST
+        target = req.json.get('target')
 
-            if target < TEMP_BED['min']:
-                title = "Temperature too low"
-                msg = f"Minimum heatbed temperature is {TEMP_BED['min']}°C"
-
-            elif target > TEMP_BED['max']:
-                title = "Temperature too high"
-                msg = f"Maximum heatbed temperature is {TEMP_BED['max']}°C"
-
-            errors_ = {
-                'title': title,
-                'message': msg
-            }
-
-            return JSONResponse(status_code=status, **errors_)
+        check_temperature_limits(target, TEMP_BED['min'], TEMP_BED['max'])
 
         gcode = f'M140 S{target}'
         enqueue_instruction(serial_queue, gcode)
