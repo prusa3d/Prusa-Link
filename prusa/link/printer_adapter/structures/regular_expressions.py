@@ -49,6 +49,7 @@ CONFIRMATION_REGEX = re.compile(r"^(ok.*)|(Done saving file\.)$")  # highest pri
 # when the special menu is used
 FILE_OPEN_REGEX = re.compile(r"^echo:enqueing \"M23 (?P<sfn>[^\"]+)\"$")
 START_PRINT_REGEX = re.compile(r"^echo:enqueing \"M24\"$")
+PRINT_DONE_REGEX = re.compile(r"^Done printing file$")
 # ----------------------------------------
 
 REJECTION_REGEX = re.compile(r"^(echo:Unknown command: (\"[^\"]*\"))|"
@@ -61,7 +62,6 @@ PAUSED_REGEX = re.compile(r"^// action:paused$")
 RESUME_PRINT_REGEX = re.compile("^// action:resume$")
 RESUMED_REGEX = re.compile("^// action:resumed$")
 CANCEL_REGEX = re.compile("^// action:cancel$")
-PRINT_DONE_REGEX = re.compile(r"^Done printing file$")
 # This girthy regexp tries to capture all error messages requiring printer
 # reset using M999 or manual button, with connect, only manual reset shall
 # be accepted

@@ -19,7 +19,7 @@ from prusa.connect.printer.conditions import API, COND_TRACKER, INTERNET, \
 from .auto_telemetry import AutoTelemetry
 from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
     ResetPrinter, ResumePrint, StartPrint, StopPrint, LoadFilament, \
-    UnloadFilament
+    UnloadFilament, SetReady, CancelReady
 from .command_queue import CommandQueue
 from .filesystem.sd_card import SDState
 from .job import Job, JobState
@@ -118,6 +118,10 @@ class PrusaLink:
         self.printer.set_handler(CommandType.LOAD_FILAMENT, self.load_filament)
         self.printer.set_handler(CommandType.UNLOAD_FILAMENT,
                                  self.unload_filament)
+        self.printer.set_handler(CommandType.SET_PRINTER_READY,
+                                 self.set_printer_ready)
+        self.printer.set_handler(CommandType.CANCEL_PRINTER_READY,
+                                 self.cancel_printer_ready)
 
         self.serial_parser.add_handler(
             PAUSE_PRINT_REGEX, lambda sender, match: self.fw_pause_print())
@@ -184,9 +188,11 @@ class PrusaLink:
 
         # Set up the signals for special menu handling
         # And for passthrough
-        self.special_commands.file_opened_signal.connect(self.job.file_opened)
-        self.special_commands.print_started_signal.connect(
-            lambda _: self.state_manager.printing(), weak=False)
+        self.special_commands.open_result_signal.connect(self.job.file_opened)
+        self.special_commands.start_print_signal.connect(
+            lambda _, match: self.state_manager.printing(), weak=False)
+        self.special_commands.print_done_signal.connect(
+            lambda _, match: self.state_manager.finished(), weak=False)
         self.storage_controller.menu_found_signal.connect(
             self.special_commands.menu_folder_found)
         self.storage_controller.sd_detached_signal.connect(
@@ -459,6 +465,16 @@ class PrusaLink:
         """Unload filament"""
         command = UnloadFilament(parameters=caller.kwargs,
                                  command_id=caller.command_id)
+        return self.command_queue.do_command(command)
+
+    def set_printer_ready(self, caller: SDKCommand):
+        """Set printer ready"""
+        command = SetReady(command_id=caller.command_id)
+        return self.command_queue.do_command(command)
+
+    def cancel_printer_ready(self, caller: SDKCommand):
+        """Cancel printer ready"""
+        command = CancelReady(command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
     # --- FW Command handlers ---
