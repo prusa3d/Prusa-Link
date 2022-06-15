@@ -121,7 +121,7 @@ def test_lines():
     # Second time around, it should not chime
     assert carousel.get_next().chime_gcode == []
     # messages have priority
-    carousel.add_message("asdf")
+    carousel.add_message(LCDLine("asdf"))
     assert carousel.get_next().text == "asdf"
     # Setting a hidden Screen does not rewind
     assert carousel.get_next().text == "A"
