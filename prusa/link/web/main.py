@@ -16,7 +16,7 @@ from poorwsgi.digest import check_digest
 from pkg_resources import working_set
 
 from prusa.connect.printer import __version__ as sdk_version
-from prusa.connect.printer.const import State
+from prusa.connect.printer.const import State, Source
 from prusa.connect.printer.metadata import get_metadata
 
 from .. import __version__, conditions
@@ -30,8 +30,8 @@ from ..const import LOGS_PATH, LOGS_FILES, GZ_SUFFIX, LOCAL_STORAGE_NAME, \
     instance_id
 from ..printer_adapter.job import JobState, Job
 from ..printer_adapter.command import CommandFailed
-from ..printer_adapter.command_handlers import PausePrint, StopPrint,\
-    ResumePrint, StartPrint
+from ..printer_adapter.command_handlers import PausePrint, StopPrint, \
+    ResumePrint, StartPrint, SetReady
 
 log = logging.getLogger(__name__)
 
@@ -286,11 +286,12 @@ def api_printer_sd(req):
 def api_set_ready(req):
     """Set printer state to READY, if printer is in allowed state"""
     # pylint: disable=unused-argument
-    printer = app.daemon.prusa_link.printer
-    if printer.state in STATES_TO_READY:
-        printer.set_printer_ready(printer.command)
-        return Response(status_code=state.HTTP_OK)
-    return Response(status_code=state.HTTP_CONFLICT)
+    command_queue = app.daemon.prusa_link.command_queue
+    try:
+        command_queue.do_command(SetReady(source=Source.WUI))
+    except CommandFailed:
+        return Response(status_code=state.HTTP_CONFLICT)
+    return Response(status_code=state.HTTP_OK)
 
 
 @app.route('/api/printer/ready', method=state.METHOD_DELETE)
@@ -409,18 +410,18 @@ def api_job_command(req):
 
             action = req.json.get("action")
             if action == 'pause' and printer_state == State.PRINTING:
-                command_queue.do_command(PausePrint())
+                command_queue.do_command(PausePrint(source=Source.WUI))
             elif action == 'resume' and printer_state == State.PAUSED:
-                command_queue.do_command(ResumePrint())
+                command_queue.do_command(ResumePrint(source=Source.WUI))
             elif action == 'toogle':
                 if printer_state == State.PAUSED:
-                    command_queue.do_command(ResumePrint())
+                    command_queue.do_command(ResumePrint(source=Source.WUI))
                 elif printer_state == State.PRINTING:
-                    command_queue.do_command(PausePrint())
+                    command_queue.do_command(PausePrint(source=Source.WUI))
 
         elif command == "cancel":
             if job_data.job_state == JobState.IN_PROGRESS:
-                command_queue.do_command(StopPrint())
+                command_queue.do_command(StopPrint(source=Source.WUI))
             elif job_data.job_state == JobState.IDLE:
                 job.deselect_file()
             else:
@@ -431,7 +432,7 @@ def api_job_command(req):
                 raise conditions.CurrentlyPrinting()
             if job_data.selected_file_path:
                 command_queue.do_command(
-                    StartPrint(job.data.selected_file_path))
+                    StartPrint(job.data.selected_file_path, source=Source.WUI))
     except CommandFailed as err:
         return JSONResponse(status_code=state.HTTP_INTERNAL_SERVER_ERROR,
                             title='COMMAND FAILED',
@@ -493,7 +494,8 @@ def camera_capture(req):
     """Capture an image from a camera and return it in endpoint"""
     camera = app.daemon.prusa_link.printer.camera
     if not camera:
-        return JSONResponse(status_code=state.HTTP_CONFLICT, message="Camera is not available")
+        return JSONResponse(status_code=state.HTTP_CONFLICT,
+                            message="Camera is not available")
 
     resolution = req.json.get('resolution')
     if resolution:

@@ -18,6 +18,7 @@ from poorwsgi.response import JSONResponse, Response, FileResponse
 from poorwsgi.results import hbytes
 
 from prusa.connect.printer import const
+from prusa.connect.printer.const import Source
 from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 from prusa.connect.printer.download import Transfer, TransferRunningError, \
     forbidden_characters, filename_too_long, foldername_too_long
@@ -341,7 +342,7 @@ def api_start_print(req, target, path):
             if req.json.get('print', False):
                 command_queue = app.daemon.prusa_link.command_queue
                 command_queue.do_command(
-                    StartPrint(job.data.selected_file_path))
+                    StartPrint(job.data.selected_file_path, source=Source.WUI))
             return Response(status_code=state.HTTP_NO_CONTENT)
 
     elif command == 'print':
@@ -349,7 +350,7 @@ def api_start_print(req, target, path):
             job.set_file_path(path, path_incomplete=False,
                               prepend_sd_storage=False)
             command_queue = app.daemon.prusa_link.command_queue
-            command_queue.do_command(StartPrint(path))
+            command_queue.do_command(StartPrint(path, source=Source.WUI))
             return Response(status_code=state.HTTP_NO_CONTENT)
 
         # job_state != IDLE

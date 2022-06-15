@@ -9,9 +9,8 @@ from .command import CommandFailed
 from .command_handlers import SetReady
 from .command_queue import CommandQueue
 from .lcd_printer import LCDPrinter
-from .structures.carousel import LCDLine
 from .structures.regular_expressions import \
-    START_PRINT_REGEX, OPEN_RESULT_REGEX
+    START_PRINT_REGEX, OPEN_RESULT_REGEX, PRINT_DONE_REGEX
 from ..interesting_logger import InterestingLogRotator
 from ..serial.serial_parser import SerialParser
 
@@ -35,18 +34,22 @@ class SpecialCommands:
         self.menu_folder_sfn = None
         self.current = None
 
-        self.file_opened_signal = Signal()  # kwargs - match: re.Match
-        self.print_started_signal = Signal()
+        self.open_result_signal = Signal()  # kwargs - match: re.Match
+        self.start_print_signal = Signal()
+        self.print_done_signal = Signal()
 
         serial_parser.add_handler(OPEN_RESULT_REGEX, self.handle_file)
         serial_parser.add_handler(START_PRINT_REGEX, self.handle_start)
+        serial_parser.add_handler(PRINT_DONE_REGEX, self.handle_done)
 
     def menu_folder_found(self, _, menu_sfn):
         """An SD with the special menu has been inserted"""
+        log.debug("Registered a menu folder %s", menu_sfn)
         self.menu_folder_sfn = menu_sfn
 
     def menu_folder_gone(self, _):
         """The special menu was ejected with its SD card"""
+        log.debug("De-registered a menu folder %s", self.menu_folder_sfn)
         self.menu_folder_sfn = None
 
     def _open_is_special(self, match):
@@ -75,16 +78,27 @@ class SpecialCommands:
             self.current = self.commands[parts[-1]]
             self.detected_at = time()
         else:
-            self.file_opened_signal.send(match=match)
+            self.open_result_signal.send(match=match)
 
     def handle_start(self, _, match: re.Match):
-        """If a command is prepared, execute it, otherwise pass through"""
+        """If a command is prepared, prolong it's lifetime,
+        otherwise pass through"""
         assert match is not None
+        since_detected = time() - self.detected_at
+        if self.current is not None and since_detected < CMD_TIMEOUT:
+            self.detected_at = time()
+        else:
+            self.current = None
+            self.start_print_signal.send(match=match)
+
+    def handle_done(self, _, match: re.Match):
+        """If a command is prepared and the placeholder file print has been
+        done, execute the command"""
         since_detected = time() - self.detected_at
         if self.current is not None and since_detected < CMD_TIMEOUT:
             self.current()
         else:
-            self.print_started_signal.send()
+            self.print_done_signal.send(match=match)
         self.current = None
 
     def set_ready(self):
@@ -94,10 +108,3 @@ class SpecialCommands:
         except CommandFailed:
             InterestingLogRotator.trigger("Attempt to set the printer ready")
             log.exception("Setting the printer to READY has failed")
-            self.lcd_printer.print_message(LCDLine("Set ready failed",
-                                                   resets_idle=False),
-                                           force_over_fw=True)
-        else:
-            self.lcd_printer.print_message(LCDLine("Ready for next Job",
-                                                   resets_idle=False),
-                                           force_over_fw=True)

@@ -481,6 +481,26 @@ class SetReady(Command):
 
     def _run_command(self):
         """Sets the printer into ready, if it's IDLE"""
+        self.state_manager.expect_change(
+            StateChange(command_id=self.command_id,
+                        default_source=self.source))
         if self.state_manager.get_state() not in {State.IDLE, State.READY}:
             self.failed("Cannot get into READY from anywhere other than IDLE")
         self.state_manager.ready()
+        self.state_manager.stop_expecting_change()
+
+
+class CancelReady(Command):
+    """Class for setting the printer into READY"""
+    command_name = "cancel_ready"
+
+    def _run_command(self):
+        """Sets the printer into ready, if it's IDLE"""
+        self.state_manager.expect_change(
+            StateChange(command_id=self.command_id,
+                        default_source=self.source))
+
+        if self.state_manager.get_state() != State.READY:
+            self.failed("Cannot get into READY from anywhere other than IDLE")
+        self.state_manager.idle()
+        self.state_manager.stop_expecting_change()

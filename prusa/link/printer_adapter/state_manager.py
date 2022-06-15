@@ -19,8 +19,8 @@ from .structures.mc_singleton import MCSingleton
 from .structures.module_data_classes import StateManagerData
 from .structures.regular_expressions import \
     BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
-    PRINT_DONE_REGEX, ERROR_REGEX, FAN_ERROR_REGEX, ERROR_REASON_REGEX, \
-    ATTENTION_REASON_REGEX, FAN_REGEX
+    ERROR_REGEX, FAN_ERROR_REGEX, ERROR_REASON_REGEX, ATTENTION_REASON_REGEX, \
+    FAN_REGEX
 from ..config import Config, Settings
 from ..conditions import HW, SERIAL
 
@@ -177,7 +177,6 @@ class StateManager(metaclass=MCSingleton):
             PAUSED_REGEX: lambda sender, match: self.paused(),
             RESUMED_REGEX: lambda sender, match: self.resumed(),
             CANCEL_REGEX: lambda sender, match: self.stopped_or_not_printing(),
-            PRINT_DONE_REGEX: lambda sender, match: self.finished(),
             ERROR_REGEX: lambda sender, match: self.error_handler(),
             ERROR_REASON_REGEX: self.error_reason_handler,
             ATTENTION_REASON_REGEX: self.attention_reason_handler,
@@ -575,9 +574,15 @@ class StateManager(metaclass=MCSingleton):
 
     @state_influencer(StateChange(to_states={State.READY: Source.USER}))
     def ready(self):
-        """If we were idle, sets te base state to BUSY"""
+        """If we were IDLE, sets te base state to READY"""
         if self.data.base_state == State.IDLE:
             self.data.base_state = State.READY
+
+    @state_influencer(StateChange(to_states={State.READY: Source.USER}))
+    def idle(self):
+        """If we were READY, sets te base state to IDLE"""
+        if self.data.base_state == State.READY:
+            self.data.base_state = State.IDLE
 
     @state_influencer(StateChange(to_states={State.BUSY: Source.MARLIN}))
     def busy(self):

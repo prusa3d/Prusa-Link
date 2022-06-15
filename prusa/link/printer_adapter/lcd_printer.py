@@ -73,6 +73,7 @@ WIZARD_PRIORITY = 40
 ERROR_PRIORITY = 30
 ERROR_WAIT_PRIORITY = 31
 UPLOAD_PRIORITY = 20
+READY_PRIORITY = 11
 IDLE_PRIORITY = 10
 
 
@@ -111,6 +112,7 @@ class LCDPrinter(metaclass=MCSingleton):
         self.wait_screen = Screen(resets_idle=False)
         self.error_screen = Screen(chime_gcode=ERROR_CHIME)
         self.upload_screen = Screen(chime_gcode=UPLOAD_CHIME)
+        self.ready_screen = Screen(resets_idle=False)
         self.idle_screen = Screen(resets_idle=False)
 
         self.carousel = Carousel([
@@ -119,6 +121,7 @@ class LCDPrinter(metaclass=MCSingleton):
                 self.wait_screen,
                 self.error_screen,
                 self.upload_screen,
+                self.ready_screen,
                 self.idle_screen
         ])
 
@@ -126,6 +129,7 @@ class LCDPrinter(metaclass=MCSingleton):
         self.carousel.set_priority(self.wizard_screen, WIZARD_PRIORITY)
         self.carousel.set_priority(self.error_screen, ERROR_PRIORITY)
         self.carousel.set_priority(self.upload_screen, UPLOAD_PRIORITY)
+        self.carousel.set_priority(self.ready_screen, READY_PRIORITY)
         self.carousel.set_priority(self.idle_screen, IDLE_PRIORITY)
 
         wait_zip = zip(["Please wait"]*7, ["."*i for i in range(1,8)])
@@ -134,6 +138,12 @@ class LCDPrinter(metaclass=MCSingleton):
                                wait_text,
                                scroll_delay=1.5,
                                scroll_amount=19,
+                               first_line_extra=0,
+                               last_line_extra=0)
+
+        self.carousel.set_text(self.ready_screen,
+                               "Ready to print",
+                               scroll_delay=5,
                                first_line_extra=0,
                                last_line_extra=0)
 
@@ -185,6 +195,7 @@ class LCDPrinter(metaclass=MCSingleton):
         self._check_errors()
         self._check_wizard()
         self._check_upload()
+        self._check_ready()
         self._check_idle()
 
     def _check_printing(self):
@@ -329,32 +340,48 @@ class LCDPrinter(metaclass=MCSingleton):
         else:
             self.carousel.disable(self.upload_screen)
 
+    def _check_ready(self):
+        """Should the ready screen be shown?"""
+        if self.model.state_manager.current_state == State.READY and LAN:
+            self.carousel.enable(self.ready_screen)
+            ip = self.model.ip_updater.local_ip
+            conditions = dict(ip=ip)
+            if self.ready_screen.conditions != conditions:
+                self.ready_screen.conditions = conditions
+                self.carousel.set_text(
+                    self.ready_screen,
+                    "Ready to print".ljust(19) + f"{ip}".ljust(19),
+                    scroll_amount=19,
+                    scroll_delay=4,
+                    last_line_extra=5)
+        else:
+            self.carousel.disable(self.ready_screen)
+
     def _check_idle(self):
         """Should the idle screen be shown? And what should it say?"""
-        if time() - self.idle_from > SLEEP_SCREEN_TIMEOUT:
-            if LAN:
-                self.carousel.enable(self.idle_screen)
-                ip = self.model.ip_updater.local_ip
-                speed = self.model.latest_telemetry.speed
-                conditions = dict(ip=ip, speed=speed)
-                if self.idle_screen.conditions != conditions:
-                    self.idle_screen.conditions = conditions
-                    if speed != 42:
-                        self.carousel.set_text(
-                            self.idle_screen,
-                            "PrusaLink OK.".ljust(19) + f"{ip}".ljust(19),
-                            scroll_amount=19,
-                            last_line_extra=12)
-                    else:
-                        self.carousel.set_text(
-                            self.idle_screen,
-                            "The Answer to the Great Question... Of Life, the "
-                            "Universe and Everything... Is... Forty-Two.",
-                            scroll_delay=0.3,
-                            scroll_amount=1,
-                            first_line_extra=2,
-                            last_line_extra=5
-                        )
+        if time() - self.idle_from > SLEEP_SCREEN_TIMEOUT and LAN:
+            self.carousel.enable(self.idle_screen)
+            ip = self.model.ip_updater.local_ip
+            speed = self.model.latest_telemetry.speed
+            conditions = dict(ip=ip, speed=speed)
+            if self.idle_screen.conditions != conditions:
+                self.idle_screen.conditions = conditions
+                if speed != 42:
+                    self.carousel.set_text(
+                        self.idle_screen,
+                        "PrusaLink OK.".ljust(19) + f"{ip}".ljust(19),
+                        scroll_amount=19,
+                        last_line_extra=12)
+                else:
+                    self.carousel.set_text(
+                        self.idle_screen,
+                        "The Answer to the Great Question... Of Life, the "
+                        "Universe and Everything... Is... Forty-Two.",
+                        scroll_delay=0.3,
+                        scroll_amount=1,
+                        first_line_extra=2,
+                        last_line_extra=5
+                    )
         else:
             self.carousel.disable(self.idle_screen)
 
@@ -462,8 +489,6 @@ class LCDPrinter(metaclass=MCSingleton):
         self.ignore_errors_to = time() + ERROR_GRACE
 
     @through_queue
-    def print_message(self, line: LCDLine, force_over_fw=False):
+    def print_message(self, line: LCDLine):
         """Print a message at most 19 chars long"""
-        if force_over_fw:
-            self.fw_msg_end_at = time()
         self.carousel.add_message(line)
