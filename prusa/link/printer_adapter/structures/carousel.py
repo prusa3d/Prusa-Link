@@ -10,7 +10,7 @@ from typing import List, Set, Deque
 
 class LCDLine:
     """Info about the text to show and the chime to play"""
-    def __init__(self, text, delay=2.0, resets_idle=False, chime_gcode=None):
+    def __init__(self, text, delay=5.0, resets_idle=False, chime_gcode=None):
         self.text: str = text
         self.delay: float = delay
         self.chime_gcode = []
@@ -137,19 +137,9 @@ class Carousel:
         Screen"""
         self.to_rewind = True
 
-    def add_message(self, message,
-                    delay=None,
-                    chime_gcode=None,
-                    resets_idle=None):
+    def add_message(self, line: LCDLine):
         """Adds a "spurious" message to be displayed.
         Long ones (over 19 chars) aren't supported"""
-        line = LCDLine(message)
-        if delay is not None:
-            line.delay = delay
-        if chime_gcode is not None:
-            line.chime_gcode = chime_gcode
-        if resets_idle is not None:
-            line.resets_idle = resets_idle
         self.messages.append(line)
 
     def verify_tracked(self, screen):

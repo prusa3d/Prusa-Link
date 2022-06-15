@@ -4,6 +4,7 @@ nod obstructing anything else the printer wrote.
 """
 import logging
 import math
+from functools import partial
 from threading import Event
 from pathlib import Path
 from queue import Queue
@@ -73,6 +74,16 @@ ERROR_PRIORITY = 30
 ERROR_WAIT_PRIORITY = 31
 UPLOAD_PRIORITY = 20
 IDLE_PRIORITY = 10
+
+
+def through_queue(func):
+    """A decorator to mke functions use the LCDPrinter event queue when called
+    Prevents thread racing and notifies the CLDPrinter to check
+    what to print next"""
+    def wrapper(self, *args, **kwargs):
+        func_with_args = partial(func, self, *args, **kwargs)
+        self.add_event(func_with_args)
+    return wrapper
 
 
 class LCDPrinter(metaclass=MCSingleton):
@@ -156,7 +167,7 @@ class LCDPrinter(metaclass=MCSingleton):
         if self.ignore > 0:
             self.ignore -= 1
         else:
-            self.reset_idle()
+            self._reset_idle()
             self.fw_msg_end_at = time() + FW_MESSAGE_TIMEOUT
             self.add_event(self.carousel.set_rewind)
 
@@ -164,7 +175,7 @@ class LCDPrinter(metaclass=MCSingleton):
         """If the screen is enabled, disable it, and print out a message"""
         if not self.carousel.is_enabled(screen):
             return
-        self.carousel.add_message(message)
+        self.carousel.add_message(LCDLine(message))
         self.carousel.disable(screen)
 
     def whats_going_on(self):
@@ -397,7 +408,7 @@ class LCDPrinter(metaclass=MCSingleton):
         :param line: Text to be shown in the status portion of the printer LCD
         """
         if line.resets_idle:
-            self.reset_idle()
+            self._reset_idle()
         ascii_text = unidecode.unidecode(line.text)
         self.ignore += 1
         instruction = enqueue_instruction(self.serial_queue,
@@ -418,7 +429,7 @@ class LCDPrinter(metaclass=MCSingleton):
             log.debug("Printed: '%s' on the LCD.", line.text)
         line.reset_end()
 
-    def reset_idle(self):
+    def _reset_idle(self):
         """Reset the idle time form to the current time"""
         self.idle_from = time()
 
@@ -449,3 +460,10 @@ class LCDPrinter(metaclass=MCSingleton):
     def reset_error_grace(self):
         """Resets the grace period for errors to clear"""
         self.ignore_errors_to = time() + ERROR_GRACE
+
+    @through_queue
+    def print_message(self, line: LCDLine, force_over_fw=False):
+        """Print a message at most 19 chars long"""
+        if force_over_fw:
+            self.fw_msg_end_at = time()
+        self.carousel.add_message(line)
