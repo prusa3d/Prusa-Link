@@ -110,6 +110,9 @@ class WatchedItem(Watchable):
         """Sets the interval independently of whether the item is off or not"""
         self._interval = new_interval
 
+    def __repr__(self):
+        return super().__repr__() + ": " + self.name
+
 
 class WatchedGroup(Watchable):
     """
