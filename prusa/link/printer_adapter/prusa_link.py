@@ -139,9 +139,11 @@ class PrusaLink:
         self.print_stats = PrintStats(self.model)
         self.file_printer = FilePrinter(self.serial_queue, self.serial_parser,
                                         self.model, self.cfg, self.print_stats)
-        self.storage_controller = StorageController(cfg, self.serial_queue,
-                                         self.serial_parser,
-                                         self.state_manager, self.model)
+        self.storage_controller = StorageController(cfg,
+                                                    self.serial_queue,
+                                                    self.serial_parser,
+                                                    self.state_manager,
+                                                    self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
         self.telemetry_passer = TelemetryPasser(self.model, self.printer)
         self.printer_polling = PrinterPolling(self.serial_queue,
@@ -197,6 +199,8 @@ class PrusaLink:
             self.special_commands.menu_folder_found)
         self.storage_controller.sd_detached_signal.connect(
             self.special_commands.menu_folder_gone)
+
+        self.printer.command.stop_cb = self.command_queue.clear_queue
 
         self.job.job_info_updated_signal.connect(self.job_info_updated)
         self.job.job_id_updated_signal.connect(self.job_id_updated)

@@ -95,7 +95,7 @@ class Command:
         Encapsulates the run command, provides default data for returning
         """
         data = self._run_command()
-        default_data = dict(source=Source.CONNECT)
+        default_data = dict(source=self.source)
         if data is not None:
             default_data.update(data)
         return default_data

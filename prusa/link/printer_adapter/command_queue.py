@@ -86,8 +86,8 @@ class CommandQueue:
     def force_command(self, command: Command):
         """Drops everything and does the supplied command"""
         with self.enqueue_lock:
-            self._clear_queue()
-            self.do_command(command)
+            self.clear_queue()
+            return self.do_command(command)
 
     def process_queue(self):
         """
@@ -100,24 +100,25 @@ class CommandQueue:
                 adapter: CommandAdapter = self.command_queue.get(
                     timeout=QUIT_INTERVAL)
             except Empty:
-                pass
-            else:
-                try:
-                    self.current_command_adapter = adapter
-                    adapter.data = adapter.command.run_command()
-                except Exception as exception:  # pylint: disable=broad-except
-                    # Don't forget to pass exceptions as well as values
-                    adapter.exception = exception
-                adapter.processed.set()
+                continue
+
+            try:
+                self.current_command_adapter = adapter
+                adapter.data = adapter.command.run_command()
+            except Exception as exception:  # pylint: disable=broad-except
+                # Don't forget to pass exceptions as well as values
+                adapter.exception = exception
+            adapter.processed.set()
 
     def _stop_current(self):
         """Stops current command, if there is any"""
         if self.current_command_adapter is not None:
             self.current_command_adapter.command.stop()
 
-    def _clear_queue(self):
+    def clear_queue(self):
         """Clears the whole command queue"""
-        self._stop_current()
-        while not self.command_queue.empty():
-            adapter = self.command_queue.get()
-            adapter.command.stop()
+        with self.enqueue_lock:
+            self._stop_current()
+            while not self.command_queue.empty():
+                adapter = self.command_queue.get()
+                adapter.command.stop()
