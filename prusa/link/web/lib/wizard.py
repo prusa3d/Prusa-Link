@@ -101,6 +101,7 @@ class Wizard:
         self.connect_hostname = _app.settings.service_connect.hostname
         self.connect_tls = _app.settings.service_connect.tls
         self.connect_port = _app.settings.service_connect.port
+        self.connect_token = _app.settings.service_connect.token
 
         self.daemon = _app.daemon
         self.cfg = _app.daemon.cfg
@@ -201,6 +202,7 @@ class Wizard:
             settings.service_connect.hostname = self.connect_hostname
             settings.service_connect.tls = self.connect_tls
             settings.service_connect.port = self.connect_port
+            settings.service_connect.token = self.connect_token
 
         settings.update_sections(self.connect_skip)
         with open(self.cfg.printer.settings, 'w', encoding='utf-8') as ini:
