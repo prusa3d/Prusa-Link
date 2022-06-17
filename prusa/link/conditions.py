@@ -163,7 +163,6 @@ class ValueTooHigh(BadRequestError):
     id = "value-too-high"
 
 
-
 class DestinationSameAsSource(BadRequestError):
     """400 Destination is same as source"""
     title = "Destination same as source"
@@ -185,6 +184,13 @@ class FileSizeMismatch(BadRequestError):
     id = "file-size-mismatch"
 
 
+class NotSupportedFileType(BadRequestError):
+    """400 Not supported file"""
+    title = "Not Supported File Type"
+    text = "Uploaded file type is not supported."
+    id = "not-supported-file-type"
+
+
 class ForbiddenCharacters(BadRequestError):
     """400 Forbidden Characters."""
     title = "Forbidden Characters"
@@ -204,6 +210,13 @@ class FoldernameTooLong(BadRequestError):
     title = "Foldername Too Long"
     text = "Folder name length is too long"
     id = "foldername-too-long"
+
+
+class FileUploadFailed(BadRequestError):
+    """400 File Upload Failed"""
+    title = "File Upload Failed"
+    text = "File upload has failed"
+    id = "file-upload-failed"
 
 
 class ForbiddenError(LinkError):

@@ -1,6 +1,8 @@
 """Wizard endpoints"""
 from time import sleep
 from functools import wraps
+from configparser import ConfigParser
+
 from poorwsgi import state, redirect, abort
 from poorwsgi.request import FieldStorage
 from prusa.connect.printer import Printer
@@ -11,18 +13,25 @@ from .lib.core import app
 from .lib.view import generate_page
 from .lib.wizard import execute_sn_gcode, sn_write_success
 from .. import conditions
-from ..conditions import SN
 
+
+# prusa_printer_settings.ini file sections
+# pylint: disable=invalid-name
+PRINTER = 'printer'
+NETWORK = 'network'
+CONNECT = 'service::connect'
+LOCAL = 'service::local'
 
 def check_printer(fun):
     """Check if printer is initialized."""
+
     @wraps(fun)
     def handler(req):
         # printer must be initialized for wizard/printer
         daemon = app.wizard.daemon
         if not daemon.prusa_link \
                 or not daemon.prusa_link.printer \
-                or not SN:
+                or not conditions.SN:
             redirect('/wizard')
         return fun(req)
 
@@ -31,6 +40,7 @@ def check_printer(fun):
 
 def check_step(step):
     """Check a step of the wizard. If it was not OK, redirect back to it."""
+
     def wrapper(fun):
         @wraps(fun)
         def handler(req):
@@ -44,11 +54,136 @@ def check_step(step):
     return wrapper
 
 
+class ConfigFile:
+    """Configuration File object"""
+    def __init__(self):
+        self.buffer = ""
+
+    def write(self, data):
+        """Count uploaded data size and fill buffer."""
+        self.buffer += data.decode('utf-8')
+        size = len(data)
+        return size
+
+    def read(self):
+        """File read"""
+        return self.buffer
+
+    def seek(self, size):
+        """File seek"""
+        return size
+
+
+def configfile_factory(req):
+    """Factory for creating config file instance"""
+    if req.content_length <= 0:
+        raise conditions.LengthRequired()
+
+    def create(filename):
+        """Create Config File object"""
+        if not filename.endswith('.ini'):
+            raise conditions.NotSupportedFileType()
+        return ConfigFile()
+    return create
+
+
+def process_printer(config):
+    """Process printer section"""
+    printer = config[PRINTER]
+    for option in config.options(PRINTER):
+        if option == 'type':
+            app.wizard.printer_type = printer['type']
+        if option == 'name':
+            app.wizard.printer_name = printer['name'].replace("\"", "")
+        if option == 'location':
+            app.wizard.printer_location = \
+                printer['location'].replace("\"", "")
+        if option == 'fam_mode':
+            app.wizard.settings.printer.farm_mode = \
+                printer.getboolean('farm_mode')
+
+
+def process_network(config):
+    """Process network section"""
+    network = config[NETWORK]
+    if config.has_option(NETWORK, 'hostname'):
+        app.wizard.hostname = network['hostname']
+
+
+def process_connect(config):
+    """Process Connect section"""
+    connect = config[CONNECT]
+    for option in config.options(CONNECT):
+        if option == 'hostname':
+            app.wizard.connect_hostname = connect['hostname']
+        if option == 'tls':
+            app.wizard.connect_tls = connect.getboolean('tls')
+        if option == 'port':
+            app.wizard.connect_port = connect['port']
+        if option == 'token':
+            app.wizard.connect_token = connect['token'] \
+                if connect['token'] else ''
+
+
+def process_local(config):
+    """Process local section"""
+    local = config[LOCAL]
+    for option in config.options(LOCAL):
+        if option == 'enable':
+            app.wizard.enable = local['enable']
+        if option == 'username':
+            app.wizard.username = local['username']
+        if option == 'api_key':
+            app.wizard.api_key = local['api_key'] \
+                if local['api_key'] else ''
+
+
+def parse_settings(buffer):
+    """Parse printer settings from buffer to wizard"""
+    config = ConfigParser()
+    config.read_string(buffer)
+
+    # [printer]
+    if config.has_section(PRINTER):
+        process_printer(config)
+
+    # [network]
+    if config.has_section(NETWORK):
+        process_network(config)
+
+    # [service::connect]
+    if config.has_section(CONNECT):
+        process_connect(config)
+
+    # [service::local]
+    if config.has_section(LOCAL):
+        process_local(config)
+
+
 @app.route('/wizard')
 def wizard_root(req):
     """First wizard page."""
     return generate_page(req, "wizard.html", wizard=app.wizard,
                          conditions=conditions)
+
+
+@app.route('/wizard/restore', method=state.METHOD_POST)
+def wizard_restore(req):
+    """Restore wizard settings from ini file"""
+
+    try:
+        form = FieldStorage(req,
+                            keep_blank_values=app.keep_blank_values,
+                            strict_parsing=app.strict_parsing,
+                            file_callback=configfile_factory(req))
+
+        buffer = form['file'].value
+        parse_settings(buffer)
+
+    except TimeoutError as exception:
+        raise conditions.RequestTimeout() from exception
+
+    redirect('/wizard/auth')
 
 
 @app.route('/wizard/auth')
@@ -196,7 +331,10 @@ def wizard_finish_post(req):
         redirect('/')
     else:
         # register printer
-        if app.settings.service_connect.token:
+        if wizard.connect_token:
+            printer.set_connect(app.settings)
+            redirect('/')
+        elif app.settings.service_connect.token:
             redirect('/')
         else:
             # set connect connection
@@ -208,11 +346,11 @@ def wizard_finish_post(req):
                                       wizard.connect_port)
             type_ = printer.type
             name = \
-                wizard.printer_name.replace("#", "%23")\
-                .replace("\"", "").replace(" ", "%20")
+                wizard.printer_name.replace("#", "%23") \
+                    .replace("\"", "").replace(" ", "%20")
             location = \
-                wizard.printer_location.replace("#", "%23")\
-                .replace("\"", "").replace(" ", "%20")
+                wizard.printer_location.replace("#", "%23") \
+                    .replace("\"", "").replace(" ", "%20")
             redirect(
                 f'{url}/add-printer/connect/{type_}/{code}/{name}/{location}')
 

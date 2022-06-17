@@ -71,7 +71,7 @@
                     <a href="/wizard/connect" class="btn btn-back btn-outline-light"><img src="../img/arrow-left.svg" height="16" /> BACK | PrusaConnect settings</a>
                   </div>
                   <div class="col-xs-auto">
-                    <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Save {% if not wizard.connect_skip %} and Register {% endif %} Printer | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
+                    <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Save {% if not wizard.connect_skip and not wizard.connect_token %} and Register {% endif %} Printer | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
                   </div>
               </div>
             </div>
