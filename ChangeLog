@@ -113,6 +113,7 @@
      * Added endpoint for capture an image from a camera
      * Fixed check for negative temperatures of nozzle and bed
      * Add a special SD menu to set the printer to READY from the LCD
+     * Add boot partition config copy script (for RPis)
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
