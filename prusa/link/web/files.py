@@ -18,7 +18,7 @@ from poorwsgi.response import JSONResponse, Response, FileResponse
 from poorwsgi.results import hbytes
 
 from prusa.connect.printer import const
-from prusa.connect.printer.const import Source
+from prusa.connect.printer.const import Source, StorageType
 from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 from prusa.connect.printer.download import Transfer, TransferRunningError, \
     forbidden_characters, filename_too_long, foldername_too_long
@@ -75,6 +75,15 @@ def get_local_free_space(path):
         free_space = path_.f_bavail * path_.f_bsize
         return free_space
     return None
+
+
+def get_files_size(files, file_type):
+    """Iterate through a list of print files and return size summary"""
+    size = 0
+    for item in files['children']:
+        if item['type'] == file_type:
+            size += item['size']
+    return size
 
 
 class GCodeFile(FileIO):
@@ -170,6 +179,45 @@ def check_target(func):
         return func(req, target, *args, **kwargs)
 
     return handler
+
+
+@app.route('/api/v1/storage')
+@check_api_digest
+def storage_info(req):
+    """Returns info about each storage"""
+    # pylint: disable=unused-argument
+    storage_dict = app.daemon.prusa_link.printer.fs.storage_dict
+    storage_list = [
+        {
+            'type': StorageType.LOCAL.value,
+            'path': '/local',
+            'available': False},
+        {
+            'type': StorageType.SDCARD.value,
+            'path': '/sdcard',
+            'available': False
+        }]
+
+    for storage in storage_dict.values():
+        files = storage.to_dict()
+        storage_size = files['size']
+        print_files = get_files_size(files, 'FILE')
+
+        if storage.path_storage:
+            # LOCAL
+            storage_ = storage_list[0]
+            storage_['free_space'] = files.get('free_space')
+            storage_['total_space'] = files.get('total_space')
+        else:
+            # SDCARD
+            storage_ = storage_list[1]
+
+        storage_['name'] = storage.storage
+        storage_['print_files'] = print_files
+        storage_['system_files'] = storage_size - print_files
+        storage_['available'] = True
+
+    return JSONResponse(storage_list=storage_list)
 
 
 @app.route('/api/files')
