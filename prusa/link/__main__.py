@@ -12,6 +12,9 @@ from cProfile import Profile
 
 from daemon import DaemonContext  # type: ignore
 from lockfile.pidlockfile import PIDLockFile  # type: ignore
+from prusa.connect.printer import __version__ as sdk_version
+
+from . import __version__ as link_version
 from .const import EXIT_TIMEOUT
 from .config import Config
 from .interesting_logger import InterestingLogRotator, InterestingLogger
@@ -159,9 +162,17 @@ def main():
     parser.add_argument("--profile",
                         action="store_true",
                         help="Use cProfile for profiling application.")
+    parser.add_argument("--version",
+                        action="store_true",
+                        help="Print out version info and exit")
 
     argv = list(arg for arg in sys.argv[1:] if arg not in ('start', 'restart'))
     args = parser.parse_args()
+
+    if args.version:
+        print("PrusaLink version:", link_version)
+        print("PrusaConnect-SDK version:", sdk_version)
+        return 0
 
     profile = None
     if args.profile:
