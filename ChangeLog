@@ -66,6 +66,7 @@
       - Changed white color to light gray
       - Project preview is now not dependent on `/api/job` endpoint
       - Confirm dialog after uploade via drag zone
+      - Nozzle diameter
      * Differentiate between FW and ID errors in the wizard, update texts
      * Fix ID error being swapped with the FW error
      * Fixed download ref, added total storage space info
