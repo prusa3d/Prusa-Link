@@ -32,19 +32,18 @@
                 <img src="img/printers/{{ printer.type if printer.type else 'unknown_printer' }}.svg" height="200" width="200" />
             </div>
 
-            <h2 class="align-center">{{ printer.type | printer_type }}</h2>
+            <h2 class="align-center">{{ "Printer not recognized." if printer_type == "Unknown" else printer_type}}</h2>
 
             <div class="container navigation">
                 <div class="row">
                 {% if not conditions.ID %}
-                    <div class="col" style="text-align: center;">Unfortunately your printer is  not supported<br /><br />
-                        Only the MK3, MK3S and MK3S+ printers are supported. If you think this is a bug, consider
-                        starting a new thread on
-                        <a href="https://forum.prusaprinters.org/forum/prusa-connect-prusalink/">our forum</a>
+                    <div class="col" style="text-align: center;">Unfortunately your printer is not supported or running old firmware. To download the latest firmware, visit <a href="https://help.prusa3d.com/">help.prusa3d.com.</a><br /><br />
+                        Only Original Prusa MK3, MK3S and MK3S+ printers are supported. If you think this is a bug, consider
+                        starting a new thread on <a href="https://forum.prusaprinters.org/forum/prusa-connect-prusalink/">forum.prusaprinters.org</a>
                         or contacting support at info@prusa3d.com
                     </div>
                 {% elif not conditions.FW %}
-                    <div class="col" style="text-align: center;">Firmware is not up to date, please update it!<br /><br />
+                    <div class="col" style="text-align: center;">Firmware is not up-to-date, please update it!<br /><br />
                         You can download the latest stable firmware at <a href="https://prusa3d.com/drivers" target="_blank">Drivers, Firmware and Manuals</a> download page.<br />
                         Follow the instructions in this <a href="https://help.prusa3d.com/en/guide/upgrading-the-firmware-original-prusa-i3_24720" target="_blank">guide</a>.<br /><br />
                         After upgrading, run this wizard again.
