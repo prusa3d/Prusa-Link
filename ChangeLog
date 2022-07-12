@@ -117,6 +117,7 @@
      * Add a special SD menu to set the printer to READY from the LCD
      * Add boot partition config copy script (for RPis)
      * Added endpoint api/v1/storage with storage info
+     * Round auto guessed preheat temps to the nearest five
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder

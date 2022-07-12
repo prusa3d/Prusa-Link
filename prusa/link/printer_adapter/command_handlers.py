@@ -23,7 +23,7 @@ from ..serial.helpers import enqueue_list_from_str, enqueue_instruction
 from .structures.model_classes import JobState
 from .structures.regular_expressions import REJECTION_REGEX, \
     OPEN_RESULT_REGEX, PRINTER_BOOT_REGEX
-from ..util import file_is_on_sd
+from ..util import file_is_on_sd, round_to_five
 
 log = logging.getLogger(__name__)
 
@@ -328,7 +328,7 @@ class FilamentCommand(Command):
         target_bed = self.parameters["bed_temperature"]
         target_print_temp = self.parameters["nozzle_temperature"]
         # Extrusion temperature = 90% of target nozzle temperature
-        target_extrude_temp = target_print_temp * 0.9
+        target_extrude_temp = round_to_five(target_print_temp * 0.9)
 
         # Heat up the bed
         enqueue_instruction(self.serial_queue,
