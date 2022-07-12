@@ -8,7 +8,7 @@ from hashlib import sha256
 from pathlib import Path
 from threading import Event
 from time import time
-from typing import Callable
+from typing import Callable, Union
 
 import unidecode
 
@@ -179,3 +179,18 @@ def get_d3_code(address: int, byte_count: int):
     if address >= 2**16:
         raise AttributeError("The address needs to be two bytes long")
     return f"D3 Ax{format(address, 'x').upper()} C{byte_count}"
+
+
+def round_to_five(number: Union[float, int]):
+    """Rounds a number to the nearest five
+
+    >>> round_to_five(23)
+    25
+    >>> round_to_five(22)
+    20
+    >>> round_to_five(22.6)
+    25
+    >>> round_to_five(22.4)
+    20
+    """
+    return round(number/5)*5
