@@ -644,19 +644,13 @@ class PrusaLink:
         self.job.process_mixed_path(path)
 
     def _reset_print_stats(self):
-        """
-        When a print ends
-        """
+        """Reset print stats on the printer to say -1"""
         gcode = get_print_stats_gcode()
         enqueue_instruction(self.serial_queue, gcode)
-        self.telemetry_passer.set_telemetry(Telemetry(
-            progress=0,
-            time_printing=0
-        ))
 
     def file_printer_started_printing(self, sender):
         """
-        Tells thestate manager and telemetry about a new print job
+        Tells the state manager and telemetry about a new print job
         starting
         """
         assert sender is not None
@@ -807,6 +801,7 @@ class PrusaLink:
                 "by the printer entering the ERROR state.")
             self.file_printer.stop_print()
 
+        self.telemetry_passer.state_changed()
         if from_state in PRINTING_STATES and to_state in BASE_STATES:
             self._reset_print_stats()
 
