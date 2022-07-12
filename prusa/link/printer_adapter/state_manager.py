@@ -664,8 +664,7 @@ class StateManager(metaclass=MCSingleton):
     @state_influencer(StateChange(to_states={State.ATTENTION: Source.USER}))
     def attention(self):
         """
-        Sets the override state to ATTENTION, if we haven't just sent an M0
-        for stopped or finished print.
+        Sets the override state to ATTENTION
         """
         if self.resuming_from_fan_error:
             self.expect_change(
@@ -674,10 +673,9 @@ class StateManager(metaclass=MCSingleton):
                     reason="Most likely a false positive. "
                            "Sorry about that 😅"))
 
-        if self.data.printing_state not in {State.FINISHED, State.STOPPED}:
-            log.debug("Overriding the state with ATTENTION")
-            log.warning("State was %s", self.get_state())
-            self.data.override_state = State.ATTENTION
+        log.debug("Overriding the state with ATTENTION")
+        log.warning("State was %s", self.get_state())
+        self.data.override_state = State.ATTENTION
 
     @state_influencer(StateChange(to_states={State.ERROR: Source.WUI}))
     def error(self):

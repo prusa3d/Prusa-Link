@@ -95,11 +95,9 @@ class TelemetryPasser(metaclass=MCSingleton):
 
     def _get_and_reset_telemetry(self):
         """
-        Telemetry is special, to report only the most recent values,
-        each read it gets reset
+        Telemetry to send gets reset each send.
 
-        The last telemetry is not being reset, so the recent values can be
-        read for web etc.
+        last_sent contains the values that connect should know about
         """
         with self.lock:
 
@@ -195,6 +193,15 @@ class TelemetryPasser(metaclass=MCSingleton):
 
                 if to_update:
                     self._to_send[key] = value
+
+    def state_changed(self):
+        """React to state changes by removing (or adding) info"""
+        with self.lock:
+            for key in Telemetry().dict():
+                if not self._is_appropriate_for_state(key):
+                    setattr(self.model.latest_telemetry, key, None)
+                    if key in self._to_send:
+                        del self._to_send[key]
 
     def activity_observed(self):
         """Call if any activity that constitutes waking up from sleep occurs"""
