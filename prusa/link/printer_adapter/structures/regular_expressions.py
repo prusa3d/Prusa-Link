@@ -36,8 +36,10 @@ LFN_CAPTURE = re.compile(
     r"(?P<dir_exit>DIR_EXIT)|"
     r"(?P<end>End file list)$")
 
-SD_PRESENT_REGEX = re.compile(r"^echo:((?P<ok>SD card ok)|"
-                              r"(?P<fail>SD init fail))$")
+SD_PRESENT_REGEX = re.compile(r"^(?P<ok>echo:SD card ok)|"
+                              r"(?P<fail>(echo:SD init fail)|"
+                              r"(Error:volume\.init failed)|"
+                              r"(Error:openRoot failed))$")
 SD_EJECTED_REGEX = re.compile(r"^(echo:SD card released)$")
 
 ANY_REGEX = re.compile(r".*")
