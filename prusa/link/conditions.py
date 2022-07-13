@@ -114,7 +114,7 @@ class LinkError(RuntimeError):
 
     def json_response(self):
         """Return JSONResponse for error."""
-        kwargs = dict(title=self.title, text=self.text)
+        kwargs = dict(title=self.title, message=self.text)
         if self.url:
             kwargs['url'] = self.url
         return JSONResponse(status_code=self.status_code,
