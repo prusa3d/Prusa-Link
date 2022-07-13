@@ -52,8 +52,10 @@ START_PRINT_REGEX = re.compile(r"^echo:enqueing \"M24\"$")
 PRINT_DONE_REGEX = re.compile(r"^Done printing file$")
 # ----------------------------------------
 
-REJECTION_REGEX = re.compile(r"^(echo:Unknown command: (\"[^\"]*\"))|"
-                             r"(Unknown \S code: .*)$")
+REJECTION_REGEX = re.compile(
+    r"^(?P<unknown>(echo:Unknown command: (\"[^\"]*\"))|"
+    r"(Unknown \S code: .*))|"
+    r"(?P<cold>echo: cold extrusion prevented)$")
 
 BUSY_REGEX = re.compile("^echo:busy: processing$")
 ATTENTION_REGEX = re.compile("^echo:busy: paused for user$")

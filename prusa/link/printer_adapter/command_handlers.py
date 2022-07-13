@@ -284,18 +284,21 @@ class ExecuteGcode(Command):
         # try running every line
         # Do this manually as it's the only place where a list
         # has to be enqueued
-        instruction_list = enqueue_list_from_str(self.serial_queue,
-                                                 line_list,
-                                                 REJECTION_REGEX,
-                                                 to_front=True)
+        instruction_list = enqueue_list_from_str(
+            self.serial_queue, line_list, REJECTION_REGEX, to_front=True)
 
         for instruction in instruction_list:
             self.wait_while_running(instruction)
 
             if not instruction.is_confirmed():
                 self.failed("Command interrupted")
-            if instruction.match():
-                self.failed(f"Unknown command '{self.gcode}')")
+
+            match = instruction.match()
+            if match:
+                if match.group("unknown") is not None:
+                    self.failed(f"Unknown command '{self.gcode}')")
+                elif match.group("cold") is not None:
+                    self.failed("Cold extrusion prevented")
 
         # If the gcode execution did not cause a state change
         # stop expecting it

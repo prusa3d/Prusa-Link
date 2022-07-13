@@ -833,16 +833,6 @@ class PrinterPolling:
         """Passes the flash air value to sd updater"""
         self.sd_card.set_flash_air(value)
 
-    def _set_temps(self, value):
-        """Write the temps to the model"""
-        telemetry = Telemetry(temp_nozzle=float(value["ntemp"]))
-        if "btemp" in value:
-            telemetry.temp_bed = float(value["btemp"])
-        if "set_ntemp" in value and "set_btemp" in value:
-            telemetry.target_nozzle = float(value["set_ntemp"])
-            telemetry.target_bed = float(value["set_btemp"])
-        self.telemetry_passer.set_telemetry(telemetry)
-
     def _set_positions(self, value):
         """Write the position values to the model"""
         self.telemetry_passer.set_telemetry(

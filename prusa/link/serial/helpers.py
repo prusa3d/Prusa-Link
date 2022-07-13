@@ -72,7 +72,7 @@ def enqueue_list_from_str(queue: SerialQueue,
                           message_list: List[str],
                           regexp: re.Pattern,
                           to_front=False,
-                          to_checksum=False) -> List[Instruction]:
+                          to_checksum=False) -> List[MatchableInstruction]:
     """
     Creates a list of instructions, which it enqueues right away
     :param queue: Queue to enqueue into
@@ -86,7 +86,7 @@ def enqueue_list_from_str(queue: SerialQueue,
     only for print instructions!)
     :return List of enqueued instructions
     """
-    instruction_list: List[Instruction] = []
+    instruction_list: List[MatchableInstruction] = []
     for message in message_list:
         instruction = MatchableInstruction(message,
                                            capture_matching=regexp,

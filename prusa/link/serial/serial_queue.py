@@ -24,7 +24,7 @@ from ..printer_adapter.structures.regular_expressions import \
     ATTENTION_REGEX, HEATING_HOTEND_REGEX, HEATING_REGEX, \
     M110_REGEX
 from ..util import loop_until
-from .instruction import Instruction
+from .instruction import Instruction, MatchableInstruction
 from .is_planner_fed import IsPlannerFed
 from .serial_parser import SerialParser
 from ..printer_adapter.structures.mc_singleton import MCSingleton
@@ -299,7 +299,7 @@ class SerialQueue(metaclass=MCSingleton):
         self._try_writing()
 
     def enqueue_list(self,
-                     instruction_list: List[Instruction],
+                     instruction_list: List[MatchableInstruction],
                      to_front=False):
         """
         Enqueue list of instructions
