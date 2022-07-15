@@ -103,7 +103,7 @@ class PrusaLink:
         self.printer.set_connect(settings)
 
         # Set download callbacks
-        self.printer.download_mgr.printed_file_cb = self.printed_file_cb
+        self.printer.printed_file_cb = self.printed_file_cb
         self.printer.download_mgr.download_finished_cb \
             = self.download_finished_cb
 
