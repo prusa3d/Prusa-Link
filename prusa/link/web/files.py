@@ -1,38 +1,36 @@
 """/api/files endpoint handlers"""
-from os import makedirs, unlink, replace, statvfs
-from os.path import abspath, join, exists, basename, dirname, getsize, \
-    getctime
+import logging
 from base64 import decodebytes
 from datetime import datetime
-from hashlib import md5
-from time import sleep, time
-from io import FileIO
 from functools import wraps
+from hashlib import md5
+from io import FileIO
+from os import makedirs, replace, statvfs, unlink
+from os.path import abspath, basename, dirname, exists, getctime, getsize, join
 from shutil import move, rmtree
-
-import logging
+from time import sleep, time
 
 from poorwsgi import state
 from poorwsgi.request import FieldStorage
-from poorwsgi.response import JSONResponse, Response, FileResponse
+from poorwsgi.response import FileResponse, JSONResponse, Response
 from poorwsgi.results import hbytes
-
 from prusa.connect.printer import const
 from prusa.connect.printer.const import Source, StorageType
+from prusa.connect.printer.download import (Transfer, TransferRunningError,
+                                            filename_too_long,
+                                            foldername_too_long,
+                                            forbidden_characters)
 from prusa.connect.printer.metadata import FDMMetaData, get_metadata
-from prusa.connect.printer.download import Transfer, TransferRunningError, \
-    forbidden_characters, filename_too_long, foldername_too_long
 
-from .lib.core import app
-from .lib.auth import check_api_digest
-from .lib.files import file_to_api, get_os_path, local_refs, sdcard_refs, \
-        gcode_analysis, sort_files
-
-from ..printer_adapter.prusa_link import TransferCallbackState
-from ..const import PATH_WAIT_TIMEOUT, LOCAL_STORAGE_NAME
-from ..printer_adapter.command_handlers import StartPrint
-from ..printer_adapter.job import JobState, Job
 from .. import conditions
+from ..const import LOCAL_STORAGE_NAME, PATH_WAIT_TIMEOUT
+from ..printer_adapter.command_handlers import StartPrint
+from ..printer_adapter.job import Job, JobState
+from ..printer_adapter.prusa_link import TransferCallbackState
+from .lib.auth import check_api_digest
+from .lib.core import app
+from .lib.files import (file_to_api, gcode_analysis, get_os_path, local_refs,
+                        sdcard_refs, sort_files)
 
 log = logging.getLogger(__name__)
 HEADER_DATETIME_FORMAT = "%a, %d %b %Y %X GMT"
@@ -88,6 +86,7 @@ def get_files_size(files, file_type):
 
 class GCodeFile(FileIO):
     """Own file class to control processing data when POST"""
+
     def __init__(self, filepath: str, transfer: Transfer):
         assert (app.daemon and app.daemon.prusa_link
                 and app.daemon.prusa_link.printer)
@@ -169,6 +168,7 @@ def callback_factory(req):
 
 def check_target(func):
     """Check target from request."""
+
     @wraps(func)
     def handler(req, target, *args, **kwargs):
         if target == 'sdcard':
@@ -187,16 +187,15 @@ def storage_info(req):
     """Returns info about each storage"""
     # pylint: disable=unused-argument
     storage_dict = app.daemon.prusa_link.printer.fs.storage_dict
-    storage_list = [
-        {
-            'type': StorageType.LOCAL.value,
-            'path': '/local',
-            'available': False},
-        {
-            'type': StorageType.SDCARD.value,
-            'path': '/sdcard',
-            'available': False
-        }]
+    storage_list = [{
+        'type': StorageType.LOCAL.value,
+        'path': '/local',
+        'available': False
+    }, {
+        'type': StorageType.SDCARD.value,
+        'path': '/sdcard',
+        'available': False
+    }]
 
     for storage in storage_dict.values():
         files = storage.to_dict()
@@ -395,7 +394,8 @@ def api_start_print(req, target, path):
 
     elif command == 'print':
         if job.data.job_state == JobState.IDLE:
-            job.set_file_path(path, path_incomplete=False,
+            job.set_file_path(path,
+                              path_incomplete=False,
                               prepend_sd_storage=False)
             command_queue = app.daemon.prusa_link.command_queue
             command_queue.do_command(StartPrint(path, source=Source.WUI))
@@ -630,9 +630,7 @@ def api_download_abort(req):
 def api_thumbnails(req, path):
     """Returns preview from cache file."""
     # pylint: disable=unused-argument
-    headers = {
-        'Cache-Control': 'private, max-age=604800'
-    }
+    headers = {'Cache-Control': 'private, max-age=604800'}
     os_path = get_os_path('/' + path)
     if not os_path or not exists(os_path):
         raise conditions.FileNotFound()

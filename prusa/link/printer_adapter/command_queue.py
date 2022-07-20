@@ -4,13 +4,13 @@ withch are the queue members
 """
 
 import logging
-from queue import Queue, Empty
+from queue import Empty, Queue
 from threading import Event, RLock
 
+from ..const import QUIT_INTERVAL
 from .command import Command, CommandFailed
 from .telemetry_passer import TelemetryPasser
-from ..const import QUIT_INTERVAL
-from .updatable import prctl_name, Thread
+from .updatable import Thread, prctl_name
 
 log = logging.getLogger(__name__)
 
@@ -31,6 +31,7 @@ class CommandQueue:
     Executes commands from queue in its own thread
     Prevents command racing
     """
+
     def __init__(self):
         self.running = False
         self.command_queue = Queue()

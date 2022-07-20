@@ -2,7 +2,7 @@
 from time import time
 
 from prusa.link.printer_adapter.structures.carousel import (  # type:ignore
-    Screen, LCDLine, Carousel)
+    Carousel, LCDLine, Screen)
 
 
 def test_line():
@@ -32,8 +32,7 @@ def test_screen_lines():
         scroll_delay=1,
         first_line_extra=3,
         last_line_extra=5,
-        scroll_amount=3
-    )
+        scroll_amount=3)
     lines = list(screen.lines())
     first = lines[0]
     second = lines[1]
@@ -49,13 +48,11 @@ def test_screen_lines():
     assert last.delay == 6
     assert len(lines) == 16
 
-    carousel.set_text(
-        screen=screen,
-        text="A",
-        scroll_delay=1,
-        first_line_extra=0,
-        last_line_extra=0
-    )
+    carousel.set_text(screen=screen,
+                      text="A",
+                      scroll_delay=1,
+                      first_line_extra=0,
+                      last_line_extra=0)
     line = list(screen.lines())[0]
     assert line.text == "A"
     assert line.delay == 1

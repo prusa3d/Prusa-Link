@@ -2,11 +2,11 @@
 
 from os.path import join
 
-from prusa.connect.printer.metadata import FDMMetaData, estimated_to_seconds
 from prusa.connect.printer.const import GCODE_EXTENSIONS
+from prusa.connect.printer.metadata import FDMMetaData, estimated_to_seconds
 
-from .core import app
 from ...const import SD_STORAGE_NAME
+from .core import app
 
 
 def get_os_path(abs_path):

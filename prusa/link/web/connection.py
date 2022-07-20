@@ -4,11 +4,10 @@ from poorwsgi.response import JSONResponse
 from prusa.connect.printer.const import RegistrationStatus
 
 from .. import conditions
-
-from .main import PRINTER_STATES
-from .lib.core import app
-from .lib.auth import check_api_digest
 from ..conditions import use_connect_errors
+from .lib.auth import check_api_digest
+from .lib.core import app
+from .main import PRINTER_STATES
 
 
 @app.route('/api/connection')

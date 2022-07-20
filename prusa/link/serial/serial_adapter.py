@@ -9,13 +9,13 @@ from time import sleep
 from blinker import Signal  # type: ignore
 from prusa.connect.printer.conditions import CondState
 
-from .serial import SerialException
-from .serial_parser import SerialParser
-from . import serial
 from ..conditions import SERIAL
 from ..const import PRINTER_BOOT_WAIT, SERIAL_REOPEN_TIMEOUT
 from ..printer_adapter.structures.mc_singleton import MCSingleton
-from ..printer_adapter.updatable import prctl_name, Thread
+from ..printer_adapter.updatable import Thread, prctl_name
+from . import serial
+from .serial import SerialException
+from .serial_parser import SerialParser
 
 log = logging.getLogger(__name__)
 
@@ -27,6 +27,7 @@ class SerialAdapter(metaclass=MCSingleton):
 
     It also can reset the connected device using DTR - works only with USB
     """
+
     def __init__(self,
                  serial_parser: SerialParser,
                  port="/dev/ttyAMA0",
@@ -120,8 +121,7 @@ class SerialAdapter(metaclass=MCSingleton):
 
             try:
                 self._reopen()
-            except (
-                serial.SerialException, FileNotFoundError, OSError) as err:
+            except (serial.SerialException, FileNotFoundError, OSError) as err:
                 SERIAL.state = CondState.NOK
                 log.debug(str(err))
                 log.warning("Opening of the serial port %s failed. Retrying",

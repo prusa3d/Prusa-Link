@@ -1,12 +1,12 @@
 """Contains helper functions, for instruction enqueuing"""
 import re
 from threading import Event
-from typing import List, Callable
+from typing import Callable, List
 
-from ..serial.instruction import \
-    Instruction, MandatoryMatchableInstruction, MatchableInstruction
-from .serial_queue import SerialQueue
 from ..const import QUIT_INTERVAL
+from ..serial.instruction import (Instruction, MandatoryMatchableInstruction,
+                                  MatchableInstruction)
+from .serial_queue import SerialQueue
 
 
 def wait_for_instruction(instruction,

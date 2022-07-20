@@ -1,19 +1,18 @@
 """Wizard endpoints"""
-from time import sleep
-from functools import wraps
 from configparser import ConfigParser
+from functools import wraps
+from time import sleep
 
-from poorwsgi import state, redirect, abort
+from poorwsgi import abort, redirect, state
 from poorwsgi.request import FieldStorage
 from prusa.connect.printer import Printer
 
+from .. import conditions
 from .lib import try_int
 from .lib.auth import REALM
 from .lib.core import app
 from .lib.view import generate_page
 from .lib.wizard import execute_sn_gcode, sn_write_success
-from .. import conditions
-
 
 # prusa_printer_settings.ini file sections
 # pylint: disable=invalid-name
@@ -21,6 +20,7 @@ PRINTER = 'printer'
 NETWORK = 'network'
 CONNECT = 'service::connect'
 LOCAL = 'service::local'
+
 
 def check_printer(fun):
     """Check if printer is initialized."""
@@ -42,6 +42,7 @@ def check_step(step):
     """Check a step of the wizard. If it was not OK, redirect back to it."""
 
     def wrapper(fun):
+
         @wraps(fun)
         def handler(req):
             # if errors from step isn't empty, it is True too
@@ -56,6 +57,7 @@ def check_step(step):
 
 class ConfigFile:
     """Configuration File object"""
+
     def __init__(self):
         self.buffer = ""
 
@@ -84,6 +86,7 @@ def configfile_factory(req):
         if not filename.endswith('.ini'):
             raise conditions.NotSupportedFileType()
         return ConfigFile()
+
     return create
 
 
@@ -163,7 +166,9 @@ def parse_settings(buffer):
 @app.route('/wizard')
 def wizard_root(req):
     """First wizard page."""
-    return generate_page(req, "wizard.html", wizard=app.wizard,
+    return generate_page(req,
+                         "wizard.html",
+                         wizard=app.wizard,
                          conditions=conditions)
 
 
@@ -347,10 +352,10 @@ def wizard_finish_post(req):
             type_ = printer.type
             name = \
                 wizard.printer_name.replace("#", "%23") \
-                    .replace("\"", "").replace(" ", "%20")
+                      .replace("\"", "").replace(" ", "%20")
             location = \
                 wizard.printer_location.replace("#", "%23") \
-                    .replace("\"", "").replace(" ", "%20")
+                      .replace("\"", "").replace(" ", "%20")
             redirect(
                 f'{url}/add-printer/connect/{type_}/{code}/{name}/{location}')
 

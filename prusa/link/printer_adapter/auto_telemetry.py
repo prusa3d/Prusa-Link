@@ -2,17 +2,16 @@
 from re import Match
 from time import time
 
-from .telemetry_passer import TelemetryPasser
-from ..serial.serial_queue import SerialQueue
-from ..serial.serial_parser import SerialParser
-from ..serial.helpers import \
-        enqueue_instruction, wait_for_instruction
 from ..const import REPORTING_TIMEOUT
+from ..serial.helpers import enqueue_instruction, wait_for_instruction
+from ..serial.serial_parser import SerialParser
+from ..serial.serial_queue import SerialQueue
 from .model import Model
 from .structures.model_classes import Telemetry
-from .structures.regular_expressions import \
-    TEMPERATURE_REGEX, POSITION_REGEX, FAN_REGEX, HEATING_REGEX, \
-    HEATING_HOTEND_REGEX
+from .structures.regular_expressions import (FAN_REGEX, HEATING_HOTEND_REGEX,
+                                             HEATING_REGEX, POSITION_REGEX,
+                                             TEMPERATURE_REGEX)
+from .telemetry_passer import TelemetryPasser
 from .updatable import ThreadedUpdatable
 
 
@@ -31,16 +30,12 @@ class AutoTelemetry(ThreadedUpdatable):
         self.serial_queue = serial_queue
         self.model: Model = model
         self.telemetry_passer = telemetry_passer
-        self.serial_parser.add_handler(
-            TEMPERATURE_REGEX, self.temps_recorded)
-        self.serial_parser.add_handler(
-            HEATING_REGEX, self.temps_recorded)
-        self.serial_parser.add_handler(
-            HEATING_HOTEND_REGEX, self.temps_recorded)
-        self.serial_parser.add_handler(
-            POSITION_REGEX, self.positions_recorded)
-        self.serial_parser.add_handler(
-            FAN_REGEX, self.fans_recorded)
+        self.serial_parser.add_handler(TEMPERATURE_REGEX, self.temps_recorded)
+        self.serial_parser.add_handler(HEATING_REGEX, self.temps_recorded)
+        self.serial_parser.add_handler(HEATING_HOTEND_REGEX,
+                                       self.temps_recorded)
+        self.serial_parser.add_handler(POSITION_REGEX, self.positions_recorded)
+        self.serial_parser.add_handler(FAN_REGEX, self.fans_recorded)
 
         self.last_seen_positions = 0.
         self.last_seen_fans = 0.
@@ -97,8 +92,7 @@ class AutoTelemetry(ThreadedUpdatable):
         If any one of the report intervals is larger than REPORTING_TIMEOUT
         calls turn_reporting_on()
         """
-        refresh_times = (self.last_seen_temps,
-                         self.last_seen_positions,
+        refresh_times = (self.last_seen_temps, self.last_seen_positions,
                          self.last_seen_fans)
         biggest_interval = time() - min(refresh_times)
 

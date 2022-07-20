@@ -6,13 +6,12 @@ import logging
 import os
 from collections import deque
 from enum import Enum
-from typing import Optional, Deque
+from typing import Deque, Optional
 
 from ..config import Config
-from ..const import QUEUE_SIZE, \
-    DEFAULT_THRESHOLD, USE_DYNAMIC_THRESHOLD, IGNORE_ABOVE, HEAP_RATIO
-from ..printer_adapter.structures.heap import MinHeap, MaxHeap, \
-    HeapItem
+from ..const import (DEFAULT_THRESHOLD, HEAP_RATIO, IGNORE_ABOVE, QUEUE_SIZE,
+                     USE_DYNAMIC_THRESHOLD)
+from ..printer_adapter.structures.heap import HeapItem, MaxHeap, MinHeap
 from ..util import ensure_directory, get_clean_path
 
 log = logging.getLogger(__name__)
@@ -26,6 +25,7 @@ class HeapName(Enum):
 
 class TimeValue(HeapItem):
     """Time value with info in which queu it currently resides"""
+
     def __init__(self, value):
         super().__init__(value)
         self.heap_name: Optional[HeapName] = None
@@ -58,6 +58,7 @@ class IsPlannerFed:
     measured values, let's use a threshold from a previous run, or a default
     one until the values accumulate.
     """
+
     def __init__(self, cfg: Config):
         self.times_queue: Deque[TimeValue] = deque(maxlen=QUEUE_SIZE)
 

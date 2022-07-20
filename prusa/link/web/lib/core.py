@@ -1,11 +1,9 @@
 """WSGI application initialization."""
-from hashlib import sha256
-from time import time
-from os.path import join, abspath
-
 import os
-
+from hashlib import sha256
 from importlib.resources import files  # type: ignore
+from os.path import abspath, join
+from time import time
 
 from poorwsgi import Application
 from poorwsgi.digest import PasswordMap

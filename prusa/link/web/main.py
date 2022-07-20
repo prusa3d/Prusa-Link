@@ -1,37 +1,34 @@
 """Main pages and core API"""
-from socket import gethostname
-from os.path import basename, join, getsize, getmtime
+import base64
+import logging
+from io import BytesIO
 from os import listdir
+from os.path import basename, getmtime, getsize, join
+from socket import gethostname
 from subprocess import Popen
 from sys import version
-from io import BytesIO
 
-import logging
-import base64
-
-from poorwsgi import state
-from poorwsgi.response import JSONResponse, EmptyResponse, FileResponse,\
-    Response
-from poorwsgi.digest import check_digest
 from pkg_resources import working_set
-
+from poorwsgi import state
+from poorwsgi.digest import check_digest
+from poorwsgi.response import (EmptyResponse, FileResponse, JSONResponse,
+                               Response)
 from prusa.connect.printer import __version__ as sdk_version
-from prusa.connect.printer.const import State, Source
+from prusa.connect.printer.const import Source, State
 from prusa.connect.printer.metadata import get_metadata
 
 from .. import __version__, conditions
-
-from .lib.core import app
-from .lib.auth import check_api_digest, check_config, REALM
-from .lib.view import package_to_api
-from .lib.files import get_os_path, gcode_analysis, gcode_analysis_sd
-
-from ..const import LOGS_PATH, LOGS_FILES, GZ_SUFFIX, LOCAL_STORAGE_NAME, \
-    instance_id
-from ..printer_adapter.job import JobState, Job
+from ..const import (GZ_SUFFIX, LOCAL_STORAGE_NAME, LOGS_FILES, LOGS_PATH,
+                     instance_id)
 from ..printer_adapter.command import CommandFailed
-from ..printer_adapter.command_handlers import PausePrint, StopPrint, \
-    ResumePrint, StartPrint, SetReady
+from ..printer_adapter.command_handlers import (PausePrint, ResumePrint,
+                                                SetReady, StartPrint,
+                                                StopPrint)
+from ..printer_adapter.job import Job, JobState
+from .lib.auth import REALM, check_api_digest, check_config
+from .lib.core import app
+from .lib.files import gcode_analysis, gcode_analysis_sd, get_os_path
+from .lib.view import package_to_api
 
 log = logging.getLogger(__name__)
 
@@ -304,7 +301,6 @@ def api_cancel_ready(req):
         printer.cancel_printer_ready(printer.command)
         return Response(status_code=state.HTTP_OK)
     return Response(status_code=state.HTTP_CONFLICT)
-
 
 
 @app.route('/api/timelapse')

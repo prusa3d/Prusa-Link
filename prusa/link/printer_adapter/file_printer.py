@@ -6,25 +6,20 @@ from time import sleep
 
 from blinker import Signal  # type: ignore
 
-from .structures.module_data_classes import FilePrinterData
 from ..config import Config
-from ..serial.instruction import \
-    Instruction
-from ..serial.serial_queue import \
-    SerialQueue
-from ..serial.serial_parser import \
-    SerialParser
-from ..serial.helpers import \
-    enqueue_instruction, wait_for_instruction
+from ..const import PRINT_QUEUE_SIZE, QUIT_INTERVAL, STATS_EVERY, TAIL_COMMANDS
+from ..serial.helpers import enqueue_instruction, wait_for_instruction
+from ..serial.instruction import Instruction
+from ..serial.serial_parser import SerialParser
+from ..serial.serial_queue import SerialQueue
+from ..util import get_clean_path, get_gcode, get_print_stats_gcode
 from .model import Model
 from .print_stats import PrintStats
-from ..const import STATS_EVERY, \
-    PRINT_QUEUE_SIZE, TAIL_COMMANDS, QUIT_INTERVAL
 from .structures.mc_singleton import MCSingleton
-from .structures.regular_expressions import POWER_PANIC_REGEX, CANCEL_REGEX, \
-    PAUSED_REGEX, RESUMED_REGEX
-from ..util import get_clean_path, get_gcode, get_print_stats_gcode
-from .updatable import prctl_name, Thread
+from .structures.module_data_classes import FilePrinterData
+from .structures.regular_expressions import (CANCEL_REGEX, PAUSED_REGEX,
+                                             POWER_PANIC_REGEX, RESUMED_REGEX)
+from .updatable import Thread, prctl_name
 
 log = logging.getLogger(__name__)
 
@@ -262,8 +257,9 @@ class FilePrinter(metaclass=MCSingleton):
         # the other mode, so let's report both modes the same
         stat_command = get_print_stats_gcode(percent_done, time_remaining,
                                              percent_done, time_remaining)
-        instruction = enqueue_instruction(
-            self.serial_queue, stat_command, to_front=True)
+        instruction = enqueue_instruction(self.serial_queue,
+                                          stat_command,
+                                          to_front=True)
         self.data.enqueued.append(instruction)
 
     def to_print_stats(self, gcode_number):

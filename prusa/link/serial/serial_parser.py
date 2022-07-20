@@ -10,7 +10,7 @@ evaluated first.
 import logging
 import re
 from threading import Lock
-from typing import Dict, Callable, Any, Union
+from typing import Any, Callable, Dict, Union
 
 from blinker import Signal  # type: ignore
 from sortedcontainers import SortedKeyList  # type: ignore
@@ -25,6 +25,7 @@ class RegexPairing:
     An object representing a bound regexp to its handler, with priority,
     for us to be able to sort which regexps to try first
     """
+
     def __init__(self, regexp, priority=0):
         self.regexp: re.Pattern = regexp
         self.signal: Signal = Signal()
@@ -59,6 +60,7 @@ class SerialParser(metaclass=MCSingleton):
     Its job is to try and find an appropriate handler for every line that
     we receive from the printer
     """
+
     def __init__(self):
         self.lock = Lock()
         self.pattern_list = SortedKeyList(key=lambda item: -item.priority)
@@ -83,7 +85,8 @@ class SerialParser(metaclass=MCSingleton):
         else:
             log.debug("Match not found for %s", line)
 
-    def add_handler(self, regexp: re.Pattern,
+    def add_handler(self,
+                    regexp: re.Pattern,
                     handler: Callable[[Any, re.Match], None],
                     priority: Union[float, int] = 0):
         """
@@ -111,8 +114,8 @@ class SerialParser(metaclass=MCSingleton):
                               existing_pairing.priority, priority)
                 existing_pairing.signal.connect(handler, weak=False)
             else:
-                new_pairing: RegexPairing = RegexPairing(
-                    regexp, priority=priority)
+                new_pairing: RegexPairing = RegexPairing(regexp,
+                                                         priority=priority)
                 new_pairing.signal.connect(handler, weak=False)
 
                 self.pairing_dict[regexp] = new_pairing

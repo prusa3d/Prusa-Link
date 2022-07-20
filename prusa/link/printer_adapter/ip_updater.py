@@ -4,21 +4,19 @@ import socket
 from time import time
 
 import pyric  # type: ignore
+from blinker import Signal  # type: ignore
 from pyric import pyw  # type: ignore
 from pyric.pyw import Card  # type: ignore
-
-from blinker import Signal  # type: ignore
 from prusa.connect.printer.conditions import CondState
 
 from ..conditions import LAN
-from ..serial.helpers import \
-    enqueue_instruction, wait_for_instruction
-from ..serial.serial_queue import SerialQueue
-from .model import Model
 from ..const import IP_UPDATE_INTERVAL, IP_WRITE_TIMEOUT
+from ..serial.helpers import enqueue_instruction, wait_for_instruction
+from ..serial.serial_queue import SerialQueue
+from ..util import get_local_ip, get_local_ip6
+from .model import Model
 from .structures.module_data_classes import IPUpdaterData
 from .updatable import ThreadedUpdatable
-from ..util import get_local_ip, get_local_ip6
 
 log = logging.getLogger(__name__)
 
@@ -151,7 +149,9 @@ class IPUpdater(ThreadedUpdatable):
                 "The new one is %s", new_ip6)
             self.data.local_ip6 = new_ip6
 
-    def send_ip_to_printer(self, ip_address=None, reset=False,
+    def send_ip_to_printer(self,
+                           ip_address=None,
+                           reset=False,
                            timeout: float = IP_WRITE_TIMEOUT):
         """
         Uses the M552 gcode, to set the ip for displaying in the printer

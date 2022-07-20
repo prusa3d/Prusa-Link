@@ -2,9 +2,10 @@
 
 from .structures.mc_singleton import MCSingleton
 from .structures.model_classes import Telemetry
-from .structures.module_data_classes import \
-    FilePrinterData, StateManagerData, JobData, IPUpdaterData, SDCardData, \
-    StorageData, PrintStatsData
+from .structures.module_data_classes import (FilePrinterData, IPUpdaterData,
+                                             JobData, PrintStatsData,
+                                             SDCardData, StateManagerData,
+                                             StorageData)
 
 
 class Model(metaclass=MCSingleton):
@@ -12,6 +13,7 @@ class Model(metaclass=MCSingleton):
     This class should collect every bit of info from all the informer classes
     Some values are reset upon reading, other, more state oriented should stay
     """
+
     def __init__(self):
         self.latest_telemetry: Telemetry = Telemetry()
 

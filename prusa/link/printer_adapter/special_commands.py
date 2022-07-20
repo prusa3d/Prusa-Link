@@ -5,14 +5,15 @@ from time import time
 
 from blinker import Signal  # type:ignore
 
+from ..interesting_logger import InterestingLogRotator
+from ..serial.serial_parser import SerialParser
 from .command import CommandFailed
 from .command_handlers import SetReady
 from .command_queue import CommandQueue
 from .lcd_printer import LCDPrinter
-from .structures.regular_expressions import \
-    START_PRINT_REGEX, OPEN_RESULT_REGEX, PRINT_DONE_REGEX
-from ..interesting_logger import InterestingLogRotator
-from ..serial.serial_parser import SerialParser
+from .structures.regular_expressions import (OPEN_RESULT_REGEX,
+                                             PRINT_DONE_REGEX,
+                                             START_PRINT_REGEX)
 
 log = logging.getLogger(__name__)
 
@@ -24,8 +25,7 @@ class SpecialCommands:
     related ones"""
 
     def __init__(self, serial_parser: SerialParser,
-                 command_queue: CommandQueue,
-                 lcd_printer: LCDPrinter):
+                 command_queue: CommandQueue, lcd_printer: LCDPrinter):
         self.command_queue = command_queue
         self.lcd_printer = lcd_printer
 

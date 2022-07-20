@@ -5,25 +5,27 @@ gcodes, resetting the printer and sending the job info
 """
 
 import abc
-from importlib import util
 import logging
+from importlib import util
 from pathlib import Path
 from re import Match
 from threading import Event
-from time import time, sleep
-from typing import Optional, Dict, Set
+from time import sleep, time
+from typing import Dict, Optional, Set
 
-from prusa.connect.printer.const import State, Source, Event as EventConst
+from prusa.connect.printer.const import Event as EventConst
+from prusa.connect.printer.const import Source, State
 
+from ..const import (PRINTER_BOOT_WAIT, QUIT_INTERVAL, RESET_PIN,
+                     SERIAL_QUEUE_TIMEOUT, STATE_CHANGE_TIMEOUT)
+from ..serial.helpers import enqueue_instruction, enqueue_list_from_str
+from ..util import file_is_on_sd, round_to_five
 from .command import Command
 from .state_manager import StateChange
-from ..const import STATE_CHANGE_TIMEOUT, QUIT_INTERVAL, RESET_PIN, \
-    PRINTER_BOOT_WAIT, SERIAL_QUEUE_TIMEOUT
-from ..serial.helpers import enqueue_list_from_str, enqueue_instruction
 from .structures.model_classes import JobState
-from .structures.regular_expressions import REJECTION_REGEX, \
-    OPEN_RESULT_REGEX, PRINTER_BOOT_REGEX
-from ..util import file_is_on_sd, round_to_five
+from .structures.regular_expressions import (OPEN_RESULT_REGEX,
+                                             PRINTER_BOOT_REGEX,
+                                             REJECTION_REGEX)
 
 log = logging.getLogger(__name__)
 
@@ -47,6 +49,7 @@ class TryUntilState(Command):
         :param gcode: Which gcode to send. For example: "M603"
         :param desired_states: Into which state do we hope to get
         """
+
         def state_changed(sender, from_state, to_state, *args, **kwargs):
             # --- pylint section ---
             """Reacts to every state change, if the desired state has been
@@ -113,10 +116,11 @@ class StopPrint(TryUntilState):
         if self.model.file_printer.printing:
             self.file_printer.stop_print()
 
-        self._try_until_state(
-            gcode="M603",
-            desired_states={State.STOPPED, State.IDLE,
-                            State.READY, State.FINISHED})
+        self._try_until_state(gcode="M603",
+                              desired_states={
+                                  State.STOPPED, State.IDLE, State.READY,
+                                  State.FINISHED
+                              })
 
         return dict(job_id=job_id)
 
@@ -284,8 +288,10 @@ class ExecuteGcode(Command):
         # try running every line
         # Do this manually as it's the only place where a list
         # has to be enqueued
-        instruction_list = enqueue_list_from_str(
-            self.serial_queue, line_list, REJECTION_REGEX, to_front=True)
+        instruction_list = enqueue_list_from_str(self.serial_queue,
+                                                 line_list,
+                                                 REJECTION_REGEX,
+                                                 to_front=True)
 
         for instruction in instruction_list:
             self.wait_while_running(instruction)
@@ -311,6 +317,7 @@ class ExecuteGcode(Command):
 
 class FilamentCommand(Command):
     """The shared code for Loading and Unloading of filament"""
+
     def __init__(self, parameters: Optional[Dict], **kwargs):
         super().__init__(**kwargs)
         self.parameters = parameters

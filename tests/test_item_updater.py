@@ -5,14 +5,14 @@
 import logging
 import math
 from threading import Event
-from time import time, sleep
+from time import sleep, time
 from unittest import mock
 from unittest.mock import Mock
 
 import pytest
 
 from prusa.link.printer_adapter.structures.item_updater import (  # type:ignore
-    ItemUpdater, WatchedItem, WatchedGroup)
+    ItemUpdater, WatchedGroup, WatchedItem)
 
 logging.basicConfig(level="DEBUG")
 
@@ -137,12 +137,12 @@ def test_group(updater_instance: ItemUpdater):
     item_2_valid = EventSetMock(spec={})
     item_2_invalidated = EventSetMock(spec={})
     item_1 = WatchedItem("item_1",
-                                 gather_function=gather_1,
-                                 write_function=Mock())
+                         gather_function=gather_1,
+                         write_function=Mock())
     item_1.became_valid_signal.connect(item_1_valid)
     item_2 = WatchedItem("item_2",
-                                 gather_function=gather_2,
-                                 write_function=Mock())
+                         gather_function=gather_2,
+                         write_function=Mock())
     item_2.became_valid_signal.connect(item_2_valid)
     item_2.became_invalid_signal.connect(item_2_invalidated)
     watched_group = WatchedGroup([item_1, item_2])
@@ -240,9 +240,7 @@ def test_scheduled_invalidation(updater_instance: ItemUpdater):
 
     group_valid = EventSetMock(spec={})
     watched_group = WatchedGroup([
-        item_1, item_2, item_3, item_4,
-        item_5, item_6, item_7, item_8,
-        item_9
+        item_1, item_2, item_3, item_4, item_5, item_6, item_7, item_8, item_9
     ])
     watched_group.became_valid_signal.connect(group_valid)
 
@@ -282,10 +280,8 @@ def test_scheduled_invalidation(updater_instance: ItemUpdater):
     updater_instance.schedule_invalidation(item_4)
     updater_instance.schedule_invalidation(item_5)
     updater_instance.schedule_invalidation(item_6)
-    updater_instance.schedule_invalidation(item_8,
-                                           interval=base_interval)
-    updater_instance.schedule_invalidation(item_8,
-                                           interval=base_interval)
+    updater_instance.schedule_invalidation(item_8, interval=base_interval)
+    updater_instance.schedule_invalidation(item_8, interval=base_interval)
 
     sleep(refresh_offset)
     updater_instance.cancel_scheduled_invalidation(item_8)
@@ -530,8 +526,6 @@ def test_garb(updater_instance: ItemUpdater):
     item = WatchedItem("item", gather_function=Mock())
     with pytest.raises(ValueError):
         updater_instance.schedule_invalidation(item)
-    with pytest.raises(TypeError):
-        updater_instance.add_item(42)
 
 
 def test_valid_group_init(updater_instance: ItemUpdater):

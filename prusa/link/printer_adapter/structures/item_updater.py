@@ -3,10 +3,10 @@
 import logging
 from math import inf
 from multiprocessing import Event
-from queue import PriorityQueue, Queue, Empty
-from threading import Thread, RLock
+from queue import Empty, PriorityQueue, Queue
+from threading import RLock, Thread
 from time import time
-from typing import Callable, Any, Optional, Iterable
+from typing import Any, Callable, Iterable, Optional
 
 from blinker import Signal  # type: ignore
 
@@ -23,6 +23,7 @@ class SideEffectOnly(Exception):
 
 class Watchable:
     """Encapsulates the common stuff between watched values and groups"""
+
     def __init__(self):
 
         self.valid = False
@@ -119,6 +120,7 @@ class WatchedGroup(Watchable):
     A group of watched items.
     Aggregates the validity signals from its members
     """
+
     def __init__(self, items: Iterable[WatchedItem]):
         super().__init__()
 
@@ -181,6 +183,7 @@ class ItemUpdater:
     On validation or read error, variable refresh can be re-scheduled
     automatically on a timer
     """
+
     def __init__(self, quit_interval=0.2):
         self.quit_interval = quit_interval
 
@@ -315,8 +318,10 @@ class ItemUpdater:
                           item.name, value)
                 self._set_value(item, value)
 
-    def schedule_invalidation(self, item: WatchedItem,
-                              interval=None,force=False):
+    def schedule_invalidation(self,
+                              item: WatchedItem,
+                              interval=None,
+                              force=False):
         """
         Schedules an item invalidation at a certain time
         Will not shift already scheduled invalidation unless forced to

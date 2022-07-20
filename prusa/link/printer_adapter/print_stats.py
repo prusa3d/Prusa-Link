@@ -3,9 +3,9 @@ import logging
 from time import time
 
 from ..const import TAIL_COMMANDS
+from ..util import get_gcode
 from .model import Model
 from .structures.module_data_classes import PrintStatsData
-from ..util import get_gcode
 
 log = logging.getLogger(__name__)
 
@@ -15,6 +15,7 @@ class PrintStats:
     For serial prints without inbuilt progress and estimated time left
     reporting, this component tries to estimate those values
     """
+
     def __init__(self, model: Model):
         self.model = model
 

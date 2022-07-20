@@ -6,15 +6,15 @@ import re
 from blinker import Signal  # type: ignore
 from prusa.connect.printer import Printer
 
+from ..const import (BASE_STATES, JOB_ENDING_STATES, JOB_ONGOING_STATES,
+                     PRINTING_STATES, SD_STORAGE_NAME)
 from ..serial.helpers import enqueue_instruction
-from ..serial.serial_queue import SerialQueue
-from .structures.module_data_classes import JobData
 from ..serial.serial_parser import SerialParser
+from ..serial.serial_queue import SerialQueue
 from .model import Model
-from ..const import PRINTING_STATES, \
-    JOB_ENDING_STATES, BASE_STATES, JOB_ONGOING_STATES, SD_STORAGE_NAME
 from .structures.mc_singleton import MCSingleton
 from .structures.model_classes import JobState
+from .structures.module_data_classes import JobData
 
 log = logging.getLogger(__name__)
 

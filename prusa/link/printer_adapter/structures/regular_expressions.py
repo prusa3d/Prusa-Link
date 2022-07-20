@@ -11,7 +11,7 @@ SN_REGEX = re.compile(r"^(?P<sn>^CZPX\d{4}X\d{3}X.\d{5})|"
                       r"(?P<invalid>SN invalid)|(?P<gibberish>.*)$")
 VALID_SN_REGEX = re.compile(r"^(?P<sn>^CZPX\d{4}X\d{3}X.\d{5})$")
 NEW_SN_REGEX = re.compile(
-        r"^(?P<sn>^SN(?!20)[2-9][0-9](004|017|022|023|024|025)[K,C]\d{6})$")
+    r"^(?P<sn>^SN(?!20)[2-9][0-9](004|017|022|023|024|025)[K,C]\d{6})$")
 NOZZLE_REGEX = re.compile(r"^(?P<size>\d\.\d+)$")
 PERCENT_REGEX = re.compile(r"^(?P<percent>\d{0,3})%$")
 
@@ -43,7 +43,8 @@ SD_PRESENT_REGEX = re.compile(r"^(?P<ok>echo:SD card ok)|"
 SD_EJECTED_REGEX = re.compile(r"^(echo:SD card released)$")
 
 ANY_REGEX = re.compile(r".*")
-CONFIRMATION_REGEX = re.compile(r"^(ok.*)|(Done saving file\.)$")  # highest priority
+CONFIRMATION_REGEX = re.compile(
+    r"^(ok.*)|(Done saving file\.)$")  # highest priority
 
 # ---CAUTION---
 # These are handled by special_commands component
@@ -131,10 +132,8 @@ FAN_ERROR_REGEX = re.compile(
     r"^(?P<fan_name>Extruder|Print) fan speed is lower than expected$")
 D3_OUTPUT_REGEX = re.compile(
     r"^(?P<address>\w{2,}) {2}(?P<data>([0-9a-fA-F]{2} ?)+)$")
-MBL_REGEX = re.compile(
-    r"^(?P<no_mbl>Mesh bed leveling not active.)|"
-    r"(Num X,Y: (?P<num_x>\d+),(?P<num_y>\d+))|"
-    r"(?P<mbl_row>([ ]*-?\d+\.\d+)+)$"
-)
+MBL_REGEX = re.compile(r"^(?P<no_mbl>Mesh bed leveling not active.)|"
+                       r"(Num X,Y: (?P<num_x>\d+),(?P<num_y>\d+))|"
+                       r"(?P<mbl_row>([ ]*-?\d+\.\d+)+)$")
 MBL_TRIGGER_REGEX = re.compile(r"^(tmc\d+_home_enter\(axes_mask=0x..\))|"
                                r"(echo:enqueing \"G80\")")

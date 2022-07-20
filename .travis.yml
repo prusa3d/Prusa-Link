@@ -17,7 +17,8 @@ install:
  - pip3 install -U pytest pytest-pylint pytest-doctestplus pytest-mypy mock
 
 script:
-  - PYTHONPATH=`pwd` pytest -v --mypy --pylint --doctest-plus --doctest-rst
+  - PYTHONPATH=`pwd` pytest -v --mypy --pylint --doctest-plus --doctest-rst prusa/link
+  - PYTHONPATH=`pwd` pytest -v --mypy --pylint --doctest-plus --doctest-rst tests
 
 before_deploy:
  - python3 setup.py sdist

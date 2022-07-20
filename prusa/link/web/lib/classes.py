@@ -3,8 +3,8 @@
 Main server classes for handling request.
 """
 import logging
-from wsgiref.simple_server import WSGIServer, WSGIRequestHandler, ServerHandler
 from socketserver import ThreadingMixIn
+from wsgiref.simple_server import ServerHandler, WSGIRequestHandler, WSGIServer
 
 from ... import __application__, __version__
 

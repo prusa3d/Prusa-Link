@@ -1,17 +1,15 @@
 """Authorization tools and decorators"""
+import logging
 from functools import wraps
 
-import logging
-
 from poorwsgi import state
-from poorwsgi.response import Response, HTTPException
-from poorwsgi.session import check_token
 from poorwsgi.digest import check_credentials, hexdigest
+from poorwsgi.response import HTTPException, Response
+from poorwsgi.session import check_token
 
+from ...printer_adapter.structures.regular_expressions import (
+    VALID_PASSWORD_REGEX, VALID_USERNAME_REGEX)
 from .core import app
-
-from ...printer_adapter.structures.regular_expressions import \
-    VALID_USERNAME_REGEX, VALID_PASSWORD_REGEX
 
 log = logging.getLogger(__name__)
 
@@ -53,6 +51,7 @@ def check_digest(req):
 
 def check_api_digest(func):
     """Check X-Api-Key header."""
+
     @wraps(func)
     def handler(req, *args, **kwargs):
         prusa_link = app.daemon.prusa_link
@@ -76,6 +75,7 @@ def check_api_digest(func):
 
 def check_config(func):
     """Check if HTTP Digest is configured."""
+
     @wraps(func)
     def handler(req, *args, **kwargs):
         prusa_link = app.daemon.prusa_link
