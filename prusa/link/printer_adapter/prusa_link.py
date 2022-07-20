@@ -3,57 +3,61 @@ import logging
 import multiprocessing
 import os
 import re
-from threading import Event, enumerate as enumerate_threads
-from typing import Dict, Any
 from enum import Enum
+from threading import Event
+from threading import enumerate as enumerate_threads
+from typing import Any, Dict
 
-from prusa.connect.printer import Command as SDKCommand, DownloadMgr
-
+from prusa.connect.printer import Command as SDKCommand
+from prusa.connect.printer import DownloadMgr
+from prusa.connect.printer.conditions import (API, COND_TRACKER, INTERNET,
+                                              CondState)
+from prusa.connect.printer.const import Command as CommandType
+from prusa.connect.printer.const import Event as EventType
+from prusa.connect.printer.const import Source, State
 from prusa.connect.printer.files import File
-from prusa.connect.printer.const import Command as CommandType, State, \
-    Event as EventType
-from prusa.connect.printer.const import Source
-from prusa.connect.printer.conditions import API, COND_TRACKER, INTERNET, \
-    CondState
 
-from .auto_telemetry import AutoTelemetry
-from .command_handlers import ExecuteGcode, JobInfo, PausePrint, \
-    ResetPrinter, ResumePrint, StartPrint, StopPrint, LoadFilament, \
-    UnloadFilament, SetReady, CancelReady
-from .command_queue import CommandQueue
-from .filesystem.sd_card import SDState
-from .job import Job, JobState
-from .special_commands import SpecialCommands
-from .structures.module_data_classes import Sheet
-from .telemetry_passer import TelemetryPasser
-from ..serial.helpers import enqueue_instruction, enqueue_matchable
+from ..conditions import HW, ROOT_COND, UPGRADED, use_connect_errors
+from ..config import Config, Settings
+from ..const import (BASE_STATES, MK25_PRINTERS, PATH_WAIT_TIMEOUT,
+                     PRINTER_CONF_TYPES, PRINTER_TYPES, PRINTING_STATES,
+                     SD_STORAGE_NAME)
 from ..interesting_logger import InterestingLogRotator
-from .print_stat_doubler import PrintStatDoubler
-from .printer_polling import PrinterPolling
-from .print_stats import PrintStats
-from .file_printer import FilePrinter
-from .ip_updater import IPUpdater
-from .state_manager import StateManager, StateChange
-from .filesystem.storage_controller import StorageController
-from .lcd_printer import LCDPrinter
+from ..sdk_augmentation.printer import MyPrinter
+from ..serial.helpers import enqueue_instruction, enqueue_matchable
 from ..serial.serial import SerialException
-from ..serial.serial_queue import MonitoredSerialQueue
 from ..serial.serial_adapter import SerialAdapter
 from ..serial.serial_parser import SerialParser
-from .model import Model
+from ..serial.serial_queue import MonitoredSerialQueue
 from ..service_discovery import ServiceDiscovery
+from ..util import get_print_stats_gcode, make_fingerprint
+from .auto_telemetry import AutoTelemetry
+from .command_handlers import (CancelReady, ExecuteGcode, JobInfo,
+                               LoadFilament, PausePrint, ResetPrinter,
+                               ResumePrint, SetReady, StartPrint, StopPrint,
+                               UnloadFilament)
+from .command_queue import CommandQueue
+from .file_printer import FilePrinter
+from .filesystem.sd_card import SDState
+from .filesystem.storage_controller import StorageController
+from .ip_updater import IPUpdater
+from .job import Job, JobState
+from .lcd_printer import LCDPrinter
+from .model import Model
+from .print_stat_doubler import PrintStatDoubler
+from .print_stats import PrintStats
+from .printer_polling import PrinterPolling
+from .special_commands import SpecialCommands
+from .state_manager import StateChange, StateManager
 from .structures.item_updater import WatchedItem
-from .structures.model_classes import Telemetry, PrintState
-from ..const import PRINTING_STATES, SD_STORAGE_NAME, PATH_WAIT_TIMEOUT, \
-    BASE_STATES, MK25_PRINTERS, PRINTER_CONF_TYPES, PRINTER_TYPES
-from .structures.regular_expressions import \
-    PRINTER_BOOT_REGEX, PAUSE_PRINT_REGEX, \
-    RESUME_PRINT_REGEX, MBL_TRIGGER_REGEX
-from ..util import make_fingerprint, get_print_stats_gcode
-from .updatable import prctl_name, Thread
-from ..config import Config, Settings
-from ..conditions import HW, UPGRADED, use_connect_errors, ROOT_COND
-from ..sdk_augmentation.printer import MyPrinter
+from .structures.model_classes import PrintState, Telemetry
+from .structures.module_data_classes import Sheet
+from .structures.regular_expressions import (MBL_TRIGGER_REGEX,
+                                             PAUSE_PRINT_REGEX,
+                                             PRINTER_BOOT_REGEX,
+                                             RESUME_PRINT_REGEX)
+from .telemetry_passer import TelemetryPasser
+from .updatable import Thread, prctl_name
 
 log = logging.getLogger(__name__)
 
@@ -73,6 +77,7 @@ class PrusaLink:
 
     It connects signals with their handlers
     """
+
     def __init__(self, cfg: Config, settings):
         # pylint: disable=too-many-statements
         self.cfg: Config = cfg
@@ -139,19 +144,16 @@ class PrusaLink:
         self.print_stats = PrintStats(self.model)
         self.file_printer = FilePrinter(self.serial_queue, self.serial_parser,
                                         self.model, self.cfg, self.print_stats)
-        self.storage_controller = StorageController(cfg,
-                                                    self.serial_queue,
+        self.storage_controller = StorageController(cfg, self.serial_queue,
                                                     self.serial_parser,
                                                     self.state_manager,
                                                     self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
         self.telemetry_passer = TelemetryPasser(self.model, self.printer)
         self.printer_polling = PrinterPolling(self.serial_queue,
-                                              self.serial_parser,
-                                              self.printer,
+                                              self.serial_parser, self.printer,
                                               self.model,
-                                              self.telemetry_passer,
-                                              self.job,
+                                              self.telemetry_passer, self.job,
                                               self.storage_controller.sd_card,
                                               self.settings)
         self.command_queue = CommandQueue()
@@ -164,15 +166,12 @@ class PrusaLink:
         self.printer.transfer.progress_cb = self.lcd_printer.notify
         self.printer.transfer.stopped_cb = self.lcd_printer.notify
         for state in ROOT_COND:
-            state.add_broke_handler(
-                lambda *_: self.lcd_printer.notify())
-            state.add_fixed_handler(
-                lambda *_: self.lcd_printer.notify())
+            state.add_broke_handler(lambda *_: self.lcd_printer.notify())
+            state.add_fixed_handler(lambda *_: self.lcd_printer.notify())
 
         self.serial_parser.add_handler(
             MBL_TRIGGER_REGEX,
-            lambda sender, match: self.printer_polling.invalidate_mbl()
-        )
+            lambda sender, match: self.printer_polling.invalidate_mbl())
 
         self.print_stat_doubler = PrintStatDoubler(self.serial_parser,
                                                    self.printer_polling)
@@ -228,11 +227,10 @@ class PrusaLink:
         self.printer_polling.printer_type.became_valid_signal.connect(
             self.printer_type_changed)
         self.printer_polling.print_state.became_valid_signal.connect(
-            self.print_state_changed
-        )
+            self.print_state_changed)
         self.printer_polling.byte_position.value_changed_signal.connect(
-            lambda value: self.byte_position_changed(
-                self.printer_polling, value[0], value[1]))
+            lambda value: self.byte_position_changed(self.printer_polling,
+                                                     value[0], value[1]))
         self.printer_polling.mixed_path.value_changed_signal.connect(
             self.mixed_path_changed)
         self.printer_polling.progress_broken.value_changed_signal.connect(
@@ -244,8 +242,7 @@ class PrusaLink:
         self.printer_polling.active_sheet.value_changed_signal.connect(
             self.active_sheet_changed)
         self.printer_polling.speed_multiplier.value_changed_signal.connect(
-            lambda val: self.lcd_printer.notify(), weak=False
-        )
+            lambda val: self.lcd_printer.notify(), weak=False)
 
         API.add_fixed_handler(self.connection_renewed)
 
@@ -254,9 +251,9 @@ class PrusaLink:
         self.ip_updater.updated_signal.connect(self.ip_updated)
 
         # Leave the non-polled telemetry split from the rest
-        self.auto_telemetry = AutoTelemetry(
-            self.serial_parser, self.serial_queue, self.model,
-            self.telemetry_passer)
+        self.auto_telemetry = AutoTelemetry(self.serial_parser,
+                                            self.serial_queue, self.model,
+                                            self.telemetry_passer)
         self.auto_telemetry.start()
 
         self.printer_polling.start()
@@ -304,8 +301,7 @@ class PrusaLink:
                     self.stop(True)
                 elif command == "break comms":
                     result = enqueue_matchable(
-                        self.serial_queue,
-                        "M117 Breaking",
+                        self.serial_queue, "M117 Breaking",
                         re.compile(r"something the printer will not tell us"))
 
                 if result:
@@ -569,8 +565,7 @@ class PrusaLink:
             self.settings.printer.type = PRINTER_CONF_TYPES.inverse[
                 detected_type]
             self.settings.update_sections(connect_skip=True)
-            with open(self.cfg.printer.settings, 'w',
-                      encoding='utf-8') as ini:
+            with open(self.cfg.printer.settings, 'w', encoding='utf-8') as ini:
                 self.settings.write(ini)
 
             UPGRADED.state = CondState.OK
@@ -844,8 +839,8 @@ class PrusaLink:
     def time_printing_updated(self, sender, time_printing):
         """Connects the serial print print timer with telemetry"""
         assert sender is not None
-        self.telemetry_passer.set_telemetry(
-            new_telemetry=Telemetry(time_printing=time_printing))
+        self.telemetry_passer.set_telemetry(new_telemetry=Telemetry(
+            time_printing=time_printing))
 
     def serial_queue_failed(self, sender):
         """Handles the serial queue failure by resetting the printer"""

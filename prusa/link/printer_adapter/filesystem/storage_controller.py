@@ -7,16 +7,15 @@ import logging
 from typing import Optional
 
 from blinker import Signal  # type: ignore
-
 from prusa.connect.printer.files import File
 
-from .storage import FilesystemStorage, FolderStorage
-from .sd_card import SDCard
-from ..state_manager import StateManager
-from ...serial.serial_queue import SerialQueue
-from ...serial.serial_parser import SerialParser
 from ...printer_adapter.model import Model
 from ...sdk_augmentation.file import SDFile
+from ...serial.serial_parser import SerialParser
+from ...serial.serial_queue import SerialQueue
+from ..state_manager import StateManager
+from .sd_card import SDCard
+from .storage import FilesystemStorage, FolderStorage
 
 log = logging.getLogger(__name__)
 

@@ -5,32 +5,31 @@ nod obstructing anything else the printer wrote.
 import logging
 import math
 from functools import partial
-from threading import Event
 from pathlib import Path
 from queue import Queue
+from threading import Event
 from time import time
 from typing import Callable
 
 import unidecode
 from prusa.connect.printer import Printer
-from prusa.connect.printer.const import TransferType, State
-from prusa.connect.printer.conditions import HTTP, API, TOKEN, INTERNET, \
-    COND_TRACKER
-from .structures.carousel import Screen, Carousel, LCDLine
+from prusa.connect.printer.conditions import (API, COND_TRACKER, HTTP,
+                                              INTERNET, TOKEN)
+from prusa.connect.printer.const import State, TransferType
 
-from .structures.model_classes import JobState
-from ..const import FW_MESSAGE_TIMEOUT, QUIT_INTERVAL, SLEEP_SCREEN_TIMEOUT, \
-    PRINTING_STATES
-from .model import Model
-from ..serial.helpers import enqueue_instruction, \
-        wait_for_instruction
-from ..serial.serial_queue import SerialQueue
-from ..serial.serial_parser import SerialParser
-from .structures.mc_singleton import MCSingleton
-from .structures.regular_expressions import LCD_UPDATE_REGEX
-from .updatable import prctl_name, Thread
+from ..conditions import DEVICE, FW, ID, JOB_ID, LAN, PHY, SN, UPGRADED
 from ..config import Settings
-from ..conditions import LAN, ID, FW, SN, JOB_ID, PHY, DEVICE, UPGRADED
+from ..const import (FW_MESSAGE_TIMEOUT, PRINTING_STATES, QUIT_INTERVAL,
+                     SLEEP_SCREEN_TIMEOUT)
+from ..serial.helpers import enqueue_instruction, wait_for_instruction
+from ..serial.serial_parser import SerialParser
+from ..serial.serial_queue import SerialQueue
+from .model import Model
+from .structures.carousel import Carousel, LCDLine, Screen
+from .structures.mc_singleton import MCSingleton
+from .structures.model_classes import JobState
+from .structures.regular_expressions import LCD_UPDATE_REGEX
+from .updatable import Thread, prctl_name
 
 log = logging.getLogger(__name__)
 
@@ -81,9 +80,11 @@ def through_queue(func):
     """A decorator to mke functions use the LCDPrinter event queue when called
     Prevents thread racing and notifies the CLDPrinter to check
     what to print next"""
+
     def wrapper(self, *args, **kwargs):
         func_with_args = partial(func, self, *args, **kwargs)
         self.add_event(func_with_args)
+
     return wrapper
 
 
@@ -116,13 +117,9 @@ class LCDPrinter(metaclass=MCSingleton):
         self.idle_screen = Screen(resets_idle=False)
 
         self.carousel = Carousel([
-                self.print_screen,
-                self.wizard_screen,
-                self.wait_screen,
-                self.error_screen,
-                self.upload_screen,
-                self.ready_screen,
-                self.idle_screen
+            self.print_screen, self.wizard_screen, self.wait_screen,
+            self.error_screen, self.upload_screen, self.ready_screen,
+            self.idle_screen
         ])
 
         self.carousel.set_priority(self.print_screen, PRINT_PRIORITY)
@@ -132,7 +129,7 @@ class LCDPrinter(metaclass=MCSingleton):
         self.carousel.set_priority(self.ready_screen, READY_PRIORITY)
         self.carousel.set_priority(self.idle_screen, IDLE_PRIORITY)
 
-        wait_zip = zip(["Please wait"]*7, ["."*i for i in range(1,8)])
+        wait_zip = zip(["Please wait"] * 7, ["." * i for i in range(1, 8)])
         wait_text = "".join(("".join(i).ljust(19) for i in wait_zip))
         self.carousel.set_text(self.wait_screen,
                                wait_text,
@@ -259,17 +256,17 @@ class LCDPrinter(metaclass=MCSingleton):
         if wizard_needed and LAN:
             self.carousel.enable(self.wizard_screen)
             ip = self.model.ip_updater.local_ip
-            conditions = dict(lan=LAN.state, wizard_needed=wizard_needed,
+            conditions = dict(lan=LAN.state,
+                              wizard_needed=wizard_needed,
                               ip=ip)
             if self.wizard_screen.conditions != conditions:
                 self.wizard_screen.conditions = conditions
                 # Can't have a capital G because FW doesn't understand
                 # What's a print command and what's not. It differentiates
                 # between them using `"G" in command` condition
-                self.carousel.set_text(
-                    self.wizard_screen,
-                    f"go: {self.model.ip_updater.local_ip}",
-                    last_line_extra=10)
+                self.carousel.set_text(self.wizard_screen,
+                                       f"go: {self.model.ip_updater.local_ip}",
+                                       last_line_extra=10)
         else:
             self._message_and_disable(self.wizard_screen, "Setup completed")
 
@@ -313,11 +310,9 @@ class LCDPrinter(metaclass=MCSingleton):
         """Should an upload display be visible? And what should it say?"""
         state = self.model.state_manager.current_state
         if state in PRINTING_STATES and state != State.PRINTING:
-            self.carousel.set_priority(self.upload_screen,
-                                       PRINT_PRIORITY + 10)
+            self.carousel.set_priority(self.upload_screen, PRINT_PRIORITY + 10)
         else:
-            self.carousel.set_priority(self.upload_screen,
-                                       PRINT_PRIORITY)
+            self.carousel.set_priority(self.upload_screen, PRINT_PRIORITY)
         if self.printer.transfer.in_progress:
             self.carousel.enable(self.upload_screen)
             progress_graphic = self._get_progress_graphic(
@@ -348,12 +343,12 @@ class LCDPrinter(metaclass=MCSingleton):
             conditions = dict(ip=ip)
             if self.ready_screen.conditions != conditions:
                 self.ready_screen.conditions = conditions
-                self.carousel.set_text(
-                    self.ready_screen,
-                    "Ready to print".ljust(19) + f"{ip}".ljust(19),
-                    scroll_amount=19,
-                    scroll_delay=4,
-                    last_line_extra=5)
+                self.carousel.set_text(self.ready_screen,
+                                       "Ready to print".ljust(19) +
+                                       f"{ip}".ljust(19),
+                                       scroll_amount=19,
+                                       scroll_delay=4,
+                                       last_line_extra=5)
         else:
             self.carousel.disable(self.ready_screen)
 
@@ -367,11 +362,11 @@ class LCDPrinter(metaclass=MCSingleton):
             if self.idle_screen.conditions != conditions:
                 self.idle_screen.conditions = conditions
                 if speed != 42:
-                    self.carousel.set_text(
-                        self.idle_screen,
-                        "PrusaLink OK.".ljust(19) + f"{ip}".ljust(19),
-                        scroll_amount=19,
-                        last_line_extra=12)
+                    self.carousel.set_text(self.idle_screen,
+                                           "PrusaLink OK.".ljust(19) +
+                                           f"{ip}".ljust(19),
+                                           scroll_amount=19,
+                                           last_line_extra=12)
                 else:
                     self.carousel.set_text(
                         self.idle_screen,
@@ -380,8 +375,7 @@ class LCDPrinter(metaclass=MCSingleton):
                         scroll_delay=0.3,
                         scroll_amount=1,
                         first_line_extra=2,
-                        last_line_extra=5
-                    )
+                        last_line_extra=5)
         else:
             self.carousel.disable(self.idle_screen)
 

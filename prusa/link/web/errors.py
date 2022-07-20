@@ -1,14 +1,13 @@
 """Zakladní obecná obsluha url."""
 import logging
 from sys import exc_info
-
 from traceback import format_tb
 
 from poorwsgi.response import make_response
 
-from .lib.view import generate_page
-from .lib.core import app
 from .. import conditions
+from .lib.core import app
+from .lib.view import generate_page
 
 log = logging.getLogger(__name__)
 

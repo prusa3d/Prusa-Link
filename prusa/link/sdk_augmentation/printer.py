@@ -1,32 +1,34 @@
 """Contains implementation of the augmented Printer class from the SDK"""
 from logging import getLogger
 from pathlib import Path
-from typing import Dict, Any
 from time import sleep
+from typing import Any, Dict
 
-from prusa.connect.printer.const import Source
+from prusa.connect.printer import Printer as SDKPrinter
+from prusa.connect.printer import const
 from prusa.connect.printer.command import Command
-from prusa.connect.printer.metadata import FDMMetaData
-from prusa.connect.printer.files import File
 from prusa.connect.printer.conditions import API, HTTP, TOKEN, CondState
-from prusa.connect.printer import Printer as SDKPrinter, const
+from prusa.connect.printer.const import Source
+from prusa.connect.printer.files import File
+from prusa.connect.printer.metadata import FDMMetaData
 
+from .. import __version__
 from ..printer_adapter.lcd_printer import LCDPrinter
 from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
+from ..printer_adapter.updatable import Thread, prctl_name
 from ..util import file_is_on_sd
-from ..printer_adapter.updatable import prctl_name, Thread
 from .command_handler import CommandHandler
-from .. import __version__
 
 log = getLogger("connect-printer")
 
 try:
-    import picamera # type: ignore
+    import picamera  # type: ignore
 
     class Camera:
         """Compatibility class"""
         camera = None
+
         def __init__(self):
             try:
                 self.camera = picamera.PiCamera()
@@ -38,14 +40,16 @@ try:
             return self.camera
 
 except ModuleNotFoundError:
-    picamera = None # pylint: disable=invalid-name
+    picamera = None  # pylint: disable=invalid-name
     log.warning("picamera module is not available")
+
 
 class MyPrinter(SDKPrinter, metaclass=MCSingleton):
     """
     Overrides some methods of the SDK Printer to provide better support for
     PrusaLink
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.lcd_printer = LCDPrinter.get_instance()
@@ -60,7 +64,6 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.camera = None
         if picamera:
             self.camera = Camera().get_camera()
-
 
     def parse_command(self, res):
         """Parse telemetry response.

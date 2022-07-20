@@ -1,11 +1,10 @@
 """Own Serail class """
 import errno
+import fcntl
 import logging
 import os
-import termios
-import fcntl
 import struct
-
+import termios
 from select import select
 from time import time
 

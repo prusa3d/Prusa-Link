@@ -4,8 +4,8 @@ from unittest.mock import Mock
 
 from prusa.link.serial.serial_parser import SerialParser  # type:ignore
 
-
 # pylint: disable=protected-access
+
 
 def test_basic():
     """Basic, one handler, call it on match"""

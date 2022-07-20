@@ -1,18 +1,18 @@
 """Setup.py for PrusaLink software."""
 import os
 import re
-
-from sys import stderr
-from subprocess import call
-from grp import getgrnam
-from shutil import copytree, copyfile
 from distutils import log
 from distutils.core import Command
+from grp import getgrnam
+from shutil import copyfile, copytree
+from subprocess import call
+from sys import stderr
 
-from setuptools import setup, find_namespace_packages  # type: ignore
+from setuptools import find_namespace_packages, setup  # type: ignore
 
-from prusa.link import (  # type: ignore
-    __version__, __doc__ as description, __author_name__, __author_email__)
+from prusa.link import __author_email__, __author_name__
+from prusa.link import __doc__ as description  # type: ignore
+from prusa.link import __version__
 
 RPI_MODEL_PATH = "/sys/firmware/devicetree/base/model"
 RE_GIT = re.compile(r'(-e )?git\+|:')

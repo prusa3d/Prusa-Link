@@ -2,27 +2,27 @@
 import logging
 import re
 from collections import deque
-from threading import Thread, Event, RLock
-from typing import Union, Dict, Optional
+from threading import Event, RLock, Thread
+from typing import Dict, Optional, Union
 
 from blinker import Signal  # type: ignore
 from prusa.connect.printer import Printer
-from prusa.connect.printer.conditions import CondState, Condition
+from prusa.connect.printer.conditions import Condition, CondState
+from prusa.connect.printer.const import Source, State
 
-from prusa.connect.printer.const import State, Source
-from ..const import STATE_HISTORY_SIZE, ERROR_REASON_TIMEOUT
-
-from ..serial.serial_parser import \
-    SerialParser
+from ..conditions import HW, SERIAL
+from ..config import Config, Settings
+from ..const import ERROR_REASON_TIMEOUT, STATE_HISTORY_SIZE
+from ..serial.serial_parser import SerialParser
 from .model import Model
 from .structures.mc_singleton import MCSingleton
 from .structures.module_data_classes import StateManagerData
-from .structures.regular_expressions import \
-    BUSY_REGEX, ATTENTION_REGEX, PAUSED_REGEX, RESUMED_REGEX, CANCEL_REGEX, \
-    ERROR_REGEX, FAN_ERROR_REGEX, ERROR_REASON_REGEX, ATTENTION_REASON_REGEX, \
-    FAN_REGEX
-from ..config import Config, Settings
-from ..conditions import HW, SERIAL
+from .structures.regular_expressions import (ATTENTION_REASON_REGEX,
+                                             ATTENTION_REGEX, BUSY_REGEX,
+                                             CANCEL_REGEX, ERROR_REASON_REGEX,
+                                             ERROR_REGEX, FAN_ERROR_REGEX,
+                                             FAN_REGEX, PAUSED_REGEX,
+                                             RESUMED_REGEX)
 
 log = logging.getLogger(__name__)
 
@@ -63,8 +63,10 @@ def state_influencer(state_change: StateChange = None):
     This can be overridden by notifying the state manager about an
     oncoming state change through expect_change
     """
+
     def inner(func):
         """It's just how decorators work man"""
+
         def wrapper(self, *args, **kwargs):
             """By nesting function definitions. Shut up Travis!"""
             with self.state_lock:
@@ -198,9 +200,9 @@ class StateManager(metaclass=MCSingleton):
             log.debug("Condition %s broke, causing an ERROR state",
                       condition.name)
             if self.expected_state_change is None:
-                self.expect_change(StateChange(
-                    to_states={State.ERROR: Source.SERIAL},
-                    reason=condition.short_msg))
+                self.expect_change(
+                    StateChange(to_states={State.ERROR: Source.SERIAL},
+                                reason=condition.short_msg))
             self.error()
 
     def link_error_resolved(self, condition: Condition, old_value: CondState):
@@ -405,9 +407,8 @@ class StateManager(metaclass=MCSingleton):
         if (fan_name == "Extruder" and extruder_fan_works) or \
                 (fan_name == "Print" and print_fan_works):
             self.expect_change(
-                StateChange(
-                    from_states={State.ATTENTION: Source.USER},
-                    reason=f"{fan_name} fan error resolved"))
+                StateChange(from_states={State.ATTENTION: Source.USER},
+                            reason=f"{fan_name} fan error resolved"))
             self._cancel_fan_error()
             self.clear_attention()
             if self.data.printing_state == State.PAUSED:
@@ -416,8 +417,8 @@ class StateManager(metaclass=MCSingleton):
     def _cancel_fan_error(self):
         """Removes the fan error"""
         self.fan_error_name = None
-        self.serial_parser.remove_handler(
-            FAN_ERROR_REGEX, self.fan_error_resolver)
+        self.serial_parser.remove_handler(FAN_ERROR_REGEX,
+                                          self.fan_error_resolver)
 
     def error_handler(self):
         """
@@ -651,8 +652,8 @@ class StateManager(metaclass=MCSingleton):
 
     def _clear_attention(self):
         """Clears the ATTENTION state, if the conditions are right"""
-        if (self.data.override_state == State.ATTENTION and
-                self.fan_error_name is None):
+        if (self.data.override_state == State.ATTENTION
+                and self.fan_error_name is None):
             log.debug("Clearing ATTENTION")
             self.data.override_state = None
 
@@ -668,10 +669,9 @@ class StateManager(metaclass=MCSingleton):
         """
         if self.resuming_from_fan_error:
             self.expect_change(
-                StateChange(
-                    to_states={State.ATTENTION: Source.MARLIN},
-                    reason="Most likely a false positive. "
-                           "Sorry about that 😅"))
+                StateChange(to_states={State.ATTENTION: Source.MARLIN},
+                            reason="Most likely a false positive. "
+                            "Sorry about that 😅"))
 
         log.debug("Overriding the state with ATTENTION")
         log.warning("State was %s", self.get_state())
@@ -705,7 +705,7 @@ class StateManager(metaclass=MCSingleton):
     @state_influencer(
         StateChange(to_states={State.IDLE: Source.SERIAL},
                     reason="Re-established the communication "
-                           "with the printer"))
+                    "with the printer"))
     def serial_error_resolved(self):
         """Resets the error state if there is any"""
         if self.data.override_state == State.ERROR:

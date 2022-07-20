@@ -17,8 +17,7 @@ from .const import SD_STORAGE_NAME
 log = logging.getLogger(__name__)
 
 
-def loop_until(loop_evt: Event,
-               run_every_sec: Callable[[], float], to_run,
+def loop_until(loop_evt: Event, run_every_sec: Callable[[], float], to_run,
                *arg_getters, **kwarg_getters):
     """
     Call a function every X seconds, quit instantly
@@ -158,8 +157,10 @@ def fat_datetime_to_tuple(fat_datetime):
     return years, months, days, hours, minutes, seconds
 
 
-def get_print_stats_gcode(quiet_percent=-1, quiet_left=-1,
-                          normal_percent=-1, normal_left=-1):
+def get_print_stats_gcode(quiet_percent=-1,
+                          quiet_left=-1,
+                          normal_percent=-1,
+                          normal_left=-1):
     """Returns the gcode for setting print stats"""
     return (f"M73 Q{quiet_percent} S{quiet_left} "
             f"P{normal_percent} R{normal_left} ")
@@ -193,4 +194,4 @@ def round_to_five(number: Union[float, int]):
     >>> round_to_five(22.4)
     20
     """
-    return round(number/5)*5
+    return round(number / 5) * 5

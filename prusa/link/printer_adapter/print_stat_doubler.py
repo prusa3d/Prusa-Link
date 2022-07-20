@@ -4,8 +4,8 @@ from typing import List
 
 from ..serial.serial_parser import SerialParser
 from .printer_polling import PrinterPolling
-from .structures.regular_expressions import PRINT_INFO_REGEX, \
-    CONFIRMATION_REGEX
+from .structures.regular_expressions import (CONFIRMATION_REGEX,
+                                             PRINT_INFO_REGEX)
 
 
 class PrintStatDoubler:

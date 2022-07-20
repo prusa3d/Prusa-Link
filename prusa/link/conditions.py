@@ -4,10 +4,13 @@ For more information see prusalink_states.txt.
 """
 
 from typing import Optional
+
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, TextResponse
-from prusa.connect.printer.conditions import Condition, COND_TRACKER, \
-    INTERNET, HTTP, TOKEN, ConditionTracker
+from prusa.connect.printer.conditions import (COND_TRACKER, HTTP, INTERNET,
+                                              TOKEN, Condition,
+                                              ConditionTracker)
+
 from .config import Settings
 
 assert HTTP is not None
@@ -17,31 +20,56 @@ OK_MSG = {"ok": True, "message": "OK"}
 
 ROOT_COND = Condition("Root", "The root of everything, it's almost always OK")
 
-DEVICE = Condition("Device", "Eth|WLAN device does not exist",
-                   short_msg="No WLAN device", parent=ROOT_COND, priority=1020)
-PHY = Condition("Phy", "Eth|WLAN device is not connected",
-                parent=DEVICE, short_msg="No WLAN conn", priority=1010)
-LAN = Condition("Lan", "Eth|WLAN has no IP address",
-                parent=PHY, short_msg="No WLAN IP addr", priority=1000)
+DEVICE = Condition("Device",
+                   "Eth|WLAN device does not exist",
+                   short_msg="No WLAN device",
+                   parent=ROOT_COND,
+                   priority=1020)
+PHY = Condition("Phy",
+                "Eth|WLAN device is not connected",
+                parent=DEVICE,
+                short_msg="No WLAN conn",
+                priority=1010)
+LAN = Condition("Lan",
+                "Eth|WLAN has no IP address",
+                parent=PHY,
+                short_msg="No WLAN IP addr",
+                priority=1000)
 
 INTERNET.set_parent(LAN)
 
-SERIAL = Condition("Port", "Serial device does not exist",
-                   parent=ROOT_COND, priority=570)
-RPI_ENABLED = Condition("RPIenabled", "RPi port is not enabled",
-                        parent=SERIAL, priority=560)
-ID = Condition("ID", "Device is not supported",
-               parent=RPI_ENABLED, priority=550)
-UPGRADED = Condition("Upgraded", "Printer upgraded, re-register it",
-                     parent=ID, priority=500)
-FW = Condition("Firmware", "Firmware is not up-to-date",
-               parent=RPI_ENABLED, priority=540)
-SN = Condition("SN", "Serial number cannot be obtained",
-               parent=RPI_ENABLED, priority=530)
-JOB_ID = Condition("JobID", "Job ID cannot be obtained",
-                   parent=RPI_ENABLED, priority=520)
-HW = Condition("HW", "Firmware detected a hardware issue",
-               parent=RPI_ENABLED, priority=510)
+SERIAL = Condition("Port",
+                   "Serial device does not exist",
+                   parent=ROOT_COND,
+                   priority=570)
+RPI_ENABLED = Condition("RPIenabled",
+                        "RPi port is not enabled",
+                        parent=SERIAL,
+                        priority=560)
+ID = Condition("ID",
+               "Device is not supported",
+               parent=RPI_ENABLED,
+               priority=550)
+UPGRADED = Condition("Upgraded",
+                     "Printer upgraded, re-register it",
+                     parent=ID,
+                     priority=500)
+FW = Condition("Firmware",
+               "Firmware is not up-to-date",
+               parent=RPI_ENABLED,
+               priority=540)
+SN = Condition("SN",
+               "Serial number cannot be obtained",
+               parent=RPI_ENABLED,
+               priority=530)
+JOB_ID = Condition("JobID",
+                   "Job ID cannot be obtained",
+                   parent=RPI_ENABLED,
+                   priority=520)
+HW = Condition("HW",
+               "Firmware detected a hardware issue",
+               parent=RPI_ENABLED,
+               priority=510)
 
 COND_TRACKER.add_tracked_condition_tree(ROOT_COND)
 

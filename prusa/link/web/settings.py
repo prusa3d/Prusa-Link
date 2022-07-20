@@ -1,17 +1,17 @@
 """/api/settings endpoint handlers"""
 from secrets import token_urlsafe
-from poorwsgi import state
-from poorwsgi.response import JSONResponse
-from poorwsgi.digest import check_digest
 
-from .lib.core import app
-from .lib.auth import check_api_digest, set_digest, valid_credentials, \
-    valid_digests, REALM
-from .lib.wizard import valid_sn_format, new_sn_format, sn_write_success, \
-    execute_sn_gcode, INVALID_CHARACTERS, PRINTER_MISSING_NAME, \
-    PRINTER_INVALID_CHARACTERS
+from poorwsgi import state
+from poorwsgi.digest import check_digest
+from poorwsgi.response import JSONResponse
 
 from ..conditions import SN
+from .lib.auth import (REALM, check_api_digest, set_digest, valid_credentials,
+                       valid_digests)
+from .lib.core import app
+from .lib.wizard import (INVALID_CHARACTERS, PRINTER_INVALID_CHARACTERS,
+                         PRINTER_MISSING_NAME, execute_sn_gcode, new_sn_format,
+                         sn_write_success, valid_sn_format)
 
 errors_titles = {
     'username_spaces': 'Spaces in username',
@@ -128,10 +128,7 @@ def api_settings_set(req):
                 message = value
                 break
 
-        errors_ = {
-            'title': errors_titles[title],
-            'message': message
-        }
+        errors_ = {'title': errors_titles[title], 'message': message}
 
         kwargs = {**errors_}
         status = state.HTTP_BAD_REQUEST
@@ -148,7 +145,8 @@ def regenerate_api_key(req):
     if api_key:
         if len(api_key) < 7:
             message = "Api-Key must be at least 7 characters long"
-            return JSONResponse(status_code=state.HTTP_BAD_REQUEST, message=message)
+            return JSONResponse(status_code=state.HTTP_BAD_REQUEST,
+                                message=message)
     else:
         api_key = token_urlsafe(10)
     app.daemon.settings.service_local.api_key = api_key
@@ -196,9 +194,6 @@ def api_sn(req):
                 title = "Invalid S/N"
                 msg = "Please provide a valid S/N"
 
-            errors_ = {
-                'title': title,
-                'message': msg
-            }
+            errors_ = {'title': title, 'message': msg}
             return JSONResponse(**errors_, status_code=status)
     return JSONResponse(status_code=status, message=msg)

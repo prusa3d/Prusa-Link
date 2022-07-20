@@ -7,30 +7,29 @@ and instruction management
 import logging
 import re
 from collections import deque
-from threading import Lock, Event
+from threading import Event, Lock
 from time import time
-from typing import Optional, Deque, List
+from typing import Deque, List, Optional
 
 from blinker import Signal  # type: ignore
 from prusa.connect.printer.conditions import CondState
 
-from .serial import SerialException
 from ..conditions import RPI_ENABLED, SERIAL
-from ..interesting_logger import InterestingLogRotator
 from ..config import Config
-from .serial_adapter import SerialAdapter
-from ..printer_adapter.structures.regular_expressions import \
-    CONFIRMATION_REGEX, RESEND_REGEX, BUSY_REGEX, \
-    ATTENTION_REGEX, HEATING_HOTEND_REGEX, HEATING_REGEX, \
-    M110_REGEX
+from ..const import (HISTORY_LENGTH, MAX_INT, QUIT_INTERVAL, RX_SIZE,
+                     SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT)
+from ..interesting_logger import InterestingLogRotator
+from ..printer_adapter.structures.mc_singleton import MCSingleton
+from ..printer_adapter.structures.regular_expressions import (
+    ATTENTION_REGEX, BUSY_REGEX, CONFIRMATION_REGEX, HEATING_HOTEND_REGEX,
+    HEATING_REGEX, M110_REGEX, RESEND_REGEX)
+from ..printer_adapter.updatable import Thread, prctl_name
 from ..util import loop_until
 from .instruction import Instruction, MatchableInstruction
 from .is_planner_fed import IsPlannerFed
+from .serial import SerialException
+from .serial_adapter import SerialAdapter
 from .serial_parser import SerialParser
-from ..printer_adapter.structures.mc_singleton import MCSingleton
-from ..const import QUIT_INTERVAL, RX_SIZE, MAX_INT, \
-    SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT, HISTORY_LENGTH
-from ..printer_adapter.updatable import prctl_name, Thread
 
 log = logging.getLogger(__name__)
 
@@ -44,6 +43,7 @@ class SerialQueue(metaclass=MCSingleton):
     RX buffer dumping and so on, which this class works around to provide
     as deterministic of a serial connection to a Prusa printer as possible
     """
+
     def __init__(self,
                  serial_adapter: SerialAdapter,
                  serial_parser: SerialParser,
@@ -536,6 +536,7 @@ class SerialQueue(metaclass=MCSingleton):
 
 class MonitoredSerialQueue(SerialQueue):
     """Separates the queue monitoring into a different class."""
+
     def __init__(self,
                  serial_adapter: SerialAdapter,
                  serial_parser: SerialParser,

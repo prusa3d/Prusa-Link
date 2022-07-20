@@ -3,18 +3,16 @@ Contains almost every constant for the printer communication part of
 PrusaLink
 """
 import uuid
+from importlib.resources import files  # type: ignore
+from json import load
 from os import path
 from typing import List
-from json import load
-
-from importlib.resources import files  # type: ignore
 
 from bidict import bidict
 from packaging.version import Version
+from prusa.connect.printer.const import PrinterType, State
 
-from prusa.connect.printer.const import State, PrinterType
-from .printer_adapter.structures.model_classes import PrintState, PrintMode
-
+from .printer_adapter.structures.model_classes import PrintMode, PrintState
 
 instance_id = uuid.uuid4()
 
@@ -55,7 +53,7 @@ JITTER_THRESHOLD = 0.5
 TELEMETRY_IDLE_INTERVAL = 0.25
 TELEMETRY_PRINTING_INTERVAL = 1
 TELEMETRY_SLEEPING_INTERVAL = 4  # can be sleeping in any state
-TELEMETRY_SLEEP_AFTER = 3*60
+TELEMETRY_SLEEP_AFTER = 3 * 60
 
 FAST_POLL_INTERVAL = 1
 SLOW_POLL_INTERVAL = 10  # for values, that aren't that important
@@ -159,10 +157,7 @@ PRINT_STATE_PAIRING = {
     "no_print": PrintState.NOT_SD_PRINTING,
 }
 
-PRINT_MODE_PAIRING = {
-    "SILENT": PrintMode.SILENT,
-    "NORMAL": PrintMode.NORMAL
-}
+PRINT_MODE_PAIRING = {"SILENT": PrintMode.SILENT, "NORMAL": PrintMode.NORMAL}
 
 PRINT_MODE_ID_PAIRING = {
     0: PrintMode.NORMAL,

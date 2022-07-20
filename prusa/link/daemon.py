@@ -1,11 +1,10 @@
 """Daemon class implementation."""
+import ctypes
+import logging
+import sys
 from subprocess import Popen
 from typing import List
 
-import logging
-import sys
-
-import ctypes
 import prctl  # type: ignore
 
 from .config import Settings

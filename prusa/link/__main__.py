@@ -1,23 +1,23 @@
 """main() command line function."""
 import logging
-import threading
 import sys
+import threading
 from argparse import ArgumentParser, ArgumentTypeError
-from os import kill, geteuid, path, mkdir, chmod
-from grp import getgrnam
-from pwd import getpwnam
-from signal import SIGTERM, SIGKILL
-from time import sleep
 from cProfile import Profile
+from grp import getgrnam
+from os import chmod, geteuid, kill, mkdir, path
+from pwd import getpwnam
+from signal import SIGKILL, SIGTERM
+from time import sleep
 
 from daemon import DaemonContext  # type: ignore
 from lockfile.pidlockfile import PIDLockFile  # type: ignore
 from prusa.connect.printer import __version__ as sdk_version
 
 from . import __version__ as link_version
-from .const import EXIT_TIMEOUT
 from .config import Config
-from .interesting_logger import InterestingLogRotator, InterestingLogger
+from .const import EXIT_TIMEOUT
+from .interesting_logger import InterestingLogger, InterestingLogRotator
 from .printer_adapter.updatable import Thread
 
 # pylint: disable=wrong-import-position, wrong-import-order
@@ -61,6 +61,7 @@ def set_log_levels(config: Config):
 
 class LogLevel(str):
     """Log level type with __call__ checker method."""
+
     def __new__(cls, level):
         if len(level.split("=")) != 2:
             raise ArgumentTypeError("log level needs to be specified in format"

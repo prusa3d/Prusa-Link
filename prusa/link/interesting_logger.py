@@ -5,10 +5,10 @@ import threading
 import traceback
 from collections import deque
 from copy import copy
-from logging import Logger, NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
+from logging import CRITICAL, DEBUG, ERROR, INFO, NOTSET, WARNING, Logger
 from multiprocessing import RLock
 
-from .const import LOG_BUFFER_SIZE, AFTERMATH_LOG_SIZE
+from .const import AFTERMATH_LOG_SIZE, LOG_BUFFER_SIZE
 from .printer_adapter.structures.mc_singleton import MCSingleton
 
 log = logging.getLogger("interesting_logger")
@@ -31,6 +31,7 @@ class DecoySrcfile:
     from logging and here will get skipped and the real function name and line
     number will be shown.
     """
+
     def __init__(self):
         self.original_logging_srcfile = copy(logging._srcfile)
 
@@ -47,6 +48,7 @@ class InterestingLogRotator(metaclass=MCSingleton):
     Stores all logs in a rotating queue, on trigger logs the current queue
     plus AFTERMATH_LOG_SIZE messages forward
     """
+
     def __init__(self):
         self.log_buffer = deque(maxlen=LOG_BUFFER_SIZE)
         self.additional_messages_to_print = 0
@@ -132,6 +134,7 @@ class InterestingLogRotator(metaclass=MCSingleton):
 
 class InterestingLogger(Logger):
     """The logger that will mirror log entries to the log rotator"""
+
     def __init__(self, name, level=NOTSET):
         super().__init__(name, level)
 

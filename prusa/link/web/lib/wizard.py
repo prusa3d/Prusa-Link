@@ -1,21 +1,21 @@
 """Configuration wizard library."""
-from threading import Event
 import logging
-from socket import gethostbyname
-from urllib.request import urlopen
 from secrets import token_urlsafe
+from socket import gethostbyname
+from threading import Event
+from urllib.request import urlopen
 
 from poorwsgi.digest import hexdigest
 from prusa.connect.printer import Printer
 
-from ..lib.core import app
-from ..lib.auth import REALM
 from ...const import PRINTER_CONF_TYPES
-from ...serial.helpers import enqueue_instruction
-from ...printer_adapter.structures.regular_expressions import VALID_SN_REGEX, \
-    VALID_USERNAME_REGEX, VALID_PASSWORD_REGEX, NEW_SN_REGEX
 from ...printer_adapter.printer_polling import PrinterPolling
 from ...printer_adapter.structures.item_updater import WatchedItem
+from ...printer_adapter.structures.regular_expressions import (
+    NEW_SN_REGEX, VALID_PASSWORD_REGEX, VALID_SN_REGEX, VALID_USERNAME_REGEX)
+from ...serial.helpers import enqueue_instruction
+from ..lib.auth import REALM
+from ..lib.core import app
 
 log = logging.getLogger(__name__)
 
@@ -28,9 +28,11 @@ def valid_sn_format(serial):
     """Check serial number format."""
     return VALID_SN_REGEX.match(serial) is not None
 
+
 def new_sn_format(serial):
     """Check if the entered serial number is new format (SN...)"""
     return NEW_SN_REGEX.match(serial)
+
 
 def sn_write_success():
     """Check if the S/N was written successfully to the printer"""

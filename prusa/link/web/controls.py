@@ -3,15 +3,14 @@ from poorwsgi import state
 from poorwsgi.response import JSONResponse
 from prusa.connect.printer.const import State
 
-from .lib.core import app
-from .lib.auth import check_api_digest
-
+from ..conditions import (CurrentlyPrinting, TemperatureTooHigh,
+                          TemperatureTooLow, ValueTooHigh, ValueTooLow)
+from ..const import (FEEDRATE_E, FEEDRATE_XY, MIN_TEMP_NOZZLE_E, POSITION_X,
+                     POSITION_Y, POSITION_Z, PRINT_FLOW, PRINT_SPEED, TEMP_BED,
+                     TEMP_NOZZLE)
 from ..serial.helpers import enqueue_instruction
-from ..conditions import TemperatureTooLow, TemperatureTooHigh, ValueTooLow, \
-    ValueTooHigh, CurrentlyPrinting
-from ..const import FEEDRATE_XY, FEEDRATE_E, POSITION_X, POSITION_Y, \
-    POSITION_Z, MIN_TEMP_NOZZLE_E, PRINT_SPEED, PRINT_FLOW, TEMP_BED, \
-    TEMP_NOZZLE
+from .lib.auth import check_api_digest
+from .lib.core import app
 
 
 def check_temperature_limits(temperature, min_temperature, max_temperature):
@@ -30,15 +29,14 @@ def check_value_limits(value, min_value, max_value):
         raise ValueTooHigh
 
 
-
 def jog(req, serial_queue):
     """XYZ movement command"""
     # pylint: disable=too-many-branches
 
     # Compatibility with OctoPrint, OP speed == Prusa feedrate in mm/min
     # If feedrate is not defined, use maximum value for E axis
-    feedrate = req.json.get('feedrate') or \
-               req.json.get('speed', FEEDRATE_XY['max'])
+    feedrate = (req.json.get('feedrate')
+                or req.json.get('speed', FEEDRATE_XY['max']))
 
     check_value_limits(feedrate, FEEDRATE_XY['min'], FEEDRATE_XY['max'])
 
@@ -108,8 +106,8 @@ def extrude(req, serial_queue):
     amount = req.json.get('amount')
     # Compatibility with OctoPrint, OP speed == Prusa feedrate in mm/min
     # If feedrate is not defined, use maximum value for E axis
-    feedrate = req.json.get('feedrate') or \
-               req.json.get('speed', FEEDRATE_E['max'])
+    feedrate = (req.json.get('feedrate')
+                or req.json.get('speed', FEEDRATE_E['max']))
 
     check_value_limits(feedrate, FEEDRATE_E['min'], FEEDRATE_E['max'])
 
@@ -126,8 +124,8 @@ def api_printhead(req):
     """Control the printhead movement in XYZ axes"""
     serial_queue = app.daemon.prusa_link.serial_queue
     printer_state = app.daemon.prusa_link.model.state_manager.current_state
-    operational = printer_state in (State.IDLE, State.READY,
-                                    State.FINISHED, State.STOPPED)
+    operational = printer_state in (State.IDLE, State.READY, State.FINISHED,
+                                    State.STOPPED)
     command = req.json.get('command')
     status = state.HTTP_NO_CONTENT
 

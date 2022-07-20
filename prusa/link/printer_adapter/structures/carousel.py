@@ -4,12 +4,12 @@ import math
 from collections import deque
 from copy import copy
 from time import time
-
-from typing import List, Set, Deque
+from typing import Deque, List, Set
 
 
 class LCDLine:
     """Info about the text to show and the chime to play"""
+
     def __init__(self, text, delay=5.0, resets_idle=False, chime_gcode=None):
         self.text: str = text
         self.delay: float = delay
@@ -27,6 +27,7 @@ class LCDLine:
 
 class Screen:
     """A Screen - like an error screen, or an easter egg scrolling screen"""
+
     def __init__(self, resets_idle=True, chime_gcode=None, order=0):
         """
         :param resets_idle: Do the messages from this screen reset the idle
@@ -235,5 +236,4 @@ class Carousel:
             self.active_set = new_set
             for screen in self.active_set:
                 screen.changed = False
-            self.active_screens = sorted(new_set,
-                                         key=lambda i: i.order)
+            self.active_screens = sorted(new_set, key=lambda i: i.order)

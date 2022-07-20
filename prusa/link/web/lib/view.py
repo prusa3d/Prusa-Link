@@ -1,9 +1,9 @@
 """Response generate module."""
-from os.path import join
 from importlib.resources import files
+from os.path import join
+
 from jinja2 import Environment, FileSystemLoader
 from jinja2_template_info import TemplateInfoExtension
-
 from prusa.connect.printer.const import PrinterType
 
 from .core import app

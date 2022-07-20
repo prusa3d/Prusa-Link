@@ -3,30 +3,30 @@ and its files"""
 import calendar
 import logging
 import re
-from threading import Lock
-
 from itertools import islice
 from pathlib import Path
+from threading import Lock
 from time import time
 
 from blinker import Signal  # type: ignore
-
 from prusa.connect.printer.const import State
-from ..state_manager import StateManager
-from ...serial.serial_queue import SerialQueue
+
+from ...const import (MAX_FILENAME_LENGTH, SD_FILESCAN_INTERVAL, SD_INTERVAL,
+                      SD_STORAGE_NAME, SFN_TO_LFN_EXTENSIONS)
+from ...sdk_augmentation.file import SDFile
+from ...serial.helpers import (enqueue_list_from_str, enqueue_matchable,
+                               wait_for_instruction)
 from ...serial.serial_parser import SerialParser
-from ...serial.helpers import wait_for_instruction, enqueue_matchable, \
-    enqueue_list_from_str
+from ...serial.serial_queue import SerialQueue
+from ...util import fat_datetime_to_tuple
 from ..model import Model
+from ..state_manager import StateManager
 from ..structures.model_classes import SDState
 from ..structures.module_data_classes import SDCardData
-from ..structures.regular_expressions import SD_PRESENT_REGEX, \
-    SD_EJECTED_REGEX, LFN_CAPTURE, CONFIRMATION_REGEX
-from ...const import SD_INTERVAL, SD_FILESCAN_INTERVAL, SD_STORAGE_NAME, \
-    SFN_TO_LFN_EXTENSIONS, MAX_FILENAME_LENGTH
+from ..structures.regular_expressions import (CONFIRMATION_REGEX, LFN_CAPTURE,
+                                              SD_EJECTED_REGEX,
+                                              SD_PRESENT_REGEX)
 from ..updatable import ThreadedUpdatable
-from ...util import fat_datetime_to_tuple
-from ...sdk_augmentation.file import SDFile
 
 log = logging.getLogger(__name__)
 
@@ -55,6 +55,7 @@ class FileTreeParser:
     """
     Parses the file tree from a printer supplied format
     """
+
     def __init__(self, matches):
         self.matches = matches
         self.tree = get_root()
@@ -110,8 +111,9 @@ class FileTreeParser:
         too_long = (len(raw_long_filename) >= MAX_FILENAME_LENGTH)
 
         if too_long:
-            long_file_name = alternative_filename(
-                raw_long_filename, short_filename, long_extension)
+            long_file_name = alternative_filename(raw_long_filename,
+                                                  short_filename,
+                                                  long_extension)
         else:
             long_file_name = raw_long_filename
 
@@ -164,11 +166,9 @@ class FileTreeParser:
         too_long = len(long_dir_name) >= MAX_FILENAME_LENGTH
         if too_long:
             new_name = alternative_filename(long_dir_name, short_dir_name)
-            self.current_dir = self.current_dir.joinpath(
-                new_name)
+            self.current_dir = self.current_dir.joinpath(new_name)
         else:
-            self.current_dir = self.current_dir.joinpath(
-                long_dir_name)
+            self.current_dir = self.current_dir.joinpath(long_dir_name)
 
         self.check_uniqueness(self.current_dir)
         # Add the dir to the tree
@@ -245,11 +245,9 @@ class SDCard(ThreadedUpdatable):
         if not node.is_dir:
             return
         menu_sfn = node.attrs["sfn"].lower()
-        if not "SETREADY.G" in node.children:
+        if "SETREADY.G" not in node.children:
             enqueue_list_from_str(self.serial_queue,
-                                  [f"M28 {menu_sfn}/setready.g",
-                                   "M84",
-                                   "M29"],
+                                  [f"M28 {menu_sfn}/setready.g", "M84", "M29"],
                                   CONFIRMATION_REGEX,
                                   to_front=True)
         del file_tree_parser.tree.children["PrusaLink menu"]
@@ -348,8 +346,9 @@ class SDCard(ThreadedUpdatable):
         converting between all used path formats get saved at the end
         """
 
-        instruction = enqueue_matchable(
-            self.serial_queue, message="M20 LT", regexp=LFN_CAPTURE)
+        instruction = enqueue_matchable(self.serial_queue,
+                                        message="M20 LT",
+                                        regexp=LFN_CAPTURE)
         wait_for_instruction(instruction, should_wait_evt=self.quit_evt)
         matches = instruction.get_matches()
         file_tree_parser = FileTreeParser(matches)

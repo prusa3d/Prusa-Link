@@ -9,33 +9,34 @@ from datetime import timedelta
 from typing import List
 
 from packaging.version import Version
-
 from prusa.connect.printer import Printer
 from prusa.connect.printer.conditions import CondState
-from .filesystem.sd_card import SDCard
 
-from .job import Job
-from .structures.module_data_classes import Sheet
-from .telemetry_passer import TelemetryPasser
-from ..conditions import SN, ID, FW, JOB_ID
+from ..conditions import FW, ID, JOB_ID, SN
 from ..config import Settings
-from ..serial.helpers import wait_for_instruction, \
-    enqueue_matchable
+from ..const import (FAST_POLL_INTERVAL, MINIMAL_FIRMWARE,
+                     PRINT_MODE_ID_PAIRING, PRINT_STATE_PAIRING, PRINTER_TYPES,
+                     QUIT_INTERVAL, SLOW_POLL_INTERVAL,
+                     VERY_SLOW_POLL_INTERVAL)
+from ..serial.helpers import enqueue_matchable, wait_for_instruction
 from ..serial.serial_parser import SerialParser
-from .structures.model_classes import NetworkInfo, Telemetry, PrintMode, \
-    EEPROMParams
-from .structures.regular_expressions import SN_REGEX, PRINTER_TYPE_REGEX, \
-    FW_REGEX, NOZZLE_REGEX, D3_OUTPUT_REGEX, VALID_SN_REGEX, \
-    PERCENT_REGEX, PRINT_INFO_REGEX, M27_OUTPUT_REGEX, MBL_REGEX
-from ..const import QUIT_INTERVAL, PRINTER_TYPES, MINIMAL_FIRMWARE, \
-    SLOW_POLL_INTERVAL, FAST_POLL_INTERVAL, PRINT_STATE_PAIRING, \
-    PRINT_MODE_ID_PAIRING, VERY_SLOW_POLL_INTERVAL
-from ..serial.serial_queue import \
-    SerialQueue
+from ..serial.serial_queue import SerialQueue
+from ..util import get_d3_code, make_fingerprint
+from .filesystem.sd_card import SDCard
+from .job import Job
 from .model import Model
-from .structures.item_updater import ItemUpdater, \
-    WatchedItem, WatchedGroup, SideEffectOnly
-from ..util import make_fingerprint, get_d3_code
+from .structures.item_updater import (ItemUpdater, SideEffectOnly,
+                                      WatchedGroup, WatchedItem)
+from .structures.model_classes import (EEPROMParams, NetworkInfo, PrintMode,
+                                       Telemetry)
+from .structures.module_data_classes import Sheet
+from .structures.regular_expressions import (D3_OUTPUT_REGEX, FW_REGEX,
+                                             M27_OUTPUT_REGEX, MBL_REGEX,
+                                             NOZZLE_REGEX, PERCENT_REGEX,
+                                             PRINT_INFO_REGEX,
+                                             PRINTER_TYPE_REGEX, SN_REGEX,
+                                             VALID_SN_REGEX)
+from .telemetry_passer import TelemetryPasser
 
 log = logging.getLogger(__name__)
 

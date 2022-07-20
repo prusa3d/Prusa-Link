@@ -1,20 +1,22 @@
-"""Contains the implementation of Storage, FSStorage and FolderStorage for keeping
-track of Linux and folder storage."""
+"""
+Contains the implementation of Storage, FSStorage and FolderStorage for keeping
+track of Linux and folder storage.
+"""
 import abc
 import logging
 import os
 import select
-from typing import Set, List
+from typing import List, Set
 
 from blinker import Signal  # type: ignore
 
-from ..model import Model
-from ..updatable import ThreadedUpdatable
-from ..structures.module_data_classes import StorageData
 from ...config import Config
-from ...const import BLACKLISTED_PATHS, BLACKLISTED_NAMES, BLACKLISTED_TYPES, \
-    QUIT_INTERVAL, DIR_RESCAN_INTERVAL
-from ...util import get_clean_path, ensure_directory
+from ...const import (BLACKLISTED_NAMES, BLACKLISTED_PATHS, BLACKLISTED_TYPES,
+                      DIR_RESCAN_INTERVAL, QUIT_INTERVAL)
+from ...util import ensure_directory, get_clean_path
+from ..model import Model
+from ..structures.module_data_classes import StorageData
+from ..updatable import ThreadedUpdatable
 
 log = logging.getLogger(__name__)
 
@@ -159,9 +161,9 @@ class FilesystemStorage(Storage):
             list(cfg.printer.storage)
 
         model.filesystem_storage = StorageData(blacklisted_paths=[],
-                                         blacklisted_names=[],
-                                         configured_storage=set(),
-                                         attached_set=set())
+                                               blacklisted_names=[],
+                                               configured_storage=set(),
+                                               attached_set=set())
         # Call this after initializing the data
         super().__init__(model)
 
@@ -225,9 +227,9 @@ class FolderStorage(Storage):
         FolderStorage.paths_to_storage = list(cfg.printer.directories)
 
         model.folder_storage = StorageData(blacklisted_paths=[],
-                                        blacklisted_names=[],
-                                        configured_storage=set(),
-                                        attached_set=set())
+                                           blacklisted_names=[],
+                                           configured_storage=set(),
+                                           attached_set=set())
 
         # Call this after initializing the data
         super().__init__(model)

@@ -5,9 +5,9 @@ from wsgiref.simple_server import make_server
 
 import prctl  # type: ignore
 
-from .lib.core import app
 from .lib.auth import REALM
-from .lib.classes import ThreadingServer, RequestHandler
+from .lib.classes import RequestHandler, ThreadingServer
+from .lib.core import app
 from .lib.wizard import Wizard
 from .link_info import link_info
 

@@ -2,11 +2,12 @@
 from prusa.connect.printer import Command
 
 from ..const import QUIT_INTERVAL
-from ..printer_adapter.updatable import prctl_name, Thread
+from ..printer_adapter.updatable import Thread, prctl_name
 
 
 class CommandHandler:
     """Waits for commands from the SDK, calls their handlers"""
+
     def __init__(self, sdk_command: Command):
         self.sdk_command = sdk_command
 

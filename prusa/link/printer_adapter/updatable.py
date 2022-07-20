@@ -4,8 +4,10 @@ There was an updatable without a thread, but it stopped being used
 
 Also contains a thread utility function
 """
-from threading import Thread as _Thread, current_thread, Event
 from cProfile import Profile
+from threading import Event
+from threading import Thread as _Thread
+from threading import current_thread
 
 import prctl  # type: ignore
 
@@ -21,6 +23,7 @@ def prctl_name():
 
 class Thread(_Thread):
     """https://stackoverflow.com/a/1922945"""
+
     def profile_run(self):
         """run method for profiling"""
         profiler = Profile()
