@@ -16,3 +16,4 @@ unidecode
 pyric
 zeroconf
 bidict
+python-magic
