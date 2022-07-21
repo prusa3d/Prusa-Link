@@ -105,7 +105,7 @@ def foldername_too_long(req):
 @app.route('/error/sdcard-not-supported')
 def sdcard_not_supported(req):
     """Error handler for 404 Some operations are not possible on SDCard."""
-    return response_error(req, conditions.SDCardNotSupoorted())
+    return response_error(req, conditions.SDCardNotSupported())
 
 
 @app.route('/error/location-not-found')

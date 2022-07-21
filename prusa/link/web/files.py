@@ -9,6 +9,7 @@ from os import makedirs, replace, statvfs, unlink
 from os.path import abspath, basename, dirname, exists, getctime, getsize, join
 from shutil import move, rmtree
 from time import sleep, time
+from magic import Magic
 
 from poorwsgi import state
 from poorwsgi.request import FieldStorage
@@ -23,7 +24,7 @@ from prusa.connect.printer.download import (Transfer, TransferRunningError,
 from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 
 from .. import conditions
-from ..const import LOCAL_STORAGE_NAME, PATH_WAIT_TIMEOUT
+from ..const import LOCAL_STORAGE_NAME, SD_STORAGE_NAME, PATH_WAIT_TIMEOUT
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.job import Job, JobState
 from ..printer_adapter.prusa_link import TransferCallbackState
@@ -172,7 +173,7 @@ def check_target(func):
     @wraps(func)
     def handler(req, target, *args, **kwargs):
         if target == 'sdcard':
-            raise conditions.SDCardNotSupoorted()
+            raise conditions.SDCardNotSupported()
         if target != 'local':
             raise conditions.LocationNotFound()
 
@@ -423,14 +424,23 @@ def api_downloads(req, target, path):
     headers = {"Content-Disposition": f"attachment;filename=\"{filename}\""}
     return FileResponse(os_path, headers=headers)
 
-
 @app.route('/api/files/<target>/<path:re:.+(?!/raw)>')
+@app.route('/api/v1/<storage>/<path:re:.+(?!/raw)>')
 @check_api_digest
-def api_resources(req, target, path):
-    """Returns metadata from cache file."""
+def api_file_info(req, target, path):
+    """Returns info and metadata about specific file from its cache"""
     # pylint: disable=unused-argument
     if target not in ('local', 'sdcard'):
         raise conditions.LocationNotFound()
+
+    file_system = app.daemon.prusa_link.printer.fs
+
+    job = Job.get_instance()
+
+    headers = {
+        'Read-Only': "False",
+        'Currently-Printed': "False"
+    }
 
     path = '/' + path
 
@@ -454,12 +464,88 @@ def api_resources(req, target, path):
         result['date'] = int(getctime(os_path))
 
     else:  # sdcard
+        path = "/" + SD_STORAGE_NAME + path
+        if not file_system.get(path):
+            raise conditions.FileNotFound()
         meta = FDMMetaData(path)
         meta.load_from_path(path)
         result['refs'] = sdcard_refs(path)
+        headers['Read-Only'] = "True"
+
+    if job.data.selected_file_path == path:
+        headers['Currently-Printed'] = "True"
 
     result['gcodeAnalysis'] = gcode_analysis(meta)
-    return JSONResponse(**result)
+    return JSONResponse(**result, headers=headers)
+
+
+@app.route('/api/v1/<storage>/<path:re:.+(?!/raw)>', method=state.METHOD_PUT)
+@check_api_digest
+def api_file_upload(req, storage, path):
+    """Upload a file via PUT method"""
+    # pylint: disable=unused-argument
+    # pylint: disable=too-many-return-statements
+    # pylint: disable=too-many-branches
+
+    if storage not in ['local', 'sdcard']:
+        raise conditions.StorageNotExist()
+
+    if storage == 'sdcard':
+        raise conditions.SDCardReadOnly()
+
+    allowed_types = ['application/octet-stream', 'text/x.gcode']
+
+    # If the type is unknown, it will be checked after successful upload
+    mime_type = req.mime_type or 'application/octet-stream'
+
+    if mime_type not in allowed_types:
+        raise conditions.UnsupportedMediaError()
+
+    if not req.content_length > 0:
+        raise conditions.LengthRequired()
+
+    abs_path = join(get_os_path(f'/{LOCAL_STORAGE_NAME}'), path)
+    print_after_upload = req.headers.get('Print-After-Upload') or False
+    uploaded = 0
+    # checksum = sha256() # - # We don't use this value yet
+
+    filename = basename(abs_path)
+    part_path = partfilepath(filename)
+
+    with open(part_path, 'w+b') as temp:
+        block = min(app.cached_size, req.content_length)
+        data = req.read(block)
+        while data:
+            uploaded += temp.write(data)
+            # checksum.update(data) # - we don't use the value yet
+            block = min(app.cached_size, req.content_length-uploaded)
+            if block > 1:
+                data = req.read(block)
+            else:
+                data = b''
+
+    # Mine a real mime_type from the file using magic
+    if req.mime_type == 'application/octet-stream':
+        mime_type = Magic(mime=True).from_file(abs_path)
+        if mime_type not in allowed_types:
+            unlink(abs_path)
+            raise conditions.UnsupportedMediaError()
+    replace(part_path, abs_path)
+
+    if print_after_upload:
+        tries = 0
+        print_path = join(f'/{LOCAL_STORAGE_NAME}', path)
+
+        while not app.daemon.prusa_link.printer.fs.get(print_path):
+            sleep(0.1)
+            tries += 1
+            if tries >= 10:
+                raise conditions.RequestTimeout()
+
+        app.daemon.prusa_link.command_queue.do_command(
+            StartPrint(print_path))
+
+    return Response(status_code=state.HTTP_CREATED)
 
 
 @app.route('/api/files/<target>/<path:re:.+>', method=state.METHOD_DELETE)

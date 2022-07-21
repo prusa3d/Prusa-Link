@@ -119,6 +119,7 @@
      * Added endpoint api/v1/storage with storage info
      * Round auto guessed preheat temps to the nearest five
      * Remove any irrelevant telemetry right on state change
+     * Added endpoint api/v1/<storage>/<path>
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder

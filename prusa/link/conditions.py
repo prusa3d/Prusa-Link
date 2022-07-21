@@ -269,7 +269,7 @@ class FileNotFound(NotFoundError):
     text = "File you want was not found."
 
 
-class SDCardNotSupoorted(NotFoundError):
+class SDCardNotSupported(NotFoundError):
     """404 Some operations are not possible on SDCard."""
     title = "SDCard is not Suppported"
     text = "Location `sdcard` is not supported, use local."
@@ -297,13 +297,14 @@ class CurrentlyPrinting(ConflictError):
 class NotPrinting(ConflictError):
     """409 Printer is not printing"""
     title = "Printer Is Not Printing"
-    text = "Operation you want can be do only when printer is printing."
+    text = "Operation you want can only be done when printer is printing."
 
 
 class FileCurrentlyPrinted(ConflictError):
     """409 File is currently printed"""
     title = "File is currently printed"
-    text = "You try to operation with file, which is currently printed."
+    text = \
+        "You try to do an operation with the file, which is currently printed."
     id = "file-currently-printed"
 
 
@@ -336,6 +337,22 @@ class EntityTooLarge(LinkError):
     text = "Not enough space in storage."
     id = "entity-too-large"
     status_code = state.HTTP_REQUEST_ENTITY_TOO_LARGE
+
+
+class StorageNotExist(LinkError):
+    """409 Storage Does Not Exist"""
+    title = "Storage Does Not Exist"
+    text = "Storage doest not exist."
+    id = "storage-not-exist"
+    status_code = state.HTTP_CONFLICT
+
+
+class SDCardReadOnly(LinkError):
+    """409 SD Card Read Only"""
+    title = "SD Card Read Only"
+    text = "SD Card storage is read only."
+    id = "entity-too-large"
+    status_code = state.HTTP_CONFLICT
 
 
 class UnsupportedMediaError(LinkError):
