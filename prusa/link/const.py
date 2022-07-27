@@ -4,7 +4,6 @@ PrusaLink
 """
 import uuid
 from importlib.resources import files  # type: ignore
-from json import load
 from os import path
 from typing import List
 
@@ -130,25 +129,81 @@ LOGS_PATH = "/var/log"
 LOGS_FILES = ("auth.log", "daemon.log", "kern.log", "messages", "syslog",
               "user.log")
 
-# --- Hardware limits for commands ---
-with open(path.join(DATA_PATH, "limits.json"), "r", encoding='utf-8') as file:
-    limits = load(file)
-    limits_mk3 = limits['printer_types'][0]['parameters']
 
-FEEDRATE_X = limits_mk3['feedrate_x']
-FEEDRATE_Y = limits_mk3['feedrate_y']
-FEEDRATE_Z = limits_mk3['feedrate_z']
-FEEDRATE_E = limits_mk3['feedrate_e']
-FEEDRATE_XY = FEEDRATE_X
-MIN_TEMP_NOZZLE_E = limits_mk3['min_temp_nozzle_e']
-POSITION_X = limits_mk3['position_x']
-POSITION_Y = limits_mk3['position_y']
-POSITION_Z = limits_mk3['position_z']
-PRINT_FLOW = limits_mk3['print_flow']
-PRINT_SPEED = limits_mk3['print_speed']
-TEMP_BED = limits_mk3['temp_bed']
-TEMP_NOZZLE = limits_mk3['temp_nozzle']
-EXTRUSION = limits_mk3['extrusion']
+# --- Hardware limits for commands ---
+class LimitsFDM:
+    """Generic FDM Limits object"""
+
+    # --- Printer Object info ---
+    id: str
+    name: str
+    type: int
+    version: int
+    subversion: int
+
+    # --- Hardware limits ---
+    extrusion_min = -10
+    extrusion_max = 100
+    feedrate_e_min = 0
+    feedrate_e_max = 100
+    feedrate_x_min = 0
+    feedrate_x_max = 2700
+    feedrate_y_min = 0
+    feedrate_y_max = 2700
+    feedrate_z_min = 0
+    feedrate_z_max = 1000
+    min_temp_nozzle_e = 160
+    position_x_min = 0
+    position_x_max = 255
+    position_y_min = -4
+    position_y_max = 212.5
+    position_z_min = 0.15
+    position_z_max = 210
+    print_flow_min = 10
+    print_flow_max = 999
+    print_speed_min = 10
+    print_speed_max = 999
+    temp_bed_min = 0
+    temp_bed_max = 125
+    temp_nozzle_min = 0
+    temp_nozzle_max = 305
+
+
+class LimitsMK25(LimitsFDM):
+    """Printer MK2.5 Limits object"""
+    id = '1.2.5'
+    name = 'Original Prusa i3 MK2.5'
+    type = 1
+    version = 2
+    subversion = 5
+
+
+class LimitsMK25S(LimitsFDM):
+    """Printer MK2.5S Limits object"""
+    id = '1.2.6'
+    name = 'Original Prusa i3 MK2.5S'
+    type = 1
+    version = 2
+    subversion = 6
+
+
+class LimitsMK3(LimitsFDM):
+    """Printer MK3 Limits object"""
+    id = '1.3.0'
+    name = 'Original Prusa i3 MK3'
+    type = 1
+    version = 3
+    subversion = 0
+
+
+class LimitsMK3S(LimitsFDM):
+    """Printer MK3S Limits object"""
+    id = '1.3.1'
+    name = 'Original Prusa i3 MK3S'
+    type = 1
+    version = 3
+    subversion = 1
+
 
 PRINT_STATE_PAIRING = {
     "sdn_lfn": PrintState.SD_PRINTING,
