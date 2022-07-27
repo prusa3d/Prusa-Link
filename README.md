@@ -43,7 +43,7 @@ Git and Pip are needed for installation, while pigpio is only needed if the
 RPi GPIO pins are to be used.
 
 ```bash
-sudo apt install git python3-pip pigpio libcap-dev
+sudo apt install git python3-pip pigpio libcap-dev libmagic1
 
 pip install PrusaLink
 
