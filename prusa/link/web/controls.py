@@ -5,9 +5,7 @@ from prusa.connect.printer.const import State
 
 from ..conditions import (CurrentlyPrinting, TemperatureTooHigh,
                           TemperatureTooLow, ValueTooHigh, ValueTooLow)
-from ..const import (FEEDRATE_E, FEEDRATE_XY, MIN_TEMP_NOZZLE_E, POSITION_X,
-                     POSITION_Y, POSITION_Z, PRINT_FLOW, PRINT_SPEED, TEMP_BED,
-                     TEMP_NOZZLE)
+from ..const import LimitsMK3
 from ..serial.helpers import enqueue_instruction
 from .lib.auth import check_api_digest
 from .lib.core import app
@@ -34,11 +32,12 @@ def jog(req, serial_queue):
     # pylint: disable=too-many-branches
 
     # Compatibility with OctoPrint, OP speed == Prusa feedrate in mm/min
-    # If feedrate is not defined, use maximum value for E axis
+    # If feedrate is not defined, use maximum value for X axis
     feedrate = (req.json.get('feedrate')
-                or req.json.get('speed', FEEDRATE_XY['max']))
+                or req.json.get('speed', LimitsMK3.feedrate_x_max))
 
-    check_value_limits(feedrate, FEEDRATE_XY['min'], FEEDRATE_XY['max'])
+    check_value_limits(feedrate,
+                       LimitsMK3.feedrate_x_min, LimitsMK3.feedrate_x_max)
 
     absolute = req.json.get('absolute')
     axes = []
@@ -50,17 +49,23 @@ def jog(req, serial_queue):
 
     if x_axis is not None:
         if absolute:
-            check_value_limits(x_axis, POSITION_X['min'], POSITION_X['max'])
+            check_value_limits(x_axis,
+                               LimitsMK3.position_x_min,
+                               LimitsMK3.position_x_max)
         axes.append(f'X{x_axis}')
 
     if y_axis is not None:
         if absolute:
-            check_value_limits(y_axis, POSITION_Y['min'], POSITION_Y['max'])
+            check_value_limits(y_axis,
+                               LimitsMK3.position_y_min,
+                               LimitsMK3.position_y_max)
         axes.append(f'Y{y_axis}')
 
     if z_axis is not None:
         if absolute:
-            check_value_limits(z_axis, POSITION_Z['min'], POSITION_Z['max'])
+            check_value_limits(z_axis,
+                               LimitsMK3.position_z_min,
+                               LimitsMK3.position_z_max)
         axes.append(f'Z{z_axis}')
 
     if absolute:
@@ -89,7 +94,8 @@ def home(req, serial_queue):
 def set_speed(req, serial_queue):
     """Speed set command"""
     factor = req.json.get('factor', 100)
-    check_value_limits(factor, PRINT_SPEED['min'], PRINT_SPEED['max'])
+    check_value_limits(factor,
+                       LimitsMK3.print_speed_min, LimitsMK3.print_speed_max)
 
     gcode = f'M220 S{factor}'
     enqueue_instruction(serial_queue, gcode)
@@ -107,9 +113,10 @@ def extrude(req, serial_queue):
     # Compatibility with OctoPrint, OP speed == Prusa feedrate in mm/min
     # If feedrate is not defined, use maximum value for E axis
     feedrate = (req.json.get('feedrate')
-                or req.json.get('speed', FEEDRATE_E['max']))
+                or req.json.get('speed', LimitsMK3.feedrate_e_max))
 
-    check_value_limits(feedrate, FEEDRATE_E['min'], FEEDRATE_E['max'])
+    check_value_limits(feedrate,
+                       LimitsMK3.feedrate_e_min, LimitsMK3.feedrate_e_max)
 
     # M83 - relative movement for axis E
     enqueue_instruction(serial_queue, 'M83')
@@ -167,13 +174,15 @@ def api_tool(req):
         # Compability with OctoPrint, which uses more tools, here only tool0
         tool = targets['tool0']
 
-        check_temperature_limits(tool, TEMP_NOZZLE['min'], TEMP_NOZZLE['max'])
+        check_temperature_limits(tool,
+                                 LimitsMK3.temp_nozzle_min,
+                                 LimitsMK3.temp_nozzle_max)
 
         gcode = f'M104 S{tool}'
         enqueue_instruction(serial_queue, gcode)
 
     if command == 'extrude':
-        if tel.temp_nozzle < MIN_TEMP_NOZZLE_E:
+        if tel.temp_nozzle < LimitsMK3.min_temp_nozzle_e:
             raise TemperatureTooLow()
         if printer_state is State.PRINTING:
             raise CurrentlyPrinting()
@@ -183,7 +192,8 @@ def api_tool(req):
     if command == 'flowrate':
         factor = req.json.get('factor')
 
-        check_value_limits(factor, PRINT_FLOW['min'], PRINT_FLOW['max'])
+        check_value_limits(factor,
+                           LimitsMK3.print_flow_min, LimitsMK3.print_flow_max)
 
         gcode = f'M221 S{factor}'
         enqueue_instruction(serial_queue, gcode)
@@ -201,7 +211,9 @@ def api_bed(req):
     if command == 'target':
         target = req.json.get('target')
 
-        check_temperature_limits(target, TEMP_BED['min'], TEMP_BED['max'])
+        check_temperature_limits(target,
+                                 LimitsMK3.temp_bed_min,
+                                 LimitsMK3.temp_bed_max)
 
         gcode = f'M140 S{target}'
         enqueue_instruction(serial_queue, gcode)
