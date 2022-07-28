@@ -1,96 +1,73 @@
 # ChangeLog
 
 0.7.0
-    * Work around a bug: pinter in serial print mode while wizard is shown
-    * Flag checked replaced by prepared
+    * Work around a bug: printer in serial print mode while wizard is shown
+    * READY state changed to IDLE, PREPARED state changed to READY
     * New status display
-      - notifies about setup wizard,
-      - shows upload progress
-      - shows the name of a file being printed
-      - notifies about errors
-      - shows an idle screen with the IP address after 30min
-    * Name and location of printer in ini file is wrapped by quotes, "#" sign encoded in URL
+       - notifies about setup wizard,
+       - shows upload progress
+       - shows the name of a file being printed
+       - notifies about errors
+       - shows an idle screen with the IP address after 30min
+       - add idle screen and show transfers during print pauses
+
+    * Name and location of printer value validation
     * Fix negative timeout being possible in serial read
-    * Change of name / location of printer in PrusaLink fixed (added quotes, removed from endpoint json)
-    * Added option for skip Connect registration in wizard
-    * Added registration status and code values to api/connection GET endpoint
-    * Added connect section to api/connection POST
-    * Fixed additional registration process
-    * File name forbidden characters check moved to SDK, added functions for check it and check file name length
+    * Additional Connect (un)registration support
+    * File and Directory name validation refactoring
     * Fixed transfer and print in ATTENTION error
-    * Added function for check foldername length (from SDK)
-    * Attribute file_path in job info changed to path
+    * New Connect API support
     * Fix PrusaLink IP not getting reset from printer on shutdown
     * Fix the serial_number step in wizard
-    * Modified endpoint api/files to optionally get specific directory instead of whole tree
-    * Added '/api/files/<target>/<path:re:.+>/raw' endpoint
     * Fix unicode characters in file names breaking lcd printer
     * Make RESET_PRINTER clear the command queue and have priority that way
     * Made the app stop itself faster
     * Use M400 instead of G4 for printer queue syncing
-    * Added printer name and location validation to wizard
-    * Reworked errors in validation of printer name and location in Link settings
     * Reworked validation of correct S/N write
     * Modified username length and password length and format validation
     * Use "Sync|->:" and "Sync->|:" to signify which way is the current transfer going
-    * Add DNS service discovery compatible with prusa-slicer
-    * Support file upload cancels from prusa-slicer (once PoorWSGI updates)
-    * Added endpoints for create and delete of folder and relocating the file
+    * Add DNS service discovery compatible with PrusaSlicer
+    * Support file upload cancels from PrusaSlicer
     * Static web update:
-      - Fix big log files displaying
-      - Decrease display log file size limit to 1M
-      - Change temperature controls widget number format to display integers
-      - Add stop/resume print button
-      - Add protection from steppers disabling when printing
-      - Fix upload widget toggles on interaction with projects list
-      - Fix sidebar width
-      - Replace PNG icons with SVG
-      - Fix router, telemetry graph dinmensions and page layout
-      - Update error handling to avoid duplicates of popups
-      - Add FE version output to console log
-      - Add support for file extensions provided by printer profiles from API
-      - Fix display names of origins
-      - New application design
-      - New field to rename project file uploaded by URL
-      - New widget displaying used/free size (not-connected to printer yet)
-      - New Rename and Copy actions (hidden)
-      - New tool to unify icons colors
-      - Fixed icons colors
-      - Updated free space logic
-      - Fixed storage tabs behavior
-      - Avoid unnecessary requests to BE for file metadata
-      - Hardcode storages list to printers
-      - Removed page `Temperatures`
-      - Fix formatting of percentages
-      - Reworked text styles
-      - Changed white color to light gray
-      - Project preview is now not dependent on `/api/job` endpoint
-      - Confirm dialog after uploade via drag zone
-      - Nozzle diameter
+       - Fix big log files displaying
+       - Decrease display log file size limit to 1M
+       - Change temperature controls widget number format to display integers
+       - Add stop/resume print button
+       - Add protection from steppers disabling when printing
+       - Fix sidebar width
+       - Replace PNG icons with SVG
+       - Fix router, telemetry graph dinmensions and page layout
+       - Update error handling to avoid duplicates of popups
+       - Add support for file extensions provided by printer profiles from API
+       - Fix display names of origins
+       - New application design
+       - New field to rename project file uploaded by URL
+       - New widget displaying used/free size (not-connected to printer yet)
+       - New Rename and Copy actions (hidden)
+       - New tool to unify icons colors
+       - Updated free space logic
+       - Fixed storage tabs behavior
+       - Avoid unnecessary requests to BE for file metadata
+       - Hardcode storages list to printers
+       - Removed page `Temperatures`
+       - Fix formatting of percentages
+       - Project preview is now not dependent on `/api/job` endpoint
+       - Confirm dialog after uploade via drag zone
+       - Nozzle diameter
+
      * Differentiate between FW and ID errors in the wizard, update texts
-     * Fix ID error being swapped with the FW error
      * Fixed download ref, added total storage space info
      * Added storage space info to api/printer
      * Added function for save file with custom name
-     * Fix files not reloading when already selected for printing, but overwritten
      * Add dynamic download throttling when printing
-     * Exclude diacritic from username
-     * time_estimated changed to time_remaining (time_remaining kept for compatibility)
-     * Added check for spaces on the beginning and the end of the username
-     * Added check for new S/N format and info to contact the customer support
      * Added caching for thumbnail images
      * Send printer info on printer reset / info invalidation event
      * Fixed error handling for PrusaLink Web
-     * Add idle screen and show transfers during print pauses
-     * Added endpoint for unregistering the printer
      * Reset print stats after a print ends
      * Fix print fail from a unchecked print buffer underflow
-     * Report mesh bed leveling data
+     * Report mesh bed levelling data
      * Use the print mode to report the right print stats row to connect
      * Make sure fan errors send reason, improve their behavior a little
-     * READY state changed to IDLE, PREPARED state changed to READY
-     * Added endpoint for set/cancel printer READY state
-     * Re-registration can be done only with deleted token
      * Fix SD Card module race conditions
      * Make it possible to hide certain loggers from interesting log
      * Filter telemetry, send only what's "significantly" changed
@@ -103,11 +80,8 @@
      * Added api/v1/info endpoint
      * Add printer statistics tracking
      * Add time to filament change tracking
-     * Fix mbl data format
      * Add sheet settings tracking
-     * Return a better reason when print of a non existant file is requested
-     * Api-Key form is hidden in wizard by default -> None if not set
-     * Fix the LCD printer going through errors in the wrong order
+     * Return a better reason when print of a non existent file is requested
      * Make printer settings reflect the actual printer type
      * Fixed doubled gcode extensions when custom name is used
      * Added nozzle diameter info to api/v1/info
