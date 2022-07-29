@@ -144,7 +144,7 @@ def main():
     parser.add_argument("-s",
                         "--serial-port",
                         type=str,
-                        help="Serial (printer's) port",
+                        help="Serial (printer's) port or 'auto'",
                         metavar="<PORT>")
     parser.add_argument("-i",
                         "--info",

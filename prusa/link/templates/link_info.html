@@ -6,6 +6,18 @@
     <div class="container">
         <h1 class="align-center">Prusa Link Debug Info Page</h1>
 
+        <h2 class="align-center">Ports</h2>
+        <ul>
+            {% for port in prusa_link.model.serial_adapter.ports %}
+                <li>{{ port }}</li>
+            {% endfor %}
+        </ul>
+
+        {% if prusa_link.model.serial_adapter.using_port %}
+            <h3 class="align-center">Using port</h3>
+            {{ prusa_link.model.serial_adapter.using_port }}
+        {% endif %}
+
         <h2 class="align-center">Printer</h2>
         <ul>
             <li>Name: <span class="white">{{ app.settings.printer.name }}</span></li>

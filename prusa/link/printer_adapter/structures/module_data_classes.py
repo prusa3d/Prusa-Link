@@ -12,6 +12,32 @@ from .model_classes import JobState, SDState
 # pylint: disable=too-few-public-methods
 
 
+class Port(BaseModel):
+    """Data known about a port"""
+    path: str
+    usable: bool = False
+    checked: bool = False
+    is_rpi_port: bool = False
+    selected: bool = False
+    description: str = "Unknown"
+    baudrate: int = 115200
+    timeout: int = 2
+
+    def __str__(self):
+        return (f"Port: {self.path}, "
+                f"Checked: {self.checked}, "
+                f"Usable: {self.usable}, "
+                f"Selected: {self.selected}, "
+                f"RPi port: {self.is_rpi_port}, "
+                f"Description: {self.description}")
+
+
+class SerialAdapterData(BaseModel):
+    """Data of the SerialAdapter class"""
+    ports: List[Port] = []
+    using_port: Optional[Port]
+
+
 class FilePrinterData(BaseModel):
     """Data of the FilePrinter class"""
     file_path: str

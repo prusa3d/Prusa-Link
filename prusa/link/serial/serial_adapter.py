@@ -1,23 +1,37 @@
 """Contains implementation of the Serial class"""
+import glob
 import logging
 import os
 import re
 from pathlib import Path
 from threading import Lock
-from time import sleep
+from time import sleep, time
+from typing import List
 
 from blinker import Signal  # type: ignore
 from prusa.connect.printer.conditions import CondState
 
 from ..conditions import SERIAL
-from ..const import PRINTER_BOOT_WAIT, SERIAL_REOPEN_TIMEOUT
+from ..const import PRINTER_BOOT_WAIT, SERIAL_REOPEN_TIMEOUT, PRINTER_TYPES
+from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
+from ..printer_adapter.structures.module_data_classes import Port, \
+    SerialAdapterData
+from ..printer_adapter.structures.regular_expressions import \
+    PRINTER_TYPE_REGEX, FW_REGEX, BUSY_REGEX, ATTENTION_REGEX
 from ..printer_adapter.updatable import Thread, prctl_name
-from . import serial
-from .serial import SerialException
+from .serial import SerialException, Serial
 from .serial_parser import SerialParser
+from ..util import decode_line
 
 log = logging.getLogger(__name__)
+
+
+class PortAdapter:
+    """Use the Port class, but allow to pass a Serial instance with it"""
+    def __init__(self, port):
+        self.port: Port = port
+        self.serial = None
 
 
 class SerialAdapter(metaclass=MCSingleton):
@@ -28,39 +42,11 @@ class SerialAdapter(metaclass=MCSingleton):
     It also can reset the connected device using DTR - works only with USB
     """
 
-    def __init__(self,
-                 serial_parser: SerialParser,
-                 port="/dev/ttyAMA0",
-                 baudrate=115200,
-                 timeout=2):
-
-        # pylint: disable=too-many-arguments
-        self.port = port
-        self.baudrate = baudrate
-        self.timeout = timeout
-
-        self.write_lock = Lock()
-
-        self.serial = None
-        self.serial_parser = serial_parser
-
-        self.failed_signal = Signal()
-        self.renewed_signal = Signal()
-
-        self.running = True
-
-        self.through_rpi_port = False
-        self.through_rpi_port = self.is_rpi_port()
-
-        self.read_thread = Thread(target=self._read_continually,
-                                  name="serial_read_thread",
-                                  daemon=True)
-        self.read_thread.start()
-
-    def is_rpi_port(self):
+    @staticmethod
+    def is_rpi_port(port):
         """Figure out, whether we're running through the Einsy RPi port"""
         try:
-            port_name = Path(self.port).name
+            port_name = Path(port).name
             if not port_name.startswith("ttyAMA"):
                 return False
             sys_path = Path(f"/sys/class/tty/{port_name}")
@@ -78,29 +64,147 @@ class SerialAdapter(metaclass=MCSingleton):
         else:
             return True
 
-    def is_open(self):
+    def __init__(self,
+                 serial_parser: SerialParser,
+                 model: Model,
+                 configured_port="auto",
+                 baudrate=115200,
+                 timeout=2):
+
+        # pylint: disable=too-many-arguments
+        self.model: Model = model
+        self.model.serial_adapter = SerialAdapterData()
+        self.data: SerialAdapterData = model.serial_adapter
+        self.configured_port = configured_port
+        self.baudrate = baudrate
+        self.timeout = timeout
+
+        self.write_lock = Lock()
+
+        self.serial = None
+        self.serial_parser = serial_parser
+
+        self.failed_signal = Signal()
+        self.renewed_signal = Signal()
+
+        self.running = True
+
+        self.read_thread = Thread(target=self._read_continually,
+                                  name="serial_read_thread",
+                                  daemon=True)
+        self.read_thread.start()
+
+    @staticmethod
+    def is_open(serial):
         """Returns bool indicating whether there's a serial connection"""
-        return self.serial is not None and self.serial.is_open
+        return serial is not None and serial.is_open
+
+    @staticmethod
+    def _get_info(port_adapter: PortAdapter):
+        """Gets info about the supplied port
+        returns whether it figured something out or not"""
+        serial = port_adapter.serial
+        port = port_adapter.port
+
+        name = version = inoperable_because = None
+        serial.write(b"PRUSA Fir\nM862.2 Q\n")
+        timeout_at = time() + 5
+        while (raw_line := serial.readline()) and time() < timeout_at:
+            line = decode_line(raw_line)
+            if match := PRINTER_TYPE_REGEX.match(line):
+                if (code := int(match.group("code"))) in PRINTER_TYPES:
+                    name = "Prusa " + PRINTER_TYPES[code].name
+                else:
+                    inoperable_because = "the printer is not supported"
+            elif match := FW_REGEX.match(line):
+                version = match.group("version")
+            elif BUSY_REGEX.match(line):
+                inoperable_because = "the printer is busy"
+            elif ATTENTION_REGEX.match(line):
+                inoperable_because = "the printer wants user attention"
+
+            if name and version:
+                port.usable = True
+                port.description = f"{name} - FW: {version}"
+                return
+            if inoperable_because:
+                port.description = f"Won't connect because " \
+                                   f"{inoperable_because}"
+                return
+
+    @staticmethod
+    def _detect(port_adapter: PortAdapter):
+        """
+        Detects the usability of given port
+        Split into two for pylint, this one is responsible for opening serial
+        """
+        port = port_adapter.port
+        serial = None
+        try:
+            if not SerialAdapter.is_open(serial):
+                serial = Serial(port=port.path,
+                                baudrate=port.baudrate,
+                                timeout=port.timeout)
+                port_adapter.serial = serial
+                if not port.is_rpi_port:
+                    port.description = "Waiting for printer to boot"
+                    sleep(8)
+
+            SerialAdapter._get_info(port_adapter)
+
+        except (SerialException, FileNotFoundError, OSError):
+            if SerialAdapter.is_open(serial):
+                serial.close()  # type: ignore
+        port.checked = True
 
     def _reopen(self):
-        """
-        If open, closes the serial port, for usb prevents unnecessary
-        device resets and finally tries to open the serial again
-        """
+        """Re-open the configured serial port. Do a full re-scan if
+        auto is configured"""
+        self.data.using_port = None
+        self.data.ports = []
+        port_adapters: List[PortAdapter] = []
+        threads = []
         with self.write_lock:
-            if self.is_open():
+            if self.is_open(self.serial):
                 self.serial.close()
 
-            self.serial = serial.Serial(port=self.port,
-                                        baudrate=self.baudrate,
-                                        timeout=self.timeout)
-
-            if self.through_rpi_port:
-                log.debug("Think we're connected through the Einsy pins, "
-                          "skipping waiting for boot")
+            if self.configured_port == "auto":
+                paths = glob.glob("/dev/ttyAMA*")
+                paths.extend(glob.glob("/dev/ttyACM*"))
+                paths.extend(glob.glob("/dev/ttyUSB*"))
             else:
-                log.debug("Waiting for the printer to boot")
-                sleep(PRINTER_BOOT_WAIT)
+                paths = [self.configured_port]
+
+            for path in paths:
+                port = Port(path=path,
+                            baudrate=115200,
+                            timeout=2,
+                            is_rpi_port=self.is_rpi_port(path))
+                port_adapter = PortAdapter(port)
+                self.data.ports.append(port)
+                port_adapters.append(port_adapter)
+                thread = Thread(target=self._detect,
+                                args=(port_adapter,),
+                                daemon=True)
+                threads.append(thread)
+                thread.start()
+
+            for thread in threads:
+                thread.join()
+
+            found = False
+            for port_adapter in port_adapters:
+                if port_adapter.port.usable and not found:
+                    found = True
+                    port_adapter.port.selected = True
+                    self.data.using_port = port_adapter.port
+                    self.serial = port_adapter.serial
+                    log.info("Using the serial port %s",
+                             self.data.using_port.path)
+                elif self.is_open(port_adapter.serial):
+                    port_adapter.serial.close()
+                    log.debug("Other port - %s", port)
+            return found
 
     def renew_serial_connection(self, starting: bool = False):
         """
@@ -110,7 +214,7 @@ class SerialAdapter(metaclass=MCSingleton):
         If it succeeds, generates a signal to remove the rest of the app
         """
 
-        if self.is_open():
+        if self.is_open(self.serial):
             raise RuntimeError("Don't reconnect what is not disconnected")
 
         while self.running:
@@ -119,20 +223,11 @@ class SerialAdapter(metaclass=MCSingleton):
             else:
                 self.failed_signal.send(self)
 
-            try:
-                self._reopen()
-            except (serial.SerialException, FileNotFoundError, OSError) as err:
+            if not self._reopen():
                 SERIAL.state = CondState.NOK
-                log.debug(str(err))
-                log.warning("Opening of the serial port %s failed. Retrying",
-                            self.port)
-                sleep(SERIAL_REOPEN_TIMEOUT)
-            except Exception:  # pylint: disable=broad-except
-                # The same as above, just a different warning
-                SERIAL.state = CondState.NOK
-                log.exception("Opening of the serial port failed for a "
-                              "different reason than what's expected. "
-                              "Please report this!")
+                log.warning("Error when connecting to serial according to "
+                            "user config:  %s",
+                            self.configured_port)
                 sleep(SERIAL_REOPEN_TIMEOUT)
             else:
                 break
@@ -151,8 +246,8 @@ class SerialAdapter(metaclass=MCSingleton):
                        "so stuff doesn't break"
             try:
                 raw_line = self.serial.readline()
-                line = raw_line.decode("cp437").strip().replace('\x00', '')
-            except (serial.SerialException, OSError):
+                line = decode_line(raw_line)
+            except (SerialException, OSError):
                 log.exception("Failed when reading from the printer. "
                               "Trying to re-open")
                 self.serial.close()
@@ -184,7 +279,7 @@ class SerialAdapter(metaclass=MCSingleton):
         sent = False
 
         with self.write_lock:
-            if not self.is_open():
+            if not self.is_open(self.serial):
                 log.warning("No serial to send '%s' to", message)
                 return
             while not sent and self.running:
@@ -194,7 +289,7 @@ class SerialAdapter(metaclass=MCSingleton):
                 except OSError as error:
                     log.error("Serial error when sending '%s' to the printer",
                               message)
-                    if self.is_open():
+                    if self.is_open(self.serial):
                         # Same as the write above
                         self.serial.close()  # type: ignore
                     raise SerialException(
@@ -205,7 +300,7 @@ class SerialAdapter(metaclass=MCSingleton):
 
     def blip_dtr(self):
         """Pulses the DTR to reset the connected device. Work only over USB"""
-        if not self.is_open():
+        if not self.is_open(self.serial):
             log.warning("No serial connected, no blips will take place")
         with self.write_lock:
             self.serial.dtr = False
@@ -215,7 +310,7 @@ class SerialAdapter(metaclass=MCSingleton):
     def stop(self):
         """Stops the component"""
         self.running = False
-        if self.is_open():
+        if self.is_open(self.serial):
             self.serial.close()
 
     def wait_stopped(self):

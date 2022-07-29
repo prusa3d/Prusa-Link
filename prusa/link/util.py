@@ -195,3 +195,8 @@ def round_to_five(number: Union[float, int]):
     20
     """
     return round(number / 5) * 5
+
+
+def decode_line(line: bytes):
+    """Decode a line read from the printer"""
+    return line.decode("cp437").strip().replace('\x00', '')
