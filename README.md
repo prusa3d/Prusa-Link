@@ -129,7 +129,7 @@ options:
                         TCP/IP listening port
   -I, --link-info       /link-info debug page
   -s <PORT>, --serial-port <PORT>
-                        Serial (printer's) port
+                        Serial (printer's) port or 'auto'
   -i, --info            more verbose logging level INFO is set
   -d, --debug           DEBUG logging level is set
   -l MODULE_LOG_LEVEL, --module-log-level MODULE_LOG_LEVEL

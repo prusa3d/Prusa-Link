@@ -96,7 +96,8 @@ class PrusaLink:
         self.serial_parser = SerialParser()
 
         self.serial = SerialAdapter(self.serial_parser,
-                                    port=cfg.printer.port,
+                                    self.model,
+                                    configured_port=cfg.printer.port,
                                     baudrate=cfg.printer.baudrate)
 
         self.serial_queue = MonitoredSerialQueue(self.serial,

@@ -150,7 +150,7 @@ class Config(Get):
             self.get_section(
                 "printer",
                 (
-                    ("port", str, "/dev/ttyAMA0"),
+                    ("port", str, "auto"),
                     ("baudrate", int, 115200),
                     ("settings", str, "./prusa_printer_settings.ini"),
                     ("storage", tuple, [], ':'),
