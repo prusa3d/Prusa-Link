@@ -103,6 +103,48 @@ class SerialQueue(metaclass=MCSingleton):
 
         self.is_planner_fed = IsPlannerFed(cfg)
 
+        self.quit_evt = Event()
+        self.send_event = Event()
+        self.sender_thread = Thread(name="sq_sender",
+                                    target=self._keep_sending,
+                                    daemon=True)
+
+        self.sender_thread.start()
+
+    def _keep_sending(self):
+        """Send the most important instruction when asked nicely"""
+        while True:
+            self.send_event.wait()
+            if self.quit_evt.is_set():
+                break
+            self.send_event.clear()
+            with self.write_lock:
+                if not self.can_write():
+                    continue
+                try:
+                    self._send()
+                except (SerialException, OSError):
+                    log.info("A serial write has failed, expecting serial "
+                             "reader to fix the problem. In the meantime "
+                             "waiting for a nudge to send again.")
+
+    def _try_writing(self):
+        """
+        Nudge the sender thread to send an instruction
+        """
+        self.send_event.set()
+
+    def stop(self):
+        """
+        Stops the serial queue sender
+        """
+        self.quit_evt.set()
+        self.send_event.set()
+
+    def wait_stopped(self):
+        """Waits for the serial queue to stop"""
+        self.sender_thread.join()
+
     def peek_next(self):
         """Look, what the next instruction is going to be"""
         # pylint: disable=too-many-return-statements
@@ -120,7 +162,7 @@ class SerialQueue(metaclass=MCSingleton):
             return self.queue[-1]
         return None
 
-    def next_instruction(self):
+    def _next_instruction(self):
         """
         Get a fresh instruction into the self.current_instruction handling
         slot
@@ -161,20 +203,6 @@ class SerialQueue(metaclass=MCSingleton):
             and self.m110_workaround_slot is None
 
     # --- Actual methods ---
-
-    def _try_writing(self):
-        """
-        Checks it can get a lock and that the state is right for writing,
-        if yes, calls send to send an instruction to serial
-        """
-        try:
-            with self.write_lock:
-                if self.can_write():
-                    self._send()
-        # Need to leave our write lock unlocked
-        # when recovering from a serial error
-        except SerialException:
-            self.serial_adapter.renew_serial_connection()
 
     def get_data(self, instruction):
         """
@@ -239,7 +267,7 @@ class SerialQueue(metaclass=MCSingleton):
             self.m110_workaround_slot = Instruction("M400")
             self.worked_around_m110 = True
 
-        self.next_instruction()
+        self._next_instruction()
         instruction = self.current_instruction
 
         if instruction.data is None:
@@ -464,14 +492,14 @@ class SerialQueue(metaclass=MCSingleton):
             # To flush the one instruction, that has not yet been confirmed
             # but has been sent, use the usual way
             self._throw_out_current_instruction()
-            self.next_instruction()
+            self._next_instruction()
         while self.current_instruction is not None:
             # obviously don't send the other ones,
             # so they can be handled faster
             self.current_instruction.sent()
             self.current_instruction.confirm(force=True)
             self.current_instruction = None
-            self.next_instruction()
+            self._next_instruction()
 
     def _throw_out_current_instruction(self):
         """Throws out the currently executed instruction"""
@@ -561,7 +589,6 @@ class MonitoredSerialQueue(SerialQueue):
         # If we want to time out, the communication has to be dead for some
         # time
         # Useful only with unbuffered messages
-        self.quit_evt = Event()
         self.last_event_on = time()
         self.monitoring_thread = Thread(target=self.keep_monitoring,
                                         name="sq_stall_recovery",
@@ -605,11 +632,12 @@ class MonitoredSerialQueue(SerialQueue):
         Stops the monitoring thread
         If not required to go fast, saves the planner fed threshold
         """
-        self.quit_evt.set()
+        super().stop()
         self.is_planner_fed.save()
 
     def wait_stopped(self):
         """Waits for the serial queue to stop"""
+        super().stop()
         self.monitoring_thread.join()
 
     def _confirmed(self, force=False):
