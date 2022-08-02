@@ -87,7 +87,7 @@ LCD_QUEUE_SIZE = 30
 RX_SIZE = 128  # Not used much, limits the max serial message size
 SERIAL_QUEUE_TIMEOUT = 25
 SERIAL_QUEUE_MONITOR_INTERVAL = 1
-HISTORY_LENGTH = 30  # How many messages to remember for Resends
+HISTORY_LENGTH = 100  # How many messages to remember for Resends
 
 # --- Is planner fed ---
 QUEUE_SIZE = 10000  # From how many messages to compute the percentile
