@@ -45,6 +45,7 @@ JOB_ENDING_STATES = BASE_STATES.union(
     {State.FINISHED, State.STOPPED, State.ERROR})
 
 JITTER_THRESHOLD = 0.5
+PRUSA_VENDOR_ID = "2c99"
 
 # --- Intervals ---
 # Values are in seconds

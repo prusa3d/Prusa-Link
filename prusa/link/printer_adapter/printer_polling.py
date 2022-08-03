@@ -17,7 +17,7 @@ from ..config import Settings
 from ..const import (FAST_POLL_INTERVAL, MINIMAL_FIRMWARE,
                      PRINT_MODE_ID_PAIRING, PRINT_STATE_PAIRING, PRINTER_TYPES,
                      QUIT_INTERVAL, SLOW_POLL_INTERVAL,
-                     VERY_SLOW_POLL_INTERVAL)
+                     VERY_SLOW_POLL_INTERVAL, MK25_PRINTERS)
 from ..serial.helpers import enqueue_matchable, wait_for_instruction
 from ..serial.serial_parser import SerialParser
 from ..serial.serial_queue import SerialQueue
@@ -460,6 +460,13 @@ class PrinterPolling:
 
     def _get_serial_number(self):
         """Returns the SN regex match"""
+        # If we're connected through USB and we know the SN, use that one
+        serial_port = self.model.serial_adapter.using_port
+        if serial_port is not None and serial_port.sn is not None:
+            return serial_port.sn
+        # Do not ask MK2.5 for its SN, it would break serial communications
+        if self.printer.type in MK25_PRINTERS | {None}:
+            return ""
         match = self.do_matchable("PRUSA SN", SN_REGEX, to_front=True)
         return match.group("sn")
 
@@ -746,7 +753,7 @@ class PrinterPolling:
         if self.printer.type is not None and printer_type != self.printer.type:
             log.error("The printer type changed while running.")
             raise RuntimeError(f"Printer type cannot change! Original: "
-                               f"{self.printer.sn} current: {value}.")
+                               f"{self.printer.type} current: {value}.")
 
         return True
 

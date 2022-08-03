@@ -15,13 +15,14 @@ from .model_classes import JobState, SDState
 class Port(BaseModel):
     """Data known about a port"""
     path: str
-    usable: bool = False
-    checked: bool = False
     is_rpi_port: bool = False
-    selected: bool = False
-    description: str = "Unknown"
+    checked: bool = False  # False if it has not been finished checking
+    usable: bool = False  # We can probably use this port for communication
+    selected: bool = False  # PrusaLink selected to use this port
+    description: str = "Unknown"  # A nice human-readable status
     baudrate: int = 115200
     timeout: int = 2
+    sn: Optional[str] = None  # Save the USB descriptor SN if valid
 
     def __str__(self):
         return (f"Port: {self.path}, "
