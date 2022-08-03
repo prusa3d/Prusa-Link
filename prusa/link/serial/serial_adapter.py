@@ -8,17 +8,19 @@ from threading import Lock
 from time import sleep, time
 from typing import List
 
+import pyudev  # type: ignore
 from blinker import Signal  # type: ignore
 from prusa.connect.printer.conditions import CondState
 
 from ..conditions import SERIAL
-from ..const import PRINTER_BOOT_WAIT, SERIAL_REOPEN_TIMEOUT, PRINTER_TYPES
+from ..const import PRINTER_BOOT_WAIT, SERIAL_REOPEN_TIMEOUT, PRINTER_TYPES, \
+    PRUSA_VENDOR_ID
 from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
 from ..printer_adapter.structures.module_data_classes import Port, \
     SerialAdapterData
 from ..printer_adapter.structures.regular_expressions import \
-    PRINTER_TYPE_REGEX, FW_REGEX, BUSY_REGEX, ATTENTION_REGEX
+    PRINTER_TYPE_REGEX, FW_REGEX, BUSY_REGEX, ATTENTION_REGEX, VALID_SN_REGEX
 from ..printer_adapter.updatable import Thread, prctl_name
 from .serial import SerialException, Serial
 from .serial_parser import SerialParser
@@ -157,6 +159,19 @@ class SerialAdapter(metaclass=MCSingleton):
                 serial.close()  # type: ignore
         port.checked = True
 
+    @staticmethod
+    def _get_prusa_usb_serial_numbers():
+        """Gets devices that are from PrusaResearch and have serial numbers"""
+        devices = {}
+        context = pyudev.Context()
+        for device in context.list_devices(subsystem='tty'):
+            is_prusa = device.properties.get('ID_VENDOR_ID') == PRUSA_VENDOR_ID
+            sn = device.properties.get("ID_SERIAL_SHORT", "")
+            valid_sn = VALID_SN_REGEX.match(sn)
+            if is_prusa and valid_sn:
+                devices[device.properties.get("DEVNAME")] = sn
+        return devices
+
     def _reopen(self):
         """Re-open the configured serial port. Do a full re-scan if
         auto is configured"""
@@ -174,12 +189,15 @@ class SerialAdapter(metaclass=MCSingleton):
                 paths.extend(glob.glob("/dev/ttyUSB*"))
             else:
                 paths = [self.configured_port]
+            serial_numbers = SerialAdapter._get_prusa_usb_serial_numbers()
 
             for path in paths:
                 port = Port(path=path,
                             baudrate=115200,
                             timeout=2,
                             is_rpi_port=self.is_rpi_port(path))
+                if path in serial_numbers:
+                    port.sn = serial_numbers[path]
                 port_adapter = PortAdapter(port)
                 self.data.ports.append(port)
                 port_adapters.append(port_adapter)
