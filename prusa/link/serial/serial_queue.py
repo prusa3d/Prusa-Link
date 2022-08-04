@@ -573,8 +573,6 @@ class MonitoredSerialQueue(SerialQueue):
         super().__init__(serial_adapter, serial_parser, cfg, rx_size)
 
         self.stuck_counter = 0
-        self.stuck_signal = Signal()
-        self.unstuck_signal = Signal()
 
         self.serial_parser.add_handler(
             BUSY_REGEX, lambda sender, match: self._renew_timeout())
@@ -622,7 +620,8 @@ class MonitoredSerialQueue(SerialQueue):
             log.debug("Assuming the printer yeeted our RX buffer")
             self.stuck_counter += 1
             if self.stuck_counter > 2:
-                self.stuck_signal.send(self)
+                log.warning("Closing the serial, because it's stuck")
+                self.serial_adapter.close()
             InterestingLogRotator.trigger("a stuck instruction")
             self._rx_got_yeeted()
             self._renew_timeout(unstuck=False)
@@ -648,7 +647,5 @@ class MonitoredSerialQueue(SerialQueue):
     def _renew_timeout(self, unstuck=True):
         """Renews the instruction confirmation """
         self.last_event_on = time()
-        if self.stuck_counter > 1 and unstuck:
-            self.unstuck_signal.send(self)
         if unstuck:
             self.stuck_counter = 0

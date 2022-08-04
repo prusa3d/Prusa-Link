@@ -94,6 +94,8 @@ class Serial:
 
     def close(self):
         """Close the port."""
+        if self.fd is None:
+            return
         try:
             os.close(self.fd)
         except OSError:
