@@ -3,11 +3,10 @@
 
 state "Add Printer" as Add
 state "PrusaLink Wizard" as Wizard #lavender
-state "Use config" as WConfig #lavender
 state "Network settings" as WiFi #lavender
-state Services #lavender
-state Printer #lavender
 state "Name" as PName #lavender
+state "Use config" as WConfig #lavender
+state Services #lavender
 state "Connect" as PConnect #lavender
 state Recapitulation #lavender
 state "Add Printer Form" as AConnect
@@ -42,22 +41,21 @@ Network-> Code
 [*] -up-> Wizard
 
 Wizard -up-> WiFi
-Wizard -up-> WConfig
-Wizard -> Printer
+Wizard -> PName
+Wizard: Serial Port Detection
+Wizard: Printer Detection
+Wizard: Firmware Check
 
 WConfig: Use downloaded
 WConfig: prusa-printer-settings.ini
-WConfig --> LBoard
+WConfig --> PName
 
 WiFi: WiFi setting
 WiFi: IP Settings
 WiFi --> Wizard
 
-Printer: Printer Detection
-Printer: FW Check
-Printer -> PName
-
 PName -> Services
+PName -up-> WConfig
 PName: Name and Location
 
 Services: Username and Password
@@ -92,7 +90,6 @@ Overview -> Config
 Config: prusa-printer-settings.ini
 Config: Download and add to medium
 Config: Download and add to Wizard
-Config -up-> WConfig
 Config --> Settings
 
 [*] --> Link
