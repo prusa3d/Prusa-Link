@@ -4,6 +4,7 @@ from sys import exc_info
 from traceback import format_tb
 
 from poorwsgi.response import make_response
+from poorwsgi.state import METHOD_ALL
 
 from .. import conditions
 from .lib.core import app
@@ -168,7 +169,7 @@ def service_unavailable(req):
     return response_error(req, conditions.PrinterUnavailable())
 
 
-@app.error_handler(conditions.LinkError)
+@app.error_handler(conditions.LinkError, method=METHOD_ALL)
 def link_error_handler(req, error):
     """Handle LinkError exception and generate right response."""
     return response_error(req, error)

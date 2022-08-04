@@ -424,6 +424,7 @@ def api_downloads(req, target, path):
     headers = {"Content-Disposition": f"attachment;filename=\"{filename}\""}
     return FileResponse(os_path, headers=headers)
 
+
 @app.route('/api/files/<target>/<path:re:.+(?!/raw)>')
 @app.route('/api/v1/<storage>/<path:re:.+(?!/raw)>')
 @check_api_digest
