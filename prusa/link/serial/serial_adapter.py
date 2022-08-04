@@ -4,7 +4,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from threading import Lock
+from threading import RLock
 from time import sleep, time
 from typing import List
 
@@ -81,7 +81,7 @@ class SerialAdapter(metaclass=MCSingleton):
         self.baudrate = baudrate
         self.timeout = timeout
 
-        self.write_lock = Lock()
+        self.write_lock = RLock()
 
         self.serial = None
         self.serial_parser = serial_parser
@@ -108,7 +108,7 @@ class SerialAdapter(metaclass=MCSingleton):
         serial = port_adapter.serial
         port = port_adapter.port
 
-        name = version = inoperable_because = None
+        name = version = error_text = None
         serial.write(b"PRUSA Fir\nM862.2 Q\n")
         timeout_at = time() + 5
         while (raw_line := serial.readline()) and time() < timeout_at:
@@ -117,22 +117,22 @@ class SerialAdapter(metaclass=MCSingleton):
                 if (code := int(match.group("code"))) in PRINTER_TYPES:
                     name = "Prusa " + PRINTER_TYPES[code].name
                 else:
-                    inoperable_because = "the printer is not supported"
+                    error_text = "The printer is not supported"
             elif match := FW_REGEX.match(line):
                 version = match.group("version")
             elif BUSY_REGEX.match(line):
-                inoperable_because = "the printer is busy"
+                error_text = "The printer is busy"
             elif ATTENTION_REGEX.match(line):
-                inoperable_because = "the printer wants user attention"
+                error_text = "The printer wants user attention"
 
             if name and version:
                 port.usable = True
                 port.description = f"{name} - FW: {version}"
                 return
-            if inoperable_because:
-                port.description = f"Won't connect because " \
-                                   f"{inoperable_because}"
+            if error_text:
+                port.description = error_text
                 return
+        port.description = "A printer did not answer in time"
 
     @staticmethod
     def _detect(port_adapter: PortAdapter):
@@ -155,6 +155,8 @@ class SerialAdapter(metaclass=MCSingleton):
             SerialAdapter._get_info(port_adapter)
 
         except (SerialException, FileNotFoundError, OSError):
+            port.description = "Failed to open. Is a printer connected " \
+                               "to this port?"
             if SerialAdapter.is_open(serial):
                 serial.close()  # type: ignore
         port.checked = True
@@ -180,8 +182,7 @@ class SerialAdapter(metaclass=MCSingleton):
         port_adapters: List[PortAdapter] = []
         threads = []
         with self.write_lock:
-            if self.is_open(self.serial):
-                self.serial.close()
+            self.close()
 
             if self.configured_port == "auto":
                 paths = glob.glob("/dev/ttyAMA*")
@@ -224,7 +225,15 @@ class SerialAdapter(metaclass=MCSingleton):
                     log.debug("Other port - %s", port)
             return found
 
-    def renew_serial_connection(self, starting: bool = False):
+    def close(self):
+        """Close the serial. If the read thread is running,
+        it should renew the connection.
+        """
+        with self.write_lock:
+            if self.is_open(self.serial):
+                self.serial.close()
+
+    def _renew_serial_connection(self, starting: bool = False):
         """
         Informs the rest of the app about failed serial connection,
         After which it keeps trying to re-open the serial port
@@ -257,7 +266,7 @@ class SerialAdapter(metaclass=MCSingleton):
     def _read_continually(self):
         """Ran in a thread, reads stuff over an over"""
         prctl_name()
-        self.renew_serial_connection(starting=True)
+        self._renew_serial_connection(starting=True)
 
         while self.running:
             raw_line = "[No data] - This is a fallback value, " \
@@ -268,8 +277,8 @@ class SerialAdapter(metaclass=MCSingleton):
             except (SerialException, OSError):
                 log.exception("Failed when reading from the printer. "
                               "Trying to re-open")
-                self.serial.close()
-                self.renew_serial_connection()
+                self.close()
+                self._renew_serial_connection()
             except UnicodeDecodeError:
                 log.error("Failed decoding a message %s", raw_line)
             else:
@@ -307,9 +316,7 @@ class SerialAdapter(metaclass=MCSingleton):
                 except OSError as error:
                     log.error("Serial error when sending '%s' to the printer",
                               message)
-                    if self.is_open(self.serial):
-                        # Same as the write above
-                        self.serial.close()  # type: ignore
+                    self.close()
                     raise SerialException(
                         "Serial error when sending") from error
                 else:
@@ -328,8 +335,7 @@ class SerialAdapter(metaclass=MCSingleton):
     def stop(self):
         """Stops the component"""
         self.running = False
-        if self.is_open(self.serial):
-            self.serial.close()
+        self.close()
 
     def wait_stopped(self):
         """Waits for the serial to be stopped"""

@@ -179,8 +179,6 @@ class PrusaLink:
 
         # Bind signals
         self.serial_queue.serial_queue_failed.connect(self.serial_queue_failed)
-        self.serial_queue.stuck_signal.connect(self.stuck_serial)
-        self.serial_queue.unstuck_signal.connect(self.unstuck_serial)
 
         self.serial.failed_signal.connect(self.serial_failed)
         self.serial.renewed_signal.connect(self.serial_renewed)
@@ -853,16 +851,6 @@ class PrusaLink:
         except Exception:  # pylint: disable=broad-except
             log.exception("Failed to reset the printer. Oh my god... "
                           "my attempt at safely failing has failed.")
-
-    def stuck_serial(self, sender):
-        """Passes on the signal about a stuck serial"""
-        assert sender is not None
-        self.state_manager.serial_error()
-
-    def unstuck_serial(self, sender):
-        """Passes on the signal about the serial getting unstuck"""
-        assert sender is not None
-        self.state_manager.serial_error_resolved()
 
     def connection_renewed(self, *_):
         """Reacts to the connection with connect being ok again"""
