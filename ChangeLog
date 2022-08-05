@@ -96,6 +96,7 @@
      * Added endpoint api/v1/<storage>/<path>
      * Add automatic serial port scan
      * Use USB S/N if available (fixes MK2.5 SN issues)
+     * Added endpoint with a list of available ports
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder

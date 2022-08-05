@@ -43,6 +43,23 @@ def save_settings():
         app.daemon.settings.write(ini)
 
 
+@app.route('/api/ports')
+def api_ports(req):
+    """Returns dict of available ports and its parameters"""
+    # pylint: disable=unused-argument
+    if app.daemon.prusa_link:
+        ports_list = app.daemon.prusa_link.model.serial_adapter.ports
+        ports = []
+
+        for port in ports_list:
+            ports.append(port.dict())
+
+        return JSONResponse(**{
+            "ports": ports
+        })
+    return JSONResponse(status_code=state.HTTP_SERVICE_UNAVAILABLE)
+
+
 @app.route('/api/settings')
 @check_api_digest
 def api_settings(req):
