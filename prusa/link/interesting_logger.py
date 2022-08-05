@@ -118,18 +118,27 @@ class InterestingLogRotator(metaclass=MCSingleton):
                 level, msg, args, kwargs = self.log_buffer.pop()
                 self._log(level, msg, *args, **kwargs)
 
+            log.warning("Repeat - triggered by %s", by_what)
+            log.warning("Listing all threads with stack traces for debugging")
+
             frames = sys._current_frames()
             # Print where all the threads are
             for thread in threading.enumerate():
                 if thread.ident is None:
                     continue
-                current_frame = frames[thread.ident]
-                stack = traceback.extract_stack(current_frame)
-                traceback_strings = stack.format()
-                log.warning("Thread %s is executing this right now:",
-                            thread.name)
-                for frame in traceback_strings:
-                    log.warning(frame)
+                try:
+                    current_frame = frames[thread.ident]
+                    stack = traceback.extract_stack(current_frame)
+                    stacktrace_strings = stack.format()
+                    log.warning("Thread %s stack trace:", thread.name)
+                    for stack_trace_frame in stacktrace_strings:
+                        for line in stack_trace_frame.split("\n"):
+                            if line:
+                                log.warning(line)
+                except KeyError:
+                    log.warning("Couldn't get a stacktrace for thread %s",
+                                thread.name)
+                log.warning("")  # An empty line for better orientation
 
 
 class InterestingLogger(Logger):

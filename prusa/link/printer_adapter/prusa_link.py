@@ -792,7 +792,7 @@ class PrusaLink:
 
         if to_state == State.ERROR:
             InterestingLogRotator.trigger(
-                "by the printer entering the ERROR state.")
+                "the printer entering the ERROR state.")
             self.file_printer.stop_print()
 
         self.telemetry_passer.state_changed()
