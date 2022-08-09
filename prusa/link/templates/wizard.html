@@ -8,7 +8,30 @@
     <div class="row">
         <div class="col-md-12">
             <h1 class="align-center">Welcome to PrusaLink configuration Wizard</h1>
-            {% if not wizard.daemon.prusa_link or not wizard.daemon.prusa_link.printer %}
+
+            {% if wizard.daemon.prusa_link and not wizard.daemon.prusa_link.model.serial_adapter.using_port %}
+                {% if wizard.daemon.prusa_link.model.serial_adapter.ports %}
+                    <h3>Unfortunately we can't detect your printer on any serial port, or it's booting. Below you can find a list of detected ports and its status.</h3>
+                    <ul>
+                        {% for port in wizard.daemon.prusa_link.model.serial_adapter.ports %}
+                            <b>{{ port }}</b>
+                        {% endfor %}
+                    </ul><br/>
+                {% else %}
+                    <h3>Unfortunately we can't detect any active serial port.</h3>
+                {% endif %}
+                    <p>Please make sure the RPi port is set to ON and your printer is idle, showing the status screen.
+            You can also try going over your connections one more time.</p>
+
+            <p>PrusaLink takes some time to properly initialize. Try waiting a few seconds and refresh the page. If the problem still persists, power cycle your printer / PrusaLink and try again.</p>
+
+            <p>If everything fails, let us know on <a href="https://forum.prusaprinters.org/forum/prusa-connect-prusalink/">the forum</a>
+                or contact support at info@prusa3d.com</p>
+
+            <a href="/wizard" class="btn btn-outline-light align-center" style="width: 200px;margin: 2em auto;display: block;">Refresh</a>
+
+
+            {% elif not wizard.daemon.prusa_link or not wizard.daemon.prusa_link.printer %}
 
             <h3>We have encountered problems talking to your printer</h3>
             <p>Please make sure the RPi port is set to ON and your printer is idle, showing the status screen.
@@ -58,14 +81,6 @@
                     <div class="col-xs-auto">
                         <a href="/wizard/auth" class="btn btn-outline-light">Authorization | NEXT <img src="img/arrow-right.svg" height="16" /></a>
                     </div>
-
-                    <div class="col"><b>Or</b> you can restore a configuration from your prusa_printer_settings.ini file</div>
-                    <form class="col-xs-auto" action = "/wizard/restore" method = "POST"
-                        enctype = "multipart/form-data">
-                        <input type="file" name="file" class="btn btn-outline-light" />
-                        <input type="submit" class="btn btn-outline-light" />
-                    </form>
-
                 {% endif %}
                 </div>
             </div>

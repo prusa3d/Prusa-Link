@@ -8,8 +8,15 @@
   <div class="row">
       <div class="col-md-12">
           <h1>Authorization</h1>
-          <form method="post" id="form">
-            <p>Prusa Link will use HTTP Digest authorization. Please set administration username and password.<br /></p>
+            <p>PrusaLink will use HTTP Digest authorization. Please set administration username and password,
+              <b>or</b> you can restore a configuration from your <em>prusa_printer_settings.ini</em> file.<br /></p>
+
+            <form class="col-sm-10" action = "/wizard/restore" method = "POST" enctype = "multipart/form-data">
+              <input type="file" name="file" class="btn btn-outline-light" style="white-space: nowrap;"/>
+              <input type="submit" value="Upload file" class="btn btn-outline-light" />
+            </form><br />
+
+            <form method="post" id="form">
             <p>Username length must be at least <i>3 characters</i> long<br />
               Password cannot contain spaces on the beggining nor the end and must meet at least one of these options:<br />
               <li>Minimal length 8 characters, including one lowercase letter, one uppercase letter and one number</li>
