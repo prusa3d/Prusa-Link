@@ -269,11 +269,10 @@ class FileNotFound(NotFoundError):
     text = "File you want was not found."
 
 
-class SDCardNotSupported(NotFoundError):
-    """404 Some operations are not possible on SDCard."""
-    title = "SDCard is not Suppported"
-    text = "Location `sdcard` is not supported, use local."
-    id = "sdcard-not-supported"
+class FolderNotFound(NotFoundError):
+    """404 Folder Not Found"""
+    title = "Folder Not Found"
+    text = "Folder you want was not found."
 
 
 class LocationNotFound(NotFoundError):
@@ -339,6 +338,22 @@ class EntityTooLarge(LinkError):
     status_code = state.HTTP_REQUEST_ENTITY_TOO_LARGE
 
 
+class FileAlreadyExists(LinkError):
+    """409 File Already Exists"""
+    title = "File Already Exists"
+    text = "File already exists."
+    id = "file-already-exist"
+    status_code = state.HTTP_CONFLICT
+
+
+class FolderAlreadyExists(LinkError):
+    """409 Folder Already Exists"""
+    title = "Folder Already Exists"
+    text = "Folder already exists."
+    id = "folder-already-exist"
+    status_code = state.HTTP_CONFLICT
+
+
 class StorageNotExist(LinkError):
     """409 Storage Does Not Exist"""
     title = "Storage Does Not Exist"
@@ -352,6 +367,14 @@ class SDCardReadOnly(LinkError):
     title = "SD Card Read Only"
     text = "SD Card storage is read only."
     id = "entity-too-large"
+    status_code = state.HTTP_CONFLICT
+
+
+class SDCardNotSupported(LinkError):
+    """409 Some operations are not possible on SDCard."""
+    title = "SDCard is not Suppported"
+    text = "Location `sdcard` is not supported, use local."
+    id = "sdcard-not-supported"
     status_code = state.HTTP_CONFLICT
 
 
