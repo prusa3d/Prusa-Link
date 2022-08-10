@@ -493,6 +493,8 @@ def api_file_upload(req, storage, path):
     # pylint: disable=unused-argument
     # pylint: disable=too-many-return-statements
     # pylint: disable=too-many-branches
+    # pylint: disable=too-many-statements
+    # pylint: disable=too-many-locals
 
     if storage not in ('local', 'sdcard'):
         raise conditions.StorageNotExist()
@@ -512,7 +514,21 @@ def api_file_upload(req, storage, path):
         raise conditions.LengthRequired()
 
     abs_path = join(get_os_path(f'/{LOCAL_STORAGE_NAME}'), path)
+    overwrite = req.headers.get('Overwrite') or "?0"
+
+    if overwrite == "?1":
+        overwrite = True
+    elif overwrite == "?0":
+        overwrite = False
+    else:
+        raise conditions.InvalidBooleanHeader()
+
+    if not overwrite:
+        if exists(abs_path):
+            raise conditions.FileAlreadyExists()
+
     print_after_upload = req.headers.get('Print-After-Upload') or False
+
     uploaded = 0
     # checksum = sha256() # - # We don't use this value yet
 
@@ -537,6 +553,11 @@ def api_file_upload(req, storage, path):
         if mime_type not in allowed_types:
             unlink(abs_path)
             raise conditions.UnsupportedMediaError()
+
+    if not overwrite:
+        if exists(abs_path):
+            raise conditions.FileAlreadyExists()
+
     replace(part_path, abs_path)
 
     if print_after_upload:
