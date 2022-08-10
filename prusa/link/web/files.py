@@ -173,7 +173,7 @@ def check_target(func):
     @wraps(func)
     def handler(req, target, *args, **kwargs):
         if target == 'sdcard':
-            raise conditions.SDCardNotSupported()
+            raise conditions.SDCardReadOnly()
         if target != 'local':
             raise conditions.LocationNotFound()
 
@@ -293,7 +293,6 @@ def api_files(req, path=''):
 @check_target
 def api_upload(req, target):
     """Function for uploading G-CODE."""
-
     # pylint: disable=too-many-locals
 
     def failed_upload_handler(transfer):
@@ -381,6 +380,9 @@ def api_start_print(req, target, path):
     command = req.json.get('command')
     job = Job.get_instance()
     path = '/' + path
+    os_path = get_os_path(path)
+    if not exists(os_path):
+        raise conditions.FileNotFound()
 
     if command == 'select':
         if job.data.job_state == JobState.IDLE:
@@ -411,10 +413,14 @@ def api_start_print(req, target, path):
 
 @app.route('/api/files/<target>/<path:re:.+>/raw')
 @check_api_digest
-@check_target
 def api_downloads(req, target, path):
     """Downloads intended gcode."""
     # pylint: disable=unused-argument
+    if target == 'sdcard':
+        raise conditions.SDCardNotSupported()
+    if target != 'local':
+        raise conditions.LocationNotFound()
+
     filename = basename(path)
     os_path = get_os_path(f"/{path}")
 
@@ -488,7 +494,7 @@ def api_file_upload(req, storage, path):
     # pylint: disable=too-many-return-statements
     # pylint: disable=too-many-branches
 
-    if storage not in ['local', 'sdcard']:
+    if storage not in ('local', 'sdcard'):
         raise conditions.StorageNotExist()
 
     if storage == 'sdcard':
@@ -555,7 +561,14 @@ def api_file_upload(req, storage, path):
 def api_delete(req, target, path):
     """Delete file local target."""
     # pylint: disable=unused-argument
+    if target not in ('local', 'sdcard'):
+        raise conditions.StorageNotExist()
+
     path = '/' + path
+    os_path = get_os_path(path)
+
+    if not os_path:
+        raise conditions.FileNotFound()
     job = Job.get_instance()
 
     if job.data.selected_file_path == path:
@@ -563,8 +576,8 @@ def api_delete(req, target, path):
             raise conditions.FileCurrentlyPrinted()
         job.deselect_file()
 
-    os_path = get_os_path(path)
     unlink(os_path)
+
     return Response(status_code=state.HTTP_NO_CONTENT)
 
 
@@ -643,11 +656,10 @@ def api_create_folder(req, target, path):
     os_path = get_os_path(f'/{LOCAL_STORAGE_NAME}')
     path = join(os_path, path)
 
-    if not exists(path):
-        makedirs(path)
-    else:
-        return Response(status_code=state.HTTP_CONFLICT)
+    if exists(path):
+        raise conditions.FolderAlreadyExists()
 
+    makedirs(path)
     return Response(status_code=state.HTTP_CREATED)
 
 
@@ -660,11 +672,11 @@ def api_delete_folder(req, target, path):
     os_path = get_os_path(f'/{LOCAL_STORAGE_NAME}')
     path = join(os_path, path)
 
-    if exists(path):
-        rmtree(path)
-        return Response(status_code=state.HTTP_OK)
+    if not exists(path):
+        raise conditions.FolderNotFound()
 
-    return Response(status_code=state.HTTP_CONFLICT)
+    rmtree(path)
+    return Response(status_code=state.HTTP_OK)
 
 
 @app.route('/api/modify/<target>', method=state.METHOD_POST)
