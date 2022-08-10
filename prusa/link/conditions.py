@@ -219,6 +219,13 @@ class NotSupportedFileType(BadRequestError):
     id = "not-supported-file-type"
 
 
+class InvalidBooleanHeader(BadRequestError):
+    """400 Invalid Boolean Header"""
+    title = "Invalid Boolean Header"
+    text = "Invalid Boolean Header according to RFC8941 / 3.3.6"
+    id = "invalid-boolean-header"
+
+
 class ForbiddenCharacters(BadRequestError):
     """400 Forbidden Characters."""
     title = "Forbidden Characters"
