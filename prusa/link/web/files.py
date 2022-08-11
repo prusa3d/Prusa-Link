@@ -24,7 +24,7 @@ from prusa.connect.printer.download import (Transfer, TransferRunningError,
 from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 
 from .. import conditions
-from ..const import LOCAL_STORAGE_NAME, SD_STORAGE_NAME, PATH_WAIT_TIMEOUT
+from ..const import LOCAL_STORAGE_NAME, PATH_WAIT_TIMEOUT
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.job import Job, JobState
 from ..printer_adapter.prusa_link import TransferCallbackState
@@ -381,7 +381,7 @@ def api_start_print(req, target, path):
     job = Job.get_instance()
     path = '/' + path
     os_path = get_os_path(path)
-    if not exists(os_path):
+    if not os_path:
         raise conditions.FileNotFound()
 
     if command == 'select':
@@ -462,7 +462,7 @@ def api_file_info(req, target, path):
 
     if target == 'local':
         os_path = get_os_path(path)
-        if not os_path or not exists(os_path):
+        if not os_path:
             raise conditions.FileNotFound()
 
         meta = get_metadata(os_path)
@@ -471,7 +471,6 @@ def api_file_info(req, target, path):
         result['date'] = int(getctime(os_path))
 
     else:  # sdcard
-        path = "/" + SD_STORAGE_NAME + path
         if not file_system.get(path):
             raise conditions.FileNotFound()
         meta = FDMMetaData(path)
