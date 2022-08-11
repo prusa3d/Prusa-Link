@@ -54,6 +54,7 @@
        - Project preview is now not dependent on `/api/job` endpoint
        - Confirm dialog after uploade via drag zone
        - Nozzle diameter
+       - Offline mode
 
      * Differentiate between FW and ID errors in the wizard, update texts
      * Fixed download ref, added total storage space info
