@@ -5,7 +5,7 @@ from distutils import log
 from distutils.core import Command
 from grp import getgrnam
 from shutil import copyfile, copytree
-from subprocess import call
+from subprocess import run
 from sys import stderr
 
 from setuptools import find_namespace_packages, setup  # type: ignore
@@ -76,11 +76,17 @@ class BuildStatic(Command):
     def run(self):
         log.info("building html documentation")
         if self.dry_run:
-            if call(['docker', 'version']):
+            if run(['docker', 'version'], check=False).returncode:
                 raise IOError(1, 'docker failed')
             return
 
-        if call(['docker', 'pull', 'node:latest']):
+        git_ret = run(['git', 'rev-parse', '--short', 'HEAD'],
+                      check=False, capture_output=True)
+        if git_ret.returncode:
+            raise IOError(1, "Can't get git commit hash.")
+        git_commit_hash = git_ret.stdout.strip()
+
+        if run(['docker', 'pull', 'node:latest'], check=False).returncode:
             raise IOError(1, "Can't get last node docker.")
 
         cwd = os.path.abspath(os.path.join(os.curdir, 'Prusa-Link-Web'))
@@ -89,10 +95,12 @@ class BuildStatic(Command):
                  os.path.join(cwd, 'config.custom.js'))
 
         args = ('docker', 'run', '-t', '--rm', '-u',
-                f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd, '-v',
-                f"{cwd}:{cwd}", 'node:latest', 'sh', '-c',
+                f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd,
+                '-v', f"{cwd}:{cwd}",
+                '-e', f'GIT_COMMIT_HASH={git_commit_hash}',
+                'node:latest', 'sh', '-c',
                 'npm install && npm run build:custom')
-        if call(args):
+        if run(args, check=False).returncode:
             raise IOError(1, 'docker failed')
 
         # pylint: disable=unexpected-keyword-arg
