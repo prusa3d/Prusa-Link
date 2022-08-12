@@ -172,6 +172,9 @@ def api_version(req):
         'text': f"PrusaLink {__version__}",
         'firmware': prusa_link.printer.firmware,
         'sdk': sdk_version,
+        'capabilities': {
+            "upload-by-put": True
+        },
         'hostname': gethostname()
     }
 
