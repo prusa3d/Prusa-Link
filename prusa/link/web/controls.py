@@ -4,7 +4,8 @@ from poorwsgi.response import JSONResponse
 from prusa.connect.printer.const import State
 
 from ..conditions import (CurrentlyPrinting, TemperatureTooHigh,
-                          TemperatureTooLow, ValueTooHigh, ValueTooLow)
+                          TemperatureTooLow, ValueTooHigh, ValueTooLow,
+                          CantMoveAxis, CantMoveAxisZ)
 from ..const import LimitsMK3
 from ..serial.helpers import enqueue_instruction
 from .lib.auth import check_api_digest
@@ -22,9 +23,9 @@ def check_temperature_limits(temperature, min_temperature, max_temperature):
 def check_value_limits(value, min_value, max_value):
     """Check target value limits and raise error if out of limits"""
     if value < min_value:
-        raise ValueTooLow
+        raise ValueTooLow()
     if value > max_value:
-        raise ValueTooHigh
+        raise ValueTooHigh()
 
 
 def jog(req, serial_queue):
@@ -131,22 +132,28 @@ def api_printhead(req):
     """Control the printhead movement in XYZ axes"""
     serial_queue = app.daemon.prusa_link.serial_queue
     printer_state = app.daemon.prusa_link.model.state_manager.current_state
-    operational = printer_state in (State.IDLE, State.READY, State.FINISHED,
-                                    State.STOPPED)
     command = req.json.get('command')
     status = state.HTTP_NO_CONTENT
 
     if command == 'jog':
-        if operational:
-            jog(req, serial_queue)
+        if req.json.get('z'):
+            if printer_state in \
+                    (State.IDLE, State.READY, State.FINISHED, State.STOPPED):
+                jog(req, serial_queue)
+            else:
+                raise CantMoveAxisZ()
         else:
-            status = state.HTTP_CONFLICT
+            if printer_state in (State.IDLE, State.READY, State.FINISHED,
+                                 State.PAUSED, State.STOPPED):
+                jog(req, serial_queue)
+            else:
+                raise CantMoveAxis()
 
     if command == 'home':
-        if operational:
+        if printer_state in (State.IDLE, State.READY):
             home(req, serial_queue)
         else:
-            status = state.HTTP_CONFLICT
+            raise CantMoveAxis()
 
     # Compatibility with OctoPrint, OP feedrate == Prusa speed in %
     if command in ('speed', 'feedrate'):

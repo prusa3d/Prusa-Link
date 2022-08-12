@@ -191,6 +191,20 @@ class ValueTooHigh(BadRequestError):
     id = "value-too-high"
 
 
+class CantMoveAxis(BadRequestError):
+    """400 Can't Move Axis"""
+    title = "Can't move axis"
+    text = "Can't move axis in current state"
+    id = "cant-move-axis"
+
+
+class CantMoveAxisZ(BadRequestError):
+    """400 Can't move axis in current state"""
+    title = "Can't Move Axis Z in current state"
+    text = "Axis Z can't be moved in current state"
+    id = "cant-move-axis-z"
+
+
 class DestinationSameAsSource(BadRequestError):
     """400 Destination is same as source"""
     title = "Destination same as source"
