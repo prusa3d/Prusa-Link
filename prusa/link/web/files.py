@@ -107,7 +107,8 @@ class GCodeFile(FileIO):
     def write(self, data):
         if self.transfer.stop_ts > 0:
             event_cb = app.daemon.prusa_link.printer.event_cb
-            event_cb(const.Event.TRANSFER_STOPPED, const.Source.USER)
+            event_cb(const.Event.TRANSFER_STOPPED, const.Source.USER,
+                     transfer_id=self.transfer.transfer_id)
             self.transfer.type = const.TransferType.NO_TRANSFER
             raise conditions.TransferStopped()
         if self.printer.state == const.State.PRINTING \
@@ -123,7 +124,8 @@ class GCodeFile(FileIO):
         event_cb = app.daemon.prusa_link.printer.event_cb
         event_cb(const.Event.TRANSFER_FINISHED,
                  const.Source.CONNECT,
-                 destination=self.transfer.path)
+                 destination=self.transfer.path,
+                 transfer_id=self.transfer.transfer_id)
         self.transfer.type = const.TransferType.NO_TRANSFER
 
 
@@ -298,7 +300,8 @@ def api_upload(req, target):
     def failed_upload_handler(transfer):
         """Cancels the file transfer"""
         event_cb = app.daemon.prusa_link.printer.event_cb
-        event_cb(const.Event.TRANSFER_ABORTED, const.Source.USER)
+        event_cb(const.Event.TRANSFER_ABORTED, const.Source.USER,
+                 transfer_id=transfer.transfer_id)
         transfer.type = const.TransferType.NO_TRANSFER
 
     transfer = app.daemon.prusa_link.printer.transfer
