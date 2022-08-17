@@ -6,7 +6,7 @@ from multiprocessing import Event
 from queue import Empty, PriorityQueue, Queue
 from threading import RLock, Thread
 from time import time
-from typing import Any, Callable, Iterable, Optional
+from typing import Any, Callable, Iterable, Optional, Set
 
 from blinker import Signal  # type: ignore
 
@@ -54,6 +54,8 @@ class WatchedItem(Watchable):
         self.value = None
         self.lock = RLock()
 
+        self.in_groups: Set["WatchedGroup"] = set()
+
         self.scheduled = False  # Are we scheduled for a value refresh
         # Imprecise timing intended
         self._interval = interval  # If set, gets invalidated each interval
@@ -99,6 +101,10 @@ class WatchedItem(Watchable):
         # Combined gather error signal
         self.val_err_timeout_signal = Signal()
 
+    def add_into_group(self, group: "WatchedGroup"):
+        """Adds the item into the specified group"""
+        self.in_groups.add(group)
+
     @property
     def interval(self):
         """Returns the interval only if the thing is on"""
@@ -134,8 +140,7 @@ class WatchedGroup(Watchable):
 
         for item in items:
             # Tracking using these signals,
-            item.became_valid_signal.connect(self._valid_handler)
-            item.became_invalid_signal.connect(self._invalid_handler)
+            item.add_into_group(self)
 
             if item.valid:
                 self.valid_items.add(item)
@@ -148,7 +153,7 @@ class WatchedGroup(Watchable):
     def __iter__(self):
         return self.all_items.__iter__()
 
-    def _invalid_handler(self, item):
+    def invalid_handler(self, item):
         """
         A member became invalid. Moves the member to the invalid pile
         If the group was valid, it's not anymore and that gets signalled
@@ -160,7 +165,7 @@ class WatchedGroup(Watchable):
             self.became_invalid_signal.send(self)
             self.valid = False
 
-    def _valid_handler(self, item):
+    def valid_handler(self, item):
         """
         A member became valid. Moves the member to the valid pile
         If all members are valid, sends a signal
@@ -264,6 +269,8 @@ class ItemUpdater:
             item.invalidate_at = inf
             if item.valid:
                 item.valid = False
+                for group in item.in_groups:
+                    group.invalid_handler(item)
                 item.became_invalid_signal.send(item)
 
             if not item.scheduled:
@@ -466,6 +473,8 @@ class ItemUpdater:
             if item.interval is not None:
                 self.schedule_invalidation(item, force=True)
             if was_invalid:
+                for group in item.in_groups:
+                    group.valid_handler(item)
                 item.became_valid_signal.send(item)
             if changed:
                 item.value_changed_signal.send(value)

@@ -613,3 +613,23 @@ def test_disabling(updater_instance: ItemUpdater):
     assert item.invalidate_at <= time() + item.interval
     updater_instance.disable(item)
     assert item.invalidate_at == math.inf
+
+
+def test_group_updating(updater_instance: ItemUpdater):
+    """
+    Test a bug, where if a became_valid handler invalidated the same item
+    that just became balid, sometimes, the group the item was in got
+    notifiied after all has been done and got confused to the point of
+    raising a KeyError
+    """
+    item_gather = EventSetMock(spec={})
+    item = WatchedItem("Item",  gather_function=item_gather)
+    updater_instance.add_item(item, start_tracking=False)
+    group = WatchedGroup([item])
+    item.became_valid_signal.connect(
+        lambda _: updater_instance.invalidate_group(group), weak=False
+    )
+    for _ in range(100):
+        updater_instance.invalidate(item)
+        item_gather.event.wait(THRESHOLD)
+        item_gather.event.clear()
