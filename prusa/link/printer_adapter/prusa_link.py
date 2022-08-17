@@ -184,7 +184,8 @@ class PrusaLink:
         self.serial.renewed_signal.connect(self.serial_renewed)
         self.serial_queue.instruction_confirmed_signal.connect(
             self.instruction_confirmed)
-        self.serial_parser.add_handler(PRINTER_BOOT_REGEX, self.printer_reset)
+        self.serial_parser.add_handler(PRINTER_BOOT_REGEX,
+                                       self.printer_reconnected)
 
         # Set up the signals for special menu handling
         # And for passthrough
@@ -669,6 +670,7 @@ class PrusaLink:
         """Connects serial recovery with state manager"""
         assert sender is not None
         self.state_manager.serial_error_resolved()
+        self.printer_reconnected()
 
     def set_sn(self, sender, serial_number):
         """
@@ -729,14 +731,12 @@ class PrusaLink:
         assert sender is not None
         self.state_manager.instruction_confirmed()
 
-    def printer_reset(self, sender, match):
+    def printer_reconnected(self, *_):
         """
-        Connects the printer booting to many other components.
+        Connects the printer reconnect (reset) to many other components.
         Stops serial prints, flushes the serial queue, updates the state and
         tries to send its info again.
         """
-        assert sender is not None
-        assert match is not None
         was_printing = self.state_manager.get_state() in PRINTING_STATES
         self.file_printer.stop_print()
         self.file_printer.wait_stopped()
