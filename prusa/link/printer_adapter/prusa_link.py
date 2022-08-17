@@ -740,7 +740,7 @@ class PrusaLink:
         was_printing = self.state_manager.get_state() in PRINTING_STATES
         self.file_printer.stop_print()
         self.file_printer.wait_stopped()
-        self.serial_queue.printer_reset(was_printing)
+        self.serial_queue.printer_reconnected(was_printing)
 
         # file printer stop print needs to happen before this
         self.state_manager.reset()
