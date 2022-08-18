@@ -731,7 +731,7 @@ class PrusaLink:
         assert sender is not None
         self.state_manager.instruction_confirmed()
 
-    def printer_reconnected(self, *_):
+    def printer_reconnected(self, *_, **__):
         """
         Connects the printer reconnect (reset) to many other components.
         Stops serial prints, flushes the serial queue, updates the state and
