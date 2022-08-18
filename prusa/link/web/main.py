@@ -241,7 +241,7 @@ def api_printer(req):
                     "operational": operational,
                     "paused": printer.state == State.PAUSED,
                     "printing": printer.state == State.PRINTING,
-                    "cancelling": False,
+                    "cancelling": printer.state == State.STOPPED,
                     "pausing": printer.state == State.PAUSED,
                     "sdReady": sd_ready,
                     "error": printer.state == State.ERROR,
