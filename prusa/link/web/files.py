@@ -479,6 +479,7 @@ def api_file_info(req, target, path):
         meta = FDMMetaData(path)
         meta.load_from_path(path)
         result['refs'] = sdcard_refs(path)
+        result['ro'] = True
         headers['Read-Only'] = "True"
 
     if job.data.selected_file_path == path:

@@ -147,6 +147,7 @@ def file_to_api(node, origin='local', path='/', sort_by='folder,date'):
     if node['type'] == 'DIR':
         if name == SD_STORAGE_NAME:
             origin = 'sdcard'
+            result['ro'] = True
 
         result['type'] = 'folder'
         result['typePath'] = ['folder']
@@ -177,6 +178,7 @@ def file_to_api(node, origin='local', path='/', sort_by='folder,date'):
         else:
             meta.load_from_path(path)
             result['refs'] = sdcard_refs(path)
+            result['ro'] = True
 
         result['gcodeAnalysis'] = gcode_analysis(meta)
 
