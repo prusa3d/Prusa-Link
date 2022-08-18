@@ -841,21 +841,6 @@ class PrinterPolling:
         """Passes the flash air value to sd updater"""
         self.sd_card.set_flash_air(value)
 
-    def _set_positions(self, value):
-        """Write the position values to the model"""
-        self.telemetry_passer.set_telemetry(
-            Telemetry(axis_x=float(value["x"]),
-                      axis_y=float(value["y"]),
-                      axis_z=float(value["z"])))
-
-    def _set_fans(self, value):
-        """Write the fan values to the model"""
-        self.telemetry_passer.set_telemetry(
-            Telemetry(fan_extruder=int(value["extruder_rpm"]),
-                      fan_print=int(value["print_rpm"]),
-                      target_fan_extruder=int(value["extruder_power"]),
-                      target_fan_print=int(value["print_power"])))
-
     def _set_speed_multiplier(self, value):
         """Write the speed multiplier to model"""
         self.telemetry_passer.set_telemetry(Telemetry(speed=value))
