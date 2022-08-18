@@ -153,7 +153,7 @@ class LimitsFDM:
     feedrate_y_max = 2700
     feedrate_z_min = 0
     feedrate_z_max = 1000
-    min_temp_nozzle_e = 160
+    min_temp_nozzle_e = 170
     position_x_min = 0
     position_x_max = 255
     position_y_min = -4

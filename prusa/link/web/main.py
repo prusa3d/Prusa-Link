@@ -19,7 +19,7 @@ from prusa.connect.printer.metadata import get_metadata
 
 from .. import __version__, conditions
 from ..const import (GZ_SUFFIX, LOCAL_STORAGE_NAME, LOGS_FILES, LOGS_PATH,
-                     instance_id)
+                     instance_id, LimitsMK3S)
 from ..printer_adapter.command import CommandFailed
 from ..printer_adapter.command_handlers import (PausePrint, ResumePrint,
                                                 SetReady, StartPrint,
@@ -151,6 +151,7 @@ def api_info(req):
         'location': printer_settings.location.replace("\"", ""),
         'farm_mode': printer_settings.farm_mode,
         'nozzle_diameter': printer.nozzle_diameter,
+        'min_extrusion_temp': LimitsMK3S.min_temp_nozzle_e,
         'serial': printer.sn,
         'hostname': service_connect.hostname,
         'port': service_connect.port,

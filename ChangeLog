@@ -99,6 +99,7 @@
      * Use USB S/N if available (fixes MK2.5 SN issues)
      * Added endpoint with a list of available ports
      * Added capabilities flag to api/version
+     * Added min extrusion temp to api/v1/info endpoint, fixed value
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
