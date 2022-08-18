@@ -6,8 +6,8 @@ import re
 from blinker import Signal  # type: ignore
 from prusa.connect.printer import Printer
 
-from ..const import (BASE_STATES, JOB_ENDING_STATES, JOB_ONGOING_STATES,
-                     PRINTING_STATES, SD_STORAGE_NAME)
+from ..const import JOB_ENDING_STATES, SD_STORAGE_NAME, JOB_STARTING_STATES, \
+    JOB_DESTROYING_STATES
 from ..serial.helpers import enqueue_instruction
 from ..serial.serial_parser import SerialParser
 from ..serial.serial_queue import SerialQueue
@@ -117,13 +117,15 @@ class Job(metaclass=MCSingleton):
     def state_changed(self, command_id=None):
         """Called before anything regarding state is sent"""
         to_state = self.model.state_manager.current_state
-        from_state = self.model.state_manager.last_state
-        if from_state in BASE_STATES and to_state in PRINTING_STATES \
-                and self.data.job_state == JobState.IDLE:
+        if to_state in JOB_STARTING_STATES and \
+                self.data.job_state == JobState.IDLE:
             self.job_started(command_id)
-        if from_state in JOB_ONGOING_STATES and to_state in JOB_ENDING_STATES \
-                and self.data.job_state == JobState.IN_PROGRESS:
+        if to_state in JOB_ENDING_STATES and \
+                self.data.job_state is JobState.IN_PROGRESS:
             self.change_state(JobState.ENDING)
+        if to_state in JOB_DESTROYING_STATES and \
+                self.data.job_state is JobState.IN_PROGRESS:
+            self.job_ended()
 
     def tick(self):
         """Called after sending, if the job was ending, it ends now"""

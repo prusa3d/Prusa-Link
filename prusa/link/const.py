@@ -40,9 +40,16 @@ PRINTING_STATES = {State.PRINTING, State.PAUSED, State.FINISHED, State.STOPPED}
 
 MK25_PRINTERS = {PrinterType.I3MK25.value, PrinterType.I3MK25S.value}
 
-JOB_ONGOING_STATES = {State.PRINTING, State.PAUSED}
-JOB_ENDING_STATES = BASE_STATES.union(
-    {State.FINISHED, State.STOPPED, State.ERROR})
+JOB_STARTING_STATES = {State.PRINTING, State.PAUSED}
+JOB_ENDING_STATES = {
+    State.FINISHED,
+    State.STOPPED
+}
+JOB_DESTROYING_STATES = {
+     State.ERROR,
+     State.IDLE,  # These are needed for the job to end through ATTENTION
+     State.BUSY
+     }
 
 JITTER_THRESHOLD = 0.5
 PRUSA_VENDOR_ID = "2c99"
