@@ -55,6 +55,8 @@
        - Confirm dialog after uploade via drag zone
        - Nozzle diameter
        - Offline mode
+       - Connect Like icons
+       - Translaction fallbacks
 
      * Differentiate between FW and ID errors in the wizard, update texts
      * Fixed download ref, added total storage space info
