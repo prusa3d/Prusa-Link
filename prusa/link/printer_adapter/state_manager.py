@@ -2,7 +2,7 @@
 import logging
 import re
 from collections import deque
-from threading import Event, RLock, Thread
+from threading import Event, RLock, Thread, Timer
 from typing import Dict, Optional, Union
 
 from blinker import Signal  # type: ignore
@@ -12,7 +12,8 @@ from prusa.connect.printer.const import Source, State
 
 from ..conditions import HW, SERIAL
 from ..config import Config, Settings
-from ..const import ERROR_REASON_TIMEOUT, STATE_HISTORY_SIZE
+from ..const import ERROR_REASON_TIMEOUT, STATE_HISTORY_SIZE, \
+    ATTENTION_CLEAR_INTERVAL
 from ..serial.serial_parser import SerialParser
 from .model import Model
 from .structures.mc_singleton import MCSingleton
@@ -173,6 +174,11 @@ class StateManager(metaclass=MCSingleton):
         # Stopping on the first layer potentially damaging the build plate
         self.believe_not_printing = False
 
+        # There are attention states that end in a BUSY state,
+        # so the attention does not get cleared.
+        # Let's clear it on a timer instead
+        self.attention_clearing_timer = self.new_attention_timer()
+
         regex_handlers = {
             BUSY_REGEX: lambda sender, match: self.busy(),
             ATTENTION_REGEX: lambda sender, match: self.attention(),
@@ -193,6 +199,27 @@ class StateManager(metaclass=MCSingleton):
             state.add_fixed_handler(self.link_error_resolved)
 
         super().__init__()
+
+    def new_attention_timer(self):
+        """Creates a new attention clearing timer object"""
+        timer = Timer(
+            interval=ATTENTION_CLEAR_INTERVAL,
+            function=self._attention_timer_handler,
+        )
+        timer.daemon = True
+        return timer
+    def start_attention_timer(self):
+        """Clears the previous timer and starts a new one"""
+        with self.state_lock:
+            self.stop_attention_timer()
+            self.attention_clearing_timer = self.new_attention_timer()
+            self.attention_clearing_timer.start()
+
+    def stop_attention_timer(self):
+        """Clears the attention clearing timer if it's running"""
+        with self.state_lock:
+            if self.attention_clearing_timer.is_alive():
+                self.attention_clearing_timer.cancel()
 
     def link_error_detected(self, condition: Condition, old_value: CondState):
         """increments an error counter once an error gets detected"""
@@ -650,12 +677,22 @@ class StateManager(metaclass=MCSingleton):
 
         self._clear_attention()
 
+    def _attention_timer_handler(self):
+        """Handles the attention timer running out."""
+        with self.state_lock:
+            self.expect_change(
+                StateChange(from_states={State.ATTENTION: Source.MARLIN},
+                            reason="The ATTENTION state has stopped being "
+                                   "reported by the printer"))
+            self.clear_attention()
+
     def _clear_attention(self):
         """Clears the ATTENTION state, if the conditions are right"""
         if (self.data.override_state == State.ATTENTION
                 and self.fan_error_name is None):
             log.debug("Clearing ATTENTION")
             self.data.override_state = None
+            self.stop_attention_timer()
 
     @state_influencer(StateChange(from_states={State.ATTENTION: Source.USER}))
     def clear_attention(self):
@@ -672,6 +709,7 @@ class StateManager(metaclass=MCSingleton):
                 StateChange(to_states={State.ATTENTION: Source.MARLIN},
                             reason="Most likely a false positive. "
                             "Sorry about that 😅"))
+        self.start_attention_timer()
 
         log.debug("Overriding the state with ATTENTION")
         log.warning("State was %s", self.get_state())
