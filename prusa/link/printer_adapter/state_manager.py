@@ -673,7 +673,8 @@ class StateManager(metaclass=MCSingleton):
         if self.data.base_state == State.BUSY:
             self.data.base_state = State.IDLE
 
-        if self.data.printing_state in {State.STOPPED, State.FINISHED}:
+        if self.data.printing_state in {State.STOPPED, State.FINISHED} and \
+                self.data.override_state is not State.ATTENTION:
             self.data.printing_state = None
 
         self._clear_attention()
