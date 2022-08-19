@@ -208,6 +208,7 @@ class StateManager(metaclass=MCSingleton):
         )
         timer.daemon = True
         return timer
+
     def start_attention_timer(self):
         """Clears the previous timer and starts a new one"""
         with self.state_lock:

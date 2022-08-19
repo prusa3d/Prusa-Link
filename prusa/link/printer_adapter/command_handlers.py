@@ -111,8 +111,6 @@ class StopPrint(TryUntilState):
         file printer component, then it uses its parent to go through the stop
         sequence.
         """
-        job_id = self.model.job.job_id
-
         if self.model.file_printer.printing:
             self.file_printer.stop_print()
 
@@ -121,8 +119,6 @@ class StopPrint(TryUntilState):
                                   State.STOPPED, State.IDLE, State.READY,
                                   State.FINISHED
                               })
-
-        return dict(job_id=job_id)
 
 
 class PausePrint(TryUntilState):
