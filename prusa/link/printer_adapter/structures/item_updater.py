@@ -162,8 +162,8 @@ class WatchedGroup(Watchable):
         self.invalid_items.add(item)
 
         if self.valid:
-            self.became_invalid_signal.send(self)
             self.valid = False
+            self.became_invalid_signal.send(self)
 
     def valid_handler(self, item):
         """
@@ -174,8 +174,8 @@ class WatchedGroup(Watchable):
         self.valid_items.add(item)
 
         if not self.valid and not self.invalid_items:
-            self.became_valid_signal.send(self)
             self.valid = True
+            self.became_valid_signal.send(self)
 
 
 class ItemUpdater:
