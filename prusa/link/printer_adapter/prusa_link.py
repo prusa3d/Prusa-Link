@@ -509,6 +509,8 @@ class PrusaLink:
 
     def sheet_settings_changed(self, printer_sheets):
         """Sends the new sheet settings"""
+        if not self.printer.is_initialised():
+            return
         sdk_sheets = []
         for sheet in printer_sheets:
             sheet: Sheet
@@ -520,6 +522,8 @@ class PrusaLink:
 
     def active_sheet_changed(self, active_sheet):
         """Sends the new active sheet"""
+        if not self.printer.is_initialised():
+            return
         self.printer.active_sheet = active_sheet
         self.printer.event_cb(event=EventType.INFO,
                               source=Source.USER,
