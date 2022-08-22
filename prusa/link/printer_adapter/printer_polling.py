@@ -941,3 +941,4 @@ class PrinterPolling:
         # This relies on update being called after became_valid_signal
         if self.printer_info.valid and self.printer_info.to_send:
             self.printer.event_cb(**self.printer.get_info())
+            self.printer_info.to_send = False
