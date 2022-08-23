@@ -53,7 +53,7 @@ class ServiceDiscovery:
         try:
             with urlopen(request, timeout=SELF_PING_TIMEOUT) as response:
                 return response.headers["Instance-ID"] == str(instance_id)
-        except (HTTPError, URLError):
+        except (HTTPError, URLError, socket.timeout):
             return False
 
     def _register(self):
