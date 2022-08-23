@@ -12,6 +12,21 @@
             {% if wizard.daemon.prusa_link and not wizard.daemon.prusa_link.model.serial_adapter.using_port %}
                 {% if wizard.daemon.prusa_link.model.serial_adapter.ports %}
                     <h3>Unfortunately we can't detect your printer on any serial port, or it's booting. Below you can find a list of detected ports and its status.</h3>
+                    <div id="ports">PORTY</div>
+                    <script>
+<!--                    ${rpi ? "[RPi]":"&nbsp;"}-->
+
+<!--                    ${port.path}: ${JSON.stringify(port)}-->
+
+                    fetch('/api/ports')
+                        .then((response) => response.json())
+                        .then((data) => document.getElementById("ports").innerHTML =
+                            `<ul>
+                                ${data.ports.map(port => `<li>${port.path}: ${port.is_rpi_port?"[RPi]":"[NOT RPi]"} ${port.checked ? "CHECKED": ""} ${port.usable ? "USABLE":""} </li>`)}
+                            </ul>`)
+                        .catch((err) => console.error(err))
+
+                    </script>
                     <ul>
                         {% for port in wizard.daemon.prusa_link.model.serial_adapter.ports %}
                             <b>{{ port }}</b>
