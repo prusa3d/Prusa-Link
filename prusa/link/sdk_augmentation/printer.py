@@ -13,6 +13,7 @@ from prusa.connect.printer.files import File
 from prusa.connect.printer.metadata import FDMMetaData
 
 from .. import __version__
+from ..const import PRINTER_CONF_TYPES
 from ..printer_adapter.lcd_printer import LCDPrinter
 from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
@@ -205,3 +206,10 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         """Handler for download loop"""
         prctl_name()
         self.download_mgr.loop()
+
+    @property
+    def type_string(self):
+        """Gets the string version of the printer type"""
+        if self.type is not None:
+            return PRINTER_CONF_TYPES.inverse[self.type]
+        return None

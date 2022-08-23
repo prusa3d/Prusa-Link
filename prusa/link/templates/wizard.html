@@ -55,7 +55,13 @@
                 <img src="img/printers/{{ printer.type if printer.type else 'unknown_printer' }}.svg" height="200" width="200" />
             </div>
 
-            <h2 class="align-center">{{ "Printer not recognized." if printer_type == "Unknown" else printer_type}}</h2>
+            <h2 class="align-center">
+                {% if not printer.type_string %}
+                    {{ "Printer not recognized." }}
+                {% else %}
+                    Prusa i3 {{ printer.type_string }}
+                {% endif %}
+            </h2>
 
             <div class="container navigation">
                 <div class="row">
