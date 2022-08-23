@@ -309,8 +309,7 @@ class PrinterPolling:
         for item in *self.telemetry, *self.other_stuff, *self.printer_info:
             self.item_updater.disable(item)
 
-        self.item_updater.disable(self.printer_type)
-        self.item_updater.invalidate_group(self.printer_info)
+        self.item_updater.enable(self.printer_type)
 
     def invalidate_network_info(self):
         """Invalidates just the network info"""
