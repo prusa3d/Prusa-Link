@@ -97,9 +97,17 @@ class BuildStatic(Command):
         args = ('docker', 'run', '-t', '--rm', '-u',
                 f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd,
                 '-v', f"{cwd}:{cwd}",
+                'node:latest', 'sh', '-c',
+                'npm install && npm run words:extract')
+        if run(args, check=False).returncode:
+            raise IOError(1, 'docker failed')
+
+        args = ('docker', 'run', '-t', '--rm', '-u',
+                f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd,
+                '-v', f"{cwd}:{cwd}",
                 '-e', f'GIT_COMMIT_HASH={git_commit_hash}',
                 'node:latest', 'sh', '-c',
-                'npm install && npm run build:custom')
+                'npm run build:custom')
         if run(args, check=False).returncode:
             raise IOError(1, 'docker failed')
 
