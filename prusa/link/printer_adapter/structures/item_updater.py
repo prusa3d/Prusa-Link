@@ -58,7 +58,7 @@ class WatchedItem(Watchable):
 
         self.scheduled = False  # Are we scheduled for a value refresh
         # Imprecise timing intended
-        self._interval = interval  # If set, gets invalidated each interval
+        self.interval = interval  # If set, gets invalidated each interval
         self.disabled = False  # If True, the interval is overridden with None
 
         self.on_fail_interval = on_fail_interval  # Refresh reschedule timeout
@@ -101,22 +101,6 @@ class WatchedItem(Watchable):
         # Combined gather error signal
         self.val_err_timeout_signal = Signal()
 
-    def add_into_group(self, group: "WatchedGroup"):
-        """Adds the item into the specified group"""
-        self.in_groups.add(group)
-
-    @property
-    def interval(self):
-        """Returns the interval only if the thing is on"""
-        if self.disabled:
-            return None
-        return self._interval
-
-    @interval.setter
-    def interval(self, new_interval):
-        """Sets the interval independently of whether the item is off or not"""
-        self._interval = new_interval
-
     def __repr__(self):
         return super().__repr__() + ": " + self.name
 
@@ -140,7 +124,7 @@ class WatchedGroup(Watchable):
 
         for item in items:
             # Tracking using these signals,
-            item.add_into_group(self)
+            item.in_groups.add(self)
 
             if item.valid:
                 self.valid_items.add(item)
@@ -265,6 +249,10 @@ class ItemUpdater:
         self._validate_is_tracked(item)
 
         with item.lock:
+            if item.disabled:
+                log.debug("Will not invalidate item %s because it's disabled.",
+                          item.name)
+                return
             log.debug("Item %s has been invalidated", item.name)
             item.invalidate_at = inf
             if item.valid:
@@ -325,10 +313,8 @@ class ItemUpdater:
                           item.name, value)
                 self._set_value(item, value)
 
-    def schedule_invalidation(self,
-                              item: WatchedItem,
-                              interval=None,
-                              force=False):
+    def schedule_invalidation(self, item: WatchedItem, interval=None,
+                              reschedule=False):
         """
         Schedules an item invalidation at a certain time
         Will not shift already scheduled invalidation unless forced to
@@ -340,14 +326,18 @@ class ItemUpdater:
         :param interval: How long in the future should we invalidate?
                          If left empty, the default is used, if that's None
                          an error will be raised
-        :param force: If an invalidation is already scheduled, it won't get
-                      re-scheduled unless this is True
+        :param reschedule: If an invalidation is already scheduled,
+                           it won't get re-scheduled unless this is True
 
         """
         self._validate_is_tracked(item)
 
         with item.lock:
-            if item.invalidate_at != inf and not force:
+            if item.disabled:
+                log.debug("Will not schedule item %s because it is disabled.",
+                          item.name)
+                return
+            if item.invalidate_at != inf and not reschedule:
                 log.debug(
                     "Will not schedule an invalidation for item %s because "
                     "another is already scheduled", item.name)
@@ -471,7 +461,7 @@ class ItemUpdater:
             item.valid = True
             item.times_out_at = inf
             if item.interval is not None:
-                self.schedule_invalidation(item, force=True)
+                self.schedule_invalidation(item, reschedule=True)
             if was_invalid:
                 for group in item.in_groups:
                     group.valid_handler(item)

@@ -104,6 +104,7 @@
      * Added min extrusion temp to api/v1/info endpoint, fixed value
      * Added optional ro parameter to api/files and api/v1/{storage}/{path} endpoints
      * Added link_state parameter to api/printer endpoint
+     * Fixed item updater allowing invalidation of a disabled item
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder

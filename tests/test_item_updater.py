@@ -286,7 +286,7 @@ def test_scheduled_invalidation(updater_instance: ItemUpdater):
     sleep(refresh_offset)
     updater_instance.cancel_scheduled_invalidation(item_8)
     updater_instance.schedule_invalidation(item_4)
-    updater_instance.schedule_invalidation(item_5, force=True)
+    updater_instance.schedule_invalidation(item_5, reschedule=True)
     updater_instance.set_value(item_6, 6)
     updater_instance.set_value(item_9, 9)
 
@@ -605,9 +605,12 @@ def test_disabling(updater_instance: ItemUpdater):
     assert not item_gather.event.wait(THRESHOLD)
     assert item.interval == 0.2
     updater_instance.disable(item)
-    assert item.interval is None
-    item.interval = 0.3
-    assert item.interval is None
+    updater_instance.invalidate(item)
+    assert not item_gather.event.wait(THRESHOLD), \
+        "Do not invalidate disabled items"
+    updater_instance.schedule_invalidation(item, interval=0.1)
+    assert not item_gather.event.wait(THRESHOLD), \
+        "Do not invalidate " "disabled items"
     updater_instance.enable(item)
     assert item_gather.event.wait(THRESHOLD)
     assert item.invalidate_at <= time() + item.interval
