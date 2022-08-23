@@ -368,6 +368,8 @@ class ItemUpdater:
         self._validate_is_tracked(item)
 
         with item.lock:
+            if item.invalidate_at == inf:
+                return
             log.debug("Cancelling scheduled invalidation of item %s ",
                       item.name)
             item.invalidate_at = inf
