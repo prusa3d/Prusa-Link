@@ -6,7 +6,8 @@ from threading import Event
 from urllib.request import urlopen
 
 from poorwsgi.digest import hexdigest
-from prusa.connect.printer import Printer
+from prusa.connect.printer import Printer, CondState
+from ...conditions import UPGRADED
 
 from ...const import PRINTER_CONF_TYPES
 from ...printer_adapter.printer_polling import PrinterPolling
@@ -207,5 +208,6 @@ class Wizard:
             settings.service_connect.token = self.connect_token
 
         settings.update_sections(self.connect_skip)
+        UPGRADED.state = CondState.OK
         with open(self.cfg.printer.settings, 'w', encoding='utf-8') as ini:
             settings.write(ini)
