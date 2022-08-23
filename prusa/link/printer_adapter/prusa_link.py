@@ -10,12 +10,14 @@ from typing import Any, Dict
 
 from prusa.connect.printer import Command as SDKCommand
 from prusa.connect.printer import DownloadMgr
+from prusa.connect.printer.camera_config import CameraConfigurator
 from prusa.connect.printer.conditions import (API, COND_TRACKER, INTERNET,
                                               CondState)
 from prusa.connect.printer.const import Command as CommandType
 from prusa.connect.printer.const import Event as EventType
 from prusa.connect.printer.const import Source, State
 from prusa.connect.printer.files import File
+from ..camera import V4L2Driver
 
 from ..conditions import HW, ROOT_COND, UPGRADED, use_connect_errors
 from ..config import Config, Settings
@@ -105,6 +107,12 @@ class PrusaLink:
                                                  self.serial_parser, self.cfg)
 
         self.printer = MyPrinter()
+
+        self.camera_configurator = CameraConfigurator(
+            config=self.settings,
+            camera_controller=self.printer.camera_controller,
+            drivers=[V4L2Driver]
+        )
 
         self.printer.register_handler = self.printer_registered
         self.printer.set_connect(settings)
@@ -283,6 +291,7 @@ class PrusaLink:
             Thread(target=self.debug_shell, name="debug_shell",
                    daemon=True).start()
 
+    # pylint: disable=too-many-branches
     def debug_shell(self):
         """
         Calling this in a thread that receives stdin enables th user to
@@ -313,6 +322,20 @@ class PrusaLink:
                     result = enqueue_matchable(
                         self.serial_queue, "M117 Breaking",
                         re.compile(r"something the printer will not tell us"))
+                elif command == "cameras":
+                    configurator = self.camera_configurator
+                    new_camera_configs = configurator.get_new_cameras()
+                    enumerated = []
+                    for i, pair in enumerate(new_camera_configs.items(),
+                                             start=1):
+                        camera_id, config = pair
+                        print(f"Camera #{i} {camera_id}: {config}")
+                        enumerated.append(camera_id)
+                    selection = int(input(
+                        f"Select a camera (1 - {len(new_camera_configs)}): "))
+                    camera_id = enumerated[selection - 1]
+                    config = new_camera_configs[camera_id]
+                    self.camera_configurator.add_camera(camera_id, config)
 
                 if result:
                     print(result)
