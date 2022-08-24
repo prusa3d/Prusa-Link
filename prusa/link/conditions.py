@@ -354,7 +354,7 @@ class TransferStopped(ConflictError):
     """409 Transfer process was stopped by user."""
     title = "Transfer stopped"
     text = "Transfer process was stopped by user."
-    id = "transfer-stoped"
+    id = "transfer-stopped"
 
 
 class LengthRequired(LinkError):
