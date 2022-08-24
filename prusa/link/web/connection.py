@@ -1,4 +1,7 @@
 """/api/connection endpoint handlers"""
+from socket import gethostbyname
+from urllib.request import urlopen
+
 from poorwsgi import state
 from poorwsgi.response import JSONResponse
 from prusa.connect.printer.const import RegistrationStatus
@@ -77,6 +80,18 @@ def api_connection_set(req):
     hostname = connect.get('hostname')
     port = connect.get('port')
     tls = bool(connect.get('tls'))
+
+    try:
+        gethostbyname(hostname)
+    except Exception as exc:  # pylint: disable=broad-except
+        raise conditions.CantResolveHostname() from exc
+    url = printer.connect_url(hostname, tls, port)
+
+    try:
+        with urlopen(f'{url}/info'):
+            pass
+    except Exception as exc:  # pylint: disable=broad-except
+        raise conditions.CantConnect() from exc
 
     app.settings.service_connect.hostname = hostname
     app.settings.service_connect.port = port

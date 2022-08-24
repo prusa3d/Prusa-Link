@@ -268,6 +268,20 @@ class FileUploadFailed(BadRequestError):
     id = "file-upload-failed"
 
 
+class CantConnect(BadRequestError):
+    """400 Can't connect to PrusaConnect"""
+    title = "Can't Connect"
+    text = "Can't connect to PrusaConnect"
+    id = "cant-connect"
+
+
+class CantResolveHostname(BadRequestError):
+    """400 Can't resolve PrusaConnect hostname"""
+    title = "Can't resolve hostname"
+    text = "Can't resolve PrusaConnect hostname"
+    id = "cant-resolve-hostname"
+
+
 class ForbiddenError(LinkError):
     """403 Forbidden"""
     title = "Forbidden"
