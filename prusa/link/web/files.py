@@ -320,6 +320,7 @@ def api_upload(req, target):
 
     filename = form['file'].filename
     part_path = partfilepath(filename)
+    transfer.transferred = form.bytes_read
 
     if form.bytes_read != req.content_length:
         log.error("File uploading not complete")
@@ -744,7 +745,7 @@ def api_download_abort(req):
     """Aborts current download process"""
     # pylint: disable=unused-argument
     download_mgr = app.daemon.prusa_link.printer.download_mgr
-    download_mgr.stop()
+    download_mgr.transfer.stop()
     return Response(status_code=state.HTTP_NO_CONTENT)
 
 
