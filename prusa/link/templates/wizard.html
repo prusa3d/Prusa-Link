@@ -12,28 +12,56 @@
             {% if wizard.daemon.prusa_link and not wizard.daemon.prusa_link.model.serial_adapter.using_port %}
                 {% if wizard.daemon.prusa_link.model.serial_adapter.ports %}
                     <h3>Unfortunately we can't detect your printer on any serial port, or it's booting. Below you can find a list of detected ports and its status.</h3>
-                    <div id="ports">PORTY</div>
+                    <p class="align-center" id="ports"></p>
                     <script>
-<!--                    ${rpi ? "[RPi]":"&nbsp;"}-->
+                        let is_selected = false
+                        function getPortHtml(portData) {
+                            let symbol = "⌛";
+                            let status = "WAITING";
 
-<!--                    ${port.path}: ${JSON.stringify(port)}-->
+                            if (portData.checked) {
+                                if (portData.selected) {
+                                    status = "selected";
+                                    symbol = "〈";
+                                    is_selected = true
+                                } else if (portData.usable) {
+                                    status = "usable";
+                                    symbol = "✓";
+                                } else {
+                                    symbol = "✘";
+                                    status = "NOT USABLE";
+                                }
+                            }
 
-                    fetch('/api/ports')
-                        .then((response) => response.json())
-                        .then((data) => document.getElementById("ports").innerHTML =
-                            `<ul>
-                                ${data.ports.map(port => `<li>${port.path}: ${port.is_rpi_port?"[RPi]":"[NOT RPi]"} ${port.checked ? "CHECKED": ""} ${port.usable ? "USABLE":""} </li>`)}
-                            </ul>`)
-                        .catch((err) => console.error(err))
+                            const rpi = portData.is_rpi_port ? "[RPi]" : ""
+                            return `<li>${portData.path}: ${rpi} ${status} ... ${symbol}</li>`
+                        }
 
+                        function setPortsHtml(dataFromAPI) {
+                            document.getElementById("ports").innerHTML =
+                                `<ul style="list-style-type:none;">${dataFromAPI.ports.map(getPortHtml)}</ul>`
+
+                            if (is_selected) {
+                                window.location.reload(1);
+                            }
+                        }
+
+                        const doUpdate = () => {
+                            fetch('/api/ports')
+                                .then((response) => response.json())
+                                .then(setPortsHtml)
+                                .catch((err) => console.error(err))
+                                .finally(() => setTimeout(doUpdate, 1000));
+                        };
+                        doUpdate();
                     </script>
-                    <ul>
-                        {% for port in wizard.daemon.prusa_link.model.serial_adapter.ports %}
-                            <b>{{ port }}</b>
-                        {% endfor %}
-                    </ul><br/>
                 {% else %}
                     <h3>Unfortunately we can't detect any active serial port.</h3>
+                    <script>
+                        setTimeout(function(){
+                            window.location.reload(1);
+                            }, 1000);
+                    </script>
                 {% endif %}
                     <p>Please make sure the RPi port is set to ON and your printer is idle, showing the status screen.
             You can also try going over your connections one more time.</p>
