@@ -565,17 +565,21 @@ def api_file_upload(req, storage, path):
     replace(part_path, abs_path)
 
     if print_after_upload:
-        tries = 0
-        print_path = join(f'/{LOCAL_STORAGE_NAME}', path)
+        printer_state = app.daemon.prusa_link.printer.state
+        if printer_state in [const.State.IDLE, const.State.READY]:
+            tries = 0
+            print_path = join(f'/{LOCAL_STORAGE_NAME}', path)
 
-        while not app.daemon.prusa_link.printer.fs.get(print_path):
-            sleep(0.1)
-            tries += 1
-            if tries >= 10:
-                raise conditions.RequestTimeout()
+            while not app.daemon.prusa_link.printer.fs.get(print_path):
+                sleep(0.1)
+                tries += 1
+                if tries >= 10:
+                    raise conditions.RequestTimeout()
 
-        app.daemon.prusa_link.command_queue.do_command(
-            StartPrint(print_path))
+            app.daemon.prusa_link.command_queue.do_command(
+                StartPrint(print_path))
+        else:
+            raise conditions.NotStateToPrint()
 
     return Response(status_code=state.HTTP_CREATED)
 

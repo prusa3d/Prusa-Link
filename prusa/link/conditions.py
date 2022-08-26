@@ -328,6 +328,13 @@ class CurrentlyPrinting(ConflictError):
     text = "Printer is currently printing."
 
 
+class NotStateToPrint(ConflictError):
+    """409 Printer is not in state to print"""
+    title = "Not in state to print"
+    text = "Printer is not in state to print."
+    id = "not-state-to-print"
+
+
 class NotPrinting(ConflictError):
     """409 Printer is not printing"""
     title = "Printer Is Not Printing"
