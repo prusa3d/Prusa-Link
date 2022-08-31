@@ -128,6 +128,11 @@ class PrusaLink:
                                  self.set_printer_ready)
         self.printer.set_handler(CommandType.CANCEL_PRINTER_READY,
                                  self.cancel_printer_ready)
+        # Compatibility, PREPARED is deprecated
+        self.printer.set_handler(CommandType.SET_PRINTER_PREPARED,
+                                 self.set_printer_ready)
+        self.printer.set_handler(CommandType.CANCEL_PRINTER_PREPARED,
+                                 self.cancel_printer_ready)
 
         self.serial_parser.add_handler(
             PAUSE_PRINT_REGEX, lambda sender, match: self.fw_pause_print())
