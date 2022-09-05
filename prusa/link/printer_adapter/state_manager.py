@@ -419,7 +419,7 @@ class StateManager(metaclass=MCSingleton):
         This is very rudimentary, it only counts with one fan
         failing at a time, and it will quit the attention only if
         the firmware/user spins up the fan that's been reported
-        or on print resume
+        or on print resume and stop
         weird edge cases expected"""
         assert sender is not None
 
@@ -651,6 +651,9 @@ class StateManager(metaclass=MCSingleton):
         if self.data.printing_state in {State.PRINTING, State.PAUSED}:
             self.unsure_whether_printing = False
             self.data.printing_state = State.STOPPED
+
+        if self.fan_error_name is not None:
+            self._cancel_fan_error()
 
     @state_influencer(
         StateChange(to_states={State.IDLE: Source.MARLIN},
