@@ -106,6 +106,7 @@
      * Added link_state parameter to api/printer endpoint
      * Fixed item updater allowing invalidation of a disabled item
      * Fixed upload PUT Print-After-Upload if already printing error
+     * Added api/v1/<storage>/<path> delete endpoint
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder

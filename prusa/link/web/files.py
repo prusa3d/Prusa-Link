@@ -5,8 +5,9 @@ from datetime import datetime
 from functools import wraps
 from hashlib import md5
 from io import FileIO
-from os import makedirs, replace, statvfs, unlink
-from os.path import abspath, basename, dirname, exists, getctime, getsize, join
+from os import makedirs, replace, statvfs, unlink, rmdir, listdir
+from os.path import abspath, basename, dirname, exists, getctime, getsize, \
+    join, isdir
 from shutil import move, rmtree
 from time import sleep, time
 from magic import Magic
@@ -438,7 +439,7 @@ def api_downloads(req, target, path):
 
 
 @app.route('/api/files/<target>/<path:re:.+(?!/raw)>')
-@app.route('/api/v1/files/<storage:re:(local)|(sdcard)>/<path:re:.+(?!/raw)>')
+@app.route('/api/v1/files/<storage>/<path:re:.+(?!/raw)>')
 @check_api_digest
 def api_file_info(req, target, path):
     """Returns info and metadata about specific file from its cache"""
@@ -470,8 +471,11 @@ def api_file_info(req, target, path):
         os_path = get_os_path(path)
         if not os_path:
             raise conditions.FileNotFound()
-
-        meta = get_metadata(os_path)
+        if isdir(os_path):
+            meta = FDMMetaData(os_path)
+            meta.load_from_path(path)
+        else:
+            meta = get_metadata(os_path)
         result['refs'] = local_refs(path, meta.thumbnails)
         result['size'] = getsize(os_path)
         result['date'] = int(getctime(os_path))
@@ -492,7 +496,7 @@ def api_file_info(req, target, path):
     return JSONResponse(**result, headers=headers)
 
 
-@app.route('/api/v1/files/<storage:re:(local)|(sdcard)>/<path:re:.+(?!/raw)>',
+@app.route('/api/v1/files/<storage>/<path:re:.+(?!/raw)>',
            method=state.METHOD_PUT)
 @check_api_digest
 def api_file_upload(req, storage, path):
@@ -585,6 +589,38 @@ def api_file_upload(req, storage, path):
             raise conditions.NotStateToPrint()
 
     return Response(status_code=state.HTTP_CREATED)
+
+
+@app.route('/api/v1/files/<storage>/<path:re:.+(?!/raw)>',
+           method=state.METHOD_DELETE)
+@check_api_digest
+@check_target
+def api_v1_delete(req, storage, path):
+    """Delete file or folder in local storage"""
+    # pylint: disable=unused-argument
+    if storage not in ('local', 'sdcard'):
+        raise conditions.StorageNotExist()
+    path = '/' + path
+    os_path = get_os_path(path)
+
+    if not os_path:
+        raise conditions.FileNotFound()
+    job = Job.get_instance()
+
+    if job.data.selected_file_path == path:
+        if job.data.job_state != JobState.IDLE:
+            raise conditions.FileCurrentlyPrinted()
+        job.deselect_file()
+
+    if isdir(os_path):
+        if not listdir(os_path):
+            rmdir(os_path)
+        else:
+            raise conditions.DirectoryNotEmpty()
+    else:
+        unlink(os_path)
+
+    return Response(status_code=state.HTTP_NO_CONTENT)
 
 
 @app.route('/api/files/<target>/<path:re:.+>', method=state.METHOD_DELETE)

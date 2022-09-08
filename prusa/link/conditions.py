@@ -322,6 +322,13 @@ class ConflictError(LinkError):
     status_code = state.HTTP_CONFLICT
 
 
+class DirectoryNotEmpty(ConflictError):
+    """409 Directory is not empty"""
+    title = "Directory is not empty"
+    text = "Directory can't be deleted, because it's not empty."
+    id = "directory-not-empty"
+
+
 class CurrentlyPrinting(ConflictError):
     """409 Printer is currently printing"""
     title = "Printer is currently printing"
