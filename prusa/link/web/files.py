@@ -438,7 +438,7 @@ def api_downloads(req, target, path):
 
 
 @app.route('/api/files/<target>/<path:re:.+(?!/raw)>')
-@app.route('/api/v1/<storage:re:(local)|(sdcard)>/<path:re:.+(?!/raw)>')
+@app.route('/api/v1/files/<storage:re:(local)|(sdcard)>/<path:re:.+(?!/raw)>')
 @check_api_digest
 def api_file_info(req, target, path):
     """Returns info and metadata about specific file from its cache"""
@@ -492,7 +492,7 @@ def api_file_info(req, target, path):
     return JSONResponse(**result, headers=headers)
 
 
-@app.route('/api/v1/<storage:re:(local)|(sdcard)>/<path:re:.+(?!/raw)>',
+@app.route('/api/v1/files/<storage:re:(local)|(sdcard)>/<path:re:.+(?!/raw)>',
            method=state.METHOD_PUT)
 @check_api_digest
 def api_file_upload(req, storage, path):
