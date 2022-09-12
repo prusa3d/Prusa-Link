@@ -6,11 +6,10 @@ gcodes, resetting the printer and sending the job info
 
 import abc
 import logging
-from importlib import util
 from pathlib import Path
 from re import Match
 from threading import Event
-from time import sleep, time
+from time import time
 from typing import Dict, Optional, Set
 
 from prusa.connect.printer.const import Event as EventConst
@@ -423,20 +422,7 @@ class ResetPrinter(Command):
             StateChange(default_source=self.source,
                         command_id=self.command_id))
 
-        spam_loader = util.find_spec('wiringpi')
-        if spam_loader is not None:
-            # pylint: disable=import-outside-toplevel
-            # pylint: disable=import-error
-            import wiringpi  # type: ignore
-            wiringpi.wiringPiSetupGpio()
-            wiringpi.pinMode(RESET_PIN, wiringpi.OUTPUT)
-            wiringpi.digitalWrite(RESET_PIN, wiringpi.HIGH)
-            wiringpi.digitalWrite(RESET_PIN, wiringpi.LOW)
-            sleep(0.1)
-            wiringpi.digitalWrite(RESET_PIN, wiringpi.LOW)
-        else:
-            # Maybe use an import error, or something from within wiringpi
-            self.serial_adapter.blip_dtr()
+        self.serial_adapter.reset_client()
 
         while self.running and time() < times_out_at:
             if event.wait(QUIT_INTERVAL):
