@@ -203,10 +203,12 @@ class LCDPrinter(metaclass=MCSingleton):
             self.carousel.enable(self.print_screen)
 
             filename = Path(self.model.job.selected_file_path).name
-            conditions = dict(filename=filename)
+            # MK3 cannot print semicolons, replace them with an approximation
+            safe_filename = filename.replace(";", ",:")
+            conditions = dict(filename=safe_filename)
             if self.print_screen.conditions != conditions:
                 self.print_screen.conditions = conditions
-                self.carousel.set_text(self.print_screen, filename)
+                self.carousel.set_text(self.print_screen, safe_filename)
         else:
             self.carousel.disable(self.print_screen)
 
