@@ -3,6 +3,7 @@ import glob
 import logging
 import os
 import re
+from importlib import util
 from pathlib import Path
 from threading import RLock
 from time import sleep, time
@@ -14,7 +15,7 @@ from prusa.connect.printer.conditions import CondState
 
 from ..conditions import SERIAL
 from ..const import PRINTER_BOOT_WAIT, SERIAL_REOPEN_TIMEOUT, PRINTER_TYPES, \
-    PRUSA_VENDOR_ID
+    PRUSA_VENDOR_ID, RESET_PIN
 from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
 from ..printer_adapter.structures.module_data_classes import Port, \
@@ -45,10 +46,10 @@ class SerialAdapter(metaclass=MCSingleton):
     """
 
     @staticmethod
-    def is_rpi_port(port):
+    def is_rpi_port(port_path):
         """Figure out, whether we're running through the Einsy RPi port"""
         try:
-            port_name = Path(port).name
+            port_name = Path(port_path).name
             if not port_name.startswith("ttyAMA"):
                 return False
             sys_path = Path(f"/sys/class/tty/{port_name}")
@@ -323,14 +324,41 @@ class SerialAdapter(metaclass=MCSingleton):
                     sent = True
                     log.debug("Sent to printer: %s", message)
 
-    def blip_dtr(self):
-        """Pulses the DTR to reset the connected device. Work only over USB"""
-        if not self.is_open(self.serial):
-            log.warning("No serial connected, no blips will take place")
+    def _reset_pi(self):
+        """Resets the connected raspberry pi"""
+        spam_loader = util.find_spec('wiringpi')
+        if spam_loader is None:
+            log.warning("WiringPi missing, cannot reset using pins")
+            return
+
+        # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-error
+        import wiringpi  # type: ignore
+        wiringpi.wiringPiSetupGpio()
+        wiringpi.pinMode(RESET_PIN, wiringpi.OUTPUT)
+        wiringpi.digitalWrite(RESET_PIN, wiringpi.HIGH)
+        wiringpi.digitalWrite(RESET_PIN, wiringpi.LOW)
+        sleep(0.1)
+        wiringpi.digitalWrite(RESET_PIN, wiringpi.LOW)
+
+    def _blip_dtr(self):
+        """Pulses the DTR to reset the connected device.
+        Works only over USB"""
         with self.write_lock:
             self.serial.dtr = False
             self.serial.dtr = True
             sleep(PRINTER_BOOT_WAIT)
+
+    def reset_client(self):
+        """Resets the connected device, over USB or using the reset pin"""
+        if not self.is_open(self.serial):
+            log.warning("No serial connected, will not reset anything.")
+            return
+
+        if self.data.using_port.is_rpi_port:
+            self._reset_pi()
+        else:
+            self._blip_dtr()
 
     def stop(self):
         """Stops the component"""
