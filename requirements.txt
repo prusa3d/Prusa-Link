@@ -1,4 +1,4 @@
-prusa.connect.sdk.printer>=0.6.0
+prusa.connect.sdk.printer>=0.7.0.rc1
 appdirs
 blinker
 extendparser
