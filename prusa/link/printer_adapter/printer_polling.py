@@ -2,6 +2,7 @@
 Uses info updater to keep up with the printer info.
 Hope I can get most of printer polling to use this mechanism.
 """
+import itertools
 import logging
 import re
 import struct
@@ -306,7 +307,8 @@ class PrinterPolling:
 
     def invalidate_printer_info(self):
         """Invalidates all unnecessary watched items"""
-        for item in *self.telemetry, *self.other_stuff, *self.printer_info:
+        for item in itertools.chain(self.telemetry, self.other_stuff,
+                                    self.printer_info):
             self.item_updater.disable(item)
 
         self.item_updater.enable(self.printer_type)
