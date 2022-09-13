@@ -13,6 +13,7 @@ from prusa.connect.printer.files import File
 from prusa.connect.printer.metadata import FDMMetaData
 
 from .. import __version__
+from ..conditions import use_connect_errors
 from ..const import PRINTER_CONF_TYPES
 from ..printer_adapter.lcd_printer import LCDPrinter
 from ..printer_adapter.model import Model
@@ -99,6 +100,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
                                              settings.service_connect.port)
         self.token = settings.service_connect.token
         TOKEN.state = CondState.OK
+        use_connect_errors(True)
 
     def get_file_info(self, caller: Command) -> Dict[str, Any]:
         """Return file info for a given file
