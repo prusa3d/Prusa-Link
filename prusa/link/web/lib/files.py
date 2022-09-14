@@ -103,7 +103,8 @@ def file_to_api(node, origin='local', path='/', sort_by='folder,date'):
     ...         {'type': 'DIR', 'name': 'Examples', 'children':[
     ...             {'type': 'FILE', 'name': '1.gcode'},
     ...             {'type': 'FILE', 'name': 'b.gco'}]}]},
-    ...     {'type': 'FILE', 'name': 'preview.png'}
+    ...     {'type': 'FILE', 'name': 'preview.png'},
+    ...     {'type': 'FILE', 'name': 'Big extension.GCO'},
     ... ]}
     >>> api_files = file_to_api(files)
     >>> # /
@@ -130,8 +131,10 @@ def file_to_api(node, origin='local', path='/', sort_by='folder,date'):
     'machinecode'
     >>> api_files['children'][1]['children'][0]['children'][0]['origin']
     'local'
+    >>> api_files['children'][2]['name']
+    'Big extension.GCO'
     >>> len(api_files['children'])
-    2
+    3
     """
     name = node['name']
     path = join(path, name)
@@ -159,7 +162,7 @@ def file_to_api(node, origin='local', path='/', sort_by='folder,date'):
         ]
         result['children'] = sort_files(filter(None, children), sort_by)
 
-    elif name.endswith(GCODE_EXTENSIONS):
+    elif name.lower().endswith(GCODE_EXTENSIONS):
         result['origin'] = origin
         result['type'] = 'machinecode'
         result['typePath'] = ['machinecode', 'gcode']
