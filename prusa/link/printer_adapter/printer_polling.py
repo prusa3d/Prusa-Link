@@ -932,7 +932,7 @@ class PrinterPolling:
         and other stuff
         """
         self._send_info_if_changed()
-        for item in *self.telemetry, *self.other_stuff:
+        for item in itertools.chain(self.telemetry, self.other_stuff):
             self.item_updater.enable(item)
 
     def _send_info_if_changed(self):
