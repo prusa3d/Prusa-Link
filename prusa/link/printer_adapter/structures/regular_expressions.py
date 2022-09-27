@@ -71,9 +71,11 @@ CANCEL_REGEX = re.compile("^// action:cancel$")
 # reset using M999 or manual button, with connect, only manual reset shall
 # be accepted
 
-ERROR_REGEX = re.compile(r"(Error:("
-                         r"(?P<kill>Printer halted\. kill\(\) called!)|"
-                         r"(?P<stop>Printer stopped due to errors\..*)))")
+ERROR_REGEX = re.compile(
+    r"(Error:("
+    r"(?P<kill>Printer halted\. kill\(\) called!)|"
+    # There's another one ending in Supervision required
+    r"(?P<stop>Printer stopped due to errors\. Fix.*)))")
 
 ERROR_REASON_REGEX = re.compile(
     # flake8: noqa
@@ -87,7 +89,8 @@ ERROR_REASON_REGEX = re.compile(
 ATTENTION_REASON_REGEX = re.compile(
     r"(?P<mbl_too_high>Bed leveling failed. Sensor triggered too high)|"
     r"(?P<mbl_didnt_trigger>Bed leveling failed\. Sensor didn't trigger\. "
-    r"Debris on nozzle\? Waiting for reset\.)")
+    r"Debris on nozzle\? Waiting for reset\.)|"
+    r"(?P<tm_error>TM: error triggered!)")
 
 TEMPERATURE_REGEX = re.compile(
     r"^T:(?P<ntemp>-?\d+\.\d+) /(?P<set_ntemp>-?\d+\.\d+) "
@@ -137,3 +140,6 @@ MBL_REGEX = re.compile(r"^(?P<no_mbl>Mesh bed leveling not active.)|"
                        r"(?P<mbl_row>([ ]*-?\d+\.\d+)+)$")
 MBL_TRIGGER_REGEX = re.compile(r"^(tmc\d+_home_enter\(axes_mask=0x..\))|"
                                r"(echo:enqueing \"G80\")")
+TM_ERROR_LOG_REGEX = re.compile(r"TM: error \|(?P<deviation>-?\d+\.?\d*)\|"
+                                r"[<>](?P<threshold>-?\d+\.?\d*)")
+TM_ERROR_CLEARED = re.compile(r"^TM: error cleared$")

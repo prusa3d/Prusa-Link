@@ -23,7 +23,7 @@ from .structures.regular_expressions import (ATTENTION_REASON_REGEX,
                                              CANCEL_REGEX, ERROR_REASON_REGEX,
                                              ERROR_REGEX, FAN_ERROR_REGEX,
                                              FAN_REGEX, PAUSED_REGEX,
-                                             RESUMED_REGEX)
+                                             RESUMED_REGEX, TM_ERROR_CLEARED)
 
 log = logging.getLogger(__name__)
 
@@ -119,6 +119,8 @@ class StateManager(metaclass=MCSingleton):
         #                                           reason: str
         #                                           ready: bool
 
+        self.pause_signal = Signal()
+
         self.model.state_manager = StateManagerData(
             # The ACTUAL states considered when reporting
             base_state=State.BUSY,
@@ -174,6 +176,10 @@ class StateManager(metaclass=MCSingleton):
         # Stopping on the first layer potentially damaging the build plate
         self.believe_not_printing = False
 
+        # Another special case - need to ignore a pause when we're
+        # in temperature model triggered error
+        self.tm_ignore_pause = False
+
         # There are attention states that end in a BUSY state,
         # so the attention does not get cleared.
         # Let's clear it on a timer instead
@@ -182,13 +188,14 @@ class StateManager(metaclass=MCSingleton):
         regex_handlers = {
             BUSY_REGEX: lambda sender, match: self.busy(),
             ATTENTION_REGEX: lambda sender, match: self.attention(),
-            PAUSED_REGEX: lambda sender, match: self.paused(),
+            PAUSED_REGEX: lambda sender, match: self.filter_pause_events(),
             RESUMED_REGEX: lambda sender, match: self.resumed(),
             CANCEL_REGEX: lambda sender, match: self.stopped_or_not_printing(),
             ERROR_REGEX: lambda sender, match: self.error_handler(),
             ERROR_REASON_REGEX: self.error_reason_handler,
             ATTENTION_REASON_REGEX: self.attention_reason_handler,
-            FAN_ERROR_REGEX: self.fan_error
+            FAN_ERROR_REGEX: self.fan_error,
+            TM_ERROR_CLEARED: self.clear_tm_error
         }
 
         for regex, handler in regex_handlers.items():
@@ -483,15 +490,40 @@ class StateManager(metaclass=MCSingleton):
         assert sender is not None
         groups = match.groupdict()
 
+        reason = "unknown"
         if groups["mbl_didnt_trigger"]:
             reason = "Bed leveling failed. Sensor didn't trigger. " \
                      "Is there debris on the nozzle?"
         elif groups["mbl_too_high"]:
             reason = "Bed leveling failed. Sensor triggered too high. "
+        elif groups["tm_error"]:
+
+            end_text = "Resolve the error and reset the printer."
+            if self.data.printing_state == State.PRINTING:
+                end_text = "Print paused."
+            reason = f"The nozzle temperature has deviated too far " \
+                     f"from the expected one. {end_text}"
+            self.tm_ignore_pause = True
 
         self.expect_change(
             StateChange(to_states={State.ATTENTION: Source.MARLIN},
                         reason=reason))
+
+    def filter_pause_events(self):
+        """Filters the action: paused events, notifies the rest
+
+        This is a giant workaround, this state machine should be
+        separated from the state manager"""
+        if self.tm_ignore_pause:
+            return
+
+        self.pause_signal.send()
+        self.paused()
+
+    def clear_tm_error(self, _, match: re.Match):
+        """Clear the TM error flag"""
+        assert match is not None
+        self.tm_ignore_pause = False
 
     @staticmethod
     def parse_error_reason(groups):
