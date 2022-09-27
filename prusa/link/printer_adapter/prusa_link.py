@@ -55,7 +55,8 @@ from .structures.module_data_classes import Sheet
 from .structures.regular_expressions import (MBL_TRIGGER_REGEX,
                                              PAUSE_PRINT_REGEX,
                                              PRINTER_BOOT_REGEX,
-                                             RESUME_PRINT_REGEX)
+                                             RESUME_PRINT_REGEX,
+                                             TM_ERROR_LOG_REGEX)
 from .telemetry_passer import TelemetryPasser
 from .updatable import Thread, prctl_name
 
@@ -191,6 +192,8 @@ class PrusaLink:
             self.instruction_confirmed)
         self.serial_parser.add_handler(PRINTER_BOOT_REGEX,
                                        self.printer_reconnected)
+        self.serial_parser.add_handler(TM_ERROR_LOG_REGEX,
+                                       self.log_tm_error)
 
         # Set up the signals for special menu handling
         # And for passthrough
@@ -213,6 +216,8 @@ class PrusaLink:
         self.state_manager.post_state_change_signal.connect(
             self.post_state_change)
         self.state_manager.state_changed_signal.connect(self.state_changed)
+        self.state_manager.pause_signal.connect(
+            lambda match: self.file_printer.pause(), weak=False)
         self.file_printer.time_printing_signal.connect(
             self.time_printing_updated)
         self.file_printer.new_print_started_signal.connect(
@@ -864,3 +869,11 @@ class PrusaLink:
     def connection_renewed(self, *_):
         """Reacts to the connection with connect being ok again"""
         self.telemetry_passer.resend_latest_telemetry()
+
+    def log_tm_error(self, _, match: re.Match):
+        """Logs the temperature model errors"""
+        groups = match.groupdict()
+        deviation = float(groups["deviation"])
+        threshold = float(groups["threshold"])
+        log.warning("The hot-end temperature differs from the expected one. "
+                    "|%s|>%s", deviation, threshold)

@@ -17,8 +17,8 @@ from .model import Model
 from .print_stats import PrintStats
 from .structures.mc_singleton import MCSingleton
 from .structures.module_data_classes import FilePrinterData
-from .structures.regular_expressions import (CANCEL_REGEX, PAUSED_REGEX,
-                                             POWER_PANIC_REGEX, RESUMED_REGEX)
+from .structures.regular_expressions import (CANCEL_REGEX, POWER_PANIC_REGEX,
+                                             RESUMED_REGEX)
 from .updatable import Thread, prctl_name
 
 log = logging.getLogger(__name__)
@@ -61,8 +61,6 @@ class FilePrinter(metaclass=MCSingleton):
             POWER_PANIC_REGEX, lambda sender, match: self.power_panic())
         self.serial_parser.add_handler(CANCEL_REGEX,
                                        lambda sender, match: self.stop_print())
-        self.serial_parser.add_handler(PAUSED_REGEX,
-                                       lambda sender, match: self.pause())
         self.serial_parser.add_handler(RESUMED_REGEX,
                                        lambda sender, match: self.resume())
 
@@ -293,9 +291,12 @@ class FilePrinter(metaclass=MCSingleton):
         If paused, resumes the print by flipping a flag,
         resumes print timer
         """
-        if self.data.printing:
-            self.data.paused = False
-            self.print_stats.start_time_segment()
+        if not self.data.printing:
+            return
+        if not self.data.paused:
+            return
+        self.data.paused = False
+        self.print_stats.start_time_segment()
 
     def stop_print(self):
         """If printing, stops the print and indicates by a flag, that the
