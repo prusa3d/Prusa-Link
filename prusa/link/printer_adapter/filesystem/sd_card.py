@@ -121,7 +121,7 @@ class FileTreeParser:
         self.check_uniqueness(long_path)
         long_path_string = str(long_path)
 
-        mixed_path = short_dir_path.joinpath(long_file_name)
+        mixed_path = short_dir_path.joinpath(raw_long_filename)
         mixed_path_string = str(mixed_path).lower()
 
         # Add translation between the two
