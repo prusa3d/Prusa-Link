@@ -8,13 +8,7 @@
   <div class="row">
       <div class="col-md-12">
           <h1>Authorization</h1>
-            <p>PrusaLink will use HTTP Digest authorization. Please set administration username and password,
-              <b>or</b> you can restore a configuration from your <em>prusa_printer_settings.ini</em> file.<br /></p>
-
-            <form class="col-sm-10" action = "/wizard/restore" method = "POST" enctype = "multipart/form-data">
-              <input type="file" name="file" class="btn btn-outline-light" style="white-space: nowrap;"/>
-              <input type="submit" value="Upload file" class="btn btn-outline-light" />
-            </form><br />
+            <p>PrusaLink will use HTTP Digest authorization. Please set administration username and password.<br/></p>
 
             <form method="post" id="form">
             <p>Username length must be at least <i>3 characters</i> long<br />
@@ -67,13 +61,13 @@
               Prusa Slicer can upload files to Prusa Link after slicing.
             Api-Key length must be at least <i>7 characters</i> long</p>
             <div class="form-group check row">
-              <label for="use_api_key" class="col-sm-2 form-check-label">Use Api-Key</label>
-              <div class="col-sm-10">
+              <label for="use_api_key" class="col-sm-3 form-check-label">Use Api-Key</label>
+              <div class="col-sm-2">
                 <input type="checkbox" id="use_api_key" name="use_api_key" onclick="useApiKey()" {{ 'checked="checked"' if wizard.use_api_key else '' }}">
               </div>
             </div>
 
-              <div class="form-group row" id="api_key_form" style="{{ 'visibility:visible' if wizard.use_api_key else 'visibility:hidden' }} ">
+              <div class="form-group row" id="api_key_form" style="{{ 'display:block' if wizard.use_api_key else 'display:none' }} ">
                 <label for="api_key" class="col-sm-2 col-form-label">Api-Key</label>
                 <div class="col-sm-10">
                   <input type="text" class="form-control {{ 'is-invalid' if errors.get('api_key') else '' }}" id="api_key" name="api_key" value="{{ wizard.api_key or '' }}">
@@ -81,7 +75,24 @@
                     Please provide an Api-Key with sufficient length.
                   </div>
                 </div>
+            </div>
 
+            <h2 class="condensed">Restore configuration</h2>
+            <p>You can also restore <b>printer configuration</b> using your <i>prusa_printer_settings.ini</i> file.</p>
+            <div class="form-group check row">
+              <label for="use_api_key" class="col-sm-3 form-check-label">Restore printer settings</label>
+              <div class="col-sm-2">
+                <input type="checkbox" id="use_ini_file" name="use_ini_file" onclick="useIniFile()">
+              </div>
+            </div>
+
+              <div class="form-group row" id="ini_file" style="{{ 'display:none' }}">
+                <label for="ini_file_form" class="col-sm-10 col-form-label">Upload your <i>prusa_printer_settings.ini file</i></label>
+
+                <form id="ini_file_form" class="col-sm-10" action = "/wizard/restore" method = "POST" enctype = "multipart/form-data" style="{{ 'display:block' if wizard.use_ini_file else 'display:none' }}">
+                  <input type="file" name="file" class="btn btn-outline-light" style="white-space: nowrap;"/>
+                  <input type="submit" value="Upload file" class="btn btn-outline-light" />
+                </form><br />
             </div>
 
             <div class="container navigation">
@@ -105,11 +116,23 @@
         var checked = document.getElementById("use_api_key").checked;
         var api_key = document.getElementById("api_key_form");
         if (checked) {
-          api_key.style.visibility = "visible";
+          api_key.style.display = "block";
         } else {
-          api_key.style.visibility = "hidden";
+          api_key.style.display = "none";
         }
       }
+
+      function useIniFile() {
+        var checked = document.getElementById("use_ini_file").checked;
+        var ini_file = document.getElementById("ini_file");
+        if (checked)
+        {
+          ini_file.style.display = "block";
+        } else {
+          ini_file.style.display = "none";
+        }
+      }
+
      </script>
 
     {% include "_wizard.html" %}
