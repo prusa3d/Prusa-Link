@@ -221,15 +221,20 @@ class PrinterPolling:
 
         self.progress_broken = WatchedItem("progress_broken")
         self.print_progress.validation_error_signal.connect(
-            lambda: self.item_updater.set_value(self.progress_broken, True))
+            lambda _: self.set_progress_broken(True), weak=False)
         self.print_progress.became_valid_signal.connect(
-            lambda: self.item_updater.set_value(self.progress_broken, False
-                                                ))
+            lambda _: self.set_progress_broken(False), weak=False)
 
         self.time_remaining = WatchedItem(
             "time_remaining",
             validation_function=self._validate_time_till,
             write_function=self._set_time_remaining)
+
+        self.time_broken = WatchedItem("time_broken")
+        self.time_remaining.validation_error_signal.connect(
+            lambda _: self.set_time_broken(True), weak=False)
+        self.time_remaining.became_valid_signal.connect(
+            lambda _: self.set_time_broken(False), weak=False)
 
         self.filament_change_in = WatchedItem(
             "filament_change_in",
@@ -261,6 +266,14 @@ class PrinterPolling:
             "sd_seconds_printing",
             write_function=self._set_sd_seconds_printing)
 
+        self.time_remaining_guesstimate = WatchedItem(
+            "time_remaining_guesstimate",
+            write_function=self._set_time_remaining_guesstimate)
+        self.byte_position.value_changed_signal.connect(
+            self._guess_time_remaining)
+        self.sd_seconds_printing.value_changed_signal.connect(
+            self._guess_time_remaining)
+
         self.total_filament = WatchedItem(
             "total_filament",
             gather_function=self._get_total_filament,
@@ -283,9 +296,12 @@ class PrinterPolling:
             self.mixed_path,
             self.byte_position,
             self.progress_from_bytes,
+            self.time_remaining_guesstimate,
             self.sd_seconds_printing,
             self.total_filament,
-            self.total_print_time
+            self.total_print_time,
+            self.progress_broken,
+            self.time_broken
         ])
 
         for item in self.telemetry:
@@ -364,11 +380,9 @@ class PrinterPolling:
         self._change_interval(self.flash_air, VERY_SLOW_POLL_INTERVAL)
 
     def ensure_job_id(self):
-        """
-        This is an oddball, I don't have anything able to ensure the job_id
+        """This is an oddball, I don't have anything able to ensure the job_id
         stays in sync, I cannot wait for it, that would block the read thread
-        I cannot just write it either, I wouldn't know if it failed.
-        """
+        I cannot just write it either, I wouldn't know if it failed."""
         def job_became_valid(item):
             self.job_id.became_valid_signal.disconnect(job_became_valid)
             if self.model.job.job_id != item.value:
@@ -387,10 +401,8 @@ class PrinterPolling:
         return self.item_updater.running
 
     def do_matchable(self, gcode, regex, to_front=False):
-        """
-        Analogic to the command one, as the getters do this
-        over and over again
-        """
+        """Analog to the command one, as the getters do this
+        over and over again"""
         instruction = enqueue_matchable(self.serial_queue,
                                         gcode,
                                         regex,
@@ -626,6 +638,30 @@ class PrinterPolling:
         progress = int((current / total) * 100)
         self.item_updater.set_value(self.progress_from_bytes, progress)
 
+    def _guess_time_remaining(self, _):
+        """Tracking is nonexistant, guess a time_remaining value
+        I'd just write out "On Friday" but people don't like that"""
+        if not self.time_broken.value:
+            return
+        if not self.sd_seconds_printing.valid:
+            return
+        sd_seconds_printing = self.sd_seconds_printing.value
+        if self.progress_broken.value:
+            if not self.progress_from_bytes.valid:
+                return
+            progress = self.progress_from_bytes.value
+        else:
+            if not self.print_progress.valid:
+                return
+            progress = self.print_progress.value
+        if progress == 0:
+            return
+        percent_remaining = 100 - progress
+        multiplier = percent_remaining / progress
+        guesstimation = sd_seconds_printing * multiplier
+        self.item_updater.set_value(self.time_remaining_guesstimate,
+                                    guesstimation)
+
     def print_info_handler(self, sender, matches: List[re.Match]):
         """One special handler supporting polling and spontaneous
         unsolicited reporting of progress and minutes remaining"""
@@ -690,7 +726,7 @@ class PrinterPolling:
 
     # -- From other watched items --
     def _speed_adjust_time_value(self, value):
-        "Multiplies tha value by the inverse of the speed multiplier"
+        """Multiplies tha value by the inverse of the speed multiplier"""
         if self.model.latest_telemetry.speed is not None:
             speed_multiplier = self.model.latest_telemetry.speed / 100
         else:
@@ -703,10 +739,8 @@ class PrinterPolling:
         return adjusted_value
 
     def _eeprom_little_endian_uint32(self, dcode):
-        """
-        Reads and decodes the D-Code specified little-endian uint32_t
-        eeprom variable
-        """
+        """Reads and decodes the D-Code specified little-endian uint32_t
+        eeprom variable"""
         match = self.do_matchable(dcode,
                                   D3_OUTPUT_REGEX,
                                   to_front=True)
@@ -729,10 +763,8 @@ class PrinterPolling:
     # -- Validate --
 
     def _validate_serial_number(self, value):
-        """
-        Validates the serial number, throws error because a more
-        descriptive error message can be shown this way
-        """
+        """Validates the serial number, throws error because a more
+        descriptive error message can be shown this way"""
         if VALID_SN_REGEX.match(value) is None:
             return False
 
@@ -743,10 +775,8 @@ class PrinterPolling:
         return True
 
     def _validate_printer_type(self, value):
-        """
-        Validates the printer type, throws error because a more
-        descriptive error message can be shown this way
-        """
+        """Validates the printer type, throws error because a more
+        descriptive error message can be shown this way"""
         if value not in PRINTER_TYPES:
             raise ValueError(f"The printer with type {value} is not supported")
 
@@ -796,10 +826,8 @@ class PrinterPolling:
 
     @staticmethod
     def _validate_time_till(value):
-        """
-        Validates both time values because negative time till something
-         is impossible
-        """
+        """Validates both time values because negative time till something
+        is impossible"""
         if value < 0:
             raise ValueError("There cannot be negative time till something")
         return True
@@ -810,10 +838,8 @@ class PrinterPolling:
         self.printer.network_info = value
 
     def _set_printer_type(self, value):
-        """
-        Do not try and overwrite the printer type, that would
-        raise an error
-        """
+        """Do not try and overwrite the printer type, that would
+        raise an error"""
         if self.printer.type is None:
             self.printer.type = PRINTER_TYPES[value]
 
@@ -881,6 +907,14 @@ class PrinterPolling:
                 self.byte_position.value[0], self.byte_position.value[1])
             self.telemetry_passer.set_telemetry(Telemetry(progress=value))
 
+    def _set_time_remaining_guesstimate(self, value):
+        """Set the guesstimated time remaining if the real one's broken"""
+        if self.time_broken.value:
+            log.debug("SD print has no time remaining tracking. "
+                      "Guesstimating")
+            self.telemetry_passer.set_telemetry(
+                Telemetry(time_remaining=value))
+
     def _set_total_filament(self, value):
         """Write the total filament used to model"""
         self.telemetry_passer.set_telemetry(Telemetry(total_filament=value))
@@ -890,6 +924,14 @@ class PrinterPolling:
         self.telemetry_passer.set_telemetry(Telemetry(total_print_time=value))
 
     # -- Signal handlers --
+
+    def set_progress_broken(self, value: bool):
+        """Sets progress as being broken or functioning normally"""
+        self.item_updater.set_value(self.progress_broken, value)
+
+    def set_time_broken(self, value: bool):
+        """Sets time_remaining as being broken or functioning normally"""
+        self.item_updater.set_value(self.time_broken, value)
 
     @staticmethod
     def _set_sn_condition(state: CondState):

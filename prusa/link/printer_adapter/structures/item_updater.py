@@ -266,7 +266,6 @@ class ItemUpdater:
 
     def disable(self, item: WatchedItem):
         """Disables the item polling without changing its interval"""
-
         self._validate_is_tracked(item)
 
         with item.lock:
@@ -299,9 +298,9 @@ class ItemUpdater:
                 if not item.validation_function(value):
                     raise ValueError(f"Invalid value for {item.name}: {value}")
             # pylint: disable=broad-except
-            except Exception as exception:
+            except Exception:
                 log.debug("Validation of item %s has failed", item.name)
-                item.validation_error_signal.send(item, exception=exception)
+                item.validation_error_signal.send(item)
                 item.val_err_timeout_signal.send(item)
 
                 # If the item is valid, do not schedule a gather, as this
