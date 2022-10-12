@@ -842,8 +842,11 @@ class PrusaLink:
 
         # No other trigger exists for these older printers
         # The printer will dip into BUSY for MBL, so lets use that
+        printer_type = None
+        if self.printer.type is not None:
+            printer_type = self.printer.type.value
         if to_state in {State.PRINTING, State.IDLE} and \
-                self.printer.type in MK25_PRINTERS:
+                printer_type in MK25_PRINTERS:
             self.printer_polling.invalidate_mbl()
 
         # The states should be completely re-done i'm told. So this janky
