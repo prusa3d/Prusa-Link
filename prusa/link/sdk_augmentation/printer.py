@@ -7,7 +7,7 @@ from typing import Any, Dict
 from prusa.connect.printer import Printer as SDKPrinter
 from prusa.connect.printer import const
 from prusa.connect.printer.command import Command
-from prusa.connect.printer.conditions import API, HTTP, TOKEN, CondState
+from prusa.connect.printer.conditions import API, HTTP, CondState
 from prusa.connect.printer.const import Source
 from prusa.connect.printer.files import File
 from prusa.connect.printer.metadata import FDMMetaData
@@ -63,6 +63,9 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.loop_thread = Thread(target=self.loop, name="loop")
         self.__inotify_running = False
         self.inotify_thread = Thread(target=self.inotify_loop, name="inotify")
+        self.snapshot_thread = Thread(target=self.snapshot_loop,
+                                      name="snapshot_sender",
+                                      daemon=True)
         self.camera = None
         if picamera:
             self.camera = Camera().get_camera()
@@ -92,14 +95,15 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         info["prusalink"] = __version__
         return info
 
-    def set_connect(self, settings):
-        """Set server and token from Settings class."""
+    def connection_from_settings(self, settings):
+        """Loads connection details from the Settings class."""
         self.api_key = settings.service_local.api_key
-        self.server = SDKPrinter.connect_url(settings.service_connect.hostname,
-                                             settings.service_connect.tls,
-                                             settings.service_connect.port)
-        self.token = settings.service_connect.token
-        TOKEN.state = CondState.OK
+        server = SDKPrinter.connect_url(settings.service_connect.hostname,
+                                        settings.service_connect.tls,
+                                        settings.service_connect.port)
+        token = settings.service_connect.token
+
+        self.set_connection(server, token)
         use_connect_errors(True)
 
     def get_file_info(self, caller: Command) -> Dict[str, Any]:
@@ -149,21 +153,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.loop_thread.start()
         self.inotify_thread.start()
         self.download_thread.start()
-
-    def stop(self):
-        """Passes the stop request to all SDK related threads.
-
-        * command handler
-        * loop
-        * inotify
-        """
-        self.__inotify_running = False
-        self.download_mgr.stop_loop()
-        self.stop_loop()
-        self.command_handler.stop()
-        self.inotify_thread.join()
-        self.loop_thread.join()
-        self.download_thread.join()
+        self.snapshot_thread.start()
 
     def indicate_stop(self):
         """Passes the stop request to all SDK related threads.
@@ -177,6 +167,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.stop_loop()
         self.queue.put(None)  # Trick the SDK into quitting fast
         self.command_handler.stop()
+        self.camera_controller.stop()
 
     def wait_stopped(self):
         """Waits for the SDK threads to join
@@ -188,6 +179,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.inotify_thread.join()
         self.loop_thread.join()
         self.download_thread.join()
+        self.snapshot_thread.join()
 
     def loop(self):
         """SDKPrinter.loop with thread name."""
@@ -208,6 +200,11 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         """Handler for download loop"""
         prctl_name()
         self.download_mgr.loop()
+
+    def snapshot_loop(self):
+        """Gives snapshot loop a consistent name with the rest of the app"""
+        prctl_name()
+        self.camera_controller.snapshot_loop()
 
     @property
     def type_string(self):
