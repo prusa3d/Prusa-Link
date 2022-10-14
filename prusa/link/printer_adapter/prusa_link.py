@@ -110,12 +110,13 @@ class PrusaLink:
 
         self.camera_configurator = CameraConfigurator(
             config=self.settings,
+            config_file_path=self.cfg.printer.settings,
             camera_controller=self.printer.camera_controller,
             drivers=[V4L2Driver]
         )
 
         self.printer.register_handler = self.printer_registered
-        self.printer.set_connect(settings)
+        self.printer.connection_from_settings(settings)
 
         # Set download callbacks
         self.printer.printed_file_cb = self.printed_file_cb

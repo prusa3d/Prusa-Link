@@ -6,7 +6,7 @@ from poorwsgi.response import JSONResponse, Response
 from prusa.connect.printer.const import CameraStatus, CameraAlreadyExists
 from prusa.connect.printer.camera_config import CameraConfigurator, \
     ConfigError, CameraNotDetected
-from prusa.connect.printer.cameras import CapabilityType, NotSupported
+from prusa.connect.printer.cameras import CapabilityType, NotSupported, Camera
 from .lib.core import app
 from .lib.auth import check_api_digest
 
@@ -46,7 +46,7 @@ def list_cameras(_):
         )
         camera_list.append(list_item)
 
-    for config, camera_id in camera_configurator.get_new_cameras().items():
+    for camera_id, config in camera_configurator.get_new_cameras().items():
         status = CameraStatus.DETECTED
         list_item = dict(
             camera_id=camera_id,
@@ -190,7 +190,7 @@ def set_settings(req, camera_id):
                                     f"found among the connected cameras")
     camera = camera_controller.get_camera(camera_id)
     json_settings = req.json
-    settings = camera.settings_from_json(json_settings)
+    settings = Camera.settings_from_json(json_settings)
     camera.set_settings(settings)
 
     camera_configurator = app.daemon.prusa_link.camera_configurator
