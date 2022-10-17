@@ -8,9 +8,9 @@ from threading import Event
 from threading import enumerate as enumerate_threads
 from typing import Any, Dict
 
+from prusa.connect.printer.camera_configurator import CameraConfigurator
 from prusa.connect.printer import Command as SDKCommand
 from prusa.connect.printer import DownloadMgr
-from prusa.connect.printer.camera_config import CameraConfigurator
 from prusa.connect.printer.conditions import (API, COND_TRACKER, INTERNET,
                                               CondState)
 from prusa.connect.printer.const import Command as CommandType

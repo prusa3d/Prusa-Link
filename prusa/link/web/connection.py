@@ -125,7 +125,7 @@ def api_connection_delete(req):
     use_connect_errors(False)
 
     app.settings.update_sections()
-    app.daemon.prusa_link.printer.set_connect(app.settings)
+    app.daemon.prusa_link.printer.connection_from_settings(app.settings)
 
     with open(app.daemon.cfg.printer.settings, 'w', encoding='utf-8') as ini:
         app.daemon.settings.write(ini)
