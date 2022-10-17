@@ -53,8 +53,6 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
     """
 
     def __init__(self, *args, **kwargs):
-        if "cam_ctrl_class" in kwargs:
-            del kwargs["cam_ctrl_class"]
         super().__init__(*args, **kwargs)
         self.lcd_printer = LCDPrinter.get_instance()
         self.download_thread = Thread(target=self.download_loop,

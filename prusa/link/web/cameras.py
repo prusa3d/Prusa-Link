@@ -3,10 +3,10 @@ from poorwsgi import state
 
 from poorwsgi.response import JSONResponse, Response
 
-from prusa.connect.printer.const import CameraStatus, CameraAlreadyExists
-from prusa.connect.printer.camera_config import CameraConfigurator, \
-    ConfigError, CameraNotDetected
-from prusa.connect.printer.cameras import CapabilityType, NotSupported, Camera
+from prusa.connect.printer.camera import Camera
+from prusa.connect.printer.camera_configurator import CameraConfigurator
+from prusa.connect.printer.const import CameraStatus, CameraAlreadyExists, \
+    NotSupported, CameraNotDetected, ConfigError, CapabilityType
 from .lib.core import app
 from .lib.auth import check_api_digest
 
@@ -73,7 +73,7 @@ def set_order(req):
 def get_photo_by_camera_id(_, camera_id):
     """Gets the last image from the specified camera"""
     camera_configurator = app.daemon.prusa_link.camera_configurator
-    if camera_id not in camera_configurator.loaded_drivers:
+    if not camera_configurator.is_loaded(camera_id):
         return JSONResponse(status_code=state.HTTP_NOT_FOUND,
                             message=f"Camera with id: {camera_id} is"
                                     f" not available")

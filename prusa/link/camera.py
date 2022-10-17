@@ -7,10 +7,10 @@ import v4l2py  # type: ignore
 import v4l2py.raw  # type: ignore
 from v4l2py.device import PixelFormat  # type: ignore
 
-from prusa.connect.printer.camera_config import CameraDriver
-from prusa.connect.printer.cameras import Resolution, CapabilityType
+from prusa.connect.printer.camera_driver import CameraDriver
+from prusa.connect.printer.camera import Resolution
+from prusa.connect.printer.const import CapabilityType
 from .const import CAMERA_INIT_DELAY
-
 
 log = logging.getLogger(__name__)
 
