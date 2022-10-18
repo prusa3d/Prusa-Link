@@ -82,9 +82,11 @@ class AutoTelemetry(ThreadedUpdatable):
 
         values = match.groupdict()
         self.telemetry_passer.set_telemetry(
-            Telemetry(fan_extruder=int(values["extruder_rpm"]),
+            Telemetry(fan_extruder=int(values["hotend_rpm"]),
+                      fan_hotend=int(values["hotend_rpm"]),
                       fan_print=int(values["print_rpm"]),
-                      target_fan_extruder=int(values["extruder_power"]),
+                      target_fan_extruder=int(values["hotend_power"]),
+                      target_fan_hotend=int(values["hotend_power"]),
                       target_fan_print=int(values["print_power"])))
 
     def update(self):
