@@ -103,8 +103,8 @@ POSITION_REGEX = re.compile(
     r"Y:(?P<count_y>-?\d+\.\d+) Z:(?P<count_z>-?\d+\.\d+) "
     r"E:(?P<count_e>-?\d+\.\d+)$")
 FAN_REGEX = re.compile(
-    r"E0:(?P<extruder_rpm>\d+) RPM PRN1:(?P<print_rpm>\d+) RPM "
-    r"E0@:(?P<extruder_power>\d+) PRN1@:(?P<print_power>\d+)")
+    r"E0:(?P<hotend_rpm>\d+) RPM PRN1:(?P<print_rpm>\d+) RPM "
+    r"E0@:(?P<hotend_power>\d+) PRN1@:(?P<print_power>\d+)")
 # This one takes some explaining
 # I cannot assign multiple regular expressions to a single instruction
 # The `M27 P` has more lines, the first one containing a status report or
@@ -132,7 +132,7 @@ POWER_PANIC_REGEX = re.compile(r"^INT4$")
 LCD_UPDATE_REGEX = re.compile(r"^LCD status changed$")
 M110_REGEX = re.compile(r"^(N\d+)? *M110 ?N(?P<cmd_number>-?\d*)$")
 FAN_ERROR_REGEX = re.compile(
-    r"^(?P<fan_name>Extruder|Print) fan speed is lower than expected$")
+    r"^(?P<fan_name>Extruder|Hotend|Print) fan speed is lower than expected$")
 D3_OUTPUT_REGEX = re.compile(
     r"^(?P<address>\w{2,}) {2}(?P<data>([0-9a-fA-F]{2} ?)+)$")
 MBL_REGEX = re.compile(r"^(?P<no_mbl>Mesh bed leveling not active.)|"

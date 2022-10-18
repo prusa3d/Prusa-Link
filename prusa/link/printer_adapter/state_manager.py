@@ -430,16 +430,16 @@ class StateManager(metaclass=MCSingleton):
         weird edge cases expected"""
         assert sender is not None
 
-        extruder_fan_rpm = int(match.group("extruder_rpm"))
-        extruder_fan_power = int(match.group("extruder_power"))
+        hotend_fan_rpm = int(match.group("hotend_rpm"))
+        hotend_fan_power = int(match.group("hotend_power"))
         print_fan_rpm = int(match.group("print_rpm"))
         print_fan_power = int(match.group("print_power"))
 
-        extruder_fan_works = extruder_fan_rpm > extruder_fan_power > 0
+        hotend_fan_works = hotend_fan_rpm > hotend_fan_power > 0
         print_fan_works = print_fan_rpm > print_fan_power > 0
         fan_name = self.fan_error_name
 
-        if (fan_name == "Extruder" and extruder_fan_works) or \
+        if (fan_name in {"Extruder", "Hotend"} and hotend_fan_works) or \
                 (fan_name == "Print" and print_fan_works):
             self.expect_change(
                 StateChange(from_states={State.ATTENTION: Source.USER},
