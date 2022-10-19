@@ -48,8 +48,8 @@ sudo apt install git python3-pip pigpio libcap-dev libmagic1
 pip install PrusaLink
 
 # Or install straight from GitHub
-pip install git+ssh://git@github.com/prusa3d/Prusa-Connect-SDK-Printer.git
-pip install git+ssh://git@github.com/prusa3d/Prusa-Link.git
+pip install git+https://github.com/prusa3d/Prusa-Connect-SDK-Printer.git
+pip install git+https://github.com/prusa3d/Prusa-Link.git
 ```
 
 ## Config
