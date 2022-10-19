@@ -104,7 +104,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         token = settings.service_connect.token
 
         self.set_connection(server, token)
-        use_connect_errors(True)
+        use_connect_errors(settings.use_connect())
 
     def get_file_info(self, caller: Command) -> Dict[str, Any]:
         """Return file info for a given file

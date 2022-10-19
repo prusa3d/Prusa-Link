@@ -98,7 +98,7 @@ def api_connection_set(req):
     app.settings.service_connect.tls = tls
 
     app.settings.update_sections()
-    printer.set_connect(app.settings)
+    printer.connection_from_settings(app.settings)
 
     type_ = printer.type
     code = printer.register()
