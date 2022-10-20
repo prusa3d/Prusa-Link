@@ -119,6 +119,14 @@ class V4L2Driver(CameraDriver):
 
     def disconnect(self):
         """Disconnects from the camera"""
-        self._stop_stream()
-        self.device.close()
+        try:
+            self._stop_stream()
+        except OSError:
+            log.warning("Camera %s stream could not be closed",
+                        self.camera_id)
+        try:
+            self.device.close()
+        except OSError:
+            log.warning("Camera %s file could not be closed",
+                        self.camera_id)
         super().disconnect()
