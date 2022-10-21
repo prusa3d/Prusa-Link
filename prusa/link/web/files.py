@@ -7,7 +7,7 @@ from hashlib import md5
 from io import FileIO
 from os import makedirs, replace, statvfs, unlink, rmdir, listdir
 from os.path import abspath, basename, dirname, exists, getctime, getsize, \
-    join, isdir
+    join, isdir, split
 from shutil import move, rmtree
 from time import sleep, time
 from magic import Magic
@@ -234,6 +234,7 @@ def api_files(req, path=''):
     about print files in specific directory
     """
     # pylint: disable=too-many-locals
+    # pylint: disable=too-many-branches
     file_system = app.daemon.prusa_link.printer.fs
 
     last_updated = 0
@@ -264,25 +265,40 @@ def api_files(req, path=''):
                             headers=headers)
 
     storage_path = ''
-    data = app.daemon.prusa_link.printer.get_info()["files"]
 
     if path:
         files = file_system.get(path)
+
+        # We need to find the storage in storage dict in order to find the
+        # information about free and total space
+
+        # If path contains only storage (e.g. /PrusaLink gcodes), check if it's
+        # present in storage dict and then assign it to the storage variable
+        storage = file_system.storage_dict.get(path)
+
+        # If path contains folder (e.g. /PrusaLink gcodes/examples), split the
+        # path, check if the first part is present in storage dict and if so,
+        # assign it to the storage variable
+        if not storage:
+            path = split(path)[0]
+            storage = file_system.storage_dict.get(path)
+
         if files:
             files = [
-                file_to_api(child) for child in files.to_dict()["children"]
-            ]
+                file_to_api(child) for child in files.to_dict()["children"]]
         else:
             return Response(status_code=state.HTTP_NOT_FOUND, headers=headers)
     else:
+        data = app.daemon.prusa_link.printer.get_info()["files"]
         files = [file_to_api(child) for child in data.get("children", [])]
 
-    for item in files:
-        if item['origin'] == 'local':
-            storage_path = item['name']
-            break
+        for item in files:
+            if item['origin'] == 'local':
+                storage_path = item['name']
+                break
 
-    storage = file_system.storage_dict.get(storage_path)
+        storage = file_system.storage_dict.get(storage_path)
+
     space_info = storage.get_space_info()
     free = hbytes(space_info.get("free_space")) if storage else (0, "B")
     total = hbytes(space_info.get("total_space")) if storage else (0, "B")
