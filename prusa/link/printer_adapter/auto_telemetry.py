@@ -2,6 +2,8 @@
 from re import Match
 from time import time
 
+from blinker import Signal  # type: ignore
+
 from ..const import REPORTING_TIMEOUT
 from ..serial.helpers import enqueue_instruction, wait_for_instruction
 from ..serial.serial_parser import SerialParser
@@ -41,6 +43,8 @@ class AutoTelemetry(ThreadedUpdatable):
         self.last_seen_fans = 0.
         self.last_seen_temps = 0.
 
+        self.z_updated_signal = Signal()  # kwargs: new_z: float
+
     def temps_recorded(self, sender, match: Match):
         """
         Reset the timeout for temperatures
@@ -71,6 +75,8 @@ class AutoTelemetry(ThreadedUpdatable):
             Telemetry(axis_x=float(values["x"]),
                       axis_y=float(values["y"]),
                       axis_z=float(values["z"])))
+
+        self.z_updated_signal.send(new_z=float(values["z"]))
 
     def fans_recorded(self, sender, match: Match):
         """
@@ -107,7 +113,7 @@ class AutoTelemetry(ThreadedUpdatable):
         The C argument is the bitmask for type of autoreporting
         The S argument is the frequency of autoreports
         """
-        instruction = enqueue_instruction(self.serial_queue, "M155 S2 C7")
+        instruction = enqueue_instruction(self.serial_queue, "M155 S1 C7")
         wait_for_instruction(instruction, should_wait_evt=self.quit_evt)
         self._reset_last_seen()
 

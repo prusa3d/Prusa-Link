@@ -17,6 +17,7 @@ from prusa.connect.printer.const import Event as EventType
 from prusa.connect.printer.const import Source, State
 from prusa.connect.printer.files import File
 from prusa.connect.printer.models import Sheet as SDKSheet
+from .z_watcher import ZWatcher
 from ..sdk_augmentation.camera_configurator import MyCameraConfigurator
 from ..v4l2_driver import V4L2Driver
 
@@ -270,6 +271,12 @@ class PrusaLink:
         self.auto_telemetry = AutoTelemetry(self.serial_parser,
                                             self.serial_queue, self.model,
                                             self.telemetry_passer)
+
+        self.z_watcher = ZWatcher(self.model)
+        self.auto_telemetry.z_updated_signal.connect(
+            lambda sender, new_z: self.z_watcher.z_changed(new_z), weak=False)
+        self.z_watcher.trigger_signal.connect(self.z_change_trigger)
+
         self.auto_telemetry.start()
 
         self.printer_polling.start()
@@ -521,6 +528,9 @@ class PrusaLink:
         self.command_queue.enqueue_command(command)
 
     # --- Signal handlers ---
+    def z_change_trigger(self, scheme):
+        """Passes the call to trigger to the camera controller"""
+        self.printer.camera_controller.trigger_pile(scheme)
 
     def mbl_data_changed(self, data) -> None:
         """Sends the mesh bed leveling data to Connect"""
