@@ -145,6 +145,12 @@ def response_timeout(req):
     return response_error(req, conditions.ResponseTimeout())
 
 
+@app.route('/error/cant-connect')
+def cant_connect(req):
+    """Error handler for 400 Can't connect"""
+    return response_error(req, conditions.CantConnect())
+
+
 @app.http_state(410)
 def gone(req):
     """Error handler for 410 Gone.
