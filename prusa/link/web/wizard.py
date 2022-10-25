@@ -337,13 +337,13 @@ def wizard_finish_post(req):
     else:
         # register printer
         if wizard.connect_token:
-            printer.set_connect(app.settings)
+            printer.connection_from_settings(app.settings)
             redirect('/')
         elif app.settings.service_connect.token:
             redirect('/')
         else:
             # set connect connection
-            printer.set_connect(app.settings)
+            printer.connection_from_settings(app.settings)
             code = None
             code = printer.register()
             url = Printer.connect_url(wizard.connect_hostname,
