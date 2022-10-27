@@ -136,9 +136,6 @@ def process_local(config):
             app.wizard.enable = local['enable']
         if option == 'username':
             app.wizard.username = local['username']
-        if option == 'api_key':
-            app.wizard.api_key = local['api_key'] \
-                if local['api_key'] else ''
 
 
 def parse_settings(buffer):
@@ -208,8 +205,6 @@ def wizard_auth_post(req):
     app.wizard.username = form.get('username', '')
     password = form.get('password', '')
     repassword = form.get('repassword', '')
-    app.wizard.api_key = form.get('api_key', '').strip()
-    app.wizard.use_api_key = form.get('use_api_key')
 
     if not app.wizard.check_credentials(password, repassword):
         redirect('/wizard/auth')
@@ -316,15 +311,12 @@ def wizard_finish_post(req):
     """Show wizard status and link to homepage."""
     # pylint: disable=unused-argument
     wizard = app.wizard
-    if not wizard.use_api_key:
-        wizard.api_key = ''
     printer = wizard.daemon.prusa_link.printer
     wizard.write_settings(app.settings)
 
     # set authorization
     app.auth_map.clear()
     app.auth_map.set(REALM, wizard.username, wizard.digest)
-    app.api_key = wizard.api_key
 
     # wait up to one second for printer.sn to be set
     for i in range(10):  # pylint: disable=unused-variable

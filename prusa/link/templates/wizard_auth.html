@@ -56,31 +56,10 @@
               </div>
             </div>
 
-            <p>You probably want to set <b>Api-Key</b> for other
-              applications to use internal API of Prusa Link. For example
-              Prusa Slicer can upload files to Prusa Link after slicing.
-            Api-Key length must be at least <i>7 characters</i> long</p>
-            <div class="form-group check row">
-              <label for="use_api_key" class="col-sm-3 form-check-label">Use Api-Key</label>
-              <div class="col-sm-2">
-                <input type="checkbox" id="use_api_key" name="use_api_key" onclick="useApiKey()" {{ 'checked="checked"' if wizard.use_api_key else '' }}">
-              </div>
-            </div>
-
-              <div class="form-group row" id="api_key_form" style="{{ 'display:block' if wizard.use_api_key else 'display:none' }} ">
-                <label for="api_key" class="col-sm-2 col-form-label">Api-Key</label>
-                <div class="col-sm-10">
-                  <input type="text" class="form-control {{ 'is-invalid' if errors.get('api_key') else '' }}" id="api_key" name="api_key" value="{{ wizard.api_key or '' }}">
-                  <div class="invalid-feedback">
-                    Please provide an Api-Key with sufficient length.
-                  </div>
-                </div>
-            </div>
-
             <h2 class="condensed">Restore configuration</h2>
             <p>You can also restore <b>printer configuration</b> using your <i>prusa_printer_settings.ini</i> file.</p>
             <div class="form-group check row">
-              <label for="use_api_key" class="col-sm-3 form-check-label">Restore printer settings</label>
+              <label for="use_ini_file" class="col-sm-3 form-check-label">Restore printer settings</label>
               <div class="col-sm-2">
                 <input type="checkbox" id="use_ini_file" name="use_ini_file" onclick="useIniFile()">
               </div>
@@ -112,16 +91,6 @@
     </div>{# /container #}
 
     <script>
-      function useApiKey() {
-        var checked = document.getElementById("use_api_key").checked;
-        var api_key = document.getElementById("api_key_form");
-        if (checked) {
-          api_key.style.display = "block";
-        } else {
-          api_key.style.display = "none";
-        }
-      }
-
       function useIniFile() {
         var checked = document.getElementById("use_ini_file").checked;
         var ini_file = document.getElementById("ini_file");
@@ -132,7 +101,6 @@
           ini_file.style.display = "none";
         }
       }
-
      </script>
 
     {% include "_wizard.html" %}
