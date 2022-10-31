@@ -1,14 +1,14 @@
 """Setup.py for PrusaLink software."""
 import os
 import re
-from distutils import log
-from distutils.core import Command
+import logging
+
 from grp import getgrnam
 from shutil import copyfile, copytree
 from subprocess import run
 from sys import stderr
 
-from setuptools import find_namespace_packages, setup  # type: ignore
+from setuptools import find_namespace_packages, Command, setup  # type: ignore
 
 from prusa.link import __author_email__, __author_name__
 from prusa.link import __doc__ as description  # type: ignore
@@ -74,7 +74,7 @@ class BuildStatic(Command):
             self.target_dir = os.path.join(cwd, 'prusa', 'link', 'static')
 
     def run(self):
-        log.info("building html documentation")
+        logging.info("building html documentation")
         if self.dry_run:
             if run(['docker', 'version'], check=False).returncode:
                 raise IOError(1, 'docker failed')
