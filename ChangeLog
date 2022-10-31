@@ -110,6 +110,7 @@
      * Fixed a semicolon in a filename being printed breaking everything
      * Fixed a bronken RESET_PRINTER for raspis connected through USB
      * API key option removed from wizard
+     * Added endpoint for deletion of API key
 
 0.6.0 (2021-12-17)
     * Added endpoint for control of extruder
