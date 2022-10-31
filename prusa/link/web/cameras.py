@@ -11,6 +11,23 @@ from .lib.core import app
 from .lib.auth import check_api_digest
 
 
+def photo_by_camera_id(camera_id):
+    """Returns the response for two endpoints
+    "snap" on the first camera in order and "snap" on a specific camera"""
+    camera_configurator = app.daemon.prusa_link.camera_configurator
+    if not camera_configurator.is_loaded(camera_id):
+        return JSONResponse(status_code=state.HTTP_NOT_FOUND,
+                            message=f"Camera with id: {camera_id} is"
+                                    f" not available")
+    camera = camera_configurator.loaded_drivers[camera_id]
+    if camera.last_photo is None:
+        return JSONResponse(status_code=state.HTTP_NO_CONTENT,
+                            message=f"Camera with id: {camera_id} did not "
+                                    f"take a photo yet.")
+    return Response(camera.last_photo,
+                    content_type='image/jpeg')
+
+
 @app.route("/api/v1/cameras/snap", method=state.METHOD_GET)
 @check_api_digest
 def camera_snap(_):
@@ -20,8 +37,7 @@ def camera_snap(_):
     for camera in camera_controller.cameras_in_order:
         if not camera.supports(CapabilityType.IMAGING):
             continue
-        return Response(camera.last_photo,
-                        content_type='image/jpeg')
+        return photo_by_camera_id(camera.camera_id)
     return JSONResponse(status_code=state.HTTP_NOT_FOUND,
                         message="Camera is not available")
 
@@ -72,18 +88,7 @@ def set_order(req):
 @check_api_digest
 def get_photo_by_camera_id(_, camera_id):
     """Gets the last image from the specified camera"""
-    camera_configurator = app.daemon.prusa_link.camera_configurator
-    if not camera_configurator.is_loaded(camera_id):
-        return JSONResponse(status_code=state.HTTP_NOT_FOUND,
-                            message=f"Camera with id: {camera_id} is"
-                                    f" not available")
-    camera = camera_configurator.loaded_drivers[camera_id]
-    if camera.last_photo is None:
-        return JSONResponse(status_code=state.HTTP_NO_CONTENT,
-                            message=f"Camera with id: {camera_id} did not "
-                                    f"take a photo yet.")
-    return Response(camera.last_photo,
-                    content_type='image/jpeg')
+    return photo_by_camera_id(camera_id)
 
 
 @app.route("/api/v1/cameras/<camera_id>/snap", method=state.METHOD_POST)
