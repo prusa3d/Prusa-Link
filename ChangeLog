@@ -1,6 +1,17 @@
 # ChangeLog
 
-0.7.0
+0.7.0rc2
+    * Support thermal model errors (FW 3.12)
+    * USB Camera
+    * SD Card fixes
+    * Fix MBL data for MK2.5(S)
+    * Wizard refactoring
+    * Static web update
+        - Camwras
+        - File sorting
+    * API Settings moved from Wizard to Settings
+
+0.7.0rc1
     * Work around a bug: printer in serial print mode while wizard is shown
     * READY state changed to IDLE, PREPARED state changed to READY
     * New status display
