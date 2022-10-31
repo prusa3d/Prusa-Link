@@ -36,7 +36,8 @@ MEDIA_IOC_DEVICE_INFO = v4l2py.raw._IOWR('|', 0x00, MediaDeviceInfo)
 
 
 def read_media_device_info(path):
-    """Given a media device path, reads its associated info"""
+    """Given a media device path, reads its associated info
+    :raises PermissionError"""
     info = MediaDeviceInfo()
     # pylint: disable=unspecified-encoding
     with open(path, "r") as file:
@@ -54,9 +55,16 @@ def get_media_device_path(device: Device):
     bus_info = device.info.bus_info
     paths = glob("/dev/media*")
     for path in paths:
-        info = read_media_device_info(path)
-        if bus_info == info.bus_info.decode("UTF-8"):
-            return path
+        try:
+            info = read_media_device_info(path)
+        except PermissionError:
+            log.exception("Failed getting a media device for %s. "
+                          "This is commonly caused by the linux user "
+                          "not being a member of the 'video' group",
+                          device.filename)
+        else:
+            if bus_info == info.bus_info.decode("UTF-8"):
+                return path
     return None
 
 
@@ -101,7 +109,7 @@ class V4L2Driver(CameraDriver):
             try:
                 info = read_media_device_info(media_device_path)
                 serial = info.serial.decode("ascii")
-            except OSError:
+            except (OSError, PermissionError):
                 log.exception("Getting camera sn failed for camera %s at %s",
                               name, path)
                 continue
