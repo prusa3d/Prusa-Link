@@ -14,7 +14,8 @@ from prusa.connect.printer.const import State
 from ..config import Settings
 from ..const import (JITTER_THRESHOLD, PRINTING_STATES,
                      TELEMETRY_IDLE_INTERVAL, TELEMETRY_PRINTING_INTERVAL,
-                     TELEMETRY_SLEEP_AFTER, TELEMETRY_SLEEPING_INTERVAL)
+                     TELEMETRY_SLEEP_AFTER, TELEMETRY_SLEEPING_INTERVAL,
+                     TELEMETRY_REFRESH_INTERVAL)
 from ..util import loop_until
 from .model import Model
 from .structures.mc_singleton import MCSingleton
@@ -50,7 +51,7 @@ class TelemetryPasser(metaclass=MCSingleton):
         self.telemetry_interval = TELEMETRY_SLEEPING_INTERVAL
         self.thread = Thread(target=self._keep_updating,
                              name="telemetry_passer")
-        self.latest_changed = False
+        self.full_refresh_at = 0
 
         self._last_sent: dict[str, Any] = {}
         self._to_send: dict[str, Any] = {}
@@ -195,6 +196,14 @@ class TelemetryPasser(metaclass=MCSingleton):
 
                 if to_update:
                     self._to_send[key] = value
+
+        self._resend_telemetry_on_timer()
+
+    def _resend_telemetry_on_timer(self):
+        """If sufficient time elapsed, mark all telemetry values to be sent"""
+        if time() - self.full_refresh_at > TELEMETRY_REFRESH_INTERVAL:
+            self.full_refresh_at = time()
+            self.resend_latest_telemetry()
 
     def state_changed(self):
         """React to state changes by removing (or adding) info"""
