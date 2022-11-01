@@ -24,27 +24,6 @@ from .command_handler import CommandHandler
 
 log = getLogger("connect-printer")
 
-try:
-    import picamera  # type: ignore
-
-    class Camera:
-        """Compatibility class"""
-        camera = None
-
-        def __init__(self):
-            try:
-                self.camera = picamera.PiCamera()
-            except picamera.PiCameraError:
-                log.warning("Camera is not available")
-
-        def get_camera(self):
-            """Get instance of the camera"""
-            return self.camera
-
-except ModuleNotFoundError:
-    picamera = None  # pylint: disable=invalid-name
-    log.warning("picamera module is not available")
-
 
 class MyPrinter(SDKPrinter, metaclass=MCSingleton):
     """
@@ -66,9 +45,6 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.snapshot_thread = Thread(target=self.snapshot_loop,
                                       name="snapshot_sender",
                                       daemon=True)
-        self.camera = None
-        if picamera:
-            self.camera = Camera().get_camera()
 
     def parse_command(self, res):
         """Parse telemetry response.

@@ -152,8 +152,7 @@ def api_info(req):
         'min_extrusion_temp': LimitsMK3S.min_temp_nozzle_e,
         'serial': printer.sn,
         'hostname': service_connect.hostname,
-        'port': service_connect.port,
-        'active_camera': bool(printer.camera)
+        'port': service_connect.port
     }
 
     return JSONResponse(**info)
