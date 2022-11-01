@@ -1,2 +1,2 @@
 wiringpi
-picamera
+picamera2
