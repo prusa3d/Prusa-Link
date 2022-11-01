@@ -137,10 +137,10 @@ class V4L2Driver(CameraDriver):
                         Resolution(width=frame_type.width,
                                    height=frame_type.height))
             highest_resolution = sorted(self.available_resolutions)[-1]
+            self._config["resolution"] = str(highest_resolution)
+
             self.device.video_capture.set_format(highest_resolution.width,
                                                  highest_resolution.height)
-            # FIXME: Now, the conversion has to be manual, everywhere
-            self._config["resolution"] = str(highest_resolution)
 
             self._last_init_at = time()
             self._start_stream()
