@@ -61,6 +61,7 @@ TELEMETRY_IDLE_INTERVAL = 0.25
 TELEMETRY_PRINTING_INTERVAL = 1
 TELEMETRY_SLEEPING_INTERVAL = 4  # can be sleeping in any state
 TELEMETRY_SLEEP_AFTER = 3 * 60
+TELEMETRY_REFRESH_INTERVAL = 5 * 60  # full telemetry re-send
 
 FAST_POLL_INTERVAL = 1
 SLOW_POLL_INTERVAL = 10  # for values, that aren't that important
