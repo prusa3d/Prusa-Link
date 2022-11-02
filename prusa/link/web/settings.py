@@ -170,7 +170,7 @@ def regenerate_api_key(req):
     app.daemon.settings.update_sections()
     save_settings()
 
-    return JSONResponse(status_code=state.HTTP_OK)
+    return JSONResponse(**{"api-key": api_key})
 
 
 @app.route('/api/settings/apikey', method=state.METHOD_DELETE)
