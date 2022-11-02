@@ -49,6 +49,8 @@ def list_cameras(_):
     camera_configurator = app.daemon.prusa_link.camera_configurator
     camera_list = []
     for camera_id in camera_configurator.camera_order:
+        if camera_id not in camera_configurator.camera_configs:
+            continue
         config = camera_configurator.camera_configs[camera_id]
         status = CameraStatus.ERROR
         if camera_configurator.is_loaded(camera_id):
