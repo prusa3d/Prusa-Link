@@ -5,6 +5,7 @@ module.exports = (env, args) => {
         PRINTER_NAME: "Original Prusa MK3",
         PRINTER_TYPE: "fdm",
 
+        WITH_API_KEY_SETTING: true,
         WITH_SETTINGS: true,
         WITH_CAMERA: true,
         WITH_CONTROLS: true,
