@@ -44,6 +44,9 @@ RPi GPIO pins are to be used.
 
 ```bash
 sudo apt install git python3-pip pigpio libcap-dev libmagic1
+# for the Raspberry Pi camera module support
+# pre-installed on the newer Raspberry Pi OS images post September 2022
+sudo apt install -y python3-picamera2 --no-install-recommends
 
 pip install PrusaLink
 
