@@ -58,7 +58,7 @@ files. The default configuration path is `/etc/prusalink/prusalink.ini` and
 does not get created automatically. The configuration documentation can be
 found under `prusa/link/data/prusalink.ini`. The executable argument
 documentation is provided in the standard help text screen shown after
-running `prusa-link --help`
+running `prusalink --help`
 
 The `prusa_printer_settings.ini` file is created by the PrusaLink wizard,
 and can be downloaded from the PrusaConnect settings page once you
@@ -100,9 +100,9 @@ iptables -t nat -I OUTPUT -p tcp -o <loopback device name> -d localhost --dport 
 
 ## Usage
 By default, the executable starts the daemon process and exits.
-The executable is called `prusa-link` and can be used to control the daemon,
+The executable is called `prusalink` and can be used to control the daemon,
 if you want to run it in your terminal instead, use the `-f` option
-To get the most recent help screen use `prusa-link --help`, here's
+To get the most recent help screen use `prusalink --help`, here's
 what it says in 0.7.0
 ```
 usage: prusalink [-h] [-f] [-c <file>] [-p <FILE>] [-a <ADDRESS>] [-t <PORT>]
