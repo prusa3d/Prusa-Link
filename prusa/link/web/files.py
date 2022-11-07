@@ -25,7 +25,8 @@ from prusa.connect.printer.download import (Transfer, TransferRunningError,
 from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 
 from .. import conditions
-from ..const import LOCAL_STORAGE_NAME, PATH_WAIT_TIMEOUT
+from ..const import LOCAL_STORAGE_NAME, PATH_WAIT_TIMEOUT, \
+    HEADER_DATETIME_FORMAT
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.job import Job, JobState
 from ..printer_adapter.prusa_link import TransferCallbackState
@@ -35,7 +36,6 @@ from .lib.files import (file_to_api, gcode_analysis, get_os_path, local_refs,
                         sdcard_refs, sort_files)
 
 log = logging.getLogger(__name__)
-HEADER_DATETIME_FORMAT = "%a, %d %b %Y %X GMT"
 
 
 def check_filename(filename):
