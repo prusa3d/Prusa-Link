@@ -1,19 +1,27 @@
 """Camera web API - /api/v1/cameras handlers"""
 from time import time, sleep
+from datetime import datetime, timedelta
 
 from poorwsgi import state
-
 from poorwsgi.response import JSONResponse, Response
 
 from prusa.connect.printer.camera import Camera
 from prusa.connect.printer.const import CameraAlreadyConnected, \
-    NotSupported, CameraNotDetected, ConfigError, CapabilityType
+    NotSupported, CameraNotDetected, ConfigError, CapabilityType, PHOTO_TIMEOUT
+
+from ..const import HEADER_DATETIME_FORMAT
+
 from .lib.core import app
 from .lib.auth import check_api_digest
-from ..const import CAMERA_REGISTER_TIMEOUT, QUIT_INTERVAL
+from ..const import CAMERA_REGISTER_TIMEOUT, QUIT_INTERVAL, TIME_FOR_SNAPSHOT
 
 
-def photo_by_camera_id(camera_id):
+def format_header(header):
+    """Return datetime header in correct format"""
+    return header.strftime(HEADER_DATETIME_FORMAT)
+
+
+def photo_by_camera_id(camera_id, req):
     """Returns the response for two endpoints
     "snap" on the first camera in order and "snap" on a specific camera"""
     camera_configurator = app.daemon.prusa_link.camera_configurator
@@ -26,20 +34,43 @@ def photo_by_camera_id(camera_id):
         return JSONResponse(status_code=state.HTTP_NO_CONTENT,
                             message=f"Camera with id: {camera_id} did not "
                                     f"take a photo yet.")
+
+    # Give PrusaLink some time to take a new snapshot
+    timeout = PHOTO_TIMEOUT + TIME_FOR_SNAPSHOT
+    last_modified_timestamp = camera.last_photo_timestamp
+    last_modified = datetime.utcfromtimestamp(last_modified_timestamp)
+    expires = last_modified + timedelta(seconds=timeout)
+
+    headers = {
+        'Date': format_header(datetime.utcnow()),
+        'Last-Modified': format_header(last_modified),
+        'Expires': format_header(expires),
+        'Cache-Control': f'private, max-age={timeout}'
+    }
+
+    if 'If-Modified-Since' in req.headers:
+        header_datetime = datetime.strptime(req.headers['If-Modified-Since'],
+                                            HEADER_DATETIME_FORMAT)
+
+        if last_modified <= header_datetime:
+            return Response(status_code=state.HTTP_NOT_MODIFIED,
+                            headers=headers)
+
     return Response(camera.last_photo,
+                    headers=headers,
                     content_type='image/jpeg')
 
 
 @app.route("/api/v1/cameras/snap", method=state.METHOD_GET)
 @check_api_digest
-def default_camera_snap(_):
+def default_camera_snap(req):
     """Return the last photo of the default (first in order) camera"""
     camera_controller = app.daemon.prusa_link.printer.camera_controller
 
     for camera in camera_controller.cameras_in_order:
         if not camera.supports(CapabilityType.IMAGING):
             continue
-        return photo_by_camera_id(camera.camera_id)
+        return photo_by_camera_id(camera.camera_id, req)
     return JSONResponse(status_code=state.HTTP_NOT_FOUND,
                         message="Camera is not available")
 
@@ -85,9 +116,9 @@ def set_order(req):
 
 @app.route("/api/v1/cameras/<camera_id>/snap", method=state.METHOD_GET)
 @check_api_digest
-def get_photo_by_camera_id(_, camera_id):
+def get_photo_by_camera_id(req, camera_id):
     """Gets the last image from the specified camera"""
-    return photo_by_camera_id(camera_id)
+    return photo_by_camera_id(camera_id, req)
 
 
 @app.route("/api/v1/cameras/<camera_id>/snap", method=state.METHOD_POST)
@@ -134,8 +165,8 @@ def camera_config(_, camera_id):
     json_settings = camera.json_from_settings(settings)
     if CapabilityType.RESOLUTION in camera.supported_capabilities:
         json_settings["available_resolutions"] = [
-                      dict(resolution)
-                      for resolution in camera.available_resolutions
+            dict(resolution)
+            for resolution in camera.available_resolutions
         ]
     string_caps = map(lambda i: i.name, camera.supported_capabilities)
     json_settings["supported_capabilities"] = list(string_caps)

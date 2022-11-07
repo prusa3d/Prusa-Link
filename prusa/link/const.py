@@ -15,6 +15,9 @@ from .printer_adapter.structures.model_classes import PrintMode, PrintState
 
 instance_id = uuid.uuid4()
 
+# e.g. Mon, 07 Nov 2022 13:52:49 GMT
+HEADER_DATETIME_FORMAT = "%a, %d %b %Y %X GMT"
+
 PRINTER_TYPES = {
     250: PrinterType.I3MK25,
     252: PrinterType.I3MK25S,
@@ -89,6 +92,7 @@ ATTENTION_CLEAR_INTERVAL = 5
 CAMERA_INIT_DELAY = 2
 CAMERA_SCAN_INTERVAL = 30
 CAMERA_REGISTER_TIMEOUT = 5
+TIME_FOR_SNAPSHOT = 1
 
 # --- Lcd queue ---
 LCD_QUEUE_SIZE = 30
