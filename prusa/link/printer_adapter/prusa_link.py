@@ -324,21 +324,6 @@ class PrusaLink:
                     result = enqueue_matchable(
                         self.serial_queue, "M117 Breaking",
                         re.compile(r"something the printer will not tell us"))
-                elif command == "cameras":
-                    configurator = self.camera_configurator
-                    new_camera_configs = configurator.get_new_cameras()
-                    enumerated = []
-                    for i, pair in enumerate(new_camera_configs.items(),
-                                             start=1):
-                        camera_id, config = pair
-                        print(f"Camera #{i} {camera_id}: {config}")
-                        enumerated.append(camera_id)
-                    selection = int(input(
-                        f"Select a camera (1 - {len(new_camera_configs)}): "))
-                    camera_id = enumerated[selection - 1]
-                    config = new_camera_configs[camera_id]
-                    self.camera_configurator.add_camera(camera_id, config)
-
                 if result:
                     print(result)
             # pylint: disable=bare-except
