@@ -8,71 +8,87 @@
     <div class="row">
         <div class="col-md-12">
             <h1 class="align-center">Welcome to PrusaLink configuration Wizard</h1>
-
             {% if wizard.daemon.prusa_link and not wizard.daemon.prusa_link.model.serial_adapter.using_port %}
-                {% if wizard.daemon.prusa_link.model.serial_adapter.ports %}
-                    <h3>Unfortunately we can't detect your printer on any serial port, or it's booting. Below you can find a list of detected ports and its status.</h3>
-                    <p class="align-center" id="ports"></p>
-                    <script>
-                        let is_selected = false
-                        function getPortHtml(portData) {
-                            let symbol = "⌛";
-                            let status = "WAITING";
+                <div class="img-center">
+                    <img src="img/printers/rpi_mk3.svg" height="200px"/>
+                </div>
+                <h3>Unfortunately we can't detect your printer on any serial port, or it's booting.</h3>
+                <p>Please make sure the RPi port is set to ON and your printer is idle, showing the status screen. You can also try going over your connections one more time.</p>
+                <p>PrusaLink takes some time to properly initialize. Try waiting a few seconds and refresh the page. If the problem still persists, power cycle your printer / PrusaLink and try again.</p>
 
-                            if (portData.checked) {
-                                if (portData.selected) {
-                                    status = "selected";
-                                    symbol = "〈";
-                                    is_selected = true
-                                } else if (portData.usable) {
-                                    status = "usable";
-                                    symbol = "✓";
-                                } else {
-                                    symbol = "✘";
-                                    status = "NOT USABLE";
+                <p>If everything fails, let us know on <a href="https://forum.prusaprinters.org/forum/prusa-connect-prusalink/">the forum</a> or contact support at info@prusa3d.com</p>
+
+                <div onclick="showPortsSection()" id="ports_section_show">Show more info...</div>
+                <div id="ports_section">
+                        {% if wizard.daemon.prusa_link.model.serial_adapter.ports %}
+                            <h3>Below you can find a list of detected ports and its status.</h3>
+                            <p class="align-center" id="ports"></p>
+                            <script>
+                                function showPortsSection() {
+                                  var ports_section = document.getElementById("ports_section");
+                                  var textShow = document.getElementById("ports_section_show");
+
+                                  if (ports_section.style.display === "inline") {
+                                    textShow.innerHTML = "Show more info...";
+                                    ports_section.style.display = "none";
+                                  } else {
+                                    textShow.innerHTML = "Hide more info";
+                                    ports_section.style.display = "inline";
+                                  }
                                 }
-                            }
 
-                            const rpi = portData.is_rpi_port ? "[RPi]" : ""
-                            return `<li>${portData.path}: ${rpi} ${status} ... ${symbol}</li>`
-                        }
+                                let is_selected = false
+                                function getPortHtml(portData) {
+                                    let symbol = "⌛";
+                                    let status = "WAITING";
 
-                        function setPortsHtml(dataFromAPI) {
-                            document.getElementById("ports").innerHTML =
-                                `<ul style="list-style-type:none;">${dataFromAPI.ports.map(getPortHtml)}</ul>`
+                                    if (portData.checked) {
+                                        if (portData.selected) {
+                                            status = "selected";
+                                            symbol = "〈";
+                                            is_selected = true
+                                        } else if (portData.usable) {
+                                            status = "usable";
+                                            symbol = "✓";
+                                        } else {
+                                            symbol = "✘";
+                                            status = "NOT USABLE";
+                                        }
+                                    }
 
-                            if (is_selected) {
-                                window.location.reload(1);
-                            }
-                        }
+                                    const rpi = portData.is_rpi_port ? "[RPi]" : ""
+                                    return `<li>${portData.path}: ${rpi} ${status} ... ${symbol}</li>`
+                                }
 
-                        const doUpdate = () => {
-                            fetch('/api/ports')
-                                .then((response) => response.json())
-                                .then(setPortsHtml)
-                                .catch((err) => console.error(err))
-                                .finally(() => setTimeout(doUpdate, 1000));
-                        };
-                        doUpdate();
-                    </script>
-                {% else %}
-                    <h3>Unfortunately we can't detect any active serial port.</h3>
-                    <script>
-                        setTimeout(function(){
-                            window.location.reload(1);
-                            }, 1000);
-                    </script>
-                {% endif %}
-                    <p>Please make sure the RPi port is set to ON and your printer is idle, showing the status screen.
-            You can also try going over your connections one more time.</p>
+                                function setPortsHtml(dataFromAPI) {
+                                    document.getElementById("ports").innerHTML =
+                                        `<ul style="list-style-type:none;">${dataFromAPI.ports.map(getPortHtml)}</ul>`
 
-            <p>PrusaLink takes some time to properly initialize. Try waiting a few seconds and refresh the page. If the problem still persists, power cycle your printer / PrusaLink and try again.</p>
+                                    if (is_selected) {
+                                        window.location.reload(1);
+                                    }
+                                }
 
-            <p>If everything fails, let us know on <a href="https://forum.prusaprinters.org/forum/prusa-connect-prusalink/">the forum</a>
-                or contact support at info@prusa3d.com</p>
+                                const doUpdate = () => {
+                                    fetch('/api/ports')
+                                        .then((response) => response.json())
+                                        .then(setPortsHtml)
+                                        .catch((err) => console.error(err))
+                                        .finally(() => setTimeout(doUpdate, 1000));
+                                };
+                                doUpdate();
+                            </script>
+                        {% else %}
+                            <h3>Unfortunately we can't detect any active serial port.</h3>
+                            <script>
+                                setTimeout(function(){
+                                    window.location.reload(1);
+                                    }, 1000);
+                            </script>
+                        {% endif %}
+                    </div>
 
-            <a href="/wizard" class="btn btn-outline-light align-center" style="width: 200px;margin: 2em auto;display: block;">Refresh</a>
-
+                <a href="/wizard" class="btn btn-outline-light align-center" style="width: 200px;margin: 2em auto;display: block;">Refresh</a>
 
             {% elif not wizard.daemon.prusa_link or not wizard.daemon.prusa_link.printer %}
 
@@ -126,10 +142,25 @@
                         <a href="/wizard/serial" class="btn btn-outline-light">Serial Number | NEXT <img src="img/arrow-right.svg" height="16" /></a>
                     </div>
                 {% else %}
-                    <div class="col"><b>Great!</b> You can continue to Authorization</div>
+                    <div class="col"><b>Great!</b> You can continue to setup your credentials, <b>or</b> you can restore printer settings from your <i>prusa_printer_settings.ini</i> file</div>
+                    <br/>
                     <div class="col-xs-auto">
-                        <a href="/wizard/auth" class="btn btn-outline-light">Authorization | NEXT <img src="img/arrow-right.svg" height="16" /></a>
+
+
                     </div>
+
+            <div class="container navigation">
+              <div class="row">
+                  <div class="col">
+                    <a id="restore_btn" href="/wizard/restore" class="btn btn-outline-light" onmouseover="changeIconImage('img/reset-icon-black.svg')" onmouseout="changeIconImage('img/reset-icon-white.svg')">Restore settings <img id="restore_icon" height="25" src="img/reset-icon-white.svg">
+                    </a>
+                  </div>
+                  <div class="col-xs-auto">
+                    <a href="/wizard/credentials" class="btn btn-outline-light">Setup credentials | NEXT <img src="img/arrow-right.svg" height="16" /></a>
+                  </div>
+              </div>
+            </div>
+
                 {% endif %}
                 </div>
             </div>
@@ -139,6 +170,12 @@
         </div>{# /col-md-12 so end of content #}
     </div>{# /row #}
 </div>{# /container #}
+
+<script>
+     function changeIconImage(img) {
+    document.getElementById('restore_icon').style.content = `url(${img})`;
+  }
+</script>
 
 {% include "_wizard.html" %}
 {% include "_footer.html" %}

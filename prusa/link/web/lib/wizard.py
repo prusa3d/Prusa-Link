@@ -86,6 +86,7 @@ class Wizard:
         # auth
         self.username = _app.settings.service_local.username
         self.digest = None
+        self.restored_settings = False
 
         # network
         self.net_hostname = _app.settings.network.hostname
@@ -120,6 +121,16 @@ class Wizard:
         """Proxy property for daemon.prusa_link.printer.sn."""
         return self.daemon.prusa_link.printer.sn
 
+    def check_username(self):
+        """Check if username is valid"""
+        errors = {}
+        if self.username.startswith(' ') or self.username.endswith(' '):
+            errors['username_spaces'] = True
+        if not VALID_USERNAME_REGEX.match(self.username):
+            errors['username'] = True
+        self.errors['credentials'] = errors
+        return not errors
+
     def check_credentials(self, password, repassword):
         """Check if auth values are valid."""
         errors = {}
@@ -133,18 +144,16 @@ class Wizard:
             errors['password'] = True
         if password != repassword:
             errors['repassword'] = True
-        self.errors['auth'] = errors
+        self.errors['credentials'] = errors
         return not errors
 
     def check_printer(self):
         """Check if printer name and location are valid."""
         errors = {}
-        if not self.printer_name or \
-                any(ch in self.printer_name for ch in INVALID_CHARACTERS):
+        if any(ch in self.printer_name for ch in INVALID_CHARACTERS):
             errors['name'] = True
 
-        if not self.printer_location or \
-                any(ch in self.printer_location for ch in INVALID_CHARACTERS):
+        if any(ch in self.printer_location for ch in INVALID_CHARACTERS):
             errors['location'] = True
 
         self.errors['printer'] = errors
