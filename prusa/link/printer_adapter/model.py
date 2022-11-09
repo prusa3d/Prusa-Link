@@ -29,5 +29,5 @@ class Model(metaclass=MCSingleton):
     folder_storage: StorageData
     filesystem_storage: StorageData
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.latest_telemetry: Telemetry = Telemetry()

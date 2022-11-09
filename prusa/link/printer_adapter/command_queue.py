@@ -6,6 +6,7 @@ withch are the queue members
 import logging
 from queue import Empty, Queue
 from threading import Event, RLock
+from typing import Any, Dict, Optional
 
 from ..const import QUIT_INTERVAL
 from .command import Command, CommandFailed
@@ -15,14 +16,17 @@ from .updatable import Thread, prctl_name
 log = logging.getLogger(__name__)
 
 
+CommandResult = Dict[str, Any]
+
+
 class CommandAdapter:
     """Adapts the command class for processing in a queue"""
 
     # pylint: disable=too-few-public-methods
-    def __init__(self, command):
+    def __init__(self, command) -> None:
         self.processed = Event()
-        self.data = None
-        self.exception = None
+        self.data: CommandResult = {}
+        self.exception: Optional[Exception] = None
         self.command: Command = command
 
 
@@ -32,26 +36,26 @@ class CommandQueue:
     Prevents command racing
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.running = False
-        self.command_queue = Queue()
-        self.current_command_adapter = None
+        self.command_queue: Queue[CommandAdapter] = Queue()
+        self.current_command_adapter: Optional[CommandAdapter] = None
         self.runner_thread = Thread(target=self.process_queue,
                                     name="command_queue",
                                     daemon=True)
         self.enqueue_lock = RLock()
 
-    def start(self):
+    def start(self) -> None:
         """Start the command processing"""
         self.running = True
         self.runner_thread.start()
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the command processing"""
         self.running = False
         self._stop_current()
 
-    def enqueue_command(self, command: Command):
+    def enqueue_command(self, command: Command) -> CommandAdapter:
         """
         Ask for a command to be processed
         :param command: The command to be processed
@@ -90,7 +94,7 @@ class CommandQueue:
             self.clear_queue()
             return self.do_command(command)
 
-    def process_queue(self):
+    def process_queue(self) -> None:
         """
         Runs until stopped, processes commands in queue, writes outputs
         into a dict

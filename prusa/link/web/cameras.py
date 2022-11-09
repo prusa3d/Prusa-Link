@@ -4,7 +4,6 @@ from poorwsgi import state
 from poorwsgi.response import JSONResponse, Response
 
 from prusa.connect.printer.camera import Camera
-from prusa.connect.printer.camera_configurator import CameraConfigurator
 from prusa.connect.printer.const import CameraAlreadyConnected, \
     NotSupported, CameraNotDetected, ConfigError, CapabilityType
 from .lib.core import app
@@ -139,7 +138,6 @@ def camera_config(_, camera_id):
 def add_camera(req, camera_id):
     """Either set up a new camera or fix a broken one.
     Does not allow changing settings on a working one!"""
-    camera_configurator: CameraConfigurator
     camera_configurator = app.daemon.prusa_link.camera_configurator
 
     config = req.json.get('config')

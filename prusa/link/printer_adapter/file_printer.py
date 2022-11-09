@@ -3,6 +3,7 @@ import logging
 import os
 from collections import deque
 from time import sleep
+from typing import Optional
 
 from blinker import Signal  # type: ignore
 
@@ -33,7 +34,7 @@ class FilePrinter(metaclass=MCSingleton):
 
     # pylint: disable=too-many-arguments
     def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
-                 model: Model, cfg: Config, print_stats: PrintStats):
+                 model: Model, cfg: Config, print_stats: PrintStats) -> None:
         self.serial_queue = serial_queue
         self.serial_parser = serial_parser
         self.print_stats = print_stats
@@ -64,34 +65,34 @@ class FilePrinter(metaclass=MCSingleton):
         self.serial_parser.add_handler(RESUMED_REGEX,
                                        lambda sender, match: self.resume())
 
-        self.thread = None
+        self.thread: Optional[Thread] = None
 
-    def start(self):
+    def start(self) -> None:
         """Power panic is not yet implemented, sso this does nothing"""
         # self.check_failed_print()
 
-    def stop(self):
+    def stop(self) -> None:
         """Indicate to the printing thread to stop"""
         if self.data.printing:
             self.stop_print()
 
-    def wait_stopped(self):
+    def wait_stopped(self) -> None:
         """Wait for the printing thread to stop"""
         if self.thread is not None and self.thread.is_alive():
             self.thread.join()
 
     @property
-    def pp_exists(self):
+    def pp_exists(self) -> bool:
         """Checks whether a file created on power panic exists"""
         return os.path.exists(self.data.pp_file_path)
 
-    def check_failed_print(self):
+    def check_failed_print(self) -> None:
         """Not implemented, would try to resume after power panic or error"""
         # log.warning("There was a loss of power, let's try to recover")
         if self.pp_exists:
             os.remove(self.data.pp_file_path)
 
-    def print(self, os_path):
+    def print(self, os_path: str) -> None:
         """Starts a file print for the supplied path"""
         if self.data.printing:
             raise RuntimeError("Cannot print two things at once")
@@ -201,7 +202,7 @@ class FilePrinter(metaclass=MCSingleton):
                                           to_checksum=True)
         self.data.enqueued.append(instruction)
 
-    def wait_for_queue(self):
+    def wait_for_queue(self) -> None:
         """Gets rid of already confirmed messages and waits for any
         unconfirmed surplus"""
         # Pop all already confirmed instructions from the queue

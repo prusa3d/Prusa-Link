@@ -43,15 +43,15 @@ class WatchedItem(Watchable):
     # pylint: disable=too-many-arguments
     def __init__(self,
                  name,
-                 gather_function: Callable[[], Any] = None,
-                 write_function: Callable[[Any], None] = None,
+                 gather_function: Optional[Callable[[], Any]] = None,
+                 write_function: Optional[Callable[[Any], None]] = None,
                  validation_function: Optional[Callable[[Any], bool]] = None,
                  interval=None,
                  timeout=None,
                  on_fail_interval=default_on_fail_interval):
         super().__init__()
         self.name = name
-        self.value = None
+        self.value: Any = None
         self.lock = RLock()
 
         self.in_groups: Set["WatchedGroup"] = set()

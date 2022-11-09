@@ -4,16 +4,18 @@ import math
 from collections import deque
 from copy import copy
 from time import time
-from typing import Deque, List, Set
+from typing import Deque, List, Set, Optional
 
 
 class LCDLine:
     """Info about the text to show and the chime to play"""
 
-    def __init__(self, text, delay=5.0, resets_idle=False, chime_gcode=None):
+    def __init__(self, text: str, delay: float = 5.0,
+                 resets_idle: bool = False,
+                 chime_gcode: Optional[List[str]] = None) -> None:
         self.text: str = text
         self.delay: float = delay
-        self.chime_gcode = []
+        self.chime_gcode: List[str] = []
         if chime_gcode is not None:
             self.chime_gcode = chime_gcode
         self.resets_idle = resets_idle

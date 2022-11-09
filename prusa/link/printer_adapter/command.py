@@ -33,7 +33,7 @@ class Command:
     # pylint: disable=too-many-instance-attributes
     command_name = "command"
 
-    def __init__(self, command_id=None, source=Source.CONNECT):
+    def __init__(self, command_id=None, source=Source.CONNECT) -> None:
         self.serial_queue: MonitoredSerialQueue = \
             MonitoredSerialQueue.get_instance()
         self.serial_adapter: SerialAdapter = SerialAdapter.get_instance()

@@ -6,7 +6,7 @@ import re
 from enum import Enum
 from threading import Event
 from threading import enumerate as enumerate_threads
-from typing import Any, Dict
+from typing import Any, Dict, Optional, List
 
 from prusa.connect.printer.camera_configurator import CameraConfigurator
 from prusa.connect.printer import Command as SDKCommand
@@ -17,6 +17,7 @@ from prusa.connect.printer.const import Command as CommandType
 from prusa.connect.printer.const import Event as EventType
 from prusa.connect.printer.const import Source, State
 from prusa.connect.printer.files import File
+from prusa.connect.printer.models import Sheet as SDKSheet
 from ..camera import V4L2Driver
 
 from ..conditions import HW, ROOT_COND, UPGRADED, use_connect_errors
@@ -39,7 +40,7 @@ from .command_handlers import (CancelReady, ExecuteGcode, JobInfo,
                                LoadFilament, PausePrint, ResetPrinter,
                                ResumePrint, SetReady, StartPrint, StopPrint,
                                UnloadFilament)
-from .command_queue import CommandQueue
+from .command_queue import CommandQueue, CommandResult
 from .file_printer import FilePrinter
 from .filesystem.sd_card import SDState
 from .filesystem.storage_controller import StorageController
@@ -82,7 +83,7 @@ class PrusaLink:
     It connects signals with their handlers
     """
 
-    def __init__(self, cfg: Config, settings):
+    def __init__(self, cfg: Config, settings: Settings) -> None:
         # pylint: disable=too-many-statements
         self.cfg: Config = cfg
         log.info('Starting adapter for port %s', self.cfg.printer.port)
@@ -294,7 +295,7 @@ class PrusaLink:
                    daemon=True).start()
 
     # pylint: disable=too-many-branches
-    def debug_shell(self):
+    def debug_shell(self) -> None:
         """
         Calling this in a thread that receives stdin enables th user to
         give PrusaLink commands through the terminal
@@ -303,7 +304,7 @@ class PrusaLink:
         while not self.quit_evt.is_set():
             try:
                 command = input("[PrusaLink]: ")
-                result = ""
+                result: Any = ""
                 if command == "pause":
                     result = self.command_queue.do_command(PausePrint())
                 elif command == "resume":
@@ -330,7 +331,7 @@ class PrusaLink:
             except:  # noqa: E722
                 log.exception("Debug console errored out")
 
-    def stop(self, fast=False):
+    def stop(self, fast: bool = False) -> None:
         """
         Calls stop on every module containing a thread, for debugging prints
         out all threads which are still running and sets an event to signalize
@@ -389,12 +390,13 @@ class PrusaLink:
         log.info("Stop completed%s", ' fast!' if fast else '')
 
     # --- Download callbacks ---
-    def printed_file_cb(self):
+    def printed_file_cb(self) -> Optional[str]:
         """Return absolute path of the currently printed file."""
         if self.job.data.job_state == JobState.IN_PROGRESS:
             return self.job.data.selected_file_path
         return None
 
+    # Not type annotated, has problems
     def download_finished_cb(self, transfer):
         """Called when download is finished successfully"""
         if not transfer.to_print:
@@ -421,7 +423,7 @@ class PrusaLink:
 
     # --- Command handlers ---
 
-    def execute_gcode(self, caller: SDKCommand):
+    def execute_gcode(self, caller: SDKCommand) -> CommandResult:
         """
         Connects the command to exectue gcode from CONNECT with its handler
         """
@@ -431,7 +433,7 @@ class PrusaLink:
                                command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
-    def start_print(self, caller: SDKCommand):
+    def start_print(self, caller: SDKCommand) -> CommandResult:
         """
         Connects the command to start print from CONNECT with its handler
         """
@@ -440,66 +442,66 @@ class PrusaLink:
                              command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
-    def pause_print(self, caller: SDKCommand):
+    def pause_print(self, caller: SDKCommand) -> CommandResult:
         """
         Connects the command to pause print from CONNECT with its handler
         """
         command = PausePrint(command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
-    def resume_print(self, caller: SDKCommand):
+    def resume_print(self, caller: SDKCommand) -> CommandResult:
         """
         Connects the command to resume print from CONNECT with its handler
         """
         command = ResumePrint(command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
-    def stop_print(self, caller: SDKCommand):
+    def stop_print(self, caller: SDKCommand) -> CommandResult:
         """
         Connects the command to stop print from CONNECT with its handler
         """
         command = StopPrint(command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
-    def reset_printer(self, caller: SDKCommand):
+    def reset_printer(self, caller: SDKCommand) -> CommandResult:
         """
         Connects the command to reset printer from CONNECT with its handler
         """
         command = ResetPrinter(command_id=caller.command_id)
         return self.command_queue.force_command(command)
 
-    def job_info(self, caller: SDKCommand):
+    def job_info(self, caller: SDKCommand) -> CommandResult:
         """
         Connects the command to send job info from CONNECT with its handler
         """
         command = JobInfo(command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
-    def load_filament(self, caller: SDKCommand):
+    def load_filament(self, caller: SDKCommand) -> CommandResult:
         """Load filament"""
         command = LoadFilament(parameters=caller.kwargs,
                                command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
-    def unload_filament(self, caller: SDKCommand):
+    def unload_filament(self, caller: SDKCommand) -> CommandResult:
         """Unload filament"""
         command = UnloadFilament(parameters=caller.kwargs,
                                  command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
-    def set_printer_ready(self, caller: SDKCommand):
+    def set_printer_ready(self, caller: SDKCommand) -> CommandResult:
         """Set printer ready"""
         command = SetReady(command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
-    def cancel_printer_ready(self, caller: SDKCommand):
+    def cancel_printer_ready(self, caller: SDKCommand) -> CommandResult:
         """Cancel printer ready"""
         command = CancelReady(command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
     # --- FW Command handlers ---
 
-    def fw_pause_print(self):
+    def fw_pause_print(self) -> None:
         """
         Pauses the print, when fw asks to through serial
         This is activated by the user most of the time
@@ -509,7 +511,7 @@ class PrusaLink:
         command = PausePrint(source=Source.FIRMWARE)
         self.command_queue.enqueue_command(command)
 
-    def fw_resume_print(self):
+    def fw_resume_print(self) -> None:
         """
         Pauses the print, when fw asks to through serial
         This happens, when the user presses resume on the LCD
@@ -520,27 +522,27 @@ class PrusaLink:
 
     # --- Signal handlers ---
 
-    def mbl_data_changed(self, data):
+    def mbl_data_changed(self, data) -> None:
         """Sends the mesh bed leveling data to Connect"""
         self.printer.mbl = data["data"]
         self.printer.event_cb(event=EventType.MESH_BED_DATA,
                               source=Source.MARLIN,
                               mbl=data["data"])
 
-    def sheet_settings_changed(self, printer_sheets):
+    def sheet_settings_changed(self, printer_sheets: List[Sheet]) -> None:
         """Sends the new sheet settings"""
         if not self.printer.is_initialised():
             return
-        sdk_sheets = []
+        sdk_sheets: List[SDKSheet] = []
+        sheet: Sheet
         for sheet in printer_sheets:
-            sheet: Sheet
             sdk_sheets.append(dict(name=sheet.name, z_offset=sheet.z_offset))
         self.printer.sheet_settings = sdk_sheets
         self.printer.event_cb(event=EventType.INFO,
                               source=Source.USER,
                               sheet_settings=sdk_sheets)
 
-    def active_sheet_changed(self, active_sheet):
+    def active_sheet_changed(self, active_sheet) -> None:
         """Sends the new active sheet"""
         if not self.printer.is_initialised():
             return
@@ -549,9 +551,8 @@ class PrusaLink:
                               source=Source.USER,
                               active_sheet=active_sheet)
 
-    def job_info_updated(self, sender):
+    def job_info_updated(self, _) -> None:
         """On job info update, sends the updated job info to the Connect"""
-        assert sender is not None
         # pylint: disable=unsupported-assignment-operation,not-a-mapping
         try:
             job_info: Dict[str, Any] = self.command_queue.do_command(JobInfo())
@@ -561,13 +562,12 @@ class PrusaLink:
             job_info["source"] = Source.FIRMWARE
             self.printer.event_cb(**job_info)
 
-    def job_id_updated(self, sender, job_id):
+    def job_id_updated(self, _, job_id: int) -> None:
         """Passes the job_id into the SDK"""
-        assert sender
         self.printer.job_id = job_id
         self.printer_polling.ensure_job_id()
 
-    def printer_type_changed(self, item):
+    def printer_type_changed(self, item: WatchedItem) -> None:
         """Watches for printer type mismatches"""
         if not self.settings.printer.type:
             return
@@ -594,7 +594,7 @@ class PrusaLink:
 
             UPGRADED.state = CondState.OK
 
-    def print_state_changed(self, item: WatchedItem):
+    def print_state_changed(self, item: WatchedItem) -> None:
         """Handles the newly observed print state"""
         assert item.value is not None
         state_to_handler = {
@@ -605,7 +605,7 @@ class PrusaLink:
         }
         state_to_handler[item.value]()
 
-    def observed_print(self):
+    def observed_print(self) -> None:
         """
         The telemetry can observe some states, this method connects
         it observing a print in progress to the state manager
@@ -615,7 +615,7 @@ class PrusaLink:
         self.state_manager.printing()
         self.state_manager.stop_expecting_change()
 
-    def observed_sd_pause(self):
+    def observed_sd_pause(self) -> None:
         """
         Connects telemetry observing a paused sd print to the state manager
         """
@@ -624,7 +624,7 @@ class PrusaLink:
         self.state_manager.paused()
         self.state_manager.stop_expecting_change()
 
-    def observed_serial_pause(self):
+    def observed_serial_pause(self) -> None:
         """
         If the printer says the serial print is paused, but we're not serial
         printing at all, we'll resolve it by stopping whatever was going on
@@ -633,7 +633,7 @@ class PrusaLink:
         if not self.model.file_printer.printing:
             self.command_queue.enqueue_command(StopPrint())
 
-    def observed_no_print(self):
+    def observed_no_print(self) -> None:
         """
         Useful only when not serial printing. Connects telemetry
         observing there's no print in progress to the state_manager
@@ -646,61 +646,49 @@ class PrusaLink:
             self.state_manager.stopped_or_not_printing()
             self.state_manager.stop_expecting_change()
 
-    def progress_broken(self, progress_broken):
+    def progress_broken(self, progress_broken: bool) -> None:
         """
         Connects telemetry, which can see the progress returning garbage
         values to the job component
         """
         self.job.progress_broken(progress_broken)
 
-    def byte_position_changed(self, sender, current: int, total: int):
+    def byte_position_changed(self, _, current: int, total: int) -> None:
         """Passes byte positions to the job component"""
-        assert sender is not None
         self.job.file_position(current=current, total=total)
 
-    def mixed_path_changed(self, path: str):
+    def mixed_path_changed(self, path: str) -> None:
         """Connects telemetry observed file path to the job component"""
         self.job.process_mixed_path(path)
 
-    def _reset_print_stats(self):
+    def _reset_print_stats(self) -> None:
         """Reset print stats on the printer to say -1"""
         gcode = get_print_stats_gcode()
         enqueue_instruction(self.serial_queue, gcode)
 
-    def file_printer_started_printing(self, sender):
-        """
-        Tells the state manager and telemetry about a new print job
-        starting
-        """
-        assert sender is not None
+    def file_printer_started_printing(self, _) -> None:
+        """Tells the state manager about a new print job starting"""
         self.state_manager.file_printer_started_printing()
 
-    def file_printer_stopped_printing(self, sender):
+    def file_printer_stopped_printing(self, _) -> None:
         """Connects file printer stopping with state manager"""
-        assert sender is not None
         self.state_manager.stopped()
 
-    def file_printer_finished_printing(self, sender):
+    def file_printer_finished_printing(self, _) -> None:
         """Connects file printer finishing a print with state manager"""
-        assert sender is not None
         self.state_manager.finished()
 
-    def serial_failed(self, sender):
+    def serial_failed(self, _) -> None:
         """Connects serial errors with state manager"""
-        assert sender is not None
         self.state_manager.serial_error()
 
-    def serial_renewed(self, sender):
+    def serial_renewed(self, _) -> None:
         """Connects serial recovery with state manager"""
-        assert sender is not None
         self.state_manager.serial_error_resolved()
         self.printer_reconnected()
 
-    def set_sn(self, sender, serial_number):
-        """
-        Set serial number and fingerprint
-        """
-        assert sender is not None
+    def set_sn(self, _, serial_number: str) -> None:
+        """Set serial number and fingerprint"""
         # Only do it if the serial number is missing
         # Setting it for a second time raises an error for some reason
         if self.printer.sn is None:
@@ -711,7 +699,7 @@ class PrusaLink:
             raise RuntimeError(f"Serial numbers differ original: "
                                f"{self.printer.sn} new one: {serial_number}.")
 
-    def printer_registered(self, token):
+    def printer_registered(self, token: str) -> None:
         """Store settings with updated token when printer was registered."""
         printer_type_string = PRINTER_CONF_TYPES.inverse[self.printer.type]
         self.settings.printer.type = printer_type_string
@@ -721,41 +709,33 @@ class PrusaLink:
         with open(self.cfg.printer.settings, 'w', encoding='utf-8') as ini:
             self.settings.write(ini)
 
-    def ip_updated(self, sender):
-        """
-        On every ip change from ip updater sends a new info
-        """
-        assert sender is not None
+    def ip_updated(self, _) -> None:
+        """On every ip change from ip updater sends a new info"""
         self.printer_polling.invalidate_network_info()
 
-    def folder_attach(self, sender, path):
+    def folder_attach(self, _, path: str) -> None:
         """Connects a folder being attached to PrusaConnect events"""
-        assert sender is not None
         self.printer.attach(path, os.path.basename(path))
 
-    def folder_dettach(self, sender, path):
+    def folder_dettach(self, _, path: str) -> None:
         """Connects a folder being dettached to PrusaConnect events"""
-        assert sender is not None
         self.printer.dettach(os.path.basename(path))
 
-    def sd_attach(self, sender, files: File):
+    def sd_attach(self, _, files: File) -> None:
         """Connects the sd being attached to PrusaConnect events"""
-        assert sender is not None
         self.printer.fs.attach(SD_STORAGE_NAME, files, "", use_inotify=False)
 
-    def sd_dettach(self, sender):
+    def sd_dettach(self, _) -> None:
         """Connects the sd being detached to PrusaConnect events"""
-        assert sender is not None
         self.printer.fs.dettach(SD_STORAGE_NAME)
 
-    def instruction_confirmed(self, sender):
+    def instruction_confirmed(self, _) -> None:
         """
         Connects instruction confirmation from serial queue to state manager
         """
-        assert sender is not None
         self.state_manager.instruction_confirmed()
 
-    def printer_reconnected(self, *_, **__):
+    def printer_reconnected(self, *_, **__) -> None:
         """
         Connects the printer reconnect (reset) to many other components.
         Stops serial prints, flushes the serial queue, updates the state and
@@ -776,29 +756,26 @@ class PrusaLink:
         self.telemetry_passer.wipe_telemetry()
 
     @property
-    def sd_ready(self):
+    def sd_ready(self) -> bool:
         """Returns if sd_state is PRESENT."""
         return self.model.sd_card.sd_state == SDState.PRESENT
 
-    def pre_state_change(self, sender: StateManager, command_id):
+    def pre_state_change(self, _, command_id: int):
         """
         First step of a two step process. Connects the state change to the
         job module. Explanation is(will be) in the job module
         """
-        assert sender is not None
         self.job.state_changed(command_id=command_id)
 
-    def post_state_change(self, sender: StateManager):
-        """
-        Second step of a two step process. Connects the state change to the
-        job module. Explanation is(will be) in the job module
-        """
-        assert sender is not None
+    def post_state_change(self, _) -> None:
+        """Second step of a two step process. Connects the state change to the
+        job module. Explanation is(will be) in the job module"""
         self.job.tick()
 
     # pylint: disable=too-many-arguments
+    # Fix SDK download manager throttle to float, then type annotate
     def state_changed(self,
-                      sender,
+                      _,
                       from_state,
                       to_state,
                       source=None,
@@ -806,7 +783,6 @@ class PrusaLink:
                       reason=None,
                       ready=False):
         """Connects the state manager state change to PrusaConnect"""
-        assert sender is not None
         assert from_state is not None
         assert to_state is not None
         if source is None:
@@ -862,15 +838,13 @@ class PrusaLink:
                                ready=ready,
                                **extra_data)
 
-    def time_printing_updated(self, sender, time_printing):
-        """Connects the serial print print timer with telemetry"""
-        assert sender is not None
+    def time_printing_updated(self, _, time_printing: int) -> None:
+        """Connects the serial-print print-timer with telemetry"""
         self.telemetry_passer.set_telemetry(new_telemetry=Telemetry(
             time_printing=time_printing))
 
-    def serial_queue_failed(self, sender):
+    def serial_queue_failed(self, _) -> None:
         """Handles the serial queue failure by resetting the printer"""
-        assert sender is not None
         reset_command = ResetPrinter()
         self.state_manager.serial_error()
         try:
@@ -879,11 +853,11 @@ class PrusaLink:
             log.exception("Failed to reset the printer. Oh my god... "
                           "my attempt at safely failing has failed.")
 
-    def connection_renewed(self, *_):
+    def connection_renewed(self, *_) -> None:
         """Reacts to the connection with connect being ok again"""
         self.telemetry_passer.resend_latest_telemetry()
 
-    def log_tm_error(self, _, match: re.Match):
+    def log_tm_error(self, _, match: re.Match) -> None:
         """Logs the temperature model errors"""
         groups = match.groupdict()
         deviation = float(groups["deviation"])

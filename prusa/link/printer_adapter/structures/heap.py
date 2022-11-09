@@ -41,7 +41,7 @@ class HeapItem:
 
 class MinHeap:
     """Min heap implementation with element adding and removing"""
-    def __init__(self):
+    def __init__(self) -> None:
         self.heap: List[HeapItem] = []
 
     def __len__(self):
@@ -73,7 +73,7 @@ class MinHeap:
         initial_index = len(self.heap) - 1
         self.sift_down(0, initial_index)
 
-    def pop(self, index=0):
+    def pop(self, index: int = 0) -> HeapItem:
         """
         Removes an element from the heap
 

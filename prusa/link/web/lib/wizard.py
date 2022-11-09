@@ -34,9 +34,11 @@ def new_sn_format(serial):
     return NEW_SN_REGEX.match(serial)
 
 
-def sn_write_success():
+def sn_write_success() -> bool:
     """Check if the S/N was written successfully to the printer"""
-    polling: PrinterPolling = app.daemon.prusa_link.printer_polling
+    polling: PrinterPolling
+    # Yes, there can be none in there, nothing I can do about it, sorry mypy
+    polling = app.daemon.prusa_link.printer_polling  # type: ignore
     # Note: if there's more of things like this, consider integrating
     # Set up an event to wait for
     serial_number: WatchedItem = polling.serial_number
