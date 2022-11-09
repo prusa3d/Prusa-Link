@@ -166,6 +166,14 @@ class Config(Get):
             abspath(join(self.daemon.data_dir, item))
             for item in self.printer.directories)
 
+        # [cameras]
+        self.cameras = Model(
+            self.get_section(
+                "cameras",
+                (
+                    ("auto_detect", bool, True),
+                )))
+
         Config.instance = self
 
     def set_global_log_level(self, args):

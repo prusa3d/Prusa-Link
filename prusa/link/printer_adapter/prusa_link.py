@@ -8,7 +8,6 @@ from threading import Event
 from threading import enumerate as enumerate_threads
 from typing import Any, Dict, Optional, List
 
-from prusa.connect.printer.camera_configurator import CameraConfigurator
 from prusa.connect.printer import Command as SDKCommand
 from prusa.connect.printer import DownloadMgr
 from prusa.connect.printer.conditions import (API, COND_TRACKER, INTERNET,
@@ -18,7 +17,8 @@ from prusa.connect.printer.const import Event as EventType
 from prusa.connect.printer.const import Source, State
 from prusa.connect.printer.files import File
 from prusa.connect.printer.models import Sheet as SDKSheet
-from ..camera import V4L2Driver
+from ..sdk_augmentation.camera_configurator import MyCameraConfigurator
+from ..v4l2_driver import V4L2Driver
 
 from ..conditions import HW, ROOT_COND, UPGRADED, use_connect_errors
 from ..config import Config, Settings
@@ -110,7 +110,7 @@ class PrusaLink:
 
         self.printer = MyPrinter()
 
-        self.camera_configurator = CameraConfigurator(
+        self.camera_configurator = MyCameraConfigurator(
             config=self.settings,
             config_file_path=self.cfg.printer.settings,
             camera_controller=self.printer.camera_controller,
@@ -287,6 +287,9 @@ class PrusaLink:
         # Start this last, as it might start printing right away
         self.file_printer.start()
 
+        if self.cfg.cameras.auto_detect:
+            self.camera_configurator.start_auto_add()
+
         log.debug("Initialization done")
 
         debug = False
@@ -343,6 +346,7 @@ class PrusaLink:
         was_printing = self.model.file_printer.printing
 
         self.quit_evt.set()
+        self.camera_configurator.stop_auto_add()
         self.file_printer.stop()
         self.command_queue.stop()
         self.telemetry_passer.stop()
@@ -382,6 +386,7 @@ class PrusaLink:
             self.auto_telemetry.wait_stopped()
             self.serial_queue.wait_stopped()
             self.serial.wait_stopped()
+            self.camera_configurator.wait_stopped()
 
             log.debug("Remaining threads, that might prevent stopping:")
             for thread in enumerate_threads():
