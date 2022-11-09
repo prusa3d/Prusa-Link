@@ -7,35 +7,47 @@
 <div class="container">
   <div class="row">
     <div class="col-md-12">
-        <h1>Recap</h1>
+        <h1>Local settings recapitulation</h1>
         {% set printer = wizard.daemon.prusa_link.printer %}
         {% set cfg = wizard.daemon.cfg %}
     </div>
   </div>
 
-  <div class="row">
-      <div class="col-md-6">
+    <!-- Local Settings Row -->
+    <div class="row">
 
-          <h3>Authorization</h3>
+        <!-- Credentials -->
+        <div class="col">
+          <h3>Credentials</h3>
           <ul>
             <li>Username: <span class="white">{{ wizard.username }}</span></li>
-              {% if wizard.use_api_key %}
-                <li>Api-Key: <span class="white">{{ wizard.api_key }}</span></li>
-              {% endif %}
           </ul>
+        </div>
+        <!-- Credentials End -->
 
+        <!-- Network -->
+        <div class="col">
           <h3>Network</h3>
           <ul>
-            <li>Wifi MAC: <span class="white">{{ printer.network_info.wifi_mac }}</span></li>
-            <li>Wifi IPv4: <span class="white">{{ printer.network_info.wifi_ipv4 }}</span></li>
+            {% if printer.network_info %}
+                <li>Hostname: <span class="white">{{ printer.network_info.hostname }}</span></li>
+                <li>Wifi MAC: <span class="white">{{ printer.network_info.wifi_mac }}</span></li>
+                <li>Wifi IPv4: <span class="white">{{ printer.network_info.wifi_ipv4 }}</span></li>
+            {% endif %}
           </ul>
-        </div>{# /col-md-6 so end of content  #}
+        </div>
+        <!-- Network End -->
 
-        <div class="col-md-6">
+        <!-- Printer -->
+        <div class="col">
           <h3>Printer</h3>
           <ul>
-            <li>Name: <span class="white">{{ wizard.printer_name }}</span></li>
-            <li>Location: <span class="white">{{ wizard.printer_location }}</span></li>
+              {% if wizard.printer_name %}
+                <li>Name: <span class="white">{{ wizard.printer_name }}</span></li>
+              {% endif %}
+              {% if wizard.printer_location %}
+                <li>Location: <span class="white">{{ wizard.printer_location }}</span></li>
+              {% endif %}
             <li>Type: <span class="white">{{ printer.type | printer_type }}</span></li>
             <li>Port: <span class="white">{{ cfg.printer.port }}</span></li>
             <li>Baudrate: <span class="white">{{ cfg.printer.baudrate }}</span></li>
@@ -46,40 +58,53 @@
               {% endif %}
             <li>Firmware: <span class="white">{{ printer.firmware }}</span></li>
           </ul>
+        </div>
+        <!-- Printer End -->
+    </div>
+    <!-- Local Settings Row End -->
 
-          <h3>Connect</h3>
-          <ul>
-          {% if not wizard.connect_skip %}
-            <li>Server: <span class="white">{{ connect_url }}</span></li>
-            {% if printer.token %}
-            <li>Token: <span class="white">{{ printer.token }}</span></li>
-            {% endif %}
-          </ul>
-          {% else %}
-            <span class="orange">YOU WILL NOT BE REGISTRATED TO PRUSA CONNECT</span>
-          {% endif %}
-
-        </div>{# /col-md-6 so end of content  #}
-      </div>{# /row #}
+    <!-- Connect Row -->
+    <div class="row">
+        <div class="col">
+            <h1>Prusa Connect</h1>
+            <div>Prusa Connect is a web service, where you have a complete overview of all your 3D printers at all times.</br>
+                You can link your PrusaLink with Prusa Connect <b>now</b>, using button down below.</div>
+            <ul>
+                {% if printer.token %}
+                <li>Token: <span class="white">{{ printer.token }}</span></li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+    <!-- Connect Row End -->
 
       <div class="row">
         <div class="col-md-12">
-          <form method="post" action="/wizard/finish-register" id="form">
-            <div class="container navigation">
-              <div class="row">
-                  <div class="col">
-                    <a href="/wizard/connect" class="btn btn-back btn-outline-light"><img src="../img/arrow-left.svg" height="16" /> BACK | PrusaConnect settings</a>
+            <form method="post" action="/wizard/finish-register-skip" id="skip"></form>
+            <form method="post" action="/wizard/finish-register" id="form" target="_blank">
+                <div class="container navigation">
+                  <div class="row">
+                      <div class="col">
+                        <a href="/wizard/printer" class="btn btn-back btn-outline-light"><img src="../img/arrow-left.svg" height="16" /> BACK | Printer info</a>
+                      </div>
+                      <div class="col-xs-auto">
+                        <button form="skip" onclick="document.getElementById('skip').submit();" type="submit" class="btn btn-back btn-outline-light">Save printer | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
+                        <button onclick="finish()" type="button" class="btn btn-outline-light">Save printer and link with Connect | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
+                      </div>
                   </div>
-                  <div class="col-xs-auto">
-                    <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Save {% if not wizard.connect_skip and not wizard.connect_token %} and Register {% endif %} Printer | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
-                  </div>
-              </div>
-            </div>
-          </form>
+                </div>
+            </form>
         </div>
       </div>
 
     </div>{# /container #}
+
+    <script>
+        function finish() {
+            setTimeout(() => {window.location.href = '/';}, 500);
+            document.getElementById('form').submit();
+        }
+    </script>
 
     {% include "_wizard.html" %}
     {% include "_footer.html" %}

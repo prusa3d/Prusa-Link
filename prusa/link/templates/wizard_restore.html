@@ -1,0 +1,45 @@
+{# vim:set softtabstop=2: -#}
+{% set title = 'Wizard Restore' -%}
+{#% set refresh = 15 %#}
+{% include "_header.html" %}
+{% set active="restore" %}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="align-center">Restore Printer Settings</h1>
+            <div class="container navigation">
+                <div class="row">
+                    <p>You can download your <i>prusa_printer_settings.ini</i> file from the Connect service, or use backup version from the PrusaLink.
+                        All values from the file will be filled into the form, so you can check them before sending.
+                    </p>
+
+                    <p>You can upload your <i>prusa_printer_settings.ini</i> file below</p>
+                </div>
+                <form id="ini_file_form" class="col-sm-auto" action = "/wizard/restore" method = "POST" enctype = "multipart/form-data">
+
+                    <div class="row">
+                        <input type="file" name="file" class="btn btn-outline-light" style="white-space: nowrap;"/>
+
+                        <div class="container navigation">
+                          <div class="row">
+                              <div class="col">
+                                <a href="/wizard" class="btn btn-back btn-outline-light"><img src="../img/arrow-left.svg" height="16" /> BACK | Welcome</a>
+                              </div>
+                              <div class="col-xs-auto">
+                                <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Restore and continue | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
+                              </div>
+                          </div>
+                        </div>
+
+                    </div>
+
+                </form>
+
+            </div>
+        </div>{# /col-md-12 so end of content #}
+    </div>{# /row #}
+</div>{# /container #}
+
+{% include "_wizard.html" %}
+{% include "_footer.html" %}

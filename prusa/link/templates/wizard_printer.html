@@ -7,7 +7,7 @@
 <div class="container">
   <div class="row">
       <div class="col-md-12">
-          <h1>Setup Printer</h1>
+          <h1>Printer Info</h1>
 
           <form method="post" id="form">
             <p>Please, fill up the name of the printer, which will be used at PrusaLink, and location, where the printer is placed.</p>
@@ -16,7 +16,7 @@
             <div class="form-group row">
               <label for="name" class="col-sm-2 col-form-label">Name:</label>
               <div class="col-sm-10">
-                <input type="text" class="form-control {{ 'is-invalid' if errors.get('name') else '' }}" id="name" name="name" value="{{ wizard.printer_name or '' }}" required>
+                <input type="text" class="form-control {{ 'is-invalid' if errors.get('name') else '' }}" id="name" name="name" value="{{ wizard.printer_name or '' }}" placeholder="Original Prusa i3 {{ wizard.daemon.prusa_link.printer.type_string }}">
                 <div class="invalid-feedback">
                   Please provide a valid printer name.
                 </div>
@@ -26,7 +26,7 @@
             <div class="form-group row">
               <label for="location" class="col-sm-2 col-form-label">Location:</label>
               <div class="col-sm-10">
-                <input type="text" class="form-control {{ 'is-invalid' if errors.get('location') else '' }}" id="location" name="location" value="{{ wizard.printer_location or '' }}" required>
+                <input type="text" class="form-control {{ 'is-invalid' if errors.get('location') else '' }}" id="location" name="location" value="{{ wizard.printer_location or '' }}" placeholder="Warehouse top shelf">
                 <div class="invalid-feedback">
                   Please provide a valid printer location.
                 </div>
@@ -36,10 +36,10 @@
             <div class="container navigation">
               <div class="row">
                   <div class="col">
-                    <a href="/wizard/auth" class="btn btn-back btn-outline-light"><img src="../img/arrow-left.svg" height="16" /> BACK | Authorization</a>
+                    <a href="/wizard/credentials" class="btn btn-back btn-outline-light"><img src="../img/arrow-left.svg" height="16" /> BACK | Setup credentials</a>
                   </div>
                   <div class="col-xs-auto">
-                    <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Setup Connect | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
+                    <button onclick="document.getElementById('form').submit();" type="submit" class="btn btn-outline-light">Recap and save | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
                   </div>
               </div>
             </div>
