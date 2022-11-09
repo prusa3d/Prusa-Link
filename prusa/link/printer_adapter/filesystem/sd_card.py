@@ -7,6 +7,7 @@ from itertools import islice
 from pathlib import Path
 from threading import Lock
 from time import time
+from typing import Optional
 
 from blinker import Signal  # type: ignore
 from prusa.connect.printer.const import State
@@ -33,7 +34,7 @@ log = logging.getLogger(__name__)
 
 def alternative_filename(long_filename: str,
                          short_filename: str,
-                         long_extension: str = None):
+                         long_extension: Optional[str] = None):
     """
     Ensures uniqueness of a file name by prepending it with its
     guaranteed to be unique short name
@@ -101,7 +102,7 @@ class FileTreeParser:
         short_dir_path = Path(short_path_string).parent
         short_extension = groups["extension"]
         long_extension = SFN_TO_LFN_EXTENSIONS[short_extension]
-        raw_long_filename: str = groups["lfn"]
+        raw_long_filename = groups["lfn"]
 
         if raw_long_filename is None:
             return

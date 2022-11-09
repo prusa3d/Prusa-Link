@@ -10,7 +10,7 @@ evaluated first.
 import logging
 import re
 from threading import Lock
-from typing import Any, Callable, Dict, Union
+from typing import Any, Callable, Dict, Union, Optional, Match
 
 from blinker import Signal  # type: ignore
 from sortedcontainers import SortedKeyList  # type: ignore
@@ -26,22 +26,22 @@ class RegexPairing:
     for us to be able to sort which regexps to try first
     """
 
-    def __init__(self, regexp, priority=0):
+    def __init__(self, regexp, priority=0) -> None:
         self.regexp: re.Pattern = regexp
         self.signal: Signal = Signal()
         self.priority: Union[float, int] = priority
 
-    def __str__(self):
+    def __str__(self) -> str:
         receiver_count = len(self.signal.receivers)
         return f"RegexPairing for {self.regexp.pattern} " \
                f"with priority {self.priority} " \
                f"having {receiver_count} handler" \
                f"{'s' if receiver_count > 1 else ''}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
-    def fire(self, match=None):
+    def fire(self, match: Optional[Match] = None) -> None:
         """
         Fire the associated signal, catch and log errors, don't want to
         kill the serial reading component
@@ -61,12 +61,12 @@ class SerialParser(metaclass=MCSingleton):
     we receive from the printer
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.lock = Lock()
         self.pattern_list = SortedKeyList(key=lambda item: -item.priority)
         self.pairing_dict: Dict[re.Pattern, RegexPairing] = {}
 
-    def decide(self, line):
+    def decide(self, line: str) -> None:
         """
         The meat of the class, trying different RegexPairings ordered
         by their priorities, to find the matching one
@@ -88,7 +88,7 @@ class SerialParser(metaclass=MCSingleton):
     def add_handler(self,
                     regexp: re.Pattern,
                     handler: Callable[[Any, re.Match], None],
-                    priority: Union[float, int] = 0):
+                    priority: Union[float, int] = 0) -> None:
         """
         Add an entry to output handlers.
         :param regexp: if this matches, your handler will get called
@@ -121,7 +121,7 @@ class SerialParser(metaclass=MCSingleton):
                 self.pairing_dict[regexp] = new_pairing
                 self.pattern_list.add(new_pairing)
 
-    def remove_handler(self, regexp, handler):
+    def remove_handler(self, regexp, handler) -> None:
         """
         Removes the regexp and handler from the list of serial output handlers
         :param regexp: which regexp to remove a handler from

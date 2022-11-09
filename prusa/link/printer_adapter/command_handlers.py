@@ -223,7 +223,7 @@ class StartPrint(Command):
         os_path = self.printer.fs.get_os_path(path)
         self.file_printer.print(os_path)
 
-    def _load_file(self, raw_sd_path):
+    def _load_file(self, raw_sd_path: str) -> None:
         """
         Sends the gcod required to load the file from a given sd path
         :param raw_sd_path: The absolute sd path (starts with a "/")
@@ -487,12 +487,12 @@ class CancelReady(Command):
     command_name = "cancel_ready"
 
     def _run_command(self):
-        """Sets the printer into ready, if it's IDLE"""
+        """Cancels the READY state"""
         self.state_manager.expect_change(
             StateChange(command_id=self.command_id,
                         default_source=self.source))
 
-        if self.state_manager.get_state() != State.READY:
-            self.failed("Cannot get into READY from anywhere other than IDLE")
+        if self.model.state_manager.base_state != State.READY:
+            self.failed("Cannot cancel READY when not actually ready.")
         self.state_manager.idle()
         self.state_manager.stop_expecting_change()

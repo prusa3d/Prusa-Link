@@ -173,25 +173,26 @@ class Job(metaclass=MCSingleton):
             "already known path is incomplete=%s, job state=%s, "
             "known path=%s", path, path_incomplete, self.data.path_incomplete,
             self.data.job_state, self.data.selected_file_path)
+
         # If we have a full path, don't overwrite it with an incomplete one
-        if not path_incomplete or self.data.path_incomplete:
+        if path_incomplete and not self.data.path_incomplete:
+            return
 
-            log.debug("Overwriting file path with %s", path)
-            self.data.selected_file_path = path
-            self.data.path_incomplete = path_incomplete
+        log.debug("Overwriting file path with %s", path)
+        self.data.selected_file_path = path
+        self.data.path_incomplete = path_incomplete
 
-            if not path_incomplete:
-                file_obj = self.printer.fs.get(self.data.selected_file_path)
-                if file_obj:
-                    if "m_timestamp" in file_obj.attrs:
-                        self.data.selected_file_m_timestamp = \
-                            file_obj.attrs["m_timestamp"]
-                    if 'size' in file_obj.attrs:
-                        self.data.selected_file_size = \
-                            file_obj.attrs["size"]
-            if path.startswith(os.path.join("/", SD_STORAGE_NAME)):
-                self.model.job.from_sd = True
-            self.job_info_updated()
+        if not path_incomplete:
+            file_obj = self.printer.fs.get(self.data.selected_file_path)
+            if file_obj:
+                if "m_timestamp" in file_obj.attrs:
+                    self.data.selected_file_m_timestamp = file_obj.attrs[
+                        "m_timestamp"]
+                if 'size' in file_obj.attrs:
+                    self.data.selected_file_size = file_obj.attrs["size"]
+        if path.startswith(os.path.join("/", SD_STORAGE_NAME)):
+            self.model.job.from_sd = True
+        self.job_info_updated()
 
     def get_job_info_data(self, for_connect=False):
         """Compiles the job info data into a dict"""

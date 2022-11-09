@@ -37,10 +37,10 @@ class StateChange:
     # pylint: disable=too-many-arguments
     def __init__(self,
                  command_id=None,
-                 to_states: Dict[State, Union[Source, None]] = None,
-                 from_states: Dict[State, Union[Source, None]] = None,
-                 default_source: Source = None,
-                 reason: str = None,
+                 to_states: Optional[Dict[State, Union[Source, None]]] = None,
+                 from_states: Optional[Dict[State, Union[Source, None]]] = None,
+                 default_source: Optional[Source] = None,
+                 reason: Optional[str] = None,
                  ready: bool = False):
 
         self.reason = reason
@@ -57,7 +57,7 @@ class StateChange:
         self.ready = ready
 
 
-def state_influencer(state_change: StateChange = None):
+def state_influencer(state_change: Optional[StateChange] = None):
     """
     This decorator makes it possible for each state change to have default
     expected sources

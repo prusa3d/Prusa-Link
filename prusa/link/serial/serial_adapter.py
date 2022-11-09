@@ -7,7 +7,7 @@ from importlib import util
 from pathlib import Path
 from threading import RLock
 from time import sleep, time
-from typing import List
+from typing import List, Optional
 
 import pyudev  # type: ignore
 from blinker import Signal  # type: ignore
@@ -32,9 +32,9 @@ log = logging.getLogger(__name__)
 
 class PortAdapter:
     """Use the Port class, but allow to pass a Serial instance with it"""
-    def __init__(self, port):
+    def __init__(self, port: Port) -> None:
         self.port: Port = port
-        self.serial = None
+        self.serial: Optional[Serial] = None
 
 
 class SerialAdapter(metaclass=MCSingleton):
@@ -71,8 +71,8 @@ class SerialAdapter(metaclass=MCSingleton):
                  serial_parser: SerialParser,
                  model: Model,
                  configured_port="auto",
-                 baudrate=115200,
-                 timeout=2):
+                 baudrate: int = 115200,
+                 timeout: int = 2) -> None:
 
         # pylint: disable=too-many-arguments
         self.model: Model = model
@@ -84,7 +84,7 @@ class SerialAdapter(metaclass=MCSingleton):
 
         self.write_lock = RLock()
 
-        self.serial = None
+        self.serial: Optional[Serial] = None
         self.serial_parser = serial_parser
 
         self.failed_signal = Signal()
@@ -98,7 +98,7 @@ class SerialAdapter(metaclass=MCSingleton):
         self.read_thread.start()
 
     @staticmethod
-    def is_open(serial):
+    def is_open(serial) -> bool:
         """Returns bool indicating whether there's a serial connection"""
         return serial is not None and serial.is_open
 
@@ -108,6 +108,10 @@ class SerialAdapter(metaclass=MCSingleton):
         returns whether it figured something out or not"""
         serial = port_adapter.serial
         port = port_adapter.port
+
+        if serial is None:
+            raise SerialException("Tried getting info without a serial port "
+                                  "(mostly for mypy to stop crying)")
 
         name = version = error_text = None
         serial.write(b"PRUSA Fir\nM862.2 Q\n")
@@ -175,7 +179,7 @@ class SerialAdapter(metaclass=MCSingleton):
                 devices[device.properties.get("DEVNAME")] = sn
         return devices
 
-    def _reopen(self):
+    def _reopen(self) -> bool:
         """Re-open the configured serial port. Do a full re-scan if
         auto is configured"""
         self.data.using_port = None
@@ -222,7 +226,9 @@ class SerialAdapter(metaclass=MCSingleton):
                     log.info("Using the serial port %s",
                              self.data.using_port.path)
                 elif self.is_open(port_adapter.serial):
-                    port_adapter.serial.close()
+                    # The above if guarantees there's not a None
+                    # in port.serial. Mypy is being dramatic again
+                    port_adapter.serial.close()  # type: ignore
                     log.debug("Other port - %s", port)
             return found
 

@@ -24,9 +24,9 @@ class HeapName(Enum):
 
 
 class TimeValue(HeapItem):
-    """Time value with info in which queu it currently resides"""
+    """Time value with info in which queue it currently resides"""
 
-    def __init__(self, value):
+    def __init__(self, value: float) -> None:
         super().__init__(value)
         self.heap_name: Optional[HeapName] = None
 
@@ -130,7 +130,7 @@ class IsPlannerFed:
             log.debug("Buffer is fed, threshold: %s, value: %s",
                       self.threshold, value)
 
-    def _remove_last(self):
+    def _remove_last(self) -> None:
         """
         For the median to be influenced only by the last N commands
         And for the RAM and CPU usage to not slowly creep up,

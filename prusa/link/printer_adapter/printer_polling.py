@@ -65,7 +65,7 @@ class PrinterPolling:
     def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
                  printer: Printer, model: Model,
                  telemetry_passer: TelemetryPasser,
-                 job: Job, sd_card: SDCard, settings: Settings):
+                 job: Job, sd_card: SDCard, settings: Settings) -> None:
         super().__init__()
         self.item_updater = ItemUpdater()
 
@@ -483,7 +483,7 @@ class PrinterPolling:
         match = self.do_matchable("PRUSA SN", SN_REGEX, to_front=True)
         return match.group("sn")
 
-    def _get_sheet_settings(self):
+    def _get_sheet_settings(self) -> List[Sheet]:
         """Gets all the sheet settings from the EEPROM"""
         # TODO: How do we deal with default settings?
         matches = self.do_multimatch(

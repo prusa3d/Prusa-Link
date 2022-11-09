@@ -179,7 +179,7 @@ class FilesystemStorage(Storage):
     def get_data_object(self) -> StorageData:
         return self.model.filesystem_storage
 
-    def get_storage(self):
+    def get_storage(self) -> Set[str]:
         """
         Checks epoll for storage changes. if there are changes, gets
         a new storage list from mtab.
@@ -247,7 +247,7 @@ class FolderStorage(Storage):
         """
         return self.model.folder_storage
 
-    def get_storage(self):
+    def get_storage(self) -> Set[str]:
         new_directory_set: Set[str] = set()
         for directory in self.data.configured_storage:
 

@@ -16,7 +16,7 @@ class Instruction:
     def __init__(self,
                  message: str,
                  to_checksum: bool = False,
-                 data: bytes = None):
+                 data: Optional[bytes] = None):
         if message.count("\n") != 0:
             raise RuntimeError("Instructions cannot contain newlines.")
 
