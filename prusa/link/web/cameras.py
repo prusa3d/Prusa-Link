@@ -1,4 +1,6 @@
 """Camera web API - /api/v1/cameras handlers"""
+from time import time, sleep
+
 from poorwsgi import state
 
 from poorwsgi.response import JSONResponse, Response
@@ -8,6 +10,7 @@ from prusa.connect.printer.const import CameraAlreadyConnected, \
     NotSupported, CameraNotDetected, ConfigError, CapabilityType
 from .lib.core import app
 from .lib.auth import check_api_digest
+from ..const import CAMERA_REGISTER_TIMEOUT, QUIT_INTERVAL
 
 
 def photo_by_camera_id(camera_id):
@@ -51,13 +54,19 @@ def list_cameras(_):
         if camera_id not in camera_configurator.loaded:
             continue
         config = camera_configurator.loaded[camera_id].config
-
+        camera_controller = camera_configurator.camera_controller
+        connected = camera_configurator.is_connected(camera_id)
+        registered = False
+        if connected:
+            camera = camera_controller.get_camera(camera_id)
+            registered = camera.is_registered
         list_item = dict(
             camera_id=camera_id,
             config=config,
-            connected=camera_configurator.is_connected(camera_id),
+            connected=connected,
             detected=camera_id in camera_configurator.detected,
             stored=camera_id in camera_configurator.stored,
+            registered=registered
         )
         camera_list.append(list_item)
 
@@ -162,7 +171,7 @@ def add_camera(req, camera_id):
 @app.route("/api/v1/cameras/<camera_id>", method=state.METHOD_DELETE)
 @check_api_digest
 def delete_camera(_, camera_id):
-    """Capture an image from a camera and return it in endpoint"""
+    """Removes the camera and its config"""
     camera_configurator = app.daemon.prusa_link.camera_configurator
     if camera_id not in camera_configurator.loaded:
         return JSONResponse(status_code=state.HTTP_NOT_FOUND,
@@ -194,11 +203,57 @@ def set_settings(req, camera_id):
 @app.route("/api/v1/cameras/<camera_id>/config", method=state.METHOD_DELETE)
 @check_api_digest
 def reset_settings(_, camera_id):
-    """Set new settings to a working camera"""
+    """Reset settings of a camera"""
     camera_configurator = app.daemon.prusa_link.camera_configurator
     if not camera_configurator.is_connected(camera_id):
         return JSONResponse(status_code=state.HTTP_NOT_FOUND,
                             message=f"Camera with id: {camera_id} was not "
                                     f"found among the connected cameras")
     camera_configurator.reset_to_defaults(camera_id)
+    return Response(status_code=state.HTTP_OK)
+
+
+@app.route("/api/v1/cameras/<camera_id>/connection", method=state.METHOD_POST)
+@check_api_digest
+def register_camera(_, camera_id):
+    """Registers a camera to Connect"""
+    camera_controller = app.daemon.prusa_link.printer.camera_controller
+    if camera_id not in camera_controller:
+        return JSONResponse(status_code=state.HTTP_NOT_FOUND,
+                            message=f"Camera with id: {camera_id} was not "
+                                    f"found among the connected cameras")
+    camera = camera_controller.get_camera(camera_id)
+    if camera.is_registered:
+        return JSONResponse(status_code=state.HTTP_CONFLICT,
+                            message=f"Camera: {camera_id} is already "
+                                    "registered.")
+
+    camera_controller.register_camera(camera_id)
+    timeout_at = time() + CAMERA_REGISTER_TIMEOUT
+    while not camera.is_registered:
+        if time() > timeout_at:
+            return JSONResponse(status_code=state.HTTP_REQUEST_TIME_OUT,
+                                message="Timed out when registering "
+                                        f"camera: {camera_id}")
+        sleep(QUIT_INTERVAL)
+    return Response(status_code=state.HTTP_OK)
+
+
+@app.route("/api/v1/cameras/<camera_id>/connection",
+           method=state.METHOD_DELETE)
+@check_api_digest
+def unregister_camera(_, camera_id):
+    """Un-registers a camera from Connect"""
+    camera_controller = app.daemon.prusa_link.printer.camera_controller
+    if camera_id not in camera_controller:
+        return JSONResponse(status_code=state.HTTP_NOT_FOUND,
+                            message=f"Camera with id: {camera_id} was not "
+                                    "found among the connected cameras")
+    camera = camera_controller.get_camera(camera_id)
+    if not camera.is_registered:
+        return JSONResponse(status_code=state.HTTP_CONFLICT,
+                            message="Cannot unregister a non-registered "
+                                    f"camera: {camera_id}")
+
+    camera.set_token(None)
     return Response(status_code=state.HTTP_OK)
