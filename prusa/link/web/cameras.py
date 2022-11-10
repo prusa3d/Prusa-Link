@@ -162,7 +162,7 @@ def add_camera(req, camera_id):
 @app.route("/api/v1/cameras/<camera_id>", method=state.METHOD_DELETE)
 @check_api_digest
 def delete_camera(_, camera_id):
-    """Capture an image from a camera and return it in endpoint"""
+    """Delete a camera with a given id"""
     camera_configurator = app.daemon.prusa_link.camera_configurator
     if camera_id not in camera_configurator.loaded:
         return JSONResponse(status_code=state.HTTP_NOT_FOUND,
@@ -194,7 +194,7 @@ def set_settings(req, camera_id):
 @app.route("/api/v1/cameras/<camera_id>/config", method=state.METHOD_DELETE)
 @check_api_digest
 def reset_settings(_, camera_id):
-    """Set new settings to a working camera"""
+    """Delete settings from a working camera"""
     camera_configurator = app.daemon.prusa_link.camera_configurator
     if not camera_configurator.is_connected(camera_id):
         return JSONResponse(status_code=state.HTTP_NOT_FOUND,
