@@ -214,8 +214,7 @@ def api_printer(req):
     printer = prusa_link.printer
     storage_dict = printer.fs.storage_dict
     operational = printer.state in (State.IDLE, State.FINISHED, State.STOPPED)
-    printer_state = printer.state.value
-    link_state = "READY" if printer_state == "PREPARED" else printer_state
+    link_state = printer.state.value
 
     space_info = storage_dict[LOCAL_STORAGE_NAME].get_space_info()
     free_space = space_info["free_space"]
