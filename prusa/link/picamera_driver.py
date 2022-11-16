@@ -48,7 +48,7 @@ class PiCameraDriver(CameraDriver):
         super().__init__(camera_id, config, unavailable_cb)
 
         self.picam2 = Picamera2()
-        self._supported_capabilities = ({
+        self._capabilities = ({
             CapabilityType.TRIGGER_SCHEME,
             CapabilityType.IMAGING,
             CapabilityType.RESOLUTION

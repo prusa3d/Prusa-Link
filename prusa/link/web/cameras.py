@@ -163,13 +163,13 @@ def camera_config(_, camera_id):
     camera = camera_controller.get_camera(camera_id)
     settings = camera.get_settings()
     json_settings = camera.json_from_settings(settings)
-    if CapabilityType.RESOLUTION in camera.supported_capabilities:
+    if CapabilityType.RESOLUTION in camera.capabilities:
         json_settings["available_resolutions"] = [
             dict(resolution)
             for resolution in camera.available_resolutions
         ]
-    string_caps = map(lambda i: i.name, camera.supported_capabilities)
-    json_settings["supported_capabilities"] = list(string_caps)
+    string_caps = map(lambda i: i.name, camera.capabilities)
+    json_settings["capabilities"] = list(string_caps)
     return JSONResponse(**json_settings)
 
 

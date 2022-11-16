@@ -123,7 +123,7 @@ class V4L2Driver(CameraDriver):
         super().__init__(camera_id, config, unavailable_cb)
         path = config["path"]
 
-        self._supported_capabilities = ({
+        self._capabilities = ({
             CapabilityType.TRIGGER_SCHEME,
             CapabilityType.IMAGING,
             CapabilityType.RESOLUTION
