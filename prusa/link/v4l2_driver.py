@@ -145,7 +145,7 @@ class V4L2Driver(CameraDriver):
             self._last_init_at = time()
             self._start_stream()
         except Exception:  # pylint: disable=broad-except
-            super().disconnect()
+            log.warning("Initialization of camera %s has failed", self.name)
         else:
             self._set_connected()
 
