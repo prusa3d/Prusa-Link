@@ -181,6 +181,10 @@ def add_camera(req, camera_id):
     camera_configurator = app.daemon.prusa_link.camera_configurator
 
     config = req.json.get('config')
+    if config is None:
+        return JSONResponse(status_code=state.HTTP_BAD_REQUEST,
+                            message="Configuration is missing. "
+                                    "Cannot add a camera by ID alone.")
     try:
         camera_configurator.add_camera(camera_id, config)
     except CameraNotDetected as error:
