@@ -47,30 +47,34 @@ class PiCameraDriver(CameraDriver):
     def __init__(self, camera_id, config, unavailable_cb):
         super().__init__(camera_id, config, unavailable_cb)
 
-        self.picam2 = Picamera2()
-        self._capabilities = ({
-            CapabilityType.TRIGGER_SCHEME,
-            CapabilityType.IMAGING,
-            CapabilityType.RESOLUTION
-        })
+        try:
+            self.picam2 = Picamera2()
+            self._capabilities = ({
+                CapabilityType.TRIGGER_SCHEME,
+                CapabilityType.IMAGING,
+                CapabilityType.RESOLUTION
+            })
 
-        self._available_resolutions = set()
-        for mode in self.picam2.sensor_modes:
-            resolution = Resolution(*mode["size"])
-            self._available_resolutions.add(resolution)
-        highest_resolution = sorted(self.available_resolutions)[-1]
-        self._config["resolution"] = str(highest_resolution)
+            self._available_resolutions = set()
+            for mode in self.picam2.sensor_modes:
+                resolution = Resolution(*mode["size"])
+                self._available_resolutions.add(resolution)
+            highest_resolution = sorted(self.available_resolutions)[-1]
+            self._config["resolution"] = str(highest_resolution)
 
-        self.still_config = self.picam2.create_still_configuration(
-            main={"size": (highest_resolution.width,
-                           highest_resolution.height)
-                  }
-        )
-        self.picam2.configure(self.picam2.create_preview_configuration())
-        self.picam2.start()
+            self.still_config = self.picam2.create_still_configuration(
+                main={"size": (highest_resolution.width,
+                               highest_resolution.height)
+                      }
+            )
+            self.picam2.configure(self.picam2.create_preview_configuration())
+            self.picam2.start()
 
-        self._last_init_at = time()
-        self._set_connected()
+            self._last_init_at = time()
+        except Exception:  # pylint: disable=broad-except
+            log.warning("Initialization of camera %s has failed", self.name)
+        else:
+            self._set_connected()
 
     def take_a_photo(self):
         """Tells picamera to take a photo"""
