@@ -46,6 +46,7 @@ class FilePrinter(metaclass=MCSingleton):
         self.time_printing_signal = Signal()
         self.byte_position_signal = Signal()  # kwargs: current: int
         #                                               total: int
+        self.layer_trigger_signal = Signal()
 
         self.model.file_printer = FilePrinterData(
             printing=False,
@@ -150,6 +151,10 @@ class FilePrinter(metaclass=MCSingleton):
 
                     log.debug("Resuming USB print")
 
+                # Trigger cameras on layer change
+                if ";LAYER_CHANGE" in line:
+                    self.layer_trigger_signal.send()
+
                 self.data.line_number = line_index + 1
                 gcode = get_gcode(line)
                 if gcode:
@@ -181,8 +186,7 @@ class FilePrinter(metaclass=MCSingleton):
                 self.print_finished_signal.send(self)
 
     def print_gcode(self, gcode):
-        """
-        Sends a gcode to print, keeps a small buffer of gcodes
+        """Sends a gcode to print, keeps a small buffer of gcodes
          and inlines print stats for files without them
         (estimated time left and progress)"""
         self.data.gcode_number += 1
