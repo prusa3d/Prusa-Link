@@ -120,6 +120,7 @@ class V4L2Driver(CameraDriver):
         return available
 
     def __init__(self, camera_id, config, unavailable_cb):
+        # pylint: disable=duplicate-code
         super().__init__(camera_id, config, unavailable_cb)
         path = config["path"]
 
@@ -144,9 +145,10 @@ class V4L2Driver(CameraDriver):
 
             self._last_init_at = time()
             self._start_stream()
-        except Exception:  # pylint: disable=broad-except, duplicate-code
+        except Exception:  # pylint: disable=broad-except
             log.exception("Initialization of camera %s has failed",
                           self.config.get("name", "unknown"))
+            self.disconnect()
         else:
             self._set_connected()
 

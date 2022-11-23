@@ -6,7 +6,7 @@ from typing import Dict
 
 from prusa.connect.printer.camera import Resolution
 from prusa.connect.printer.camera_driver import CameraDriver
-from prusa.connect.printer.const import CapabilityType
+from prusa.connect.printer.const import CapabilityType, NotSupported
 
 from .const import CAMERA_INIT_DELAY
 
@@ -19,7 +19,7 @@ except ImportError:
         """A mock class to stop the driver from detecting anything"""
 
         def __init__(self):
-            raise NotImplementedError("No Pi Camera support")
+            raise NotSupported("No Pi Camera support")
 
 
 class PiCameraDriver(CameraDriver):
@@ -34,8 +34,10 @@ class PiCameraDriver(CameraDriver):
         available = {}
         try:
             picam2 = Picamera2()
+        except NotSupported:
+            log.info("No picamera support")
         except Exception:  # pylint: disable=broad-except
-            log.exception("No picamera detected")
+            log.exception("Error scanning for PiCameras")
         else:
             model = picam2.camera_properties.get("Model", "unknown")
             camera_id = f"picamera {model}"
@@ -45,6 +47,7 @@ class PiCameraDriver(CameraDriver):
         return available
 
     def __init__(self, camera_id, config, unavailable_cb):
+        # pylint: disable=duplicate-code
         super().__init__(camera_id, config, unavailable_cb)
 
         try:
@@ -71,9 +74,10 @@ class PiCameraDriver(CameraDriver):
             self.picam2.start()
 
             self._last_init_at = time()
-        except Exception:  # pylint: disable=broad-except, duplicate-code
+        except Exception:  # pylint: disable=broad-except
             log.exception("Initialization of camera %s has failed",
                           self.config.get("name", "unknown"))
+            self.disconnect()
         else:
             self._set_connected()
 
