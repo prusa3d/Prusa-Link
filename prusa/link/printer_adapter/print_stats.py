@@ -54,7 +54,10 @@ class PrintStats:
         """
         Ends the current time segment and adds its length to the print time
         """
+        if self.data.segment_start is None:
+            return
         self.data.print_time += time() - self.data.segment_start
+        self.data.segment_start = None
 
     def start_time_segment(self):
         """

@@ -284,6 +284,8 @@ class FilePrinter(metaclass=MCSingleton):
 
     def pause(self):
         """Pauses the print by flipping a flag, pauses print timer"""
+        if self.data.paused:
+            return
         self.data.paused = True
         self.print_stats.end_time_segment()
 
