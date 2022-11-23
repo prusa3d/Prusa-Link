@@ -234,6 +234,7 @@ class PrusaLink:
             self.file_printer_finished_printing)
         self.file_printer.byte_position_signal.connect(
             self.byte_position_changed)
+        self.file_printer.layer_trigger_signal.connect(self.layer_trigger)
         self.storage_controller.folder_attached_signal.\
             connect(self.folder_attach)
         self.storage_controller.folder_detached_signal.\
@@ -521,6 +522,9 @@ class PrusaLink:
         self.command_queue.enqueue_command(command)
 
     # --- Signal handlers ---
+    def layer_trigger(self, _):
+        """Passes the call to trigger to the camera controller"""
+        self.printer.camera_controller.layer_trigger()
 
     def mbl_data_changed(self, data) -> None:
         """Sends the mesh bed leveling data to Connect"""
