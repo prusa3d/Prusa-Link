@@ -35,6 +35,7 @@ class MyCameraConfigurator(CameraConfigurator):
             name="camera_auto_add",
             daemon=True
         )
+        self.auto_add_thread.start()
 
     def stop_auto_add(self) -> None:
         """Stops the auto-add loop"""
