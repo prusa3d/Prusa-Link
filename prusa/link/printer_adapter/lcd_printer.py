@@ -75,6 +75,8 @@ UPLOAD_PRIORITY = 20
 READY_PRIORITY = 11
 IDLE_PRIORITY = 10
 
+HTTP_ERROR_GRACE = 10
+
 
 def through_queue(func):
     """A decorator to mke functions use the LCDPrinter event queue when called
@@ -149,6 +151,13 @@ class LCDPrinter(metaclass=MCSingleton):
         self.ignore_errors_to = 0
         self.reset_error_grace()
 
+        # The error reporting for connection problems is too eager
+        # and cannot be turned off. Let's put a rug over the intermittent
+        # issues here.
+        # pylint: disable=fixme
+        # THIS HAS TO GO! FIXME!!!!
+        self.http_error_at = None
+
         self.fw_msg_end_at = time()
         self.idle_from = time()
         # Used for ignoring LCD status updated that we generate
@@ -212,10 +221,29 @@ class LCDPrinter(metaclass=MCSingleton):
         else:
             self.carousel.disable(self.print_screen)
 
+    def _filter_http(self, error):
+        """Filter the rogue error until timeout is reached"""
+        # Again, don't let this stay here! This is wrong, bad,
+        # and it kills your kittens!
+        if error is None:
+            self.http_error_at = None
+
+        if error == HTTP:
+            if self.http_error_at is None:  # Silence the error until timeout
+                self.http_error_at = time()
+                return None
+
+            time_since_error = time() - self.http_error_at
+            if time_since_error > HTTP_ERROR_GRACE:
+                return error
+        return None
+
     def _check_errors(self):
         """Should an error display be activated? And what should it say?"""
-        error = COND_TRACKER.get_worst()
+        unfiltered_error = COND_TRACKER.get_worst()
         error_grace_ended = time() - self.ignore_errors_to > 0
+
+        error = self._filter_http(unfiltered_error)
 
         if error is not None and not error_grace_ended:
             self.carousel.enable(self.wait_screen)
