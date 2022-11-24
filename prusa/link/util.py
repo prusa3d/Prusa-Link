@@ -10,9 +10,14 @@ from threading import Event
 from time import time
 from typing import Callable, Union
 
+import numpy as np
 import unidecode
 
+from turbojpeg import TurboJPEG, TJSAMP_422  # type: ignore
+
 from .const import SD_STORAGE_NAME
+
+jpeg = TurboJPEG()
 
 log = logging.getLogger(__name__)
 
@@ -200,3 +205,16 @@ def round_to_five(number: Union[float, int]):
 def decode_line(line: bytes):
     """Decode a line read from the printer"""
     return line.decode("cp437").strip().replace('\x00', '')
+
+
+def from_422_to_jpeg(data: bytes, width, height):
+    """Extracts Y, U and V, then puts them one after another instead of
+    interweaving"""
+    data_array = np.frombuffer(data, np.uint8)
+    size = len(data)
+    yuv_array = np.empty((size,), dtype=np.uint8)
+    yuv_array[:size//2] = data_array[0::2]
+    yuv_array[size//2: size//4*3] = data_array[1::4]
+    yuv_array[size//4*3:] = data_array[3::4]
+    return jpeg.encode_from_yuv(yuv_array, height, width,
+                                jpeg_subsample=TJSAMP_422)

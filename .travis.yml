@@ -8,7 +8,7 @@ git:
  submodules: false
 
 before_install:
- - sudo apt-get update && sudo apt-get install -y libcap-dev
+ - sudo apt-get update && sudo apt-get install -y libcap-dev libturbojpeg
 
 install:
  - pip3 install git+https://github.com/prusa3d/Prusa-Connect-SDK-Printer.git@master#egg=prusa.connect.sdk.printer
