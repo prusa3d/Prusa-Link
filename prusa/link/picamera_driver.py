@@ -36,6 +36,8 @@ class PiCameraDriver(CameraDriver):
             picam2 = Picamera2()
         except NotSupported:
             log.info("No picamera support")
+        except RuntimeError as error:
+            log.info("No picamera connected or worse. Error: %s", error)
         except Exception:  # pylint: disable=broad-except
             log.exception("Error scanning for PiCameras")
         else:
