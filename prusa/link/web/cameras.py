@@ -78,12 +78,20 @@ def default_camera_snap(req):
 @app.route("/api/v1/cameras", method=state.METHOD_GET)
 @check_api_digest
 def list_cameras(_):
-    """List all configured cameras"""
+    """List cameras in order, with disconnected cameras at the bottom"""
     camera_configurator = app.daemon.prusa_link.camera_configurator
+    id_list = []
     camera_list = []
     for camera_id in camera_configurator.order:
         if camera_id not in camera_configurator.loaded:
             continue
+        id_list.append(camera_id)
+
+    for camera_id in camera_configurator.loaded:
+        if camera_id not in id_list:
+            id_list.append(camera_id)
+
+    for camera_id in id_list:
         config = camera_configurator.loaded[camera_id].config
         camera_controller = camera_configurator.camera_controller
         connected = camera_configurator.is_connected(camera_id)
