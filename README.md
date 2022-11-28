@@ -43,7 +43,7 @@ Git and Pip are needed for installation, while pigpio is only needed if the
 RPi GPIO pins are to be used.
 
 ```bash
-sudo apt install git python3-pip pigpio libcap-dev libmagic1 libturbojpeg0
+sudo apt install git python3-pip pigpio libcap-dev libmagic1 libturbojpeg0 libatlas-base-dev
 # for the Raspberry Pi camera module support
 # pre-installed on the newer Raspberry Pi OS images post September 2022
 sudo apt install -y python3-picamera2 --no-install-recommends
