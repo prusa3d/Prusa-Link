@@ -3,7 +3,6 @@ import ctypes
 import fcntl
 import logging
 from glob import glob
-from time import time, sleep
 
 import v4l2py  # type: ignore
 import v4l2py.raw  # type: ignore
@@ -12,7 +11,6 @@ from v4l2py.device import PixelFormat, Device  # type: ignore
 from prusa.connect.printer.camera_driver import CameraDriver
 from prusa.connect.printer.camera import Resolution
 from prusa.connect.printer.const import CapabilityType, NotSupported
-from .const import CAMERA_INIT_DELAY
 from .util import from_422_to_jpeg
 
 log = logging.getLogger(__name__)
@@ -127,7 +125,14 @@ class V4L2Driver(CameraDriver):
     def __init__(self, camera_id, config, unavailable_cb):
         # pylint: disable=duplicate-code
         super().__init__(camera_id, config, unavailable_cb)
-        path = config["path"]
+
+        self._resolution_to_format = {}
+        self.device = None
+        self.stream = None
+
+    def _connect(self):
+        """Connects to the V4L2 camera"""
+        path = self.config["path"]
 
         self._capabilities = ({
             CapabilityType.TRIGGER_SCHEME,
@@ -135,59 +140,46 @@ class V4L2Driver(CameraDriver):
             CapabilityType.RESOLUTION
         })
 
-        self._resolution_to_format = {}
-
-        self.device = None
-        self.stream = None
         extra_unsupported_formats = set()
-        try:
-            self.device = v4l2py.Device(path)
-            self._available_resolutions = set()
-            for frame_type in self.device.info.frame_sizes:
-                resolution = Resolution(width=frame_type.width,
-                                        height=frame_type.height)
+        self.device = v4l2py.Device(path)
+        self._available_resolutions = set()
+        for frame_type in self.device.info.frame_sizes:
+            resolution = Resolution(width=frame_type.width,
+                                    height=frame_type.height)
 
-                # Prefer MJPEG over others
-                if resolution in self._resolution_to_format:
-                    if self._resolution_to_format[resolution] == "MJPG":
-                        continue
-
-                pixel_format = frame_type.pixel_format
-                if pixel_format not in PIX_FMT_TO_STRING:
-                    if pixel_format.name not in extra_unsupported_formats:
-                        log.debug("Pixel format %s not supported",
-                                  pixel_format.name)
-                    extra_unsupported_formats.add(pixel_format.name)
+            # Prefer MJPEG over others
+            if resolution in self._resolution_to_format:
+                if self._resolution_to_format[resolution] == "MJPG":
                     continue
 
-                str_pixel_format = PIX_FMT_TO_STRING[pixel_format]
-                self._available_resolutions.add(resolution)
-                self._resolution_to_format[resolution] = str_pixel_format
+            pixel_format = frame_type.pixel_format
+            if pixel_format not in PIX_FMT_TO_STRING:
+                if pixel_format.name not in extra_unsupported_formats:
+                    log.debug("Pixel format %s not supported",
+                              pixel_format.name)
+                extra_unsupported_formats.add(pixel_format.name)
+                continue
 
-            if not self.available_resolutions:
-                raise NotSupported(
-                    "Sorry, PrusaLink supports only YUYV 4:2:2 and MJPEG. "
-                    f"Camera {self.camera_id} supports only these formats: "
-                    f"{extra_unsupported_formats}")
+            str_pixel_format = PIX_FMT_TO_STRING[pixel_format]
+            self._available_resolutions.add(resolution)
+            self._resolution_to_format[resolution] = str_pixel_format
 
-            highest_resolution = sorted(self.available_resolutions)[-1]
-            self._config["resolution"] = str(highest_resolution)
+        if not self.available_resolutions:
+            raise NotSupported(
+                "Sorry, PrusaLink supports only YUYV 4:2:2 and MJPEG. "
+                f"Camera {self.camera_id} supports only these formats: "
+                f"{extra_unsupported_formats}")
 
-            self.device.video_capture.set_format(highest_resolution.width,
-                                                 highest_resolution.height)
+        highest_resolution = sorted(self.available_resolutions)[-1]
+        self._config["resolution"] = str(highest_resolution)
 
-            self._last_init_at = time()
-            self._start_stream()
-        except Exception:  # pylint: disable=broad-except
-            log.exception("Initialization of camera %s has failed",
-                          self.config.get("name", "unknown"))
-            self.disconnect()
-        else:
-            self._set_connected()
+        self.device.video_capture.set_format(highest_resolution.width,
+                                             highest_resolution.height)
+
+        self._start_stream()
 
     def _start_stream(self):
         """Initiates stream from the webcam"""
-        self._last_init_at = time()
         self.stream = v4l2py.device.VideoStream(self.device.video_capture)
         self.device.video_capture.start()
 
@@ -202,9 +194,6 @@ class V4L2Driver(CameraDriver):
     def take_a_photo(self):
         """Since using the threaded camera class, this takes a photo the
         blocking way"""
-        since_last_init = time() - self._last_init_at
-        if since_last_init < CAMERA_INIT_DELAY:
-            sleep(CAMERA_INIT_DELAY - since_last_init)
         self.stream.read()  # Throw the old data out
         data = self.stream.read()
 
@@ -228,6 +217,8 @@ class V4L2Driver(CameraDriver):
 
     def disconnect(self):
         """Disconnects from the camera"""
+        if self.device is None:
+            return
         try:
             self._stop_stream()
         except OSError:
