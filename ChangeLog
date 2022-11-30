@@ -9,6 +9,7 @@
     * Static web update
         - Camwras
         - File sorting
+	- Stop dialog fixed
     * API Settings moved from Wizard to Settings
     * Raspberry Pi Camera support
     * Added cache control headers for cameras snap endpoints
