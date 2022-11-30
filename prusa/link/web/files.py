@@ -8,6 +8,7 @@ from io import FileIO
 from os import makedirs, replace, statvfs, unlink, rmdir, listdir
 from os.path import abspath, basename, dirname, exists, getctime, getsize, \
     join, isdir, split
+from pathlib import Path
 from shutil import move, rmtree
 from time import sleep, time
 from magic import Magic
@@ -558,6 +559,9 @@ def api_file_upload(req, storage, path):
 
     uploaded = 0
     # checksum = sha256() # - # We don't use this value yet
+
+    # Create folders within the path
+    Path(split(abs_path)[0]).mkdir(parents=True, exist_ok=True)
 
     filename = basename(abs_path)
     part_path = partfilepath(filename)
