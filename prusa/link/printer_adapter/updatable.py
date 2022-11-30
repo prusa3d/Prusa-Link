@@ -18,7 +18,7 @@ def prctl_name():
     """Set system thread name with python thread name."""
     # pylint: disable=deprecated-method
     # No current_thread is not deprecated, but currentThread is :-(
-    prctl.set_name(f"prusal#{current_thread().name}")
+    prctl.set_name(f"pl#{current_thread().name}")
 
 
 class Thread(_Thread):
