@@ -55,7 +55,7 @@ class Daemon:
     def run(self, daemon=True):
         """Run daemon."""
 
-        prctl.set_name("prusal#main")
+        prctl.set_name("pl#main")
         self.settings = Settings(self.cfg.printer.settings)
         self.http = ExThread(target=run_http,
                              args=(self, not daemon),

@@ -54,7 +54,7 @@ def init(daemon):
 
 def run_http(daemon, foreground=False):
     """Run http thread"""
-    prctl.set_name("prusal#http")
+    prctl.set_name("pl#http")
     log.info('Starting server for http://%s:%d', daemon.cfg.http.address,
              daemon.cfg.http.port)
 

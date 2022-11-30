@@ -145,6 +145,7 @@ class SerialAdapter(metaclass=MCSingleton):
         Detects the usability of given port
         Split into two for pylint, this one is responsible for opening serial
         """
+        prctl_name()
         port = port_adapter.port
         serial = None
         try:
@@ -209,6 +210,7 @@ class SerialAdapter(metaclass=MCSingleton):
                 port_adapters.append(port_adapter)
                 thread = Thread(target=self._detect,
                                 args=(port_adapter,),
+                                name="port_detector",
                                 daemon=True)
                 threads.append(thread)
                 thread.start()
