@@ -7,13 +7,25 @@
     * Fix MBL data for MK2.5(S)
     * Wizard refactoring
     * Static web update
-        - Camwras
+        - Cameras
         - File sorting
-	- Stop dialog fixed
+        - Stop dialog fixed
     * API Settings moved from Wizard to Settings
     * Raspberry Pi Camera support
     * Added cache control headers for cameras snap endpoints
     * Fixed PUT upload when folders within the path does not exist
+    * Cameras! Support for:
+        - V4L2 cameras (webcams - MJPEG and YUYV formats supported)
+        - picamera2 (libcamera stack) (slow)
+        - Changing the resolution
+        - Camera auto-detection
+        - Triggering on layer change (PrusaSlicer sliced files only!)
+    * Fix files with uppercase extensions not showing up locally
+    * Support "hotend fan" = "extruder fan"
+    * Re-send the complete telemetry every five minutes
+    * Fix stats missing for prints of gcodes without M73
+    * Fix pause being able to double print time reported
+
 
 0.7.0rc1
     * Work around a bug: printer in serial print mode while wizard is shown
