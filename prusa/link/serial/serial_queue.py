@@ -113,6 +113,7 @@ class SerialQueue(metaclass=MCSingleton):
 
     def _keep_sending(self):
         """Send the most important instruction when asked nicely"""
+        prctl_name()
         while True:
             self.send_event.wait()
             if self.quit_evt.is_set():
@@ -604,6 +605,7 @@ class MonitoredSerialQueue(SerialQueue):
 
     def keep_monitoring(self):
         """Runs the loop of monitoring the queue"""
+        prctl_name()
         loop_until(self.quit_evt, lambda: SERIAL_QUEUE_MONITOR_INTERVAL,
                    self.check_status)
 
