@@ -1,6 +1,7 @@
 """Contains functions that might be useful outside of their modules"""
 import datetime
 import logging
+import multiprocessing
 import os
 import socket
 import typing
@@ -218,3 +219,8 @@ def from_422_to_jpeg(data: bytes, width, height):
     yuv_array[size//4*3:] = data_array[3::4]
     return jpeg.encode_from_yuv(yuv_array, height, width,
                                 jpeg_subsample=TJSAMP_422)
+
+
+def is_potato_cpu():
+    """Returns True if your CPU is a potato"""
+    return multiprocessing.cpu_count() == 1

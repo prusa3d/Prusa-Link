@@ -1,6 +1,5 @@
 """Implements the PrusaLink class"""
 import logging
-import multiprocessing
 import os
 import re
 from enum import Enum
@@ -34,7 +33,7 @@ from ..serial.serial_adapter import SerialAdapter
 from ..serial.serial_parser import SerialParser
 from ..serial.serial_queue import MonitoredSerialQueue
 from ..service_discovery import ServiceDiscovery
-from ..util import get_print_stats_gcode, make_fingerprint
+from ..util import get_print_stats_gcode, make_fingerprint, is_potato_cpu
 from .auto_telemetry import AutoTelemetry
 from .command_handlers import (CancelReady, ExecuteGcode, JobInfo,
                                LoadFilament, PausePrint, ResetPrinter,
@@ -824,7 +823,7 @@ class PrusaLink:
             self.printer_polling.polling_ok()
 
         # Set download throttling depending on printer state and cpu count
-        if to_state == State.PRINTING and multiprocessing.cpu_count() < 4:
+        if to_state == State.PRINTING and is_potato_cpu():
             self.printer.download_mgr.buffer_size = DownloadMgr.SMALL_BUFFER
             self.printer.download_mgr.throttle = 0.03
         else:

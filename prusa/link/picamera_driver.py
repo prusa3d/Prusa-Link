@@ -1,12 +1,13 @@
 """Contains implementation of a driver for Rpi Cameras"""
 import logging
 from io import BytesIO
+from time import sleep
 from typing import Dict
 
 from prusa.connect.printer.camera import Resolution
 from prusa.connect.printer.camera_driver import CameraDriver
 from prusa.connect.printer.const import CapabilityType, NotSupported
-
+from .util import is_potato_cpu
 
 log = logging.getLogger(__name__)
 
@@ -75,13 +76,19 @@ class PiCameraDriver(CameraDriver):
                   }
         )
         self.picam2.configure(self.picam2.create_preview_configuration())
-        self.picam2.start()
+        if not is_potato_cpu():
+            self.picam2.start()
 
     def take_a_photo(self):
         """Tells picamera to take a photo"""
+        if is_potato_cpu():
+            self.picam2.start()
+            sleep(0.5)
         data = BytesIO()
         self.picam2.switch_mode_and_capture_file(
             self.still_config, data, format='jpeg')
+        if is_potato_cpu():
+            self.picam2.stop()
         return data.getvalue()
 
     def set_resolution(self, resolution):
@@ -92,5 +99,6 @@ class PiCameraDriver(CameraDriver):
 
     def disconnect(self):
         """Disconnects from the Raspi Camera"""
-        self.picam2.stop()
+        if not is_potato_cpu():
+            self.picam2.stop()
         self.picam2.close()
