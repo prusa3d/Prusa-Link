@@ -70,6 +70,7 @@ def api_settings(req):
     return JSONResponse(
         **{
             "api-key": service_local.api_key,
+            "username": service_local.username,
             "printer": {
                 "name": printer_settings.name.replace("\"", ""),
                 "location": printer_settings.location.replace("\"", ""),
