@@ -118,6 +118,8 @@ class SerialAdapter(metaclass=MCSingleton):
         timeout_at = time() + 5
         while (raw_line := serial.readline()) and time() < timeout_at:
             line = decode_line(raw_line)
+            log.debug("Printer detection for '%s' returned: %s",
+                      port.path, line)
             if match := PRINTER_TYPE_REGEX.match(line):
                 if (code := int(match.group("code"))) in PRINTER_TYPES:
                     name = "Prusa " + PRINTER_TYPES[code].name
@@ -160,12 +162,14 @@ class SerialAdapter(metaclass=MCSingleton):
 
             SerialAdapter._get_info(port_adapter)
 
-        except (SerialException, FileNotFoundError, OSError):
+        except (SerialException, FileNotFoundError, OSError) as error:
             port.description = "Failed to open. Is a printer connected " \
-                               "to this port?"
+                               f"to this port? Error: {error}"
             if SerialAdapter.is_open(serial):
                 serial.close()  # type: ignore
         port.checked = True
+        log.debug("Port: '%s' description: '%s'",
+                  port.path, port.description)
 
     @staticmethod
     def _get_prusa_usb_serial_numbers():
