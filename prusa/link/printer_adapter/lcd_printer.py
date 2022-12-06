@@ -236,7 +236,7 @@ class LCDPrinter(metaclass=MCSingleton):
             time_since_error = time() - self.http_error_at
             if time_since_error > HTTP_ERROR_GRACE:
                 return error
-        return None
+        return error
 
     def _check_errors(self):
         """Should an error display be activated? And what should it say?"""
@@ -268,8 +268,6 @@ class LCDPrinter(metaclass=MCSingleton):
                 ip = self.model.ip_updater.local_ip
                 if ip is not None:
                     text += f"see {ip}".ljust(19)
-                else:
-                    text += "No IP".ljust(19)
                 self.carousel.set_text(self.error_screen,
                                        text,
                                        scroll_amount=19,
