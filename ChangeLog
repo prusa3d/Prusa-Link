@@ -25,6 +25,7 @@
     * Re-send the complete telemetry every five minutes
     * Fix stats missing for prints of gcodes without M73
     * Fix pause being able to double print time reported
+    * Fixed error when trying to get space info of SD Card
 
 
 0.7.0rc1
