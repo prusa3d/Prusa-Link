@@ -300,9 +300,10 @@ def api_files(req, path=''):
 
         storage = file_system.storage_dict.get(storage_path)
 
+    # If the storage is SD Card, we are not able to get space info
     space_info = storage.get_space_info()
-    free = hbytes(space_info.get("free_space")) if storage else (0, "B")
-    total = hbytes(space_info.get("total_space")) if storage else (0, "B")
+    free = hbytes(space_info.get("free_space")) if space_info else (0, "B")
+    total = hbytes(space_info.get("total_space")) if space_info else (0, "B")
 
     return JSONResponse(headers=headers,
                         files=sort_files(filter(None, files)),
