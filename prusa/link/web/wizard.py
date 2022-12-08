@@ -127,8 +127,9 @@ def process_connect(config):
         if option == 'port':
             app.wizard.connect_port = int(connect['port'])
         if option == 'token':
-            app.wizard.connect_token = connect['token'] \
-                if connect['token'] else ''
+            if connect['token']:
+                app.wizard.connect_token = connect['token']
+                app.wizard.restored_connect = True
 
 
 def process_local(config):
@@ -136,11 +137,15 @@ def process_local(config):
     local = config[LOCAL]
     for option in config.options(LOCAL):
         if option == 'enable':
-            app.wizard.enable = local['enable']
+            if local['enable']:
+                app.wizard.enable = local['enable']
         if option == 'username':
-            app.wizard.username = local['username']
+            if local['username']:
+                app.wizard.username = local['username']
         if option == 'digest':
-            app.wizard.digest = local['digest']
+            if local['digest']:
+                app.wizard.digest = local['digest']
+                app.wizard.restored_digest = True
 
 
 def parse_settings(buffer):
@@ -195,8 +200,6 @@ def wizard_restore_post(req):
 
     except TimeoutError as exception:
         raise conditions.RequestTimeout() from exception
-
-    app.wizard.restored_settings = True
 
     redirect('/wizard/credentials')
 

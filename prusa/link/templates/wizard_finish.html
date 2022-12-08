@@ -67,13 +67,12 @@
     <div class="row">
         <div class="col">
             <h1>Prusa Connect</h1>
+            {% if wizard.restored_connect %}
+                <div>Your Prusa Connect settings was restored from configuration file</div>
+            {% else %}
             <div>Prusa Connect is a web service, where you have a complete overview of all your 3D printers at all times.</br>
                 You can link your PrusaLink with Prusa Connect <b>now</b>, using button down below.</div>
-            <ul>
-                {% if printer.token %}
-                <li>Token: <span class="white">{{ printer.token }}</span></li>
-                {% endif %}
-            </ul>
+            {% endif %}
         </div>
     </div>
     <!-- Connect Row End -->
