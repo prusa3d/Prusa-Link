@@ -86,7 +86,7 @@ class Wizard:
         # auth
         self.username = _app.settings.service_local.username
         self.digest = None
-        self.restored_settings = False
+        self.restored_digest = False
 
         # network
         self.net_hostname = _app.settings.network.hostname
@@ -98,6 +98,7 @@ class Wizard:
 
         # connect
         self.connect_skip = False
+        self.restored_connect = False
         self.connect_hostname = _app.settings.service_connect.hostname
         self.connect_tls = _app.settings.service_connect.tls
         self.connect_port = _app.settings.service_connect.port
