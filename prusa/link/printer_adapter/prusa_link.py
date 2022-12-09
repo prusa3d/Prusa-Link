@@ -25,7 +25,7 @@ from ..const import (BASE_STATES, MK25_PRINTERS, PATH_WAIT_TIMEOUT,
                      PRINTER_CONF_TYPES, PRINTER_TYPES, PRINTING_STATES,
                      SD_STORAGE_NAME)
 from ..interesting_logger import InterestingLogRotator
-from ..picamera_driver import PiCameraDriver
+#  from ..picamera_driver import PiCameraDriver
 from ..sdk_augmentation.printer import MyPrinter
 from ..serial.helpers import enqueue_instruction, enqueue_matchable
 from ..serial.serial import SerialException
@@ -113,7 +113,7 @@ class PrusaLink:
             config=self.settings,
             config_file_path=self.cfg.printer.settings,
             camera_controller=self.printer.camera_controller,
-            drivers=[V4L2Driver, PiCameraDriver]
+            drivers=[V4L2Driver]  # , PiCameraDriver]
         )
 
         self.printer.register_handler = self.printer_registered
