@@ -281,7 +281,7 @@ def api_files(req, path=''):
         # path, check if the first part is present in storage dict and if so,
         # assign it to the storage variable
         if not storage:
-            path = split(path)[0]
+            path = path.split(sep="/", maxsplit=1)[0]
             storage = file_system.storage_dict.get(path)
 
         if files:
