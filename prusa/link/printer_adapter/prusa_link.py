@@ -5,10 +5,11 @@ import re
 from enum import Enum
 from threading import Event
 from threading import enumerate as enumerate_threads
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Type
 
 from prusa.connect.printer import Command as SDKCommand
 from prusa.connect.printer import DownloadMgr
+from prusa.connect.printer.camera_driver import CameraDriver
 from prusa.connect.printer.conditions import (API, COND_TRACKER, INTERNET,
                                               CondState)
 from prusa.connect.printer.const import Command as CommandType
@@ -17,15 +18,14 @@ from prusa.connect.printer.const import Source, State
 from prusa.connect.printer.files import File
 from prusa.connect.printer.models import Sheet as SDKSheet
 from ..sdk_augmentation.camera_configurator import MyCameraConfigurator
-from ..v4l2_driver import V4L2Driver
-
+from ..cameras.v4l2_driver import V4L2Driver
+from ..cameras.picamera_driver import PiCameraDriver
 from ..conditions import HW, ROOT_COND, UPGRADED, use_connect_errors
 from ..config import Config, Settings
 from ..const import (BASE_STATES, MK25_PRINTERS, PATH_WAIT_TIMEOUT,
                      PRINTER_CONF_TYPES, PRINTER_TYPES, PRINTING_STATES,
                      SD_STORAGE_NAME)
 from ..interesting_logger import InterestingLogRotator
-#  from ..picamera_driver import PiCameraDriver
 from ..sdk_augmentation.printer import MyPrinter
 from ..serial.helpers import enqueue_instruction, enqueue_matchable
 from ..serial.serial import SerialException
@@ -109,11 +109,15 @@ class PrusaLink:
 
         self.printer = MyPrinter()
 
+        drivers: List[Type[CameraDriver]] = [V4L2Driver]
+        if PiCameraDriver.supported:
+            drivers.append(PiCameraDriver)
+
         self.camera_configurator = MyCameraConfigurator(
             config=self.settings,
             config_file_path=self.cfg.printer.settings,
             camera_controller=self.printer.camera_controller,
-            drivers=[V4L2Driver]  # , PiCameraDriver]
+            drivers=drivers
         )
 
         self.printer.register_handler = self.printer_registered
