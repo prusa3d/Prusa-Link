@@ -16,6 +16,11 @@
       deletion of non-empty folder
     * Changed Print-After-Upload header value check for PUT
     * Added endpoint to start printing file
+    * Removed the original picamera driver
+    * Raspberry Pi Camera support utilizing libcamera directly
+    * Hardware encoding support. (Pi Zero W manages FullHD snapshots without issues)
+    * Fix "unicam" appearing when a Raspberry Pi camera is connected
+    * Fix not following the configured resolution
 
 0.7.0rc2
     * Support thermal model errors (FW 3.12)
