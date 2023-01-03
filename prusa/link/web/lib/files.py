@@ -36,10 +36,9 @@ def local_refs(path, thumbnails):
     if thumbnails:
         thumbnail = f"/api/thumbnails{path}.orig.png"
     return {
-        'resource': f"/api/files/local{path}",
         'download': f"/api/files/local{path}/raw",
-        'thumbnailSmall': None,
-        'thumbnailBig': thumbnail,
+        'icon': None,
+        'thumbnail': thumbnail,
     }
 
 
@@ -47,10 +46,9 @@ def sdcard_refs(path):
     """Make refs structure for file on SD Card."""
 
     return {
-        'resource': f"/api/files/sdcard{path}",
         'download': None,
-        'thumbnailSmall': None,
-        'thumbnailBig': None
+        'icon': None,
+        'thumbnail': None
     }
 
 
@@ -94,13 +92,13 @@ def file_to_api(node, origin='local', path='/', sort_by='folder,date'):
     >>> fs.get('/PrusaLink gcodes/Examples')
     >>> app.daemon = Mock()
     >>> app.daemon.prusa_link.printer.fs = fs
-    >>> files = {'type': 'DIR', 'name': '/', 'ro': True, 'children':[
-    ...     {'type': 'DIR', 'name': 'SD Card', 'children':[
-    ...         {'type': 'DIR', 'name': 'Examples', 'children':[
+    >>> files = {'type': 'FOLDER', 'name': '/', 'ro': True, 'children':[
+    ...     {'type': 'FOLDER', 'name': 'SD Card', 'children':[
+    ...         {'type': 'FOLDER', 'name': 'Examples', 'children':[
     ...             {'type': 'FILE', 'name': '1.gcode'},
     ...             {'type': 'FILE', 'name': 'b.gco'}]}]},
-    ...     {'type': 'DIR', 'name': 'PrusaLink gcodes', 'children':[
-    ...         {'type': 'DIR', 'name': 'Examples', 'children':[
+    ...     {'type': 'FOLDER', 'name': 'PrusaLink gcodes', 'children':[
+    ...         {'type': 'FOLDER', 'name': 'Examples', 'children':[
     ...             {'type': 'FILE', 'name': '1.gcode'},
     ...             {'type': 'FILE', 'name': 'b.gco'}]}]},
     ...     {'type': 'FILE', 'name': 'preview.png'},
@@ -147,7 +145,7 @@ def file_to_api(node, origin='local', path='/', sort_by='folder,date'):
     if 'size' in node:
         result['size'] = node['size']
 
-    if node['type'] == 'DIR':
+    if node['type'] == 'FOLDER':
         if name == SD_STORAGE_NAME:
             origin = 'sdcard'
             result['ro'] = True
