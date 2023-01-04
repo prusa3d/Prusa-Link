@@ -7,13 +7,16 @@ from poorwsgi.response import JSONResponse, Response
 
 from prusa.connect.printer.camera import Camera
 from prusa.connect.printer.const import CameraAlreadyConnected, \
-    NotSupported, CameraNotDetected, ConfigError, CapabilityType, PHOTO_TIMEOUT
+    NotSupported, CameraNotDetected, ConfigError, CapabilityType, \
+    TRIGGER_SCHEME_TO_SECONDS
 
 from ..const import HEADER_DATETIME_FORMAT
 
 from .lib.core import app
 from .lib.auth import check_api_digest
 from ..const import CAMERA_REGISTER_TIMEOUT, QUIT_INTERVAL, TIME_FOR_SNAPSHOT
+
+DEFAULT_PHOTO_EXPIRATION_TIMEOUT = 30  # 30s
 
 
 def format_header(header):
@@ -25,6 +28,9 @@ def photo_by_camera_id(camera_id, req):
     """Returns the response for two endpoints
     "snap" on the first camera in order and "snap" on a specific camera"""
     camera_configurator = app.daemon.prusa_link.camera_configurator
+    camera_controller = app.daemon.prusa_link.printer.camera_controller
+    trigger_scheme = camera_controller.get_camera(camera_id).trigger_scheme
+
     if not camera_configurator.is_connected(camera_id):
         return JSONResponse(status_code=state.HTTP_NOT_FOUND,
                             message=f"Camera with id: {camera_id} is"
@@ -35,8 +41,12 @@ def photo_by_camera_id(camera_id, req):
                             message=f"Camera with id: {camera_id} did not "
                                     f"take a photo yet.")
 
+    photo_timeout = TRIGGER_SCHEME_TO_SECONDS.get(
+        trigger_scheme, DEFAULT_PHOTO_EXPIRATION_TIMEOUT)
+
     # Give PrusaLink some time to take a new snapshot
-    timeout = PHOTO_TIMEOUT + TIME_FOR_SNAPSHOT
+    timeout = photo_timeout + TIME_FOR_SNAPSHOT
+
     last_modified_timestamp = camera.last_photo_timestamp
     last_modified = datetime.utcfromtimestamp(last_modified_timestamp)
     expires = last_modified + timedelta(seconds=timeout)
