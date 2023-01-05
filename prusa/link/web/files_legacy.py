@@ -98,7 +98,6 @@ def api_files(req, path=''):
         else:
             return Response(status_code=state.HTTP_NOT_FOUND, headers=headers)
     else:
-        # data = app.daemon.prusa_link.printer.get_info_legacy()["files"]
         data = file_system.to_dict_legacy()
 
         files = [file_to_api(child) for child in data.get("children", [])]
