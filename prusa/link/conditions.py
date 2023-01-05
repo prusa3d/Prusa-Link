@@ -315,6 +315,7 @@ class LocationNotFound(NotFoundError):
     title = "Location Not Found"
     text = "Location not found, use local."
     id = "location-not-found"
+    status_code = state.HTTP_NOT_FOUND
 
 
 class ConflictError(LinkError):

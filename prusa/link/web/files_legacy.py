@@ -23,12 +23,13 @@ from ..const import LOCAL_STORAGE_NAME, PATH_WAIT_TIMEOUT, \
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.job import Job, JobState
 from ..printer_adapter.prusa_link import TransferCallbackState
-from .files import check_target, callback_factory, check_foldername, \
-    check_filename, partfilepath
+from .lib.files import check_storage, check_os_path, check_read_only, \
+    callback_factory, check_foldername, check_filename, partfilepath
 from .lib.auth import check_api_digest
 from .lib.core import app
 from .lib.files import (file_to_api, gcode_analysis, get_os_path, local_refs,
-                        sdcard_refs, sort_files)
+                        sdcard_refs, sort_files, make_headers, check_job,
+                        get_storage_path)
 
 log = logging.getLogger(__name__)
 
@@ -93,8 +94,8 @@ def api_files(req, path=''):
             storage = file_system.storage_dict.get(path)
 
         if files:
-            files = [
-                file_to_api(child) for child in files.to_dict()["children"]]
+            files_ = files.to_dict_legacy()["children"]
+            files = [file_to_api(child) for child in files_]
         else:
             return Response(status_code=state.HTTP_NOT_FOUND, headers=headers)
     else:
@@ -122,19 +123,19 @@ def api_files(req, path=''):
                         total=f"{int(total[0])} {total[1]}")
 
 
-@app.route('/api/files/<target>', method=state.METHOD_POST)
+@app.route('/api/files/<storage>', method=state.METHOD_POST)
 @check_api_digest
-@check_target
-def api_upload(req, target):
+@check_storage
+@check_read_only
+def api_upload(req, storage):
     """Function for uploading G-CODE."""
     # pylint: disable=too-many-locals
-
-    def failed_upload_handler(transfer):
+    def failed_upload_handler(transfer_):
         """Cancels the file transfer"""
         event_cb = app.daemon.prusa_link.printer.event_cb
         event_cb(const.Event.TRANSFER_ABORTED, const.Source.USER,
-                 transfer_id=transfer.transfer_id)
-        transfer.type = const.TransferType.NO_TRANSFER
+                 transfer_id=transfer_.transfer_id)
+        transfer_.type = const.TransferType.NO_TRANSFER
 
     transfer = app.daemon.prusa_link.printer.transfer
     try:
@@ -182,7 +183,7 @@ def api_upload(req, target):
             unlink(part_path)
             raise conditions.FileCurrentlyPrinted()
 
-    log.info("Store file to %s::%s", target, filepath)
+    log.info("Store file to %s::%s", storage, filepath)
     makedirs(foldername, exist_ok=True)
 
     if not job.printer.fs.wait_until_path(dirname(print_path),
@@ -195,7 +196,7 @@ def api_upload(req, target):
         raise conditions.ResponseTimeout()
 
     if req.accept_json:
-        data = app.daemon.prusa_link.printer.get_info()["files"]
+        data = app.daemon.prusa_link.printer.fs.to_dict_legacy()
 
         files = [file_to_api(child) for child in data.get("children", [])]
         return JSONResponse(done=True,
@@ -206,19 +207,16 @@ def api_upload(req, target):
     return Response(status_code=state.HTTP_CREATED)
 
 
-@app.route("/api/files/<target>/<path:re:.+>", method=state.METHOD_POST)
+@app.route("/api/files/<storage>/<path:re:.+>", method=state.METHOD_POST)
 @check_api_digest
-def api_start_print(req, target, path):
+@check_storage
+def api_start_print(req, storage, path):
     """Start print if no print job is running"""
-    if target not in ('local', 'sdcard'):
-        raise conditions.LocationNotFound()
-
+    # pylint: disable=unused-argument
     command = req.json.get('command')
     job = Job.get_instance()
-    path = '/' + path
-    os_path = get_os_path(path)
-    if not os_path:
-        raise conditions.FileNotFound()
+
+    check_os_path(get_os_path('/' + path))
 
     if command == 'select':
         if job.data.job_state == JobState.IDLE:
@@ -247,46 +245,37 @@ def api_start_print(req, target, path):
     return Response(status_code=state.HTTP_BAD_REQUEST)
 
 
-@app.route('/api/files/<target>/<path:re:.+>/raw')
+@app.route('/api/files/<storage>/<path:re:.+>/raw')
 @check_api_digest
-def api_downloads(req, target, path):
+@check_storage
+def api_downloads(req, storage, path):
     """Downloads intended gcode."""
     # pylint: disable=unused-argument
-    if target == 'sdcard':
-        raise conditions.SDCardNotSupported()
-    if target != 'local':
-        raise conditions.LocationNotFound()
-
     filename = basename(path)
-    os_path = get_os_path(f"/{path}")
-
-    if os_path is None:
-        raise conditions.FileNotFound()
+    os_path = check_os_path(get_os_path('/' + path))
 
     headers = {"Content-Disposition": f"attachment;filename=\"{filename}\""}
     return FileResponse(os_path, headers=headers)
 
 
-@app.route('/api/files/<target>/<path:re:.+(?!/raw)>')
+@app.route('/api/files/<storage>/<path:re:.+(?!/raw)>')
 @check_api_digest
-def api_file_info(req, target, path):
+@check_storage
+def api_file_info(req, storage, path):
     """Returns info and metadata about specific file from its cache"""
     # pylint: disable=unused-argument
-    if target not in ('local', 'sdcard'):
-        raise conditions.LocationNotFound()
-
     file_system = app.daemon.prusa_link.printer.fs
 
-    job = Job.get_instance()
-
-    headers = {
-        'Read-Only': "False",
-        'Currently-Printed': "False"
-    }
+    headers = make_headers()
 
     path = '/' + path
 
-    result = {'origin': target, 'name': basename(path), 'path': path}
+    result = {
+        'origin': storage,
+        'name': basename(path),
+        'path': path,
+        'type': '',
+        'typePath':  []}
 
     if path.endswith(const.GCODE_EXTENSIONS):
         result['type'] = 'machinecode'
@@ -295,7 +284,7 @@ def api_file_info(req, target, path):
         result['type'] = None
         result['typePath'] = None
 
-    if target == 'local':
+    if storage == 'local':
         os_path = get_os_path(path)
         if not os_path:
             raise conditions.FileNotFound()
@@ -313,38 +302,27 @@ def api_file_info(req, target, path):
             raise conditions.FileNotFound()
         meta = FDMMetaData(path)
         meta.load_from_path(path)
-        result['refs'] = sdcard_refs(path)
+        result['refs'] = sdcard_refs()
         result['ro'] = True
         headers['Read-Only'] = "True"
 
-    if job.data.selected_file_path == path:
+    if Job.get_instance().data.selected_file_path == path:
         headers['Currently-Printed'] = "True"
 
     result['gcodeAnalysis'] = gcode_analysis(meta)
     return JSONResponse(**result, headers=headers)
 
 
-@app.route('/api/files/<target>/<path:re:.+>', method=state.METHOD_DELETE)
+@app.route('/api/files/<storage>/<path:re:.+>', method=state.METHOD_DELETE)
 @check_api_digest
-@check_target
-def api_delete(req, target, path):
-    """Delete file local target."""
+@check_storage
+@check_read_only
+def api_delete(req, storage, path):
+    """Delete file on local storage."""
     # pylint: disable=unused-argument
-    if target not in ('local', 'sdcard'):
-        raise conditions.StorageNotExist()
-
-    path = '/' + path
-    os_path = get_os_path(path)
-
-    if not os_path:
-        raise conditions.FileNotFound()
-    job = Job.get_instance()
-
-    if job.data.selected_file_path == path:
-        if job.data.job_state != JobState.IDLE:
-            raise conditions.FileCurrentlyPrinted()
-        job.deselect_file()
-
+    path = get_storage_path(storage=storage, path=path)
+    os_path = check_os_path(get_os_path(path))
+    check_job(Job.get_instance(), path)
     unlink(os_path)
 
     return Response(status_code=state.HTTP_NO_CONTENT)
@@ -376,10 +354,11 @@ def api_transfer_info(req):
     return Response(status_code=state.HTTP_NO_CONTENT)
 
 
-@app.route('/api/download/<target>', method=state.METHOD_POST)
+@app.route('/api/download/<storage>', method=state.METHOD_POST)
 @check_api_digest
-@check_target
-def api_download(req, target):
+@check_storage
+@check_read_only
+def api_download(req, storage):
     """Download intended file from a given url"""
     # pylint: disable=unused-argument
     download_mgr = app.daemon.prusa_link.printer.download_mgr
@@ -416,10 +395,11 @@ def api_download(req, target):
     return Response(status_code=state.HTTP_CREATED)
 
 
-@app.route('/api/folder/<target>/<path:re:.+>', method=state.METHOD_POST)
+@app.route('/api/folder/<storage>/<path:re:.+>', method=state.METHOD_POST)
 @check_api_digest
-@check_target
-def api_create_folder(req, target, path):
+@check_storage
+@check_read_only
+def api_create_folder(req, storage, path):
     """Create a folder in a path"""
     # pylint: disable=unused-argument
     os_path = get_os_path(f'/{LOCAL_STORAGE_NAME}')
@@ -432,10 +412,11 @@ def api_create_folder(req, target, path):
     return Response(status_code=state.HTTP_CREATED)
 
 
-@app.route('/api/folder/<target>/<path:re:.+>', method=state.METHOD_DELETE)
+@app.route('/api/folder/<storage>/<path:re:.+>', method=state.METHOD_DELETE)
 @check_api_digest
-@check_target
-def api_delete_folder(req, target, path):
+@check_storage
+@check_read_only
+def api_delete_folder(req, storage, path):
     """Delete a folder in a path"""
     # pylint: disable=unused-argument
     os_path = get_os_path(f'/{LOCAL_STORAGE_NAME}')
@@ -448,12 +429,14 @@ def api_delete_folder(req, target, path):
     return Response(status_code=state.HTTP_OK)
 
 
-@app.route('/api/modify/<target>', method=state.METHOD_POST)
+@app.route('/api/modify/<storage>', method=state.METHOD_POST)
 @check_api_digest
-@check_target
-def api_modify(req, target):
+@check_storage
+@check_read_only
+def api_modify(req, storage):
     """Move file to another directory or/and change its name"""
     # pylint: disable=unused-argument
+
     os_path = get_os_path(f'/{LOCAL_STORAGE_NAME}')
 
     source = join(os_path, req.json.get('source'))
@@ -499,11 +482,9 @@ def api_thumbnails(req, path):
     """Returns preview from cache file."""
     # pylint: disable=unused-argument
     headers = {'Cache-Control': 'private, max-age=604800'}
-    os_path = get_os_path('/' + path)
-    if not os_path or not exists(os_path):
-        raise conditions.FileNotFound()
+    os_path = check_os_path(get_os_path('/' + path))
 
-    meta = FDMMetaData(get_os_path('/' + path))
+    meta = FDMMetaData(os_path)
     if not meta.is_cache_fresh():
         raise conditions.FileNotFound()
 
