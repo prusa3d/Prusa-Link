@@ -25,7 +25,7 @@ from ..printer_adapter.command_handlers import (PausePrint, ResumePrint,
 from ..printer_adapter.job import Job, JobState
 from .lib.auth import REALM, check_api_digest, check_config
 from .lib.core import app
-from .lib.files import gcode_analysis, gcode_analysis_sd, get_os_path
+from .lib.files import gcode_analysis, get_os_path
 from .lib.view import package_to_api
 
 log = logging.getLogger(__name__)
@@ -341,7 +341,7 @@ def api_job(req):
             analysis = gcode_analysis(meta)
         else:
             meta = printer.from_path(job.selected_file_path)
-            analysis = gcode_analysis_sd(meta)
+            analysis = gcode_analysis(meta, sd_card=True)
 
         estimated_from_gcode = analysis.get('estimatedPrintTime')
 
