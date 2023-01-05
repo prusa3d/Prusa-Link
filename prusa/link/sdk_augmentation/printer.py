@@ -71,16 +71,6 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         info["prusalink"] = __version__
         return info
 
-    def get_info_legacy(self) -> Dict[str, Any]:
-        """Returns a dictionary containing the printers info.
-        This is a deprecated legacy code"""
-        info = super().get_info_legacy()
-        info["nozzle_diameter"] = self.nozzle_diameter
-        info["files"] = self.fs.to_dict_legacy()
-        info["prusa_link"] = __version__  # TODO: remove later
-        info["prusalink"] = __version__
-        return info
-
     def connection_from_settings(self, settings):
         """Loads connection details from the Settings class."""
         self.api_key = settings.service_local.api_key

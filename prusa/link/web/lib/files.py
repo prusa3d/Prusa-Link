@@ -44,6 +44,7 @@ def local_refs(path, thumbnails):
 
 def sdcard_refs(path):
     """Make refs structure for file on SD Card."""
+    # pylint: disable=unused-argument
 
     return {
         'download': None,
