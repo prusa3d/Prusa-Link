@@ -36,7 +36,7 @@ def photo_by_camera_id(camera_id, req):
                             message=f"Camera with id: {camera_id} is"
                                     f" not available")
     camera = camera_configurator.loaded[camera_id]
-    if camera.last_photo is None:
+    if camera.last_snapshot is None:
         return JSONResponse(status_code=state.HTTP_NO_CONTENT,
                             message=f"Camera with id: {camera_id} did not "
                                     f"take a photo yet.")
@@ -47,7 +47,7 @@ def photo_by_camera_id(camera_id, req):
     # Give PrusaLink some time to take a new snapshot
     timeout = photo_timeout + TIME_FOR_SNAPSHOT
 
-    last_modified_timestamp = camera.last_photo_timestamp
+    last_modified_timestamp = camera.last_snapshot.timestamp
     last_modified = datetime.utcfromtimestamp(last_modified_timestamp)
     expires = last_modified + timedelta(seconds=timeout)
 
@@ -66,7 +66,7 @@ def photo_by_camera_id(camera_id, req):
             return Response(status_code=state.HTTP_NOT_MODIFIED,
                             headers=headers)
 
-    return Response(camera.last_photo,
+    return Response(camera.last_snapshot.data,
                     headers=headers,
                     content_type='image/jpeg')
 
