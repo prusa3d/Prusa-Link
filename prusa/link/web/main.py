@@ -175,8 +175,12 @@ def api_version(req):
         },
         'hostname': gethostname()
     }
+    try:
+        show_system_info = bool(int(req.args.get('system', False)))
+    except ValueError:
+        show_system_info = False
 
-    if req.args.get('system'):
+    if show_system_info:
         # pylint: disable=not-an-iterable
         retval['python'] = [package_to_api(pkg) for pkg in working_set]
         retval['system'] = {'python': version}
