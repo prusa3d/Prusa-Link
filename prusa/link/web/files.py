@@ -65,14 +65,20 @@ def storage_info(req):
     return JSONResponse(storage_list=storage_list)
 
 
+@app.route('/api/v1/files/<storage>')
+@app.route('/api/v1/files/<storage>/')
 @app.route('/api/v1/files/<storage>/<path:re:.+(?!/raw)>')
 @check_api_digest
 @check_storage
-def api_file_info(req, storage, path):
+def api_file_info(req, storage, path=None):
     """Returns info and metadata about specific file or folder"""
     # pylint: disable=unused-argument
     file_system = app.daemon.prusa_link.printer.fs
     headers = make_headers()
+
+    # If no path is inserted, return root of the storage
+    if path is None:
+        path = "/"
 
     path = get_storage_path(storage, path)
 
