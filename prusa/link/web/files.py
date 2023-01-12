@@ -9,7 +9,6 @@ from magic import Magic
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, Response
 from prusa.connect.printer.const import StorageType, State, FileType
-from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 
 from .. import conditions
 from ..const import LOCAL_STORAGE_NAME
@@ -17,10 +16,9 @@ from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.job import Job
 from .lib.auth import check_api_digest
 from .lib.core import app
-from .lib.files import (gcode_analysis, local_refs, sdcard_refs, check_os_path,
-                        check_read_only, get_storage_path, get_os_path,
-                        check_storage, get_files_size, partfilepath,
-                        make_headers, check_job)
+from .lib.files import (check_os_path, check_read_only, get_storage_path,
+                        fill_printfile_data, get_os_path, check_storage,
+                        get_files_size, partfilepath, make_headers, check_job)
 
 log = logging.getLogger(__name__)
 
@@ -74,39 +72,54 @@ def api_file_info(req, storage, path=None):
     """Returns info and metadata about specific file or folder"""
     # pylint: disable=unused-argument
     file_system = app.daemon.prusa_link.printer.fs
-    headers = make_headers()
+
+    # Original path from url, e.g. /local/Dune
+    url_path = f"/{storage}" if path is None else f"/{storage}/{path}"
 
     # If no path is inserted, return root of the storage
-    if path is None:
-        path = "/"
-
     path = get_storage_path(storage, path)
 
     file = file_system.get(path)
     if not file:
         raise conditions.FileNotFound()
+
     os_path = file_system.get_os_path(path)
-    result = file.to_dict()
-    result['path'] = dirname(path)
+    file_tree = file.to_dict()
+    result = file_tree.copy()
+    result['path'] = dirname(url_path)
+    file_type = result['type']
 
-    if result['type'] is FileType.PRINT_FILE.value:
-        if storage == 'local':
-            meta = FDMMetaData(os_path)
-            meta.load_from_path(path)
-            meta = get_metadata(os_path)
-            result['refs'] = local_refs(path, meta.thumbnails)
-            result['meta'] = gcode_analysis(meta)
-            result['display_name'] = result['name']
-            result['display_path'] = dirname(path)
-        else:
-            meta = FDMMetaData(path)
-            meta.load_from_path(path)
-            result['refs'] = sdcard_refs()
-            headers['Read-Only'] = "True"
+    # --- FOLDER ---
+    # Fill children's tree data for the folder
+    if file_type is FileType.FOLDER.value:
+        for child in result.get("children", []):
+            child['path'] = url_path
 
-    if Job.get_instance().data.selected_file_path == path:
-        headers['Currently-Printed'] = "True"
+            # Fill specific data for print files within children list
+            if child["type"] is FileType.PRINT_FILE.value:
+                child_path = f'{path}/{child["name"]}'
+                child_os_path = f"{os_path}/{child['name']}"
+                child.update(fill_printfile_data(child_path, child_os_path,
+                                                 storage))
 
+            # Fill specific data for firmware files within children list
+            # elif child["type"] is FileType.FIRMWARE.value:
+
+            # Fill specific data for other files within children list
+            # elif child["type"] is FileType.FILE.value:
+
+    # --- FILE ---
+    # Fill specific data and metadata for print file
+    elif file_type is FileType.PRINT_FILE.value:
+        result.update(fill_printfile_data(path, os_path, storage))
+
+    # Fill specific data for firmware file
+    # elif file_type is FileType.FIRMWARE.value:
+
+    # Fill specific data for other file
+    # elif file_type is FileType.FILE.value:
+
+    headers = make_headers(storage, path)
     return JSONResponse(**result, headers=headers)
 
 

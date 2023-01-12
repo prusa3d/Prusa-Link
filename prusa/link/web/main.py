@@ -345,7 +345,7 @@ def api_job(req):
             analysis = gcode_analysis(meta)
         else:
             meta = printer.from_path(job.selected_file_path)
-            analysis = gcode_analysis(meta, sd_card=True)
+            analysis = gcode_analysis(meta)
 
         estimated_from_gcode = analysis.get('estimatedPrintTime')
 

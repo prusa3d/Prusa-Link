@@ -2,13 +2,14 @@
 from functools import wraps
 from io import FileIO
 from os import statvfs
-from os.path import abspath, dirname, exists, join
+from os.path import abspath, dirname, basename, exists, join
 from time import sleep, time
 from poorwsgi.request import Request
 
 from prusa.connect.printer.const import Source, Event, State, \
     TransferType, GCODE_EXTENSIONS
-from prusa.connect.printer.metadata import FDMMetaData, estimated_to_seconds
+from prusa.connect.printer.metadata import FDMMetaData, get_metadata, \
+    estimated_to_seconds
 from prusa.connect.printer.download import (Transfer, TransferRunningError,
                                             filename_too_long,
                                             foldername_too_long,
@@ -17,7 +18,7 @@ from prusa.connect.printer.download import (Transfer, TransferRunningError,
 from .core import app
 from ... import conditions
 from ...printer_adapter.job import JobState
-from ...const import SD_STORAGE_NAME
+from ...const import SD_STORAGE_NAME, LOCAL_STORAGE_NAME
 from ...printer_adapter.job import Job
 
 
@@ -42,15 +43,12 @@ def get_os_path(abs_path):
     return file_.abs_path(storage.path_storage)
 
 
-def local_refs(path, thumbnails):
+def local_refs(path: str, thumbnails: dict[str, bytes]):
     """Make refs structure for file on local storage."""
-    thumbnail = None
-    if thumbnails:
-        thumbnail = f"/api/thumbnails{path}.orig.png"
     return {
         'download': f"/api/files/local{path}/raw",
         'icon': None,
-        'thumbnail': thumbnail,
+        'thumbnail': f"/api/thumbnails{path}.orig.png" if thumbnails else None
     }
 
 
@@ -63,23 +61,40 @@ def sdcard_refs():
     }
 
 
-def gcode_analysis(meta, sd_card: bool = False):
+def gcode_analysis(meta):
     """Make gcodeAnalysis structure from metadata."""
-    # Local storage uses meta.data, SD Card uses only meta
-    if not sd_card:
-        meta = meta.data
-
     estimated = estimated_to_seconds(
-        meta.get('estimated printing time (normal mode)', ''))
+        meta.data.get('estimated printing time (normal mode)', ''))
 
     return {
         'estimatedPrintTime': estimated,
-        'material': meta.get('filament_type'),
-        'layerHeight': meta.get('layer_height')
+        'material': meta.data.get('filament_type'),
+        'layerHeight': meta.data.get('layer_height')
         # filament struct
         # dimensions
         # printingArea
     }
+
+
+def fill_printfile_data(path: str, os_path: str, storage: str):
+    """Get file data for print file and fill them to the result dict"""
+    result = {}
+    if storage == "local":
+        meta = FDMMetaData(os_path)
+        meta.load_from_path(path)
+        meta = get_metadata(os_path)
+        result['refs'] = local_refs(path, meta.thumbnails)
+    else:
+        meta = FDMMetaData(path)
+        meta.load_from_path(path)
+        result['refs'] = sdcard_refs()
+
+    result['meta'] = meta.data
+    result['meta']['estimated_print_time'] = estimated_to_seconds(
+        meta.data.get('estimated printing time (normal mode)', ''))
+    result['display_name'] = basename(path)
+    result['display_path'] = dirname(path)
+    return result
 
 
 def file_to_api(node, origin: str = 'local', path: str = '/',
@@ -269,13 +284,22 @@ def check_job(job: Job, path: str):
         job.deselect_file()
 
 
-def get_storage_path(storage: str, path: str):
-    """Get name of the storage and insert it to the path"""
+def get_storage_name(storage: str):
+    """Return display name of the storage"""
+    storage_name = ""
     if storage == 'local':
-        path = f'/PrusaLink gcodes/{path}'
-    elif storage == 'sdcard':
-        path = f'/SD Card/{path}'
-    return path
+        storage_name = LOCAL_STORAGE_NAME
+    elif storage == "sdcard":
+        storage_name = SD_STORAGE_NAME
+    return storage_name
+
+
+def get_storage_path(storage: str, path: str):
+    """Return display path of the storage"""
+    storage_name = get_storage_name(storage)
+    if path is None:
+        return f"/{storage_name}/"
+    return f"/{storage_name}/{path}"
 
 
 def partfilepath(filename):
@@ -387,10 +411,11 @@ def callback_factory(req: Request):
     return gcode_callback
 
 
-def make_headers():
+def make_headers(storage, path):
     """Make headers for api(/v1)/files GET endpoints"""
     headers = {
-        'Read-Only': "False",
-        'Currently-Printed': "False"
+        'Read-Only': str(storage != "local"),
+        'Currently-Printed':
+            str(Job.get_instance().data.selected_file_path == path)
     }
     return headers
