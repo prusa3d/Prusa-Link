@@ -266,8 +266,6 @@ def api_file_info(req, storage, path):
     # pylint: disable=unused-argument
     file_system = app.daemon.prusa_link.printer.fs
 
-    headers = make_headers()
-
     path = '/' + path
 
     result = {
@@ -304,10 +302,8 @@ def api_file_info(req, storage, path):
         meta.load_from_path(path)
         result['refs'] = sdcard_refs()
         result['ro'] = True
-        headers['Read-Only'] = "True"
 
-    if Job.get_instance().data.selected_file_path == path:
-        headers['Currently-Printed'] = "True"
+    headers = make_headers(storage, path)
 
     result['gcodeAnalysis'] = gcode_analysis(meta)
     return JSONResponse(**result, headers=headers)
