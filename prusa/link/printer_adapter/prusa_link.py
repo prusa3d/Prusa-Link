@@ -237,9 +237,9 @@ class PrusaLink:
         self.storage_controller.folder_attached_signal.\
             connect(self.folder_attach)
         self.storage_controller.folder_detached_signal.\
-            connect(self.folder_dettach)
+            connect(self.folder_detach)
         self.storage_controller.sd_attached_signal.connect(self.sd_attach)
-        self.storage_controller.sd_detached_signal.connect(self.sd_dettach)
+        self.storage_controller.sd_detached_signal.connect(self.sd_detach)
         self.printer_polling.printer_type.became_valid_signal.connect(
             self.printer_type_changed)
         self.printer_polling.print_state.became_valid_signal.connect(
@@ -720,17 +720,17 @@ class PrusaLink:
         """Connects a folder being attached to PrusaConnect events"""
         self.printer.attach(path, os.path.basename(path))
 
-    def folder_dettach(self, _, path: str) -> None:
-        """Connects a folder being dettached to PrusaConnect events"""
-        self.printer.dettach(os.path.basename(path))
+    def folder_detach(self, _, path: str) -> None:
+        """Connects a folder being detached to PrusaConnect events"""
+        self.printer.detach(os.path.basename(path))
 
     def sd_attach(self, _, files: File) -> None:
         """Connects the sd being attached to PrusaConnect events"""
         self.printer.fs.attach(SD_STORAGE_NAME, files, "", use_inotify=False)
 
-    def sd_dettach(self, _) -> None:
+    def sd_detach(self, _) -> None:
         """Connects the sd being detached to PrusaConnect events"""
-        self.printer.fs.dettach(SD_STORAGE_NAME)
+        self.printer.fs.detach(SD_STORAGE_NAME)
 
     def instruction_confirmed(self, _) -> None:
         """
