@@ -72,7 +72,7 @@ class Storage(ThreadedUpdatable):
             self.attached_signal.send(self, path=path)
 
         for path in removed:
-            log.info("Dettached %s", path)
+            log.info("Detached %s", path)
             self.detached_signal.send(self, path=path)
 
         self.data.attached_set = new_storage_set
