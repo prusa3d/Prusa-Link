@@ -1,7 +1,7 @@
 """/api/v1/files endpoint handlers"""
 import logging
 from os import replace, unlink, rmdir, listdir
-from os.path import basename, dirname, exists, join, isdir, split
+from os.path import basename, exists, join, isdir, split
 from pathlib import Path
 from time import sleep
 from magic import Magic
@@ -73,9 +73,6 @@ def api_file_info(req, storage, path=None):
     # pylint: disable=unused-argument
     file_system = app.daemon.prusa_link.printer.fs
 
-    # Original path from url, e.g. /local/Dune
-    url_path = f"/{storage}" if path is None else f"/{storage}/{path}"
-
     # If no path is inserted, return root of the storage
     path = get_storage_path(storage, path)
 
@@ -86,15 +83,12 @@ def api_file_info(req, storage, path=None):
     os_path = file_system.get_os_path(path)
     file_tree = file.to_dict()
     result = file_tree.copy()
-    result['path'] = dirname(url_path)
     file_type = result['type']
 
     # --- FOLDER ---
     # Fill children's tree data for the folder
     if file_type is FileType.FOLDER.value:
         for child in result.get("children", []):
-            child['path'] = url_path
-
             # Fill specific data for print files within children list
             if child["type"] is FileType.PRINT_FILE.value:
                 child_path = f'{path}/{child["name"]}'

@@ -93,7 +93,6 @@ def fill_printfile_data(path: str, os_path: str, storage: str):
     result['meta']['estimated_print_time'] = estimated_to_seconds(
         meta.data.get('estimated printing time (normal mode)', ''))
     result['display_name'] = basename(path)
-    result['display_path'] = dirname(path)
     return result
 
 
