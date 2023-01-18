@@ -3,8 +3,8 @@ import logging
 from os import listdir
 from os.path import basename, getmtime, getsize, join
 from socket import gethostname
-from subprocess import Popen
-from sys import version
+from subprocess import Popen, check_output
+from sys import version, executable
 
 from pkg_resources import working_set
 from poorwsgi import state
@@ -443,6 +443,37 @@ def api_job_command(req):
                             text=str(err))
 
     return Response(status_code=state.HTTP_NO_CONTENT)
+
+
+@app.route("/api/v1/update/<env>")
+@check_api_digest
+def api_update(req, env):
+    """Retrieve information about available updates of packages and their
+    versions"""
+    # pylint: disable=unused-argument
+    headers = {"Update-Available": "False"}
+    updatable = []
+
+    if env == "python":
+        output = check_output([executable, '-m', 'pip', 'list', '-o']).decode()
+        packages_list = output.split('\n')[2:-1]
+        if packages_list:
+            headers["Update-Available"] = "True"
+        for package_ in packages_list:
+            package = package_.split()
+            updatable.append(
+                {
+                    "name": package[0],
+                    "version": package[1],
+                    "available_version": package[2],
+                    "path": None}
+            )
+        return JSONResponse(available_updates=updatable, headers=headers)
+
+    if env == "system":
+        return Response(status_code=state.HTTP_NOT_IMPLEMENTED)
+
+    return Response(status_code=state.HTTP_BAD_REQUEST)
 
 
 @app.route("/api/system/commands")
