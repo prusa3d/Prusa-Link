@@ -2,7 +2,7 @@
 from functools import wraps
 from io import FileIO
 from os import statvfs
-from os.path import abspath, dirname, basename, exists, join
+from os.path import abspath, dirname, exists, join
 from time import sleep, time
 from poorwsgi.request import Request
 
@@ -92,7 +92,6 @@ def fill_printfile_data(path: str, os_path: str, storage: str):
     result['meta'] = meta.data
     result['meta']['estimated_print_time'] = estimated_to_seconds(
         meta.data.get('estimated printing time (normal mode)', ''))
-    result['display_name'] = basename(path)
     return result
 
 
@@ -283,22 +282,22 @@ def check_job(job: Job, path: str):
         job.deselect_file()
 
 
-def get_storage_name(storage: str):
+def storage_display_name(storage: str):
     """Return display name of the storage"""
-    storage_name = ""
+    display_name = ""
     if storage == 'local':
-        storage_name = LOCAL_STORAGE_NAME
+        display_name = LOCAL_STORAGE_NAME
     elif storage == "sdcard":
-        storage_name = SD_STORAGE_NAME
-    return storage_name
+        display_name = SD_STORAGE_NAME
+    return display_name
 
 
-def get_storage_path(storage: str, path: str):
+def storage_display_path(storage: str, path: str):
     """Return display path of the storage"""
-    storage_name = get_storage_name(storage)
+    display_name = storage_display_name(storage)
     if path is None:
-        return f"/{storage_name}/"
-    return f"/{storage_name}/{path}"
+        return f"/{display_name}/"
+    return f"/{display_name}/{path}"
 
 
 def partfilepath(filename):
