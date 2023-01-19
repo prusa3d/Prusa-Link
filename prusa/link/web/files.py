@@ -18,7 +18,8 @@ from .lib.auth import check_api_digest
 from .lib.core import app
 from .lib.files import (check_os_path, check_read_only, storage_display_path,
                         fill_printfile_data, get_os_path, check_storage,
-                        get_files_size, partfilepath, make_headers, check_job)
+                        get_files_size, partfilepath, make_headers, check_job,
+                        fill_file_data)
 
 log = logging.getLogger(__name__)
 
@@ -91,18 +92,23 @@ def api_file_info(req, storage, path=None):
     if file_type is FileType.FOLDER.value:
         for child in result.get("children", []):
             child['display_name'] = child['name']
-            # Fill specific data for print files within children list
-            if child["type"] is FileType.PRINT_FILE.value:
-                child_path = f'{path}/{child["name"]}'
-                child_os_path = f"{os_path}/{child['name']}"
-                child.update(fill_printfile_data(child_path, child_os_path,
-                                                 storage))
+            child_type = child["type"]
+            child_path = f'{path}/{child["name"]}'
+            child_os_path = f"{os_path}/{child['name']}"
 
-            # Fill specific data for firmware files within children list
-            # elif child["type"] is FileType.FIRMWARE.value:
+            if child_type is not FileType.FOLDER.value:
+                # Fill specific data for print files within children list
+                if child_type is FileType.PRINT_FILE.value:
+                    child.update(fill_printfile_data(child_path, child_os_path,
+                                                     storage, simple=True))
 
-            # Fill specific data for other files within children list
-            # elif child["type"] is FileType.FILE.value:
+                # Fill specific data for firmware files within children list
+                elif child_type is FileType.FIRMWARE.value:
+                    child.update(fill_file_data(child_path, storage))
+
+                # Fill specific data for other files within children list
+                else:
+                    child.update(fill_file_data(child_path, storage))
 
     # --- FILE ---
     # Fill specific data and metadata for print file
@@ -110,10 +116,12 @@ def api_file_info(req, storage, path=None):
         result.update(fill_printfile_data(path, os_path, storage))
 
     # Fill specific data for firmware file
-    # elif file_type is FileType.FIRMWARE.value:
+    elif file_type is FileType.FIRMWARE.value:
+        result.update(fill_file_data(path, storage))
 
     # Fill specific data for other file
-    # elif file_type is FileType.FILE.value:
+    else:
+        result.update(fill_file_data(path, storage))
 
     headers = make_headers(storage, path)
     return JSONResponse(**result, headers=headers)
