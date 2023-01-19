@@ -29,7 +29,7 @@ from .lib.auth import check_api_digest
 from .lib.core import app
 from .lib.files import (file_to_api, gcode_analysis, get_os_path, local_refs,
                         sdcard_refs, sort_files, make_headers, check_job,
-                        get_storage_path)
+                        storage_display_path)
 
 log = logging.getLogger(__name__)
 
@@ -316,7 +316,7 @@ def api_file_info(req, storage, path):
 def api_delete(req, storage, path):
     """Delete file on local storage."""
     # pylint: disable=unused-argument
-    path = get_storage_path(storage=storage, path=path)
+    path = storage_display_path(storage=storage, path=path)
     os_path = check_os_path(get_os_path(path))
     check_job(Job.get_instance(), path)
     unlink(os_path)

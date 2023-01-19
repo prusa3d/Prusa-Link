@@ -16,7 +16,7 @@ from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.job import Job
 from .lib.auth import check_api_digest
 from .lib.core import app
-from .lib.files import (check_os_path, check_read_only, get_storage_path,
+from .lib.files import (check_os_path, check_read_only, storage_display_path,
                         fill_printfile_data, get_os_path, check_storage,
                         get_files_size, partfilepath, make_headers, check_job)
 
@@ -74,7 +74,7 @@ def api_file_info(req, storage, path=None):
     file_system = app.daemon.prusa_link.printer.fs
 
     # If no path is inserted, return root of the storage
-    path = get_storage_path(storage, path)
+    path = storage_display_path(storage, path)
 
     file = file_system.get(path)
     if not file:
@@ -84,11 +84,13 @@ def api_file_info(req, storage, path=None):
     file_tree = file.to_dict()
     result = file_tree.copy()
     file_type = result['type']
+    result['display_name'] = basename(path)
 
     # --- FOLDER ---
     # Fill children's tree data for the folder
     if file_type is FileType.FOLDER.value:
         for child in result.get("children", []):
+            child['display_name'] = child['name']
             # Fill specific data for print files within children list
             if child["type"] is FileType.PRINT_FILE.value:
                 child_path = f'{path}/{child["name"]}'
@@ -218,7 +220,7 @@ def api_file_upload(req, storage, path):
 def api_v1_delete(req, storage, path):
     """Delete file or folder in local storage"""
     # pylint: disable=unused-argument
-    path = get_storage_path(storage, path)
+    path = storage_display_path(storage, path)
     os_path = check_os_path(get_os_path(path))
     check_job(Job.get_instance(), path)
 
