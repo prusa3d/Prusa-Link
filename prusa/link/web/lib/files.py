@@ -43,8 +43,22 @@ def get_os_path(abs_path):
     return file_.abs_path(storage.path_storage)
 
 
+def local_simple_refs(path: str):
+    """Make refs structure for firmware and other files on local storage"""
+    return {
+        'download': f"/api/files/local{path}/raw"
+    }
+
+
+def sdcard_simple_refs():
+    """Make refs structure for firmware and other files on SD Card"""
+    return {
+        'download': None
+    }
+
+
 def local_refs(path: str, thumbnails: dict[str, bytes]):
-    """Make refs structure for file on local storage."""
+    """Make refs structure for print file on local storage."""
     return {
         'download': f"/api/files/local{path}/raw",
         'icon': None,
@@ -53,7 +67,7 @@ def local_refs(path: str, thumbnails: dict[str, bytes]):
 
 
 def sdcard_refs():
-    """Make refs structure for file on SD Card."""
+    """Make refs structure for print file on SD Card."""
     return {
         'download': None,
         'icon': None,
@@ -76,7 +90,19 @@ def gcode_analysis(meta):
     }
 
 
-def fill_printfile_data(path: str, os_path: str, storage: str):
+def fill_file_data(path: str, storage: str):
+    """Get file data for firmware and other files and fill them to
+    the result dict"""
+    result = {}
+    if storage == "local":
+        result['refs'] = local_simple_refs(path)
+    else:
+        result['refs'] = sdcard_simple_refs()
+    return result
+
+
+def fill_printfile_data(path: str, os_path: str, storage: str,
+                        simple: bool = False):
     """Get file data for print file and fill them to the result dict"""
     result = {}
     if storage == "local":
@@ -88,6 +114,9 @@ def fill_printfile_data(path: str, os_path: str, storage: str):
         meta = FDMMetaData(path)
         meta.load_from_path(path)
         result['refs'] = sdcard_refs()
+
+    if simple:
+        return result
 
     result['meta'] = meta.data
     result['meta']['estimated_print_time'] = estimated_to_seconds(
