@@ -325,7 +325,7 @@ def storage_display_path(storage: str, path: str):
     """Return display path of the storage"""
     display_name = storage_display_name(storage)
     if path is None:
-        return f"/{display_name}/"
+        return f"/{display_name}"
     return f"/{display_name}/{path}"
 
 
