@@ -50,11 +50,11 @@ def storage_info(req):
             storage_ = storage_list[0]
             storage_['free_space'] = files.get('free_space')
             storage_['total_space'] = files.get('total_space')
-            storage_['ro'] = False
+            storage_['read_only'] = False
         else:
             # SDCARD
             storage_ = storage_list[1]
-            storage_['ro'] = True
+            storage_['read_only'] = True
 
         storage_['name'] = storage.storage
         storage_['print_files'] = print_files_size
