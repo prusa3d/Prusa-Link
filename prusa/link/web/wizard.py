@@ -2,6 +2,7 @@
 from configparser import ConfigParser
 from functools import wraps
 from time import sleep
+from urllib import parse
 
 from poorwsgi import abort, redirect, state
 from poorwsgi.request import FieldStorage
@@ -367,15 +368,22 @@ def wizard_finish_post(req):
         url = Printer.connect_url(wizard.connect_hostname,
                                   bool(wizard.connect_tls),
                                   wizard.connect_port)
-        type_ = printer.type
-        name = \
-            wizard.printer_name.replace("#", "%23") \
-                  .replace("\"", "").replace(" ", "%20")
-        location = \
-            wizard.printer_location.replace("#", "%23") \
-                  .replace("\"", "").replace(" ", "%20")
-        redirect(
-            f'{url}/add-printer/connect/{type_}/{code}/{name}/{location}')
+
+        name = wizard.printer_name
+        location = wizard.printer_location
+        add_url = f"{url}/add-printer/connect/{printer.type}/{code}"
+
+        if not name and not location:
+            redirect(add_url)
+
+        printer_info = {}
+        if name:
+            printer_info.update({"name": name})
+        if location:
+            printer_info.update({"location": location})
+
+        url_ = f"{add_url}?{parse.urlencode(printer_info)}"
+        redirect(url_)
 
 
 @app.before_response()
