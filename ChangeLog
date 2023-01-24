@@ -3,6 +3,7 @@
 0.7.0rc3
     * Added v1 endpoints for flat filesystem structure, old struct is moved to files_legacy file
     * Added api/v1/update/<env> GET endpoint
+    * Printer name and location are added to register url as query parameters, if available
 
 0.7.0rc2
     * Support thermal model errors (FW 3.12)
