@@ -5,15 +5,13 @@ from os.path import basename, exists, join, isdir, split
 from pathlib import Path
 from time import sleep
 from magic import Magic
-from datetime import datetime
-from hashlib import md5
 
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, Response
 from prusa.connect.printer.const import StorageType, State, FileType
 
 from .. import conditions
-from ..const import LOCAL_STORAGE_NAME, HEADER_DATETIME_FORMAT
+from ..const import LOCAL_STORAGE_NAME
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.job import Job
 from .lib.auth import check_api_digest
@@ -21,7 +19,8 @@ from .lib.core import app
 from .lib.files import (check_os_path, check_read_only, storage_display_path,
                         fill_printfile_data, get_os_path, check_storage,
                         get_files_size, partfilepath, make_headers, check_job,
-                        fill_file_data)
+                        fill_file_data, get_last_modified, make_cache_headers,
+                        check_cache_headers)
 
 log = logging.getLogger(__name__)
 
@@ -75,6 +74,14 @@ def api_file_info(req, storage, path=None):
     """Returns info and metadata about specific file or folder"""
     # pylint: disable=unused-argument
     file_system = app.daemon.prusa_link.printer.fs
+    last_modified = get_last_modified(file_system)
+    headers = make_cache_headers(last_modified)
+
+    # If cache is up-to-date, return Not Modified response, otherwise continue
+    if check_cache_headers(req_headers=req.headers,
+                           headers=headers,
+                           last_modified=last_modified):
+        return Response(status_code=state.HTTP_NOT_MODIFIED, headers=headers)
 
     # If no path is inserted, return root of the storage
     path = storage_display_path(storage, path)
@@ -82,20 +89,6 @@ def api_file_info(req, storage, path=None):
     file = file_system.get(path)
     if not file:
         raise conditions.FileNotFound()
-
-    last_updated = 0
-    for storage in file_system.storage_dict.values():
-        if storage.last_updated > last_updated:
-            last_updated = storage.last_updated
-    last_modified = datetime.utcfromtimestamp(last_updated)
-    last_modified_str = last_modified.strftime(HEADER_DATETIME_FORMAT)
-    etag = f'W/"{md5(last_modified_str.encode()).hexdigest()[:10]}"'
-    headers = {'ETag': etag}
-
-    if 'If-None-Match' in req.headers:
-        if req.headers['If-None-Match'] == etag:
-            return Response(status_code=state.HTTP_NOT_MODIFIED,
-                            headers=headers)
 
     os_path = file_system.get_os_path(path)
     file_tree = file.to_dict()

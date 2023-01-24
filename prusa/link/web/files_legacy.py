@@ -2,8 +2,6 @@
 This is a deprecated legacy code"""
 import logging
 from base64 import decodebytes
-from datetime import datetime
-from hashlib import md5
 from os import makedirs, replace, unlink
 from os.path import abspath, basename, dirname, exists, getctime, getsize, \
     join, isdir
@@ -18,8 +16,7 @@ from prusa.connect.printer.const import Source
 from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 
 from .. import conditions
-from ..const import LOCAL_STORAGE_NAME, PATH_WAIT_TIMEOUT, \
-    HEADER_DATETIME_FORMAT
+from ..const import LOCAL_STORAGE_NAME, PATH_WAIT_TIMEOUT
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.job import Job, JobState
 from ..printer_adapter.prusa_link import TransferCallbackState
@@ -29,7 +26,8 @@ from .lib.auth import check_api_digest
 from .lib.core import app
 from .lib.files import (file_to_api, gcode_analysis, get_os_path, local_refs,
                         sdcard_refs, sort_files, make_headers, check_job,
-                        storage_display_path)
+                        storage_display_path, get_last_modified,
+                        make_cache_headers, check_cache_headers)
 
 log = logging.getLogger(__name__)
 
@@ -44,34 +42,16 @@ def api_files(req, path=''):
     """
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-branches
+    # pylint: disable=duplicate-code
     file_system = app.daemon.prusa_link.printer.fs
+    last_modified = get_last_modified(file_system)
+    headers = make_cache_headers(last_modified)
 
-    last_updated = 0
-    for storage in file_system.storage_dict.values():
-        if storage.last_updated > last_updated:
-            last_updated = storage.last_updated
-    last_modified = datetime.utcfromtimestamp(last_updated)
-    last_modified_str = last_modified.strftime(HEADER_DATETIME_FORMAT)
-    etag = f'W/"{md5(last_modified_str.encode()).hexdigest()[:10]}"'
-
-    headers = {
-        'Last-Modified': last_modified_str,
-        'ETag': etag,
-        'Date': datetime.utcnow().strftime(HEADER_DATETIME_FORMAT)
-    }
-
-    if 'If-Modified-Since' in req.headers:  # check cache header
-        hdt = datetime.strptime(req.headers['If-Modified-Since'],
-                                HEADER_DATETIME_FORMAT)
-
-        if last_modified <= hdt:
-            return Response(status_code=state.HTTP_NOT_MODIFIED,
-                            headers=headers)
-
-    if 'If-None-Match' in req.headers:
-        if req.headers['If-None-Match'] == etag:
-            return Response(status_code=state.HTTP_NOT_MODIFIED,
-                            headers=headers)
+    # If cache is up-to-date, return Not Modified response, otherwise continue
+    if check_cache_headers(req_headers=req.headers,
+                           headers=headers,
+                           last_modified=last_modified):
+        return Response(status_code=state.HTTP_NOT_MODIFIED, headers=headers)
 
     storage_path = ''
     space_info = None
