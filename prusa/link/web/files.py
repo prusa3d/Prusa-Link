@@ -5,13 +5,15 @@ from os.path import basename, exists, join, isdir, split
 from pathlib import Path
 from time import sleep
 from magic import Magic
+from datetime import datetime
+from hashlib import md5
 
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, Response
 from prusa.connect.printer.const import StorageType, State, FileType
 
 from .. import conditions
-from ..const import LOCAL_STORAGE_NAME
+from ..const import LOCAL_STORAGE_NAME, HEADER_DATETIME_FORMAT
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.job import Job
 from .lib.auth import check_api_digest
@@ -81,6 +83,20 @@ def api_file_info(req, storage, path=None):
     if not file:
         raise conditions.FileNotFound()
 
+    last_updated = 0
+    for storage in file_system.storage_dict.values():
+        if storage.last_updated > last_updated:
+            last_updated = storage.last_updated
+    last_modified = datetime.utcfromtimestamp(last_updated)
+    last_modified_str = last_modified.strftime(HEADER_DATETIME_FORMAT)
+    etag = f'W/"{md5(last_modified_str.encode()).hexdigest()[:10]}"'
+    headers = {'ETag': etag}
+
+    if 'If-None-Match' in req.headers:
+        if req.headers['If-None-Match'] == etag:
+            return Response(status_code=state.HTTP_NOT_MODIFIED,
+                            headers=headers)
+
     os_path = file_system.get_os_path(path)
     file_tree = file.to_dict()
     result = file_tree.copy()
@@ -123,7 +139,7 @@ def api_file_info(req, storage, path=None):
     else:
         result.update(fill_file_data(path, storage))
 
-    headers = make_headers(storage, path)
+    headers.update(make_headers(storage, path))
     return JSONResponse(**result, headers=headers)
 
 
