@@ -4,8 +4,12 @@ from io import FileIO
 from os import statvfs
 from os.path import abspath, dirname, exists, join
 from time import sleep, time
-from poorwsgi.request import Request
+from datetime import datetime
+from hashlib import md5
 
+from poorwsgi.request import Request, Headers
+
+from prusa.connect.printer import Filesystem
 from prusa.connect.printer.const import Source, Event, State, \
     TransferType, GCODE_EXTENSIONS
 from prusa.connect.printer.metadata import FDMMetaData, get_metadata, \
@@ -18,7 +22,8 @@ from prusa.connect.printer.download import (Transfer, TransferRunningError,
 from .core import app
 from ... import conditions
 from ...printer_adapter.job import JobState
-from ...const import SD_STORAGE_NAME, LOCAL_STORAGE_NAME
+from ...const import SD_STORAGE_NAME, LOCAL_STORAGE_NAME, \
+    HEADER_DATETIME_FORMAT
 from ...printer_adapter.job import Job
 
 
@@ -438,7 +443,7 @@ def callback_factory(req: Request):
     return gcode_callback
 
 
-def make_headers(storage, path):
+def make_headers(storage: str, path: str) -> dict:
     """Make headers for api(/v1)/files GET endpoints"""
     headers = {
         'Read-Only': str(storage != "local"),
@@ -446,3 +451,49 @@ def make_headers(storage, path):
             str(Job.get_instance().data.selected_file_path == path)
     }
     return headers
+
+
+def get_last_modified(file_system: Filesystem) -> datetime:
+    """Get last modified datetime"""
+    last_updated = 0.0
+    for storage in file_system.storage_dict.values():
+        if storage.last_updated > last_updated:
+            last_updated = storage.last_updated
+    last_modified = datetime.utcfromtimestamp(last_updated)
+    return last_modified
+
+
+def generate_etag(last_modified_str: str) -> str:
+    """Generate and return weak ETag from last_modified_str"""
+    etag = f'W/"{md5(last_modified_str.encode()).hexdigest()[:10]}"'
+    return etag
+
+
+def make_cache_headers(last_modified: datetime) -> dict:
+    """Make cache headers for api(/v1)/files GET endpoints"""
+    last_modified_str = last_modified.strftime(HEADER_DATETIME_FORMAT)
+    etag = generate_etag(last_modified_str)
+
+    headers = {
+        'Last-Modified': last_modified_str,
+        'ETag': etag,
+        'Date': datetime.utcnow().strftime(HEADER_DATETIME_FORMAT)
+    }
+
+    return headers
+
+
+def check_cache_headers(req_headers: Headers, headers: dict,
+                        last_modified: datetime) -> bool:
+    """Check cache headers and return True if there are no changes"""
+    if 'If-Modified-Since' in req_headers:  # check cache header
+        hdt = datetime.strptime(req_headers['If-Modified-Since'],
+                                HEADER_DATETIME_FORMAT)
+        if last_modified <= hdt:
+            return True
+
+    if 'If-None-Match' in req_headers:
+        if req_headers['If-None-Match'] == headers['ETag']:
+            return True
+
+    return False
