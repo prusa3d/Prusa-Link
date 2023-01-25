@@ -497,3 +497,13 @@ def check_cache_headers(req_headers: Headers, headers: dict,
             return True
 
     return False
+
+
+def get_boolean_header(headers, variable):
+    """Return boolean value based on header variable"""
+    header_boolean = headers.get(variable, "?0")
+    if header_boolean == "?1":
+        return True
+    if header_boolean == "?0":
+        return False
+    raise conditions.InvalidBooleanHeader
