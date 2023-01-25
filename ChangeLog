@@ -1,9 +1,17 @@
 # ChangeLog
 
 0.7.0rc3
-    * Added v1 endpoints for flat filesystem structure, old struct is moved to files_legacy file
+    * Added v1 endpoints for flat filesystem structure, old struct is moved to
+      files_legacy file
     * Added api/v1/update/<env> GET endpoint
-    * Printer name and location are added to register url as query parameters, if available
+    * Printer name and location are added to register url as query parameters,
+      if available
+    * Static Web update
+        - Apply UI/UX refactoring
+        - Add support for max-age cache control
+        - Add control of last-modified header for snapshots
+        - Add drop zone to files storage
+        - Remove manual camera connection dialog
 
 0.7.0rc2
     * Support thermal model errors (FW 3.12)
