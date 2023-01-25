@@ -2,6 +2,7 @@
 import logging
 from os import replace, unlink, rmdir, listdir
 from os.path import basename, exists, join, isdir, split
+from shutil import rmtree
 from pathlib import Path
 from time import sleep
 from magic import Magic
@@ -20,7 +21,7 @@ from .lib.files import (check_os_path, check_read_only, storage_display_path,
                         fill_printfile_data, get_os_path, check_storage,
                         get_files_size, partfilepath, make_headers, check_job,
                         fill_file_data, get_last_modified, make_cache_headers,
-                        check_cache_headers)
+                        check_cache_headers, get_boolean_header)
 
 log = logging.getLogger(__name__)
 
@@ -160,14 +161,7 @@ def api_file_upload(req, storage, path):
         raise conditions.LengthRequired()
 
     abs_path = join(get_os_path(f'/{LOCAL_STORAGE_NAME}'), path)
-    overwrite = req.headers.get('Overwrite') or "?0"
-
-    if overwrite == "?1":
-        overwrite = True
-    elif overwrite == "?0":
-        overwrite = False
-    else:
-        raise conditions.InvalidBooleanHeader()
+    overwrite = get_boolean_header(req.headers, 'Overwrite')
 
     if not overwrite:
         if exists(abs_path):
@@ -240,12 +234,16 @@ def api_v1_delete(req, storage, path):
     path = storage_display_path(storage, path)
     os_path = check_os_path(get_os_path(path))
     check_job(Job.get_instance(), path)
+    force = get_boolean_header(req.headers, 'Force')
 
     if isdir(os_path):
-        if not listdir(os_path):
-            rmdir(os_path)
+        if force:
+            rmtree(os_path)
         else:
-            raise conditions.DirectoryNotEmpty()
+            if not listdir(os_path):
+                rmdir(os_path)
+            else:
+                raise conditions.DirectoryNotEmpty()
     else:
         unlink(os_path)
 

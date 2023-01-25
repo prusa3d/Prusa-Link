@@ -12,6 +12,8 @@
         - Add control of last-modified header for snapshots
         - Add drop zone to files storage
         - Remove manual camera connection dialog
+    * Added Force header to api/v1/files/<storage>/<path> DELETE endpoint for
+      deletion of non-empty folder
 
 0.7.0rc2
     * Support thermal model errors (FW 3.12)
