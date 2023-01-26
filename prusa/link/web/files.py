@@ -14,6 +14,7 @@ from prusa.connect.printer.const import StorageType, State, FileType
 from .. import conditions
 from ..const import LOCAL_STORAGE_NAME
 from ..printer_adapter.command_handlers import StartPrint
+from ..printer_adapter.command import NotStateToPrint
 from ..printer_adapter.job import Job
 from .lib.auth import check_api_digest
 from .lib.core import app
@@ -71,7 +72,7 @@ def storage_info(req):
 @app.route('/api/v1/files/<storage>/<path:re:.+(?!/raw)>')
 @check_api_digest
 @check_storage
-def api_file_info(req, storage, path=None):
+def file_info(req, storage, path=None):
     """Returns info and metadata about specific file or folder"""
     # pylint: disable=unused-argument
     file_system = app.daemon.prusa_link.printer.fs
@@ -142,7 +143,7 @@ def api_file_info(req, storage, path=None):
 @check_api_digest
 @check_storage
 @check_read_only
-def api_file_upload(req, storage, path):
+def file_upload(req, storage, path):
     """Upload a file via PUT method"""
     # pylint: disable=unused-argument
     # pylint: disable=too-many-return-statements
@@ -228,7 +229,7 @@ def api_file_upload(req, storage, path):
 @check_api_digest
 @check_storage
 @check_read_only
-def api_v1_delete(req, storage, path):
+def file_delete(req, storage, path):
     """Delete file or folder in local storage"""
     # pylint: disable=unused-argument
     path = storage_display_path(storage, path)
@@ -246,5 +247,21 @@ def api_v1_delete(req, storage, path):
                 raise conditions.DirectoryNotEmpty()
     else:
         unlink(os_path)
+
+    return Response(status_code=state.HTTP_NO_CONTENT)
+
+
+@app.route('/api/v1/files/<storage>/<path:re:.+(?!/raw)>',
+           method=state.METHOD_POST)
+@check_api_digest
+@check_storage
+def file_start_print(req, storage, path):
+    """Start print of file if there's no print job running"""
+    # pylint: disable=unused-argument
+    try:
+        app.daemon.prusa_link.command_queue.do_command(
+            StartPrint(storage_display_path(storage, path)))
+    except NotStateToPrint as exception:
+        raise conditions.NotStateToPrint() from exception
 
     return Response(status_code=state.HTTP_NO_CONTENT)

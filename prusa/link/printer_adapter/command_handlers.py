@@ -19,7 +19,7 @@ from ..const import (PRINTER_BOOT_WAIT, QUIT_INTERVAL, RESET_PIN,
                      SERIAL_QUEUE_TIMEOUT, STATE_CHANGE_TIMEOUT)
 from ..serial.helpers import enqueue_instruction, enqueue_list_from_str
 from ..util import file_is_on_sd, round_to_five
-from .command import Command
+from .command import Command, NotStateToPrint
 from .state_manager import StateChange
 from .structures.model_classes import JobState
 from .structures.regular_expressions import (OPEN_RESULT_REGEX,
@@ -178,12 +178,13 @@ class StartPrint(Command):
         # No new print jobs while already printing
         # or when there is an Error/Attention state
         if self.model.state_manager.printing_state is not None:
-            self.failed("Already printing")
+            self.failed("Already printing", custom_exception=NotStateToPrint)
             return
 
         if self.model.state_manager.override_state is not None:
             self.failed(f"Cannot print in "
-                        f"{self.state_manager.get_state()} state.")
+                        f"{self.state_manager.get_state()} state.",
+                        custom_exception=NotStateToPrint)
             return
         self.state_manager.expect_change(
             StateChange(to_states={State.PRINTING: self.source},
