@@ -504,6 +504,4 @@ def get_boolean_header(headers, variable):
     header_boolean = headers.get(variable, "?0")
     if header_boolean == "?1":
         return True
-    if header_boolean == "?0":
-        return False
-    raise conditions.InvalidBooleanHeader
+    return False
