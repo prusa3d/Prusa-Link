@@ -14,6 +14,7 @@
         - Remove manual camera connection dialog
     * Added Force header to api/v1/files/<storage>/<path> DELETE endpoint for
       deletion of non-empty folder
+    * Changed Print-After-Upload header value check for PUT
 
 0.7.0rc2
     * Support thermal model errors (FW 3.12)

@@ -167,7 +167,7 @@ def api_file_upload(req, storage, path):
         if exists(abs_path):
             raise conditions.FileAlreadyExists()
 
-    print_after_upload = req.headers.get('Print-After-Upload') or False
+    print_after_upload = get_boolean_header(req.headers, 'Print-After-Upload')
 
     uploaded = 0
     # checksum = sha256() # - # We don't use this value yet
