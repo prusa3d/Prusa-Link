@@ -66,7 +66,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         """Returns a dictionary containing the printers info."""
         info = super().get_info()
         info["nozzle_diameter"] = self.nozzle_diameter
-        info["files"] = self.fs.to_dict()
+        info["files"] = self.fs.to_dict_legacy()
         info["prusa_link"] = __version__  # TODO: remove later
         info["prusalink"] = __version__
         return info
