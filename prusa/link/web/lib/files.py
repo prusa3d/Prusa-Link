@@ -140,17 +140,17 @@ def file_to_api(node, origin: str = 'local', path: str = '/',
     >>> fs.get('/PrusaLink gcodes/Examples')
     >>> app.daemon = Mock()
     >>> app.daemon.prusa_link.printer.fs = fs
-    >>> files = {'type': 'FOLDER', 'name': '/', 'ro': True, 'children':[
-    ...     {'type': 'FOLDER', 'name': 'SD Card', 'children':[
-    ...         {'type': 'FOLDER', 'name': 'Examples', 'children':[
-    ...             {'type': 'PRINT_FILE', 'name': '1.gcode'},
-    ...             {'type': 'PRINT_FILE', 'name': 'b.gco'}]}]},
-    ...     {'type': 'FOLDER', 'name': 'PrusaLink gcodes', 'children':[
-    ...         {'type': 'FOLDER', 'name': 'Examples', 'children':[
-    ...             {'type': 'PRINT_FILE', 'name': '1.gcode'},
-    ...             {'type': 'PRINT_FILE', 'name': 'b.gco'}]}]},
+    >>> files = {'type': 'DIR', 'name': '/', 'ro': True, 'children':[
+    ...     {'type': 'DIR', 'name': 'SD Card', 'children':[
+    ...         {'type': 'DIR', 'name': 'Examples', 'children':[
+    ...             {'type': 'FILE', 'name': '1.gcode'},
+    ...             {'type': 'FILE', 'name': 'b.gco'}]}]},
+    ...     {'type': 'DIR', 'name': 'PrusaLink gcodes', 'children':[
+    ...         {'type': 'DIR', 'name': 'Examples', 'children':[
+    ...             {'type': 'FILE', 'name': '1.gcode'},
+    ...             {'type': 'FILE', 'name': 'b.gco'}]}]},
     ...     {'type': 'FILE', 'name': 'preview.png'},
-    ...     {'type': 'PRINT_FILE', 'name': 'Big extension.GCO'},
+    ...     {'type': 'FILE', 'name': 'Big extension.GCO'},
     ... ]}
     >>> api_files = file_to_api(files)
     >>> # /
@@ -193,7 +193,7 @@ def file_to_api(node, origin: str = 'local', path: str = '/',
     if 'size' in node:
         result['size'] = node['size']
 
-    if node['type'] == 'FOLDER':
+    if node['type'] == 'DIR':
         if name == SD_STORAGE_NAME:
             origin = 'sdcard'
             result['ro'] = True
