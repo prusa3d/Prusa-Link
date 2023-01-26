@@ -24,6 +24,10 @@ class CommandFailed(Exception):
     """Exception class for signalling that a command has failed"""
 
 
+class NotStateToPrint(CommandFailed):
+    """Exception class for signalling that printer is not in state to print"""
+
+
 class Command:
     """
     Commands are like controllers, they do stuff and need a lot of info to
@@ -50,9 +54,14 @@ class Command:
         self.running = True
 
     @staticmethod
-    def failed(message):
+    def failed(message, custom_exception=None):
         """A shorthand for raising an exception when a command fails"""
-        raise CommandFailed(message)
+        if custom_exception is None:
+            raise CommandFailed(message)
+        if not issubclass(custom_exception, NotStateToPrint):
+            raise RuntimeError("Commands needs to fail with CommandFailed "
+                               "subclass instances only")
+        raise custom_exception(message)
 
     def wait_while_running(self, instruction):
         """Wait until the instruction is done, or we quit"""
