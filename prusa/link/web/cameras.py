@@ -152,7 +152,7 @@ def take_photo_by_camera_id(_, camera_id):
     try:
         photo = camera.take_a_photo()
     except TimeoutError:
-        # see SDK PHOTO_TIMEOUT - in const.py
+        # see SDK CAMERA_WAIT_TIMEOUT - in const.py
         return JSONResponse(status_code=state.HTTP_REQUEST_TIME_OUT,
                             message=f"Camera with id: {camera_id} did not "
                                     f"return a photo in time")
@@ -249,7 +249,12 @@ def set_settings(req, camera_id):
     camera = camera_controller.get_camera(camera_id)
     json_settings = req.json
     settings = Camera.settings_from_json(json_settings)
-    camera.set_settings(settings)
+    try:
+        camera.set_settings(settings)
+    except TimeoutError:
+        return JSONResponse(status_code=state.HTTP_INTERNAL_SERVER_ERROR,
+                            message=f"Camera with id: {camera_id} is busy "
+                                    f"for an unreasonably long time")
     return Response(status_code=state.HTTP_OK)
 
 
