@@ -495,18 +495,17 @@ class V4L2Driver(CameraDriver):
         v4l2_source_buffer = self.device.next_frame()
         return self.encoder.encode(v4l2_source_buffer.bytesused)
 
-    def disconnect(self):
+    def _disconnect(self):
         """Disconnects from the camera"""
         if self.device is None:
             return
         try:
             self.device.stop()
         except OSError:
-            log.warning("Camera %s could not be closed",
-                        self.camera_id)
+            log.exception("Camera %s could not be closed",
+                          self.camera_id)
         try:
             self.encoder.stop()
         except OSError:
-            log.warning("Encoder for %s could not be closed",
-                        self.camera_id)
-        super().disconnect()
+            log.exception("Encoder for %s could not be closed",
+                          self.camera_id)

@@ -303,10 +303,9 @@ class PiCameraDriver(CameraDriver):
         log.warning("Done converting a photo")
         return data
 
-    def disconnect(self):
+    def _disconnect(self):
         """Disconnects from the camera"""
         if self.camera is None:
             return
         self.camera.stop()
         self.camera.release()
-        super().disconnect()
