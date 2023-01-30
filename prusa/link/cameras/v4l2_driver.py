@@ -1,4 +1,4 @@
-"""A place for Prusa-Link camera drivers"""
+"""Contains implementation of a camera driver utilizing the V4L2 API"""
 import re
 
 import ctypes
@@ -461,11 +461,10 @@ class V4L2Driver(CameraDriver):
                 f"Camera {self.camera_id} supports only these formats: "
                 f"{extra_unsupported_formats}")
 
-        highest_resolution = sorted(self.available_resolutions)[-1]
-        self._config["resolution"] = self._config.get(
-            "resolution", str(highest_resolution))
-
-        self._set_resolution(highest_resolution)
+        initial_resolution = self._get_initial_resolution(
+            self._available_resolutions, self._config)
+        self._set_resolution(initial_resolution)
+        self._config["resolution"] = str(initial_resolution)
 
         self.device.start()
         self.encoder.start()
