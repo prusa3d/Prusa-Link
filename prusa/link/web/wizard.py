@@ -101,7 +101,7 @@ def process_printer(config):
         if option == 'location':
             app.wizard.printer_location = \
                 printer['location'].replace("\"", "")
-        if option == 'fam_mode':
+        if option == 'farm_mode':
             app.wizard.settings.printer.farm_mode = \
                 printer.getboolean('farm_mode')
 
