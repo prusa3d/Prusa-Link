@@ -59,8 +59,7 @@ class IPUpdater(ThreadedUpdatable):
             return None
 
     def update_additional_info(self, ip):
-        """
-        Updates the mac address and info about the network being wireless
+        """Updates the mac address and info about the network being wireless
         """
         if ip is None:
             return
@@ -68,25 +67,32 @@ class IPUpdater(ThreadedUpdatable):
 
         is_wireless = False
         mac = None
+        ssid = None
         for nic in nics:
             try:
                 # A hack to work around a block for non-wireless cards
                 card = Card(None, nic, None)
                 ips = pyw.ifaddrget(card)
             except pyric.error:
-                pass
+                continue
+            if ip not in ips:
+                continue
+            mac = self.get_mac(card)
+            is_wireless = pyw.iswireless(nic)
+            if not is_wireless:
+                continue
+            card = pyw.getcard(nic)
+            try:
+                card_info = pyw.link(card)
+            except pyric.error:
+                continue
             else:
-                if ip in ips:
-                    mac = self.get_mac(card)
-                    is_wireless = pyw.iswireless(nic)
-                    if is_wireless:
-                        card = pyw.getcard(nic)
-                        try:
-                            ssid_bytes = pyw.link(card)["ssid"]
-                            self.data.ssid = ssid_bytes.decode("ASCII")
-                        except pyric.error:
-                            log.exception("Failed getting the SSID")
-                            self.data.ssid = None
+                if card_info is None:
+                    continue
+            ssid_bytes = card_info["ssid"]
+            ssid = ssid_bytes.decode("ASCII")
+
+        self.data.ssid = ssid
         self.data.is_wireless = is_wireless
         self.data.mac = mac
 
