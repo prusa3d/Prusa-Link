@@ -178,14 +178,12 @@ class StartPrint(Command):
         # No new print jobs while already printing
         # or when there is an Error/Attention state
         if self.model.state_manager.printing_state is not None:
-            self.failed("Already printing", custom_exception=NotStateToPrint)
-            return
+            raise NotStateToPrint("Already printing")
 
         if self.model.state_manager.override_state is not None:
-            self.failed(f"Cannot print in "
-                        f"{self.state_manager.get_state()} state.",
-                        custom_exception=NotStateToPrint)
-            return
+            raise NotStateToPrint(
+                f"Cannot print in {self.state_manager.get_state()} state.")
+
         self.state_manager.expect_change(
             StateChange(to_states={State.PRINTING: self.source},
                         command_id=self.command_id))

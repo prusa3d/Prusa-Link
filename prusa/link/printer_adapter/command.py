@@ -54,14 +54,9 @@ class Command:
         self.running = True
 
     @staticmethod
-    def failed(message, custom_exception=None):
+    def failed(message):
         """A shorthand for raising an exception when a command fails"""
-        if custom_exception is None:
-            raise CommandFailed(message)
-        if not issubclass(custom_exception, NotStateToPrint):
-            raise RuntimeError("Commands needs to fail with CommandFailed "
-                               "subclass instances only")
-        raise custom_exception(message)
+        raise CommandFailed(message)
 
     def wait_while_running(self, instruction):
         """Wait until the instruction is done, or we quit"""
