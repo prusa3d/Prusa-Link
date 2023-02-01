@@ -394,5 +394,5 @@ def check_wizard_access(req):
         abort(410)  # auth map is configured, wizard is denied
 
     if app.settings.is_wizard_needed() \
-            and req.path == '/':
+            and req.path == '/' and req.method != "HEAD":
         redirect('/wizard')
