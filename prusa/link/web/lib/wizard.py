@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 
 PRINTER_MISSING_NAME = "Both printer name and location are required"
 PRINTER_INVALID_CHARACTERS = "Name or location cointains invalid characters"
-INVALID_CHARACTERS = ['\'', '\"']
+INVALID_CHARACTERS = ['\'', '\"', '%']
 
 
 def valid_sn_format(serial):
