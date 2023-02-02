@@ -19,7 +19,7 @@ from prusa.connect.printer.const import CapabilityType, NotSupported, \
     CAMERA_WAIT_TIMEOUT
 from .encoders import MJPEGEncoder, BufferDetails, get_appropriate_encoder
 from . import v4l2
-from ..util import is_potato_cpu
+from ..util import is_potato_cpu, prctl_name
 
 log = logging.getLogger(__name__)
 
@@ -498,6 +498,7 @@ class V4L2Driver(CameraDriver):
 
     def take_a_photo(self):
         """Takes a photo, blocking while doing it"""
+        prctl_name()
         v4l2_source_buffer = self.device.next_frame()
         return self.encoder.encode(v4l2_source_buffer.bytesused)
 

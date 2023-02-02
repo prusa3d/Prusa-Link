@@ -13,8 +13,7 @@ from prusa.connect.printer.const import CapabilityType, NotSupported, \
 from . import v4l2
 from .encoders import MJPEGEncoder, BufferDetails, \
     get_appropriate_encoder
-from ..printer_adapter.updatable import prctl_name
-from ..util import is_potato_cpu
+from ..util import is_potato_cpu, prctl_name
 
 log = logging.getLogger(__name__)
 

@@ -2,7 +2,8 @@
 from prusa.connect.printer import Command
 
 from ..const import QUIT_INTERVAL
-from ..printer_adapter.updatable import Thread, prctl_name
+from ..printer_adapter.updatable import Thread
+from ..util import prctl_name
 
 
 class CommandHandler:

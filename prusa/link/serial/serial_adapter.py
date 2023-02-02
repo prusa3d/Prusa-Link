@@ -22,10 +22,10 @@ from ..printer_adapter.structures.module_data_classes import Port, \
     SerialAdapterData
 from ..printer_adapter.structures.regular_expressions import \
     PRINTER_TYPE_REGEX, FW_REGEX, BUSY_REGEX, ATTENTION_REGEX, VALID_SN_REGEX
-from ..printer_adapter.updatable import Thread, prctl_name
+from ..printer_adapter.updatable import Thread
 from .serial import SerialException, Serial
 from .serial_parser import SerialParser
-from ..util import decode_line
+from ..util import decode_line, prctl_name
 
 log = logging.getLogger(__name__)
 

@@ -20,7 +20,6 @@ from ..util import loop_until
 from .model import Model
 from .structures.mc_singleton import MCSingleton
 from .structures.model_classes import Telemetry
-from .updatable import prctl_name
 
 log = logging.getLogger(__name__)
 
@@ -73,8 +72,11 @@ class TelemetryPasser(metaclass=MCSingleton):
         self.thread.join()
 
     def _keep_updating(self):
-        """keeps spinning until supposed to stop"""
-        prctl_name()
+        """keeps spinning until supposed to stop
+
+        The loop here facilitates the instant wakeup of the telemetry passer
+        after activity is observed
+        """
         while self.running:
             self.notify_evt.clear()
             loop_until(loop_evt=self.notify_evt,
