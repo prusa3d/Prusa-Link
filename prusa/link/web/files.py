@@ -9,7 +9,7 @@ from magic import Magic
 
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, Response
-from prusa.connect.printer.const import StorageType, State, FileType
+from prusa.connect.printer.const import StorageType, Source, FileType
 
 from .. import conditions
 from ..const import LOCAL_STORAGE_NAME
@@ -205,21 +205,20 @@ def file_upload(req, storage, path):
     replace(part_path, abs_path)
 
     if print_after_upload:
-        printer_state = app.daemon.prusa_link.printer.state
-        if printer_state in [State.IDLE, State.READY]:
-            tries = 0
-            print_path = join(f'/{LOCAL_STORAGE_NAME}', path)
+        tries = 0
+        print_path = storage_display_path(storage, path)
 
-            while not app.daemon.prusa_link.printer.fs.get(print_path):
-                sleep(0.1)
-                tries += 1
-                if tries >= 10:
-                    raise conditions.RequestTimeout()
-
+        # Filesystem may need some time to update
+        while not app.daemon.prusa_link.printer.fs.get(print_path):
+            sleep(0.1)
+            tries += 1
+            if tries >= 10:
+                raise conditions.RequestTimeout()
+        try:
             app.daemon.prusa_link.command_queue.do_command(
-                StartPrint(print_path))
-        else:
-            raise conditions.NotStateToPrint()
+                StartPrint(print_path, source=Source.WUI))
+        except NotStateToPrint as exception:
+            raise conditions.NotStateToPrint() from exception
 
     return Response(status_code=state.HTTP_CREATED)
 
@@ -258,9 +257,10 @@ def file_delete(req, storage, path):
 def file_start_print(req, storage, path):
     """Start print of file if there's no print job running"""
     # pylint: disable=unused-argument
+    print_path = storage_display_path(storage, path)
     try:
         app.daemon.prusa_link.command_queue.do_command(
-            StartPrint(storage_display_path(storage, path)))
+            StartPrint(print_path, source=Source.WUI))
     except NotStateToPrint as exception:
         raise conditions.NotStateToPrint() from exception
 
