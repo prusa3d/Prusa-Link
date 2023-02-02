@@ -14,10 +14,11 @@ from prusa.connect.printer.conditions import (API, COND_TRACKER, INTERNET,
                                               CondState)
 from prusa.connect.printer.const import Command as CommandType
 from prusa.connect.printer.const import Event as EventType
+from prusa.connect.printer.camera_configurator import CameraConfigurator
 from prusa.connect.printer.const import Source, State
 from prusa.connect.printer.files import File
 from prusa.connect.printer.models import Sheet as SDKSheet
-from ..sdk_augmentation.camera_configurator import MyCameraConfigurator
+from ..camera_governor import CameraGovernor
 from ..cameras.v4l2_driver import V4L2Driver
 from ..cameras.picamera_driver import PiCameraDriver
 from ..conditions import HW, ROOT_COND, UPGRADED, use_connect_errors
@@ -114,12 +115,14 @@ class PrusaLink:
         if PiCameraDriver.supported:
             drivers.append(PiCameraDriver)
 
-        self.camera_configurator = MyCameraConfigurator(
+        self.camera_configurator = CameraConfigurator(
             config=self.settings,
             config_file_path=self.cfg.printer.settings,
             camera_controller=self.printer.camera_controller,
             drivers=drivers
         )
+        self.camera_governor = CameraGovernor(self.camera_configurator,
+                                              self.printer.camera_controller)
 
         self.printer.register_handler = self.printer_registered
         self.printer.connection_from_settings(settings)
@@ -271,6 +274,8 @@ class PrusaLink:
         self.ip_updater.update()
         self.ip_updater.updated_signal.connect(self.ip_updated)
 
+        self.camera_governor.start(self.cfg.cameras.auto_detect)
+
         # Leave the non-polled telemetry split from the rest
         self.auto_telemetry = AutoTelemetry(self.serial_parser,
                                             self.serial_queue, self.model,
@@ -286,9 +291,6 @@ class PrusaLink:
         self.printer.start()
         # Start this last, as it might start printing right away
         self.file_printer.start()
-
-        if self.cfg.cameras.auto_detect:
-            self.camera_configurator.start_auto_add()
 
         log.debug("Initialization done")
 
@@ -346,7 +348,7 @@ class PrusaLink:
         was_printing = self.model.file_printer.printing
 
         self.quit_evt.set()
-        self.camera_configurator.stop_auto_add()
+        self.camera_governor.stop()
         self.file_printer.stop()
         self.command_queue.stop()
         self.telemetry_passer.stop()
@@ -386,7 +388,7 @@ class PrusaLink:
             self.auto_telemetry.wait_stopped()
             self.serial_queue.wait_stopped()
             self.serial.wait_stopped()
-            self.camera_configurator.wait_stopped()
+            self.camera_governor.wait_stopped()
 
             log.debug("Remaining threads, that might prevent stopping:")
             for thread in enumerate_threads():
