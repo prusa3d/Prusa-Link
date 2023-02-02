@@ -1,13 +1,14 @@
 """Contains implementation of a driver for Rpi Cameras"""
+import select
 import gc
 import logging
-import selectors
 
 from typing import Dict, Optional, Callable
 
 from prusa.connect.printer.camera import Resolution
 from prusa.connect.printer.camera_driver import CameraDriver
-from prusa.connect.printer.const import CapabilityType, NotSupported
+from prusa.connect.printer.const import CapabilityType, NotSupported, \
+    CAMERA_WAIT_TIMEOUT
 
 from . import v4l2
 from .encoders import MJPEGEncoder, BufferDetails, \
@@ -294,11 +295,11 @@ class PiCameraDriver(CameraDriver):
         self.request.set_control(controls.ScalerCrop,
                                  self.scaler_crop)
         self.camera.queue_request(self.request)
-        selector = selectors.DefaultSelector()
-        selector.register(self.camera_manager.event_fd, selectors.EVENT_READ)
 
-        while self.request.status != Request.Status.Complete:
-            selector.select()
+        events, *_ = select.select((self.camera_manager.event_fd,),
+                                   (), (), CAMERA_WAIT_TIMEOUT)
+        if not events or self.request.status != Request.Status.Complete:
+            raise TimeoutError("Taking a photo timed out")
 
         log.warning("Converting a photo")
         data = self.encoder.encode(self.stream.configuration.frame_size)

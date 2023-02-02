@@ -15,7 +15,8 @@ from glob import glob
 
 from prusa.connect.printer.camera_driver import CameraDriver
 from prusa.connect.printer.camera import Resolution
-from prusa.connect.printer.const import CapabilityType, NotSupported
+from prusa.connect.printer.const import CapabilityType, NotSupported, \
+    CAMERA_WAIT_TIMEOUT
 from .encoders import MJPEGEncoder, BufferDetails, get_appropriate_encoder
 from . import v4l2
 from ..util import is_potato_cpu
@@ -325,7 +326,10 @@ class V4L2Camera:
         from the outside, returns the buffer details"""
         buffer = self._v4l2_buffer()
         self._ioctl(v4l2.VIDIOC_QBUF, buffer)
-        select.select((self._file_object,), (), ())
+        events, *_ = select.select((self._file_object,),
+                                   (), (), CAMERA_WAIT_TIMEOUT)
+        if not events:
+            raise TimeoutError("Getting the next frame timed out")
         self._ioctl(v4l2.VIDIOC_DQBUF, buffer)
         return buffer
 
