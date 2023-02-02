@@ -23,8 +23,8 @@ from ..printer_adapter.structures.mc_singleton import MCSingleton
 from ..printer_adapter.structures.regular_expressions import (
     ATTENTION_REGEX, BUSY_REGEX, CONFIRMATION_REGEX, HEATING_HOTEND_REGEX,
     HEATING_REGEX, M110_REGEX, RESEND_REGEX)
-from ..printer_adapter.updatable import Thread, prctl_name
-from ..util import loop_until
+from ..printer_adapter.updatable import Thread
+from ..util import loop_until, prctl_name
 from .instruction import Instruction, MatchableInstruction
 from .is_planner_fed import IsPlannerFed
 from .serial import SerialException

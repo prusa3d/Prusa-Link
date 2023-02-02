@@ -18,8 +18,8 @@ from ..const import PRINTER_CONF_TYPES
 from ..printer_adapter.lcd_printer import LCDPrinter
 from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
-from ..printer_adapter.updatable import Thread, prctl_name
-from ..util import file_is_on_sd
+from ..printer_adapter.updatable import Thread
+from ..util import file_is_on_sd, prctl_name
 from .command_handler import CommandHandler
 
 log = getLogger("connect-printer")

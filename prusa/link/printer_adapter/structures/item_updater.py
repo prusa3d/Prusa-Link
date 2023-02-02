@@ -10,7 +10,7 @@ from typing import Any, Callable, Iterable, Optional, Set
 
 from blinker import Signal  # type: ignore
 
-from ..updatable import prctl_name
+from ...util import prctl_name
 
 log = logging.getLogger(__name__)
 

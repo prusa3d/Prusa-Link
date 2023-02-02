@@ -5,20 +5,11 @@ There was an updatable without a thread, but it stopped being used
 Also contains a thread utility function
 """
 from cProfile import Profile
+from functools import partial
 from threading import Event
 from threading import Thread as _Thread
-from threading import current_thread
-
-import prctl  # type: ignore
 
 from ..util import loop_until
-
-
-def prctl_name():
-    """Set system thread name with python thread name."""
-    # pylint: disable=deprecated-method
-    # No current_thread is not deprecated, but currentThread is :-(
-    prctl.set_name(f"pl#{current_thread().name}")
 
 
 class Thread(_Thread):
@@ -52,16 +43,18 @@ class ThreadedUpdatable:
 
     def __init__(self):
         self.quit_evt = Event()
-        self.thread = Thread(target=self.__keep_updating,
+        target = partial(
+            loop_until,
+            loop_evt=self.quit_evt,
+            run_every_sec=lambda: self.update_interval,
+            to_run=self.update)
+
+        self.thread = Thread(target=target,
                              name=self.thread_name)
 
     def start(self):
         """Start thread."""
         self.thread.start()
-
-    def __keep_updating(self):
-        prctl_name()
-        loop_until(self.quit_evt, lambda: self.update_interval, self.update)
 
     def stop(self):
         """Stop the updatable"""

@@ -7,15 +7,24 @@ import socket
 import typing
 from hashlib import sha256
 from pathlib import Path
-from threading import Event
+from threading import Event, current_thread
+
 from time import time
 from typing import Callable, Union
 
+import prctl  # type: ignore
 import unidecode
 
 from .const import SD_STORAGE_NAME
 
 log = logging.getLogger(__name__)
+
+
+def prctl_name():
+    """Set system thread name with python thread name."""
+    # pylint: disable=deprecated-method
+    # No current_thread is not deprecated, but currentThread is :-(
+    prctl.set_name(f"pl#{current_thread().name}")
 
 
 def loop_until(loop_evt: Event, run_every_sec: Callable[[], float], to_run,
@@ -24,7 +33,7 @@ def loop_until(loop_evt: Event, run_every_sec: Callable[[], float], to_run,
     Call a function every X seconds, quit instantly
     pass getters for arguments
     """
-
+    prctl_name()
     while not loop_evt.is_set():
         # if it's time to run the func
 

@@ -29,7 +29,8 @@ from .structures.carousel import Carousel, LCDLine, Screen
 from .structures.mc_singleton import MCSingleton
 from .structures.model_classes import JobState
 from .structures.regular_expressions import LCD_UPDATE_REGEX
-from .updatable import Thread, prctl_name
+from .updatable import Thread
+from ..util import prctl_name
 
 log = logging.getLogger(__name__)
 

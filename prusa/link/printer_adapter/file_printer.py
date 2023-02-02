@@ -13,14 +13,15 @@ from ..serial.helpers import enqueue_instruction, wait_for_instruction
 from ..serial.instruction import Instruction
 from ..serial.serial_parser import SerialParser
 from ..serial.serial_queue import SerialQueue
-from ..util import get_clean_path, get_gcode, get_print_stats_gcode
+from ..util import get_clean_path, get_gcode, get_print_stats_gcode, \
+    prctl_name
 from .model import Model
 from .print_stats import PrintStats
 from .structures.mc_singleton import MCSingleton
 from .structures.module_data_classes import FilePrinterData
 from .structures.regular_expressions import (CANCEL_REGEX, POWER_PANIC_REGEX,
                                              RESUMED_REGEX)
-from .updatable import Thread, prctl_name
+from .updatable import Thread
 
 log = logging.getLogger(__name__)
 

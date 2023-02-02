@@ -14,7 +14,8 @@ from zeroconf import NonUniqueNameException, ServiceInfo, Zeroconf
 from .config import Config
 from .const import SELF_PING_RETRY_INTERVAL, SELF_PING_TIMEOUT, instance_id
 from .interesting_logger import InterestingLogRotator
-from .printer_adapter.updatable import Thread, prctl_name
+from .printer_adapter.updatable import Thread
+from .util import prctl_name
 
 log = logging.getLogger(__name__)
 

@@ -61,7 +61,8 @@ from .structures.regular_expressions import (MBL_TRIGGER_REGEX,
                                              RESUME_PRINT_REGEX,
                                              TM_ERROR_LOG_REGEX)
 from .telemetry_passer import TelemetryPasser
-from .updatable import Thread, prctl_name
+from .updatable import Thread
+from ..util import prctl_name
 
 log = logging.getLogger(__name__)
 
