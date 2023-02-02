@@ -543,7 +543,10 @@ class PrusaLink:
         sdk_sheets: List[SDKSheet] = []
         sheet: Sheet
         for sheet in printer_sheets:
-            sdk_sheets.append(dict(name=sheet.name, z_offset=sheet.z_offset))
+            sdk_sheets.append({
+                "name": sheet.name,
+                "z_offset": sheet.z_offset
+            })
         self.printer.sheet_settings = sdk_sheets
         self.printer.event_cb(event=EventType.INFO,
                               source=Source.USER,

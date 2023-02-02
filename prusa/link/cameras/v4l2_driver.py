@@ -401,7 +401,10 @@ class V4L2Driver(CameraDriver):
             else:
                 camera_id = " ".join((name, serial))
                 log.info("Camera id is %s", camera_id)
-                available[camera_id] = dict(path=path, name=name)
+                available[camera_id] = {
+                    "path": path,
+                    "name": name
+                }
         return available
 
     def __init__(self, camera_id, config, unavailable_cb):

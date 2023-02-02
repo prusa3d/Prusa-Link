@@ -64,8 +64,7 @@ class SerialAdapter(metaclass=MCSingleton):
             log.exception("Exception when checking if we're connected through "
                           "the Einsy pins. Assuming we're not.")
             return False
-        else:
-            return True
+        return True
 
     def __init__(self,
                  serial_parser: SerialParser,
@@ -332,9 +331,8 @@ class SerialAdapter(metaclass=MCSingleton):
                     self.close()
                     raise SerialException(
                         "Serial error when sending") from error
-                else:
-                    sent = True
-                    log.debug("Sent to printer: %s", message)
+                sent = True
+                log.debug("Sent to printer: %s", message)
 
     def _reset_pi(self):
         """Resets the connected raspberry pi"""

@@ -50,29 +50,32 @@ CONFIRM_TEXT = """
     printer's controller and general setup that might also apply to prints
     run directly from your printer's internal storage)."""
 
-CMD_SHUTDOWN = dict(  # yapf bypass
-    action="shutdown",
-    name="Shutdown",
-    confirm="""<p><strong>You are about to shutdown the system.</strong></p>
+CMD_SHUTDOWN = {  # yapf bypass
+    "action": "shutdown",
+    "name": "Shutdown",
+    "confirm": """<p><strong>You are about to shutdown the system.</strong></p>
             """ + CONFIRM_TEXT,
-    source="core",
-    resource="/api/system/commands/core/shutdown")
+    "source": "core",
+    "resource": "/api/system/commands/core/shutdown"
+}
 
-CMD_REBOOT = dict(  # yapf bypass
-    action="reboot",
-    name="Reboot",
-    confirm="""<p><strong>You are about to reboot the system.</strong></p>
+CMD_REBOOT = {  # yapf bypass
+    "action": "reboot",
+    "name": "Reboot",
+    "confirm": """<p><strong>You are about to reboot the system.</strong></p>
              """ + CONFIRM_TEXT,
-    source="core",
-    resource="/api/system/commands/core/reboot")
+    "source": "core",
+    "resource": "/api/system/commands/core/reboot"
+}
 
-CMD_RESTART = dict(  # yapf bypass
-    action="restart",
-    name="Restart PrusaLink",
-    confirm="""<p><strong>You are about to restart the PrusaLink server.
+CMD_RESTART = {  # yapf bypass
+    "action": "restart",
+    "name": "Restart PrusaLink",
+    "confirm": """<p><strong>You are about to restart the PrusaLink server.
             </strong></p>""" + CONFIRM_TEXT,
-    source="core",
-    resource="/api/system/commands/core/restart")
+    "source": "core",
+    "resource": "/api/system/commands/core/restart"
+}
 
 
 @app.route('/', method=state.METHOD_HEAD)

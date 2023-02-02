@@ -109,17 +109,17 @@ def list_cameras(_):
         if connected:
             camera = camera_controller.get_camera(camera_id)
             registered = camera.is_registered
-        list_item = dict(
-            camera_id=camera_id,
-            config=config,
-            connected=connected,
-            detected=camera_id in camera_configurator.detected,
-            stored=camera_id in camera_configurator.stored,
-            registered=registered
-        )
+        list_item = {
+            "camera_id": camera_id,
+            "config": config,
+            "connected": connected,
+            "detected": camera_id in camera_configurator.detected,
+            "stored": camera_id in camera_configurator.stored,
+            "registered": registered
+        }
         camera_list.append(list_item)
 
-    return JSONResponse(**dict(camera_list=camera_list))
+    return JSONResponse(**{"camera_list": camera_list})
 
 
 @app.route("/api/v1/cameras", method=state.METHOD_PUT)
@@ -160,8 +160,7 @@ def take_photo_by_camera_id(_, camera_id):
         return JSONResponse(status_code=state.HTTP_CONFLICT,
                             message=f"Camera with id: {camera_id} "
                                     f"cannot take the picture: {error}")
-    else:
-        return Response(photo, content_type='image/jpeg')
+    return Response(photo, content_type='image/jpeg')
 
 
 @app.route("/api/v1/cameras/<camera_id>", method=state.METHOD_GET)
