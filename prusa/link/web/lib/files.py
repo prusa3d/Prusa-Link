@@ -421,7 +421,7 @@ def callback_factory(req: Request):
 
         part_path = partfilepath(filename)
 
-        if not filename.endswith(
+        if not filename.lower().endswith(
                 GCODE_EXTENSIONS) or filename.startswith('.'):
             raise conditions.UnsupportedMediaError()
 

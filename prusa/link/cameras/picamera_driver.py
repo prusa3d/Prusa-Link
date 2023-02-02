@@ -89,9 +89,9 @@ class PiCameraDriver(CameraDriver):
                     break
             log.info("picamera found model: %s", model)
             if model in PICAMERA_MODELS:
-                available[camera.id] = dict(
-                    id_string=camera.id,
-                    name=f"RaspberryPi Camera: {model}")
+                available[camera.id] = {
+                    "id_string": camera.id,
+                    "name": f"RaspberryPi Camera: {model}"}
 
         return available
 

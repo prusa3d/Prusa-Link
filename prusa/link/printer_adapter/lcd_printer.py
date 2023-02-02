@@ -214,7 +214,7 @@ class LCDPrinter(metaclass=MCSingleton):
             filename = Path(self.model.job.selected_file_path).name
             # MK3 cannot print semicolons, replace them with an approximation
             safe_filename = filename.replace(";", ",:")
-            conditions = dict(filename=safe_filename)
+            conditions = {"filename": safe_filename}
             if self.print_screen.conditions != conditions:
                 self.print_screen.conditions = conditions
                 self.carousel.set_text(self.print_screen, safe_filename)
@@ -258,7 +258,10 @@ class LCDPrinter(metaclass=MCSingleton):
             # An error has been discovered, tell the user what it is
             self.carousel.enable(self.error_screen)
 
-            conditions = dict(lan=LAN.state, error=error)
+            conditions = {
+                "lan": LAN.state,
+                "error": error
+            }
             if self.error_screen.conditions != conditions:
                 self.error_screen.conditions = conditions
 
@@ -284,9 +287,11 @@ class LCDPrinter(metaclass=MCSingleton):
         if wizard_needed and LAN:
             self.carousel.enable(self.wizard_screen)
             ip = self.model.ip_updater.local_ip
-            conditions = dict(lan=LAN.state,
-                              wizard_needed=wizard_needed,
-                              ip=ip)
+            conditions = {
+                "lan": LAN.state,
+                "wizard_needed": wizard_needed,
+                "ip": ip
+            }
             if self.wizard_screen.conditions != conditions:
                 self.wizard_screen.conditions = conditions
                 # Can't have a capital G because FW doesn't understand
@@ -368,7 +373,7 @@ class LCDPrinter(metaclass=MCSingleton):
         if self.model.state_manager.current_state == State.READY and LAN:
             self.carousel.enable(self.ready_screen)
             ip = self.model.ip_updater.local_ip
-            conditions = dict(ip=ip)
+            conditions = {"ip": ip}
             if self.ready_screen.conditions != conditions:
                 self.ready_screen.conditions = conditions
                 self.carousel.set_text(self.ready_screen,
@@ -386,7 +391,7 @@ class LCDPrinter(metaclass=MCSingleton):
             self.carousel.enable(self.idle_screen)
             ip = self.model.ip_updater.local_ip
             speed = self.model.latest_telemetry.speed
-            conditions = dict(ip=ip, speed=speed)
+            conditions = {"ip": ip, "speed": speed}
             if self.idle_screen.conditions != conditions:
                 self.idle_screen.conditions = conditions
                 if speed != 42:
