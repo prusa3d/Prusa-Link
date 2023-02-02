@@ -304,7 +304,16 @@ class V4L2Camera:
 
         # Turn on the stream
         btype = v4l2.v4l2_buf_type(self.buffer_type)
-        self._ioctl(v4l2.VIDIOC_STREAMON, btype)
+        try:
+            self._ioctl(v4l2.VIDIOC_STREAMON, btype)
+        except OSError as exception:
+            if exception.args[0] == 28:
+                log.error(
+                    "You have probably plugged too many cameras into a "
+                    "Single-TT USB3 (or higher) or a USB2 (or lower) USB hub. "
+                    "This guy explains it quite well https://www.amazon.com/"
+                    "review/R12F7RYUKPCQX7/?ie=UTF8 ")
+            raise
 
     def stop(self):
         """Stops all V4L2 capturing activity and frees everything"""
