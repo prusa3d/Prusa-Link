@@ -255,7 +255,7 @@ def api_file_info(req, storage, path):
         'type': '',
         'typePath':  []}
 
-    if path.endswith(const.GCODE_EXTENSIONS):
+    if path.lower().endswith(const.GCODE_EXTENSIONS):
         result['type'] = 'machinecode'
         result['typePath'] = ['machinecode', 'gcode']
     else:
@@ -353,7 +353,7 @@ def api_download(req, storage):
     log.debug('select=%s, print=%s', to_select, to_print)
 
     if new_filename:
-        if not new_filename.endswith(const.GCODE_EXTENSIONS):
+        if not new_filename.lower().endswith(const.GCODE_EXTENSIONS):
             new_filename += '.gcode'
         path = join(path, new_filename)
     else:
