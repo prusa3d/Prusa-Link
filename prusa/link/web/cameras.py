@@ -29,17 +29,18 @@ def photo_by_camera_id(camera_id, req):
     "snap" on the first camera in order and "snap" on a specific camera"""
     camera_configurator = app.daemon.prusa_link.camera_configurator
     camera_controller = app.daemon.prusa_link.printer.camera_controller
-    trigger_scheme = camera_controller.get_camera(camera_id).trigger_scheme
 
     if not camera_configurator.is_connected(camera_id):
         return JSONResponse(status_code=state.HTTP_NOT_FOUND,
                             message=f"Camera with id: {camera_id} is"
                                     f" not available")
-    camera = camera_configurator.loaded[camera_id]
-    if camera.last_snapshot is None:
+    driver = camera_configurator.loaded[camera_id]
+    if driver.last_snapshot is None:
         return JSONResponse(status_code=state.HTTP_NO_CONTENT,
                             message=f"Camera with id: {camera_id} did not "
                                     f"take a photo yet.")
+
+    trigger_scheme = camera_controller.get_camera(camera_id).trigger_scheme
 
     photo_timeout = TRIGGER_SCHEME_TO_SECONDS.get(
         trigger_scheme, DEFAULT_PHOTO_EXPIRATION_TIMEOUT)
@@ -47,7 +48,7 @@ def photo_by_camera_id(camera_id, req):
     # Give PrusaLink some time to take a new snapshot
     timeout = photo_timeout + TIME_FOR_SNAPSHOT
 
-    last_modified_timestamp = camera.last_snapshot.timestamp
+    last_modified_timestamp = driver.last_snapshot.timestamp
     last_modified = datetime.utcfromtimestamp(last_modified_timestamp)
     expires = last_modified + timedelta(seconds=timeout)
 
@@ -66,7 +67,7 @@ def photo_by_camera_id(camera_id, req):
             return Response(status_code=state.HTTP_NOT_MODIFIED,
                             headers=headers)
 
-    return Response(camera.last_snapshot.data,
+    return Response(driver.last_snapshot.data,
                     headers=headers,
                     content_type='image/jpeg')
 
