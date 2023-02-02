@@ -109,7 +109,7 @@ class FileTreeParser:
 
         # --- Parse the long file name ---
 
-        too_long = (len(raw_long_filename) >= MAX_FILENAME_LENGTH)
+        too_long = len(raw_long_filename) >= MAX_FILENAME_LENGTH
 
         if too_long:
             long_file_name = alternative_filename(raw_long_filename,

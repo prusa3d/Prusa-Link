@@ -456,11 +456,12 @@ class JobInfo(Command):
         data = self.job.get_job_info_data(
             for_connect=self.command_id is not None)
 
-        response = dict(job_id=self.model.job.get_job_id_for_api(),
-                        state=self.model.state_manager.current_state,
-                        event=EventConst.JOB_INFO,
-                        source=Source.CONNECT,
-                        **data)
+        response = {
+            "job_id": self.model.job.get_job_id_for_api(),
+            "state": self.model.state_manager.current_state,
+            "event": EventConst.JOB_INFO,
+            "source": Source.CONNECT,
+            **data}
 
         log.debug("Job Info retrieved: %s", response)
         return response

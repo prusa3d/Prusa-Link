@@ -109,9 +109,11 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         meta.load_from_path(string_path)
         log.info(meta.data)
 
-        data = dict(source=Source.CONNECT,
-                    event=const.Event.FILE_INFO,
-                    path=string_path)
+        data = {
+            "source": Source.CONNECT,
+            "event": const.Event.FILE_INFO,
+            "path": string_path
+        }
 
         file: File = self.fs.get(string_path)
         if file is not None:
