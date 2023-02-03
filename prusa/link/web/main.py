@@ -3,7 +3,7 @@ import logging
 from os import listdir
 from os.path import basename, getmtime, getsize, join
 from socket import gethostname
-from subprocess import Popen, check_output
+from subprocess import check_output
 from sys import version, executable
 
 from pkg_resources import working_set
@@ -477,49 +477,3 @@ def api_update(req, env):
         return Response(status_code=state.HTTP_NOT_IMPLEMENTED)
 
     return Response(status_code=state.HTTP_BAD_REQUEST)
-
-
-@app.route("/api/system/commands")
-@check_api_digest
-def api_system_commands(req):
-    """List all registered system commands"""
-    # pylint: disable=unused-argument
-
-    return JSONResponse(**{
-        "core": [CMD_SHUTDOWN, CMD_REBOOT, CMD_RESTART],
-        "custom": []
-    })
-
-
-@app.route('/api/system/commands/<source>/<action>', method=state.METHOD_POST)
-@check_api_digest
-def api_system_commands_execute(req, source, action):
-    """Execute a registered system command"""
-    # pylint: disable=unused-argument
-    if source == 'core':
-        if action == 'shutdown':
-            with Popen(['sudo', 'shutdown', '-h', 'now']):
-                pass
-            return JSONResponse(status_code=state.HTTP_OK,
-                                message="Triggering system shutdown.")
-        if action == 'reboot':
-            with Popen(['sudo', 'reboot', '-f']):
-                pass
-            return JSONResponse(status_code=state.HTTP_OK,
-                                message="Triggering system reboot.")
-        if action == 'restart':
-            app.daemon.restart(app.daemon.argv)
-            return JSONResponse(status_code=state.HTTP_OK,
-                                message="Restarting PrusaLink.")
-
-        return JSONResponse(
-            status_code=state.HTTP_BAD_REQUEST,
-            title='UNKNOWN ACTION',
-            message='Choose either: "shutdown", "restart" or "reboot".')
-
-    if source != 'core':
-        return JSONResponse(status_code=state.HTTP_BAD_REQUEST,
-                            title='UNKNOWN SOURCE',
-                            message='Available sources: "core"')
-
-    return JSONResponse(core=[], custom=[])
