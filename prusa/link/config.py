@@ -232,7 +232,6 @@ class Settings(Get):
             self.get_section('printer', (('type', str, ''), ('name', str, ''),
                                          ('location', str, ''),
                                          ('farm_mode', bool, False))))
-
         if self.printer.type and self.printer.type not in PRINTER_CONF_TYPES:
             raise ValueError("Settings file for an unsupported printer")
 
