@@ -14,6 +14,7 @@ from poorwsgi.results import hbytes
 from prusa.connect.printer import const
 from prusa.connect.printer.const import Source
 from prusa.connect.printer.metadata import FDMMetaData, get_metadata
+from prusa.connect.printer.download import generate_transfer_id
 
 from .. import conditions
 from ..const import LOCAL_STORAGE_NAME, PATH_WAIT_TIMEOUT
@@ -118,6 +119,7 @@ def api_upload(req, storage):
         transfer_.type = const.TransferType.NO_TRANSFER
 
     transfer = app.daemon.prusa_link.printer.transfer
+    transfer.transfer_id = generate_transfer_id()
     try:
         form = FieldStorage(req,
                             keep_blank_values=app.keep_blank_values,
