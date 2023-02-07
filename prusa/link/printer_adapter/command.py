@@ -9,8 +9,8 @@ from prusa.connect.printer.const import Source
 from ..sdk_augmentation.printer import MyPrinter
 from ..serial.helpers import (enqueue_instruction, enqueue_matchable,
                               wait_for_instruction)
+from ..serial.serial_parser import ThreadedSerialParser
 from ..serial.serial_adapter import SerialAdapter
-from ..serial.serial_parser import SerialParser
 from ..serial.serial_queue import MonitoredSerialQueue
 from .file_printer import FilePrinter
 from .job import Job
@@ -41,7 +41,8 @@ class Command:
         self.serial_queue: MonitoredSerialQueue = \
             MonitoredSerialQueue.get_instance()
         self.serial_adapter: SerialAdapter = SerialAdapter.get_instance()
-        self.serial_parser: SerialParser = SerialParser.get_instance()
+        self.serial_parser: ThreadedSerialParser = \
+            ThreadedSerialParser.get_instance()
         self.model: Model = Model.get_instance()
         self.printer: MyPrinter = MyPrinter.get_instance()
         self.state_manager: StateManager = StateManager.get_instance()

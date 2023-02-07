@@ -9,7 +9,9 @@ evaluated first.
 """
 import logging
 import re
-from threading import Lock
+from functools import partial
+from queue import Queue
+from threading import Lock, Thread
 from typing import Any, Callable, Dict, Union, Optional, Match
 
 from blinker import Signal  # type: ignore
@@ -137,3 +139,49 @@ class SerialParser(metaclass=MCSingleton):
             else:
                 raise RuntimeError(f"There is no handler registered for "
                                    f"{regexp.pattern}")
+
+
+class ThreadedSerialParser(SerialParser):
+    """Implements a way to de-couple serial reader from the rest
+    of the app while allowing serial queue to remain coupled"""
+
+    def __init__(self):
+        super().__init__()
+        self.handler_queue = Queue()
+        self.running = False
+        self.thread = Thread(target=self.process,
+                             name="serial_decoupler",
+                             daemon=True)
+        self.running = True
+        self.thread.start()
+
+    def decoupled(self, handler):
+        """A function generator decoupling the caller thread by enqueuing
+        instead of calling the provided handler with its call arguments"""
+        def inner(sender, match):
+            self.handler_queue.put(partial(handler, sender, match=match))
+        return inner
+
+    def process(self):
+        """Processes the handler as a new thread"""
+        while self.running:
+            handler = self.handler_queue.get(block=True)
+            if handler is not None:
+                handler()
+
+    def add_decoupled_handler(self,
+                              regexp: re.Pattern,
+                              handler: Callable[[Any, re.Match], None],
+                              priority: Union[float, int] = 0) -> None:
+        """Converts given handler, so it does not block the caller"""
+        self.add_handler(regexp, self.decoupled(handler), priority)
+
+    def stop(self):
+        """Signals a stop to the decoupler"""
+        self.running = False
+        self.handler_queue.put(lambda: None)
+
+    def wait_stopped(self):
+        """Waits until the decoupler is fully stopped"""
+        if self.thread:
+            self.thread.join()

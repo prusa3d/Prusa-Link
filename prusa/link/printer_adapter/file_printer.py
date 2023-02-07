@@ -11,7 +11,7 @@ from ..config import Config
 from ..const import PRINT_QUEUE_SIZE, QUIT_INTERVAL, STATS_EVERY, TAIL_COMMANDS
 from ..serial.helpers import enqueue_instruction, wait_for_instruction
 from ..serial.instruction import Instruction
-from ..serial.serial_parser import SerialParser
+from ..serial.serial_parser import ThreadedSerialParser
 from ..serial.serial_queue import SerialQueue
 from ..util import get_clean_path, get_gcode, get_print_stats_gcode, \
     prctl_name
@@ -34,7 +34,7 @@ class FilePrinter(metaclass=MCSingleton):
     """
 
     # pylint: disable=too-many-arguments
-    def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
+    def __init__(self, serial_queue: SerialQueue, serial_parser: ThreadedSerialParser,
                  model: Model, cfg: Config, print_stats: PrintStats) -> None:
         self.serial_queue = serial_queue
         self.serial_parser = serial_parser
@@ -60,11 +60,11 @@ class FilePrinter(metaclass=MCSingleton):
             gcode_number=0)
         self.data = self.model.file_printer
 
-        self.serial_parser.add_handler(
+        self.serial_parser.add_decoupled_handler(
             POWER_PANIC_REGEX, lambda sender, match: self.power_panic())
-        self.serial_parser.add_handler(CANCEL_REGEX,
+        self.serial_parser.add_decoupled_handler(CANCEL_REGEX,
                                        lambda sender, match: self.stop_print())
-        self.serial_parser.add_handler(RESUMED_REGEX,
+        self.serial_parser.add_decoupled_handler(RESUMED_REGEX,
                                        lambda sender, match: self.resume())
 
         self.thread: Optional[Thread] = None

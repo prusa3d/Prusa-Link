@@ -415,7 +415,7 @@ class ResetPrinter(Command):
             assert match is not None
             event.set()
 
-        self.serial_parser.add_handler(PRINTER_BOOT_REGEX, waiter)
+        self.serial_parser.add_d(PRINTER_BOOT_REGEX, waiter)
 
         self.state_manager.expect_change(
             StateChange(default_source=self.source,

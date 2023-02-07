@@ -29,7 +29,7 @@ from .instruction import Instruction, MatchableInstruction
 from .is_planner_fed import IsPlannerFed
 from .serial import SerialException
 from .serial_adapter import SerialAdapter
-from .serial_parser import SerialParser
+from .serial_parser import ThreadedSerialParser
 
 log = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class SerialQueue(metaclass=MCSingleton):
 
     def __init__(self,
                  serial_adapter: SerialAdapter,
-                 serial_parser: SerialParser,
+                 serial_parser: ThreadedSerialParser,
                  cfg: Config,
                  rx_size=RX_SIZE):
         self.serial_adapter = serial_adapter
@@ -568,7 +568,7 @@ class MonitoredSerialQueue(SerialQueue):
 
     def __init__(self,
                  serial_adapter: SerialAdapter,
-                 serial_parser: SerialParser,
+                 serial_parser: ThreadedSerialParser,
                  cfg: Config,
                  rx_size=128):
         super().__init__(serial_adapter, serial_parser, cfg, rx_size)

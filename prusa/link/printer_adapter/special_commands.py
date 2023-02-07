@@ -6,7 +6,7 @@ from time import time
 from blinker import Signal  # type:ignore
 
 from ..interesting_logger import InterestingLogRotator
-from ..serial.serial_parser import SerialParser
+from ..serial.serial_parser import ThreadedSerialParser
 from .command import CommandFailed
 from .command_handlers import SetReady
 from .command_queue import CommandQueue
@@ -24,7 +24,7 @@ class SpecialCommands:
     """Filter print start related serial output and catch special menu item
     related ones"""
 
-    def __init__(self, serial_parser: SerialParser,
+    def __init__(self, serial_parser: ThreadedSerialParser,
                  command_queue: CommandQueue, lcd_printer: LCDPrinter):
         self.command_queue = command_queue
         self.lcd_printer = lcd_printer
@@ -38,9 +38,9 @@ class SpecialCommands:
         self.start_print_signal = Signal()
         self.print_done_signal = Signal()
 
-        serial_parser.add_handler(OPEN_RESULT_REGEX, self.handle_file)
-        serial_parser.add_handler(START_PRINT_REGEX, self.handle_start)
-        serial_parser.add_handler(PRINT_DONE_REGEX, self.handle_done)
+        serial_parser.add_decoupled_handler(OPEN_RESULT_REGEX, self.handle_file)
+        serial_parser.add_decoupled_handler(START_PRINT_REGEX, self.handle_start)
+        serial_parser.add_decoupled_handler(PRINT_DONE_REGEX, self.handle_done)
 
     def menu_folder_found(self, _, menu_sfn):
         """An SD with the special menu has been inserted"""

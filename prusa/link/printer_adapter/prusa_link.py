@@ -31,7 +31,7 @@ from ..sdk_augmentation.printer import MyPrinter
 from ..serial.helpers import enqueue_instruction, enqueue_matchable
 from ..serial.serial import SerialException
 from ..serial.serial_adapter import SerialAdapter
-from ..serial.serial_parser import SerialParser
+from ..serial.serial_parser import ThreadedSerialParser
 from ..serial.serial_queue import MonitoredSerialQueue
 from ..service_discovery import ServiceDiscovery
 from ..util import get_print_stats_gcode, make_fingerprint, is_potato_cpu
@@ -97,9 +97,10 @@ class PrusaLink:
         HW.state = CondState.OK
         self.model = Model()
 
+        # These start by themselves
         self.service_discovery = ServiceDiscovery(self.cfg)
 
-        self.serial_parser = SerialParser()
+        self.serial_parser = ThreadedSerialParser()
 
         self.serial = SerialAdapter(self.serial_parser,
                                     self.model,
@@ -108,6 +109,7 @@ class PrusaLink:
 
         self.serial_queue = MonitoredSerialQueue(self.serial,
                                                  self.serial_parser, self.cfg)
+        # -----
 
         self.printer = MyPrinter()
 
@@ -148,9 +150,9 @@ class PrusaLink:
         self.printer.set_handler(CommandType.CANCEL_PRINTER_READY,
                                  self.cancel_printer_ready)
 
-        self.serial_parser.add_handler(
+        self.serial_parser.add_decoupled_handler(
             PAUSE_PRINT_REGEX, lambda sender, match: self.fw_pause_print())
-        self.serial_parser.add_handler(
+        self.serial_parser.add_decoupled_handler(
             RESUME_PRINT_REGEX, lambda sender, match: self.fw_resume_print())
 
         # Init components first, so they all exist for signal binding stuff
@@ -189,7 +191,7 @@ class PrusaLink:
             state.add_broke_handler(lambda *_: self.lcd_printer.notify())
             state.add_fixed_handler(lambda *_: self.lcd_printer.notify())
 
-        self.serial_parser.add_handler(
+        self.serial_parser.add_decoupled_handler(
             MBL_TRIGGER_REGEX,
             lambda sender, match: self.printer_polling.invalidate_mbl())
 
@@ -203,10 +205,10 @@ class PrusaLink:
         self.serial.renewed_signal.connect(self.serial_renewed)
         self.serial_queue.instruction_confirmed_signal.connect(
             self.instruction_confirmed)
-        self.serial_parser.add_handler(PRINTER_BOOT_REGEX,
-                                       self.printer_reconnected)
-        self.serial_parser.add_handler(TM_ERROR_LOG_REGEX,
-                                       self.log_tm_error)
+        self.serial_parser.add_decoupled_handler(PRINTER_BOOT_REGEX,
+                                                 self.printer_reconnected)
+        self.serial_parser.add_decoupled_handler(TM_ERROR_LOG_REGEX,
+                                                 self.log_tm_error)
 
         # Set up the signals for special menu handling
         # And for passthrough
@@ -366,6 +368,7 @@ class PrusaLink:
             self.auto_telemetry.proper_stop()
 
         self.serial_queue.stop()
+        self.serial_parser.stop()
 
         if was_printing and not fast:
             try:
@@ -385,10 +388,11 @@ class PrusaLink:
             self.storage_controller.wait_stopped()
             self.lcd_printer.wait_stopped()
             self.ip_updater.wait_stopped()
+            self.camera_governor.wait_stopped()
             self.auto_telemetry.wait_stopped()
             self.serial_queue.wait_stopped()
+            self.serial_parser.wait_stopped()
             self.serial.wait_stopped()
-            self.camera_governor.wait_stopped()
 
             log.debug("Remaining threads, that might prevent stopping:")
             for thread in enumerate_threads():

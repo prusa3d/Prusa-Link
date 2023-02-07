@@ -11,7 +11,7 @@ from prusa.connect.printer.files import File
 
 from ...printer_adapter.model import Model
 from ...sdk_augmentation.file import SDFile
-from ...serial.serial_parser import SerialParser
+from ...serial.serial_parser import ThreadedSerialParser
 from ...serial.serial_queue import SerialQueue
 from ..state_manager import StateManager
 from .sd_card import SDCard
@@ -28,7 +28,7 @@ class StorageController:
 
     # pylint: disable=too-many-arguments
     def __init__(self, cfg, serial_queue: SerialQueue,
-                 serial_parser: SerialParser, state_manager: StateManager,
+                 serial_parser: ThreadedSerialParser, state_manager: StateManager,
                  model: Model):
         self.folder_attached_signal = Signal()
         self.folder_detached_signal = Signal()
