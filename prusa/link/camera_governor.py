@@ -8,6 +8,7 @@ from typing import Optional
 from prusa.connect.printer.camera_configurator import CameraConfigurator
 from prusa.connect.printer.camera_controller import CameraController
 from .const import CAMERA_SCAN_INTERVAL
+from .interesting_logger import InterestingLogRotator
 from .util import loop_until
 
 log = logging.getLogger("my_camera_configurator")
@@ -28,7 +29,8 @@ class CameraGovernor:
         """Monitors the cameras re-starts failed ones,
         optionally scans for newly connected ones"""
         log.debug("Running the camera governance routine")
-        self.camera_controller.disconnect_stuck_cameras()
+        if self.camera_controller.disconnect_stuck_cameras():
+            InterestingLogRotator.trigger("a stuck camera")
         self.camera_configurator.load_cameras(auto_detect=auto_detect)
 
     def start(self, auto_detect=True) -> None:
