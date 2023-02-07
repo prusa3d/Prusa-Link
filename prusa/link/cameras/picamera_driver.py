@@ -1,4 +1,6 @@
 """Contains implementation of a driver for Rpi Cameras"""
+from time import time
+
 import select
 import gc
 import logging
@@ -295,10 +297,17 @@ class PiCameraDriver(CameraDriver):
                                  self.scaler_crop)
         self.camera.queue_request(self.request)
 
-        events, *_ = select.select((self.camera_manager.event_fd,),
-                                   (), (), CAMERA_WAIT_TIMEOUT)
-        if not events or self.request.status != Request.Status.Complete:
-            raise TimeoutError("Taking a photo timed out")
+        started_at = time()
+        while True:
+            remaining = started_at + CAMERA_WAIT_TIMEOUT - time()
+            if self.request.status == Request.Status.Complete:
+                break
+            if remaining <= 0:
+                raise TimeoutError("Taking a photo timed out")
+
+            # Cannot use returned events for breaking this loop because
+            # we would need to handle a negative time remaining as well
+            select.select((self.camera_manager.event_fd,), (), (), remaining)
 
         log.warning("Converting a photo")
         data = self.encoder.encode(self.stream.configuration.frame_size)

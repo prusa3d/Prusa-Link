@@ -335,6 +335,9 @@ class V4L2Camera:
         from the outside, returns the buffer details"""
         buffer = self._v4l2_buffer()
         self._ioctl(v4l2.VIDIOC_QBUF, buffer)
+
+        # The same piece of code in picamera driver broke,
+        # this one seems to work fine
         events, *_ = select.select((self._file_object,),
                                    (), (), CAMERA_WAIT_TIMEOUT)
         if not events:
