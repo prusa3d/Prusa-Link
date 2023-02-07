@@ -22,6 +22,7 @@
     * Hardware encoding support. (Pi Zero W manages FullHD snapshots without issues)
     * Fix "unicam" appearing when a Raspberry Pi camera is connected
     * Fix not following the configured resolution
+    * Added api/v1/status endpoint
 
 0.7.0rc2
     * Support thermal model errors (FW 3.12)
