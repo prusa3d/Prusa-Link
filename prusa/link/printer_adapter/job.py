@@ -9,7 +9,7 @@ from prusa.connect.printer import Printer
 from ..const import JOB_ENDING_STATES, SD_STORAGE_NAME, JOB_STARTING_STATES, \
     JOB_DESTROYING_STATES
 from ..serial.helpers import enqueue_instruction
-from ..serial.serial_parser import SerialParser
+from ..serial.serial_parser import ThreadedSerialParser
 from ..serial.serial_queue import SerialQueue
 from .model import Model
 from .structures.mc_singleton import MCSingleton
@@ -23,7 +23,7 @@ class Job(metaclass=MCSingleton):
     """Keeps track of print jobs and their properties"""
 
     # pylint: disable=too-many-arguments
-    def __init__(self, serial_parser: SerialParser, serial_queue: SerialQueue,
+    def __init__(self, serial_parser: ThreadedSerialParser, serial_queue: SerialQueue,
                  model: Model, printer: Printer):
         # Sent every time the job id should disappear, appear or update
         self.printer = printer

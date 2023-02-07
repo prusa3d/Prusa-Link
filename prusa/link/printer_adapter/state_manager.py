@@ -14,7 +14,7 @@ from ..conditions import HW, SERIAL
 from ..config import Config, Settings
 from ..const import ERROR_REASON_TIMEOUT, STATE_HISTORY_SIZE, \
     ATTENTION_CLEAR_INTERVAL
-from ..serial.serial_parser import SerialParser
+from ..serial.serial_parser import ThreadedSerialParser
 from .model import Model
 from .structures.mc_singleton import MCSingleton
 from .structures.module_data_classes import StateManagerData
@@ -100,10 +100,10 @@ class StateManager(metaclass=MCSingleton):
     # pylint: disable=too-many-instance-attributes,
     # pylint: disable=too-many-public-methods
     # pylint: disable=too-many-arguments
-    def __init__(self, serial_parser: SerialParser, model: Model,
+    def __init__(self, serial_parser: ThreadedSerialParser, model: Model,
                  sdk_printer: Printer, cfg: Config, settings: Settings):
 
-        self.serial_parser: SerialParser = serial_parser
+        self.serial_parser: ThreadedSerialParser = serial_parser
         self.model: Model = model
         self.sdk_printer: Printer = sdk_printer
         self.cfg = cfg
@@ -199,7 +199,7 @@ class StateManager(metaclass=MCSingleton):
         }
 
         for regex, handler in regex_handlers.items():
-            self.serial_parser.add_handler(regex, handler)
+            self.serial_parser.add_decoupled_handler(regex, handler)
 
         for state in SERIAL:
             state.add_broke_handler(self.link_error_detected)
@@ -407,7 +407,7 @@ class StateManager(metaclass=MCSingleton):
         """
         assert sender is not None
         self.fan_error_name = match.group("fan_name")
-        self.serial_parser.add_handler(FAN_REGEX, self.fan_error_resolver)
+        self.serial_parser.add_decoupled_handler(FAN_REGEX, self.fan_error_resolver)
 
         log.debug("%s fan error has been observed.", self.fan_error_name)
         self.expect_change(

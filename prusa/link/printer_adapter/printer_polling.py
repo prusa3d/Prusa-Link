@@ -20,7 +20,7 @@ from ..const import (FAST_POLL_INTERVAL, MINIMAL_FIRMWARE,
                      QUIT_INTERVAL, SLOW_POLL_INTERVAL,
                      VERY_SLOW_POLL_INTERVAL, MK25_PRINTERS)
 from ..serial.helpers import enqueue_matchable, wait_for_instruction
-from ..serial.serial_parser import SerialParser
+from ..serial.serial_parser import ThreadedSerialParser
 from ..serial.serial_queue import SerialQueue
 from ..util import get_d3_code, make_fingerprint
 from .filesystem.sd_card import SDCard
@@ -62,7 +62,8 @@ class PrinterPolling:
     quit_interval = QUIT_INTERVAL
 
     # pylint: disable=too-many-statements, too-many-arguments
-    def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
+    def __init__(self, serial_queue: SerialQueue,
+                 serial_parser: ThreadedSerialParser,
                  printer: Printer, model: Model,
                  telemetry_passer: TelemetryPasser,
                  job: Job, sd_card: SDCard, settings: Settings) -> None:

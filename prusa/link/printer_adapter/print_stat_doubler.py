@@ -2,7 +2,7 @@
 import re
 from typing import List
 
-from ..serial.serial_parser import SerialParser
+from ..serial.serial_parser import ThreadedSerialParser
 from .printer_polling import PrinterPolling
 from .structures.regular_expressions import (CONFIRMATION_REGEX,
                                              PRINT_INFO_REGEX)
@@ -17,15 +17,15 @@ class PrintStatDoubler:
     modifying the underlying serial communication layers
     """
 
-    def __init__(self, serial_parser: SerialParser,
+    def __init__(self, serial_parser: ThreadedSerialParser,
                  printer_polling: PrinterPolling):
         self.printer_polling = printer_polling
         self.serial_parser = serial_parser
 
         self.matches: List[re.Match] = []
 
-        self.serial_parser.add_handler(PRINT_INFO_REGEX, self.matched)
-        self.serial_parser.add_handler(CONFIRMATION_REGEX, self.reset)
+        self.serial_parser.add_decoupled_handler(PRINT_INFO_REGEX, self.matched)
+        self.serial_parser.add_decoupled_handler(CONFIRMATION_REGEX, self.reset)
 
     def reset(self, sender, match):
         """Resets the accumulated stat lines from the list"""

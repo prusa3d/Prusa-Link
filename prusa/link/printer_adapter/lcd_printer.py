@@ -22,7 +22,7 @@ from ..config import Settings
 from ..const import (FW_MESSAGE_TIMEOUT, PRINTING_STATES, QUIT_INTERVAL,
                      SLEEP_SCREEN_TIMEOUT)
 from ..serial.helpers import enqueue_instruction, wait_for_instruction
-from ..serial.serial_parser import SerialParser
+from ..serial.serial_parser import ThreadedSerialParser
 from ..serial.serial_queue import SerialQueue
 from .model import Model
 from .structures.carousel import Carousel, LCDLine, Screen
@@ -95,10 +95,10 @@ class LCDPrinter(metaclass=MCSingleton):
     """Reports PrusaLink status on the printer LCD whenever possible"""
 
     # pylint: disable=too-many-arguments
-    def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
+    def __init__(self, serial_queue: SerialQueue, serial_parser: ThreadedSerialParser,
                  model: Model, settings: Settings, printer: Printer):
         self.serial_queue: SerialQueue = serial_queue
-        self.serial_parser: SerialParser = serial_parser
+        self.serial_parser: ThreadedSerialParser = serial_parser
         self.model: Model = model
         self.settings: Settings = settings
         self.printer: Printer = printer
@@ -163,7 +163,7 @@ class LCDPrinter(metaclass=MCSingleton):
         self.idle_from = time()
         # Used for ignoring LCD status updated that we generate
         self.ignore = 0
-        self.serial_parser.add_handler(LCD_UPDATE_REGEX, self.lcd_updated)
+        self.serial_parser.add_decoupled_handler(LCD_UPDATE_REGEX, self.lcd_updated)
 
         self.current_line = None
 

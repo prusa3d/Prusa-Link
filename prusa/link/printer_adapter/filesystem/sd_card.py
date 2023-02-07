@@ -17,7 +17,7 @@ from ...const import (MAX_FILENAME_LENGTH, SD_FILESCAN_INTERVAL, SD_INTERVAL,
 from ...sdk_augmentation.file import SDFile
 from ...serial.helpers import (enqueue_list_from_str, enqueue_matchable,
                                wait_for_instruction)
-from ...serial.serial_parser import SerialParser
+from ...serial.serial_parser import ThreadedSerialParser
 from ...serial.serial_queue import SerialQueue
 from ...util import fat_datetime_to_tuple
 from ..model import Model
@@ -206,7 +206,7 @@ class SDCard(ThreadedUpdatable):
     # Cycle fast, but re-scan only on events or in big intervals
     update_interval = SD_INTERVAL
 
-    def __init__(self, serial_queue: SerialQueue, serial_parser: SerialParser,
+    def __init__(self, serial_queue: SerialQueue, serial_parser: ThreadedSerialParser,
                  state_manager: StateManager, model: Model):
 
         self.tree_updated_signal = Signal()  # kwargs: tree: FileTree
@@ -216,8 +216,8 @@ class SDCard(ThreadedUpdatable):
         self.menu_found_signal = Signal()  # kwargs: menu_sfn: str
 
         self.serial_parser = serial_parser
-        self.serial_parser.add_handler(SD_PRESENT_REGEX, self.sd_inserted)
-        self.serial_parser.add_handler(SD_EJECTED_REGEX, self.sd_ejected)
+        self.serial_parser.add_decoupled_handler(SD_PRESENT_REGEX, self.sd_inserted)
+        self.serial_parser.add_decoupled_handler(SD_EJECTED_REGEX, self.sd_ejected)
         self.serial_queue: SerialQueue = serial_queue
         self.state_manager = state_manager
         self.model = model
