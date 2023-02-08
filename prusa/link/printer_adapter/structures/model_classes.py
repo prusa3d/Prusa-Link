@@ -41,6 +41,7 @@ class Telemetry(BaseModel):
     total_filament: Optional[int] = None
     total_print_time: Optional[int] = None
     filament_change_in: Optional[int] = None
+    inaccurate_estimates: Optional[bool] = None
 
 
 class NetworkInfo(BaseModel):

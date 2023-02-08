@@ -55,9 +55,7 @@ class InfoGroup(WatchedGroup):
 
 
 class PrinterPolling:
-    """
-    Sets up the tracked values for info_updater
-    """
+    """Sets up the tracked values for info_updater"""
 
     quit_interval = QUIT_INTERVAL
 
@@ -244,6 +242,15 @@ class PrinterPolling:
             on_fail_interval=None
         )
 
+        self.inaccurate_estimates = WatchedItem("inaccurate_estimates")
+        self.time_broken.value_changed_signal.connect(
+            lambda _: self._infer_estimate_accuracy(), weak=False)
+        self.speed_multiplier.value_changed_signal.connect(
+            lambda _: self._infer_estimate_accuracy(), weak=False)
+        self.inaccurate_estimates.value_changed_signal.connect(
+            self._set_inaccurate_estimates
+        )
+
         # M27 results
         # These are sometimes auto reported, but due to some technical
         # limitations, I'm not able to read them when auto reported
@@ -302,7 +309,8 @@ class PrinterPolling:
             self.total_filament,
             self.total_print_time,
             self.progress_broken,
-            self.time_broken
+            self.time_broken,
+            self.inaccurate_estimates
         ])
 
         for item in self.telemetry:
@@ -845,10 +853,8 @@ class PrinterPolling:
             self.printer.type = PRINTER_TYPES[value]
 
     def _set_firmware_version(self, value):
-        """
-        It's a setter, what am I expected to write here?
-        Sets the firmware version duh
-        """
+        """It's a setter, what am I expected to write here?
+        Sets the firmware version duh"""
         self.printer.firmware = value
 
     def _set_nozzle_diameter(self, value):
@@ -895,10 +901,8 @@ class PrinterPolling:
         self.telemetry_passer.set_telemetry(Telemetry(time_printing=value))
 
     def _set_progress_from_bytes(self, value):
-        """
-        Sets the progress gathered from the byte position,
-        But only if it's broken in the printer
-        """
+        """Sets the progress gathered from the byte position,
+        But only if it's broken in the printer"""
         if self.progress_broken.value:
             log.debug(
                 "SD print has no inbuilt percentage tracking, "
@@ -917,12 +921,17 @@ class PrinterPolling:
                 Telemetry(time_remaining=value))
 
     def _set_total_filament(self, value):
-        """Write the total filament used to model"""
+        """Write the total filament used into the model"""
         self.telemetry_passer.set_telemetry(Telemetry(total_filament=value))
 
     def _set_total_print_time(self, value):
-        """Write the total print time to model"""
+        """Write the total print time into the model"""
         self.telemetry_passer.set_telemetry(Telemetry(total_print_time=value))
+
+    def _set_inaccurate_estimates(self, value):
+        """Write whether out time estimates are inaccurate into the model"""
+        self.telemetry_passer.set_telemetry(
+            Telemetry(inaccurate_estimates=value))
 
     # -- Signal handlers --
 
@@ -955,34 +964,38 @@ class PrinterPolling:
         JOB_ID.state = state
 
     def _printer_type_became_valid(self, _):
-        """
-        Printer type became valid, set the condition and enable the fw check
-        """
+        """Printer type became valid,
+        set the condition and enable the fw check"""
         self.item_updater.enable(self.firmware_version)
         self._set_id_condition(CondState.OK)
 
     def _firmware_version_became_valid(self, _):
-        """
-        Firmware version became valid, enable polling of the rest of the info
-        """
+        """Firmware version became valid,
+        enable polling of the rest of the info"""
         for item in self.printer_info:
             self.item_updater.enable(item)
         self._set_fw_condition(CondState.OK)
 
     def _printer_info_became_valid(self, _):
-        """
-        Printer info became valid, we can start looking at telemetry
-        and other stuff
-        """
+        """Printer info became valid, we can start looking at telemetry
+        and other stuff"""
         self._send_info_if_changed()
         for item in itertools.chain(self.telemetry, self.other_stuff):
             self.item_updater.enable(item)
 
     def _send_info_if_changed(self):
-        """
-        Sends printer info if a value change marked it for sending
-        """
+        """Sends printer info if a value change marked it for sending"""
         # This relies on update being called after became_valid_signal
         if self.printer_info.valid and self.printer_info.to_send:
             self.printer.event_cb(**self.printer.get_info())
             self.printer_info.to_send = False
+
+    def _infer_estimate_accuracy(self):
+        """Looks at the current state of things and infers whether the
+        time estimates are accurate or not"""
+        if self.time_broken.value in {None, False}:
+            self.item_updater.set_value(self.inaccurate_estimates, True)
+        elif self.speed_multiplier.value != 1:
+            self.item_updater.set_value(self.inaccurate_estimates, True)
+        else:
+            self.item_updater.set_value(self.inaccurate_estimates, False)

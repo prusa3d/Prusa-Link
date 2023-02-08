@@ -32,7 +32,12 @@ ACTIVATING_CHANGES = {
     "target_nozzle", "target_bed", "axis_x", "axis_y", "axis_z",
     "target_fan_print", "speed"
 }
-NOT_PRINTING_IGNORED = {"time_printing", "time_remaining", "progress"}
+NOT_PRINTING_IGNORED = {
+    "time_printing",
+    "time_remaining",
+    "progress",
+    "inaccurate_estimates"
+}
 PRINTING_IGNORED = {"axis_x", "axis_y"}
 
 
