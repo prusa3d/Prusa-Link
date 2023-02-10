@@ -461,6 +461,9 @@ class JobInfo(Command):
             "state": self.model.state_manager.current_state,
             "event": EventConst.JOB_INFO,
             "source": Source.CONNECT,
+            "time_printing": self.model.latest_telemetry.time_printing,
+            "time_remaining": self.model.latest_telemetry.time_remaining,
+            "progress": self.model.latest_telemetry.progress,
             **data}
 
         log.debug("Job Info retrieved: %s", response)

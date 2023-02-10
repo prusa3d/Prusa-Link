@@ -31,6 +31,7 @@ class Telemetry(BaseModel):
     flow: Optional[int] = None
     speed: Optional[int] = None
     time_printing: Optional[int] = None
+    time_transferring: Optional[int] = None
     time_remaining: Optional[int] = None
     odometer_x: Optional[int] = None
     odometer_y: Optional[int] = None
