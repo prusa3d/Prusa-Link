@@ -88,7 +88,9 @@
                       </div>
                       <div class="col-sm-auto">
                         <button form="skip" onclick="document.getElementById('skip').submit();" type="submit" class="btn btn-back btn-outline-light full-width">Save printer | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
-                        <button onclick="finish()" type="button" class="btn btn-outline-light full-width">Save printer and link with Connect | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
+                          {% if not wizard.restored_connect %}
+                            <button onclick="finish()" type="button" class="btn btn-outline-light full-width">Save printer and link with Connect | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
+                          {% endif %}
                       </div>
                   </div>
                 </div>
