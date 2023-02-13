@@ -121,8 +121,8 @@ def api_info(req):
     printer = app.daemon.prusa_link.printer
 
     info = {
-        'name': printer_settings.name.replace("\"", ""),
-        'location': printer_settings.location.replace("\"", ""),
+        'name': printer_settings.name.strip('\"'),
+        'location': printer_settings.location.strip('\"'),
         'farm_mode': printer_settings.farm_mode,
         'nozzle_diameter': printer.nozzle_diameter,
         'min_extrusion_temp': LimitsMK3S.min_temp_nozzle_e,

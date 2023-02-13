@@ -1,9 +1,11 @@
 """/api/connection endpoint handlers"""
 from socket import gethostbyname
+from urllib import parse
 from urllib.request import urlopen
 
 from poorwsgi import state
 from poorwsgi.response import JSONResponse
+from prusa.connect.printer import Printer
 from prusa.connect.printer.const import RegistrationStatus
 
 from .. import conditions
@@ -11,6 +13,25 @@ from ..conditions import use_connect_errors
 from .lib.auth import check_api_digest
 from .lib.core import app
 from .main import PRINTER_STATES
+
+
+def compose_register_url(printer, connect_url, name, location):
+    """Compose and return url for Connect registration"""
+    printer.connection_from_settings(app.settings)
+    code = printer.register()
+    url = f"{connect_url}/add-printer/connect/{printer.type}/{code}"
+
+    printer_info = {}
+
+    # If the name and the location were an empty strings, don't add them to url
+    if name or location:
+        if name:
+            printer_info.update({"name": name})
+        if location:
+            printer_info.update({"location": location})
+
+        url += f"?{parse.urlencode(printer_info)}"
+    return url
 
 
 @app.route('/api/connection')
@@ -81,6 +102,8 @@ def api_connection_set(req):
     port = connect.get('port')
     tls = bool(connect.get('tls'))
 
+    connect_url = Printer.connect_url(hostname, tls, port)
+
     try:
         gethostbyname(hostname)
     except Exception as exc:  # pylint: disable=broad-except
@@ -98,22 +121,21 @@ def api_connection_set(req):
     app.settings.service_connect.tls = tls
 
     app.settings.update_sections()
-    printer.connection_from_settings(app.settings)
 
-    type_ = printer.type
-    code = printer.register()
-    name = printer_settings.name.replace("#", "%23")\
-        .replace("\"", "").replace(" ", "%20")
-    location = printer_settings.location.replace("#", "%23")\
-        .replace("\"", "").replace(" ", "%20")
+    # Use values from settings file, strip off the quotes
+    name = printer_settings.name.strip('\"')
+    location = printer_settings.location.strip('\"')
+
+    register_url = compose_register_url(printer=printer,
+                                        connect_url=connect_url,
+                                        name=name,
+                                        location=location)
 
     service_connect.hostname = hostname
     service_connect.port = port
     service_connect.tls = tls
-    url = printer.connect_url(hostname, bool(tls), port)
 
-    url_ = f'{url}/add-printer/connect/{type_}/{code}/{name}/{location}'
-    return JSONResponse(status_code=state.HTTP_OK, url=url_)
+    return JSONResponse(status_code=state.HTTP_OK, url=register_url)
 
 
 @app.route('/api/connection', method=state.METHOD_DELETE)
