@@ -168,8 +168,11 @@ def regenerate_api_key(req):
     else:
         api_key = token_urlsafe(10)
 
-    # Update API key in the printer
+    # Update API key in the app
     app.api_key = api_key
+
+    # Update API key in the printer
+    app.daemon.prusa_link.printer.api_key = api_key
 
     # Update API key in the prusa_printer_settings.ini file
     app.daemon.settings.service_local.api_key = api_key
