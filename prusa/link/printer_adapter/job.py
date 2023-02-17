@@ -23,7 +23,8 @@ class Job(metaclass=MCSingleton):
     """Keeps track of print jobs and their properties"""
 
     # pylint: disable=too-many-arguments
-    def __init__(self, serial_parser: ThreadedSerialParser, serial_queue: SerialQueue,
+    def __init__(self, serial_parser: ThreadedSerialParser,
+                 serial_queue: SerialQueue,
                  model: Model, printer: Printer):
         # Sent every time the job id should disappear, appear or update
         self.printer = printer
@@ -50,21 +51,17 @@ class Job(metaclass=MCSingleton):
                                         job_id=self.data.get_job_id_for_api())
 
     def file_opened(self, _, match: re.Match):
-        """
-        Handles the M23 output by extracting the mixed path and sends it
-        for parsing
-        """
+        """Handles the M23 output by extracting the mixed path and sends it
+        for parsing"""
         if match is not None and match.group("sdn_lfn") != "":
             mixed_path = match.group("sdn_lfn")
             self.process_mixed_path(mixed_path)
 
     def process_mixed_path(self, mixed_path):
-        """
-        Takes the mixed path and tries translating it into the long format
+        """Takes the mixed path and tries translating it into the long format
         Sends the result to set_file_path
         :param mixed_path: the path in SDR_LFN format
-        (short dir name, long file name)
-        """
+        (short dir name, long file name)"""
         log.debug("Processing %s", mixed_path)
         if mixed_path.lower() in self.model.sd_card.mixed_to_lfn_paths:
             log.debug("It has been found in the SD card file tree")
@@ -79,13 +76,11 @@ class Job(metaclass=MCSingleton):
                                prepend_sd_storage=True)
 
     def job_started(self, command_id=None):
-        """
-        Reacts to a new job happening, increments job_id and fills out
+        """Reacts to a new job happening, increments job_id and fills out
         as much info as possible about the print job
 
         Also writes the new job_id to a file, so there aren't two jobs with
-        the same id
-        """
+        the same id"""
         self.data.already_sent = False
         if self.data.job_id is None:
             self.data.job_id_offset += 1
@@ -150,15 +145,13 @@ class Job(metaclass=MCSingleton):
                             to_front=True)
 
     def set_file_path(self, path, path_incomplete, prepend_sd_storage):
-        """
-        Decides if the supplied file path is better, than what we had
+        """Decides if the supplied file path is better, than what we had
         previously, and updates the job info file parameters accordingly
         :param path: the path/file name to assign to the job
         :param path_incomplete: flag for distinguishing between paths which
         could not be linked to an SD file and those which could
         :param prepend_sd_storage: Whether to prepend the SD Card
-        storage name
-        """
+        storage name"""
         # If asked to, prepend the SD storage name
         if prepend_sd_storage:
             # Path joins don't work on paths with leading slashes
@@ -190,8 +183,8 @@ class Job(metaclass=MCSingleton):
                         "m_timestamp"]
                 if 'size' in file_obj.attrs:
                     self.data.selected_file_size = file_obj.attrs["size"]
-        if path.startswith(os.path.join("/", SD_STORAGE_NAME)):
-            self.model.job.from_sd = True
+        self.model.job.from_sd = path.startswith(
+            os.path.join("/", SD_STORAGE_NAME))
         self.job_info_updated()
 
     def get_job_info_data(self, for_connect=False):
@@ -221,8 +214,7 @@ class Job(metaclass=MCSingleton):
     def progress_broken(self, progress_broken):
         """Uses the info about whether the progress percentage reported by
         the printer is broken, to deduce, whether the gcode has inbuilt
-        percentage reporting for sd prints.
-        """
+        percentage reporting for sd prints."""
         if self.data.from_sd:
             old_inbuilt_reporting = self.data.inbuilt_reporting
             if self.data.inbuilt_reporting is None and progress_broken:
@@ -234,11 +226,9 @@ class Job(metaclass=MCSingleton):
                 self.job_info_updated()
 
     def file_position(self, current, total):
-        """
-        Call to report a position in a file that's being printed
+        """Call to report a position in a file that's being printed
         :param current: The byte number being printed
-        :param total: The file size
-        """
+        :param total: The file size"""
         self.data.printing_file_byte = current
         if self.data.selected_file_size is not None and \
                 self.data.selected_file_size != total:
@@ -260,12 +250,10 @@ class Job(metaclass=MCSingleton):
             self.job_info_updated_signal.send(self)
 
     def select_file(self, path):
-        """
-        For Octoprint API to select a file to print
+        """For Octoprint API to select a file to print
         supply only existing file paths
 
-        :param path: The connect path to a file, including the storage name
-        """
+        :param path: The connect path to a file, including the storage name"""
         if self.printer.fs.get(path) is None:
             raise RuntimeError(f"Cannot select a non existing file {path}")
         self.set_file_path(path,
@@ -273,10 +261,8 @@ class Job(metaclass=MCSingleton):
                            prepend_sd_storage=False)
 
     def deselect_file(self):
-        """
-        For Octoprint API to deselect a file
-        Only works when IDLE
-        """
+        """For Octoprint API to deselect a file
+        Only works when IDLE"""
         if self.data.job_state != JobState.IDLE:
             raise RuntimeError("Cannot deselect a file while printing it")
         self.data.selected_file_path = None
