@@ -123,9 +123,12 @@ class LinkError(RuntimeError):
     id: Optional[str] = None
     status_code: int
     path: Optional[str] = None
+    details: Optional[str] = None
     url: str = ''
 
-    def __init__(self):
+    def __init__(self, details: str = ""):
+        if details:
+            self.details = details
         if self.id:
             self.path = '/error/' + self.id
         # pylint: disable=consider-using-f-string
@@ -156,7 +159,10 @@ class LinkError(RuntimeError):
         """Return TextResponse for error."""
         url = "\n\nSee: " + self.url if self.url else ''
         # pylint: disable=consider-using-f-string
-        return TextResponse("%s\n%s%s" % (self.title, self.text, url),
+        text_response = "%s\n%s\n%s%s" % \
+                        (self.title, self.text,
+                         self.details if self.details else "", url)
+        return TextResponse(text_response,
                             status_code=self.status_code,
                             headers=self.gen_headers())
 
@@ -373,6 +379,22 @@ class TransferStopped(ConflictError):
     title = "Transfer stopped"
     text = "Transfer process was stopped by user."
     id = "transfer-stopped"
+
+
+class UnavailableUpdate(ConflictError):
+    """409 Update is unavailable to install"""
+    title = "Unavailable update"
+    text = "Update is unavailable to install"
+    id = "unavailable-update"
+    status_code = state.HTTP_CONFLICT
+
+
+class UnableToUpdate(ConflictError):
+    """409 Unable to install update"""
+    title = "Unable to update"
+    text = "Unable to install update"
+    id = "unable-to-update"
+    status_code = state.HTTP_CONFLICT
 
 
 class LengthRequired(LinkError):

@@ -1,9 +1,10 @@
 """Main pages and core API"""
 import logging
+import subprocess
 from os import listdir
 from os.path import basename, getmtime, getsize, join
 from socket import gethostname
-from subprocess import check_output
+from subprocess import check_output, CalledProcessError
 from sys import version, executable
 
 from pkg_resources import working_set
@@ -513,27 +514,61 @@ def api_job_command(req):
 @app.route("/api/v1/update/<env>")
 @check_api_digest
 def api_update(req, env):
-    """Retrieve information about available updates of packages and their
-    versions"""
+    """Retrieve information about available update of given environment"""
     # pylint: disable=unused-argument
     headers = {"Update-Available": "False"}
-    updatable = []
 
-    if env == "python":
-        output = check_output([executable, '-m', 'pip', 'list', '-o']).decode()
-        packages_list = output.split('\n')[2:-1]
-        if packages_list:
-            headers["Update-Available"] = "True"
-        for package_ in packages_list:
-            package = package_.split()
-            updatable.append(
-                {
-                    "name": package[0],
-                    "version": package[1],
-                    "available_version": package[2],
-                    "path": None}
-            )
-        return JSONResponse(available_updates=updatable, headers=headers)
+    if env == "prusalink":
+        try:
+            output = check_output(
+                [executable, '-m', 'pip', 'install', '--dry-run', '-U',
+                 'prusalink'], stderr=subprocess.STDOUT).decode()
+        # There's a problem with package installation, or it does not exist
+        except CalledProcessError as exception:
+            raise conditions.UnavailableUpdate(exception.output.decode()) \
+                from exception
+
+        # New version is available to download and possible to install
+        if "Would install" in output:
+            output = output.splitlines()
+            for string in output:
+                if "Would install" in string:
+                    # Get available version number
+                    report = string.split()[-1].split("-")[1]
+                    headers["Update-Available"] = "True"
+                    return JSONResponse(new_version=report, headers=headers)
+        # No update available
+        return Response(status_code=state.HTTP_NO_CONTENT, headers=headers)
+
+    if env == "system":
+        return Response(status_code=state.HTTP_NOT_IMPLEMENTED)
+
+    return Response(status_code=state.HTTP_BAD_REQUEST)
+
+
+@app.route("/api/v1/update/<env>", method=state.METHOD_POST)
+@check_api_digest
+def api_update_post(req, env):
+    """Update given environment"""
+    # pylint: disable=unused-argument
+    if env == "prusalink":
+        try:
+            output = check_output(
+                [executable, '-m', 'pip', 'install', '-U',
+                 '--upgrade-strategy', 'eager', 'prusalink'], shell=True,
+                stderr=subprocess.STDOUT).decode()
+
+            # No update available
+            if "Requirement already satisfied" in output:
+                return Response(status_code=state.HTTP_NO_CONTENT)
+
+            # New version was installed correctly
+            return Response(status_code=state.HTTP_OK)
+
+        # There's a problem with package installation, or it does not exist
+        except CalledProcessError as exception:
+            raise conditions.UnableToUpdate(exception.output.decode()) \
+                from exception
 
     if env == "system":
         return Response(status_code=state.HTTP_NOT_IMPLEMENTED)

@@ -23,6 +23,7 @@
     * Fix "unicam" appearing when a Raspberry Pi camera is connected
     * Fix not following the configured resolution
     * Added api/v1/status endpoint
+    * Added new endpoint for updating prusalink python package
 
 0.7.0rc2
     * Support thermal model errors (FW 3.12)
