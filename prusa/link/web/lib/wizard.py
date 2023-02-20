@@ -8,7 +8,7 @@ from poorwsgi.digest import hexdigest
 from prusa.connect.printer import Printer, CondState
 from ...conditions import UPGRADED
 
-from ...const import PRINTER_CONF_TYPES
+from ...const import PRINTER_CONF_TYPES, INVALID_CHARACTERS
 from ...printer_adapter.printer_polling import PrinterPolling
 from ...printer_adapter.structures.item_updater import WatchedItem
 from ...printer_adapter.structures.regular_expressions import (
@@ -18,10 +18,6 @@ from ..lib.auth import REALM
 from ..lib.core import app
 
 log = logging.getLogger(__name__)
-
-PRINTER_MISSING_NAME = "Both printer name and location are required"
-PRINTER_INVALID_CHARACTERS = "Name or location cointains invalid characters"
-INVALID_CHARACTERS = ['\'', '\"', '%']
 
 
 def valid_sn_format(serial):
@@ -199,9 +195,9 @@ class Wizard:
         # printer
         printer_type = PRINTER_CONF_TYPES.inverse[
             self.daemon.prusa_link.printer.type]
-        settings.printer.type = f'{printer_type}'
-        settings.printer.name = f'"{self.printer_name}"'
-        settings.printer.location = f'"{self.printer_location}"'
+        settings.printer.type = printer_type
+        settings.printer.name = self.printer_name
+        settings.printer.location = self.printer_location
 
         # connect
         if not self.connect_skip:
