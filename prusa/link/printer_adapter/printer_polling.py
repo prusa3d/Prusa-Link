@@ -67,7 +67,6 @@ class PrinterPolling:
                  job: Job, sd_card: SDCard, settings: Settings) -> None:
         super().__init__()
         self.item_updater = ItemUpdater()
-
         self.serial_queue = serial_queue
         self.serial_parser = serial_parser
         self.printer = printer
@@ -78,7 +77,6 @@ class PrinterPolling:
         self.settings = settings
 
         # Printer info (for init and SEND_INFO)
-
         self.network_info = WatchedItem("network_info",
                                         gather_function=self._get_network_info,
                                         write_function=self._set_network_info)
