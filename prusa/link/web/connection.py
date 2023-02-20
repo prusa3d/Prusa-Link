@@ -122,14 +122,10 @@ def api_connection_set(req):
 
     app.settings.update_sections()
 
-    # Use values from settings file, strip off the quotes
-    name = printer_settings.name.strip('\"')
-    location = printer_settings.location.strip('\"')
-
     register_url = compose_register_url(printer=printer,
                                         connect_url=connect_url,
-                                        name=name,
-                                        location=location)
+                                        name=printer_settings.name,
+                                        location=printer_settings.location)
 
     service_connect.hostname = hostname
     service_connect.port = port

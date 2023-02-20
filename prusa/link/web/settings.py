@@ -6,11 +6,11 @@ from poorwsgi.digest import check_digest
 from poorwsgi.response import JSONResponse
 
 from ..conditions import SN
+from ..const import INVALID_CHARACTERS, PRINTER_INVALID_CHARACTERS
 from .lib.auth import (REALM, check_api_digest, set_digest, valid_credentials,
                        valid_digests)
 from .lib.core import app
-from .lib.wizard import (INVALID_CHARACTERS, PRINTER_INVALID_CHARACTERS,
-                         PRINTER_MISSING_NAME, execute_sn_gcode, new_sn_format,
+from .lib.wizard import (execute_sn_gcode, new_sn_format,
                          sn_write_success, valid_sn_format)
 
 errors_titles = {
@@ -25,8 +25,8 @@ errors_titles = {
 
 def set_settings_printer(name, location):
     """Set new values to printer settings"""
-    app.daemon.settings.printer.name = f'"{name}"'
-    app.daemon.settings.printer.location = f'"{location}"'
+    app.daemon.settings.printer.name = name
+    app.daemon.settings.printer.location = location
 
 
 def set_settings_user(new_username, new_digest):
@@ -72,8 +72,8 @@ def api_settings(req):
             "api-key": service_local.api_key,
             "username": service_local.username,
             "printer": {
-                "name": printer_settings.name.strip('\"'),
-                "location": printer_settings.location.strip('\"'),
+                "name": printer_settings.name,
+                "location": printer_settings.location,
                 "farm_mode": printer_settings.farm_mode
             }
         })
@@ -94,19 +94,13 @@ def api_settings_set(req):
 
     # printer settings
     if printer:
-        name = printer.get('name')
-        location = printer.get('location')
         for character in INVALID_CHARACTERS:
-            if character in name or character in location:
+            if character in printer.get('name') or \
+                    character in printer.get('location'):
                 errors_ = {
                     'title': 'Invalid characters',
                     'message': PRINTER_INVALID_CHARACTERS
                 }
-        if not name or not location:
-            errors_ = {
-                'title': 'Missing name',
-                'message': PRINTER_MISSING_NAME
-            }
 
     # user settings
     if user:

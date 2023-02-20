@@ -9,7 +9,7 @@ from typing import Iterable
 
 from extendparser.get import Get
 
-from .const import PRINTER_CONF_TYPES
+from .const import PRINTER_CONF_TYPES, INVALID_CHARACTERS
 
 CONNECT = 'connect.prusa3d.com'
 
@@ -46,6 +46,11 @@ def check_server_type(value):
     """Check valid server class"""
     if value not in ("single", "threading", "forking"):
         raise ValueError(f"Invalid value {value}")
+
+
+def remove_invalid_chars(string):
+    """Removes invalid characters from input string and returns it"""
+    return string.translate({ord(x): '' for x in INVALID_CHARACTERS}).strip()
 
 
 class Model(dict):
@@ -223,7 +228,7 @@ class Settings(Get):
         if Settings.instance is not None:
             raise RuntimeError('Config is singleton')
 
-        super().__init__()
+        super().__init__(interpolation=None)
 
         self.read(settings_file)
 
@@ -232,6 +237,12 @@ class Settings(Get):
             self.get_section('printer', (('type', str, ''), ('name', str, ''),
                                          ('location', str, ''),
                                          ('farm_mode', bool, False))))
+
+        # Remove all invalid characters from the printer name and location
+        self.printer["name"] = remove_invalid_chars(self.printer["name"])
+        self.printer["location"] = \
+            remove_invalid_chars(self.printer["location"])
+
         if self.printer.type and self.printer.type not in PRINTER_CONF_TYPES:
             raise ValueError("Settings file for an unsupported printer")
 
@@ -257,6 +268,11 @@ class Settings(Get):
                               ('digest', str, ''), ('api_key', str, ''))))
 
         Settings.instance = self
+
+        # Reflect possible changes back to prusa_printer_settings.ini file
+        self.update_sections()
+        with open(settings_file, 'w', encoding='utf-8') as ini:
+            Settings.instance.write(ini)
 
     def set_section(self, name, model):
         """Set section from model"""
