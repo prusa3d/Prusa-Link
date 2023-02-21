@@ -83,12 +83,12 @@ def sdcard_refs():
 def gcode_analysis(meta):
     """Make gcodeAnalysis structure from metadata."""
     estimated = estimated_to_seconds(
-        meta.data.get('estimated printing time (normal mode)', ''))
+        meta.get('estimated printing time (normal mode)', ''))
 
     return {
         'estimatedPrintTime': estimated,
-        'material': meta.data.get('filament_type'),
-        'layerHeight': meta.data.get('layer_height')
+        'material': meta.get('filament_type'),
+        'layerHeight': meta.get('layer_height')
         # filament struct
         # dimensions
         # printingArea
@@ -229,7 +229,7 @@ def file_to_api(node, origin: str = 'local', path: str = '/',
             result['refs'] = sdcard_refs()
             result['ro'] = True
 
-        result['gcodeAnalysis'] = gcode_analysis(meta)
+        result['gcodeAnalysis'] = gcode_analysis(meta.data)
 
     else:
         return {}  # not folder or allowed extension

@@ -408,7 +408,7 @@ def api_job(req):
 
         if file_['origin'] == 'local':
             meta = get_metadata(get_os_path(job.selected_file_path))
-            analysis = gcode_analysis(meta)
+            analysis = gcode_analysis(meta.data)
         else:
             meta = printer.from_path(job.selected_file_path)
             analysis = gcode_analysis(meta)
