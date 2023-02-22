@@ -553,10 +553,10 @@ def api_update_post(req, env):
     # pylint: disable=unused-argument
     if env == "prusalink":
         try:
-            output = check_output(
-                [executable, '-m', 'pip', 'install', '-U',
-                 '--upgrade-strategy', 'eager', 'prusalink'], shell=True,
-                stderr=subprocess.STDOUT).decode()
+            output = \
+                check_output(
+                    'pip install -U --upgrade-strategy eager prusalink',
+                    shell=True, stderr=subprocess.STDOUT).decode()
 
             # No update available
             if "Requirement already satisfied" in output:
