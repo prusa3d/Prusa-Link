@@ -12,6 +12,7 @@ module.exports = (env, args) => {
         WITH_LOGS: true,
         WITH_V1_API: true,
         WITH_TELEMETRY_NOZZLE_DIAMETER: true,
+	WITH_SYSTEM_UPDATES: true,
         ...env,
     };
     return webpackConfig(config, args);
