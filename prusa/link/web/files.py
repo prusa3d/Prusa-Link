@@ -101,11 +101,11 @@ def file_info(req, storage, path=None):
     # --- FOLDER ---
     # Fill children's tree data for the folder
     if file_type is FileType.FOLDER.value:
-        for child in result.get("children", []):
+        for child in result.get('children', []):
             child['display_name'] = child['name']
-            child_type = child["type"]
-            child_path = f'{path}/{child["name"]}'
-            child_os_path = f"{os_path}/{child['name']}"
+            child_type = child['type']
+            child_path = join(path, child['name'])
+            child_os_path = join(os_path, child['name'])
 
             if child_type is not FileType.FOLDER.value:
                 # Fill specific data for print files within children list
