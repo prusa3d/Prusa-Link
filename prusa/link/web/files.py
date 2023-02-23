@@ -44,7 +44,7 @@ def storage_info(req):
     }]
 
     for storage in storage_dict.values():
-        files = storage.to_dict_legacy()
+        files = storage.to_dict()
         storage_size = files['size']
         print_files_size = get_files_size(files, FileType.PRINT_FILE.value)
 
