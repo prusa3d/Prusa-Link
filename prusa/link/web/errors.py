@@ -127,6 +127,18 @@ def transfer_conflict(req):
     return response_error(req, conditions.TransferConflict())
 
 
+@app.route('/error/unavailable-update')
+def unavailable_update(req):
+    """Error handler for 409 Unavailable update."""
+    return response_error(req, conditions.UnavailableUpdate())
+
+
+@app.route('/error/unable-to-update')
+def unable_to_update(req):
+    """Error handler for 409 Unable to update."""
+    return response_error(req, conditions.UnableToUpdate())
+
+
 @app.route('/error/entity-too-large')
 def entity_too_large(req):
     """Error handler for 413 Payload Too Large"""
