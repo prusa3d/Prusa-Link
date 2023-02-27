@@ -18,8 +18,8 @@ from prusa.connect.printer.metadata import get_metadata
 from prusa.connect.printer.models import filter_null
 
 from .. import __version__, conditions
-from ..const import (GZ_SUFFIX, LOCAL_STORAGE_NAME, LOGS_FILES, LOGS_PATH,
-                     instance_id, LimitsMK3S)
+from ..const import (GZ_SUFFIX, LOGS_FILES, LOGS_PATH, instance_id,
+                     LimitsMK3S)
 from ..printer_adapter.command import CommandFailed
 from ..printer_adapter.command_handlers import (PausePrint, ResumePrint,
                                                 SetReady, StartPrint,
@@ -288,7 +288,7 @@ def api_printer(req):
     operational = printer.state in (State.IDLE, State.FINISHED, State.STOPPED)
     link_state = printer.state.value
 
-    space_info = storage_dict[LOCAL_STORAGE_NAME].get_space_info()
+    space_info = storage_dict[app.cfg.printer.directory_name].get_space_info()
     free_space = space_info["free_space"]
     total_space = space_info["total_space"]
     return JSONResponse(

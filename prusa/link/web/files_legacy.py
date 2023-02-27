@@ -18,7 +18,7 @@ from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 from prusa.connect.printer.download import forbidden_characters
 
 from .. import conditions
-from ..const import LOCAL_STORAGE_NAME, PATH_WAIT_TIMEOUT
+from ..const import PATH_WAIT_TIMEOUT
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.job import Job, JobState
 from ..printer_adapter.prusa_link import TransferCallbackState
@@ -148,8 +148,9 @@ def api_upload(req, storage):
 
     if foldername.startswith('/'):
         foldername = '.' + foldername
-    print_path = abspath(join(f"/{LOCAL_STORAGE_NAME}/", foldername, filename))
-    foldername = abspath(join(app.cfg.printer.directories[0], foldername))
+    print_path = abspath(join(
+        f"/{app.cfg.printer.directory_name}/", foldername, filename))
+    foldername = abspath(join(app.cfg.printer.directory, foldername))
     filepath = join(foldername, filename)
 
     # post upload transfer fix from form fields
@@ -344,7 +345,7 @@ def api_download(req, storage):
     # pylint: disable=unused-argument
     download_mgr = app.daemon.prusa_link.printer.download_mgr
 
-    local = f'/{LOCAL_STORAGE_NAME}'
+    local = f'/{app.cfg.printer.directory_name}'
     url = req.json.get('url')
     if not validators.url(url):
         return JSONResponse(status_code=state.HTTP_BAD_REQUEST,
@@ -393,7 +394,7 @@ def api_download(req, storage):
 def api_create_folder(req, storage, path):
     """Create a folder in a path"""
     # pylint: disable=unused-argument
-    os_path = get_os_path(f'/{LOCAL_STORAGE_NAME}')
+    os_path = get_os_path(f'/{app.cfg.printer.directory_name}')
     path = join(os_path, path)
 
     if exists(path):
@@ -410,7 +411,7 @@ def api_create_folder(req, storage, path):
 def api_delete_folder(req, storage, path):
     """Delete a folder in a path"""
     # pylint: disable=unused-argument
-    os_path = get_os_path(f'/{LOCAL_STORAGE_NAME}')
+    os_path = get_os_path(f'/{app.cfg.printer.directory_name}')
     path = join(os_path, path)
 
     if not exists(path):
@@ -428,7 +429,7 @@ def api_modify(req, storage):
     """Move file to another directory or/and change its name"""
     # pylint: disable=unused-argument
 
-    os_path = get_os_path(f'/{LOCAL_STORAGE_NAME}')
+    os_path = get_os_path(f'/{app.cfg.printer.directory_name}')
 
     source = join(os_path, req.json.get('source'))
     destination = join(os_path, req.json.get('destination'))

@@ -15,7 +15,7 @@ from ...serial.serial_parser import ThreadedSerialParser
 from ...serial.serial_queue import SerialQueue
 from ..state_manager import StateManager
 from .sd_card import SDCard
-from .storage import FilesystemStorage, FolderStorage
+from .storage import FolderStorage  # FilesystemStorage
 
 log = logging.getLogger(__name__)
 
@@ -47,10 +47,10 @@ class StorageController:
         self.sd_card.sd_detached_signal.connect(self.sd_detached)
         self.sd_card.menu_found_signal.connect(self.menu_found)
 
-        self.filesystem_storage = FilesystemStorage(self.model, cfg)
+        # self.filesystem_storage = FilesystemStorage(self.model, cfg)
         self.folder_storage = FolderStorage(self.model, cfg)
-        self.filesystem_storage.attached_signal.connect(self.folder_attached)
-        self.filesystem_storage.detached_signal.connect(self.folder_detached)
+        # self.filesystem_storage.attached_signal.connect(self.folder_attached)
+        # self.filesystem_storage.detached_signal.connect(self.folder_detached)
         self.folder_storage.attached_signal.connect(self.folder_attached)
         self.folder_storage.detached_signal.connect(self.folder_detached)
 
@@ -83,23 +83,23 @@ class StorageController:
     def update(self):
         """Passes the call to update() to all its submodules"""
         self.sd_card.update()
-        self.filesystem_storage.update()
+        # self.filesystem_storage.update()
         self.folder_storage.update()
 
     def start(self):
         """Starts submodules"""
         self.sd_card.start()
-        self.filesystem_storage.start()
+        # self.filesystem_storage.start()
         self.folder_storage.start()
 
     def stop(self):
         """Stops submodules"""
         self.sd_card.stop()
-        self.filesystem_storage.stop()
+        # self.filesystem_storage.stop()
         self.folder_storage.stop()
 
     def wait_stopped(self):
         """SWait for storage submodules to quit"""
         self.sd_card.wait_stopped()
-        self.filesystem_storage.wait_stopped()
+        # self.filesystem_storage.wait_stopped()
         self.folder_storage.wait_stopped()
