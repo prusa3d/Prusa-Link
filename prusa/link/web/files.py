@@ -265,3 +265,27 @@ def file_start_print(req, storage, path):
         raise conditions.NotStateToPrint() from exception
 
     return Response(status_code=state.HTTP_NO_CONTENT)
+
+
+@app.route('/api/v1/transfer')
+@check_api_digest
+def transfer_info(req):
+    """Returns info about current transfer"""
+    # pylint: disable=unused-argument
+    # pylint: disable=duplicate-code
+    transfer = app.daemon.prusa_link.printer.transfer
+    if transfer.in_progress:
+        return JSONResponse(
+            **{
+                "type": transfer.type.value,
+                "display_name": basename(transfer.path),
+                "path": "/local",
+                "url": transfer.url,
+                "size": transfer.size,
+                "progress": round(transfer.progress, 2),
+                "transferred": transfer.transferred,
+                "time_remaining": transfer.time_remaining(),
+                "time_transferring": transfer.time_transferring(),
+                "to_print": transfer.to_print
+            })
+    return Response(status_code=state.HTTP_NO_CONTENT)
