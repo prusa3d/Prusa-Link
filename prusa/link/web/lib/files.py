@@ -22,8 +22,7 @@ from prusa.connect.printer.download import (Transfer, TransferRunningError,
 from .core import app
 from ... import conditions
 from ...printer_adapter.job import JobState
-from ...const import SD_STORAGE_NAME, LOCAL_STORAGE_NAME, \
-    HEADER_DATETIME_FORMAT
+from ...const import SD_STORAGE_NAME, HEADER_DATETIME_FORMAT
 from ...printer_adapter.job import Job
 
 
@@ -338,7 +337,7 @@ def storage_display_name(storage: str):
     """Return display name of the storage"""
     display_name = ""
     if storage == 'local':
-        display_name = LOCAL_STORAGE_NAME
+        display_name = app.cfg.printer.directory_name  # type: ignore
     elif storage == "sdcard":
         display_name = SD_STORAGE_NAME
     return display_name
@@ -355,7 +354,7 @@ def storage_display_path(storage: str, path: str):
 def partfilepath(filename):
     """Return file path for part file name."""
     filename = '.' + filename + '.part'
-    return abspath(join(app.cfg.printer.directories[0], filename))
+    return abspath(join(app.cfg.printer.directory, filename))
 
 
 def get_local_free_space(path: str):

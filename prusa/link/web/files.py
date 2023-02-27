@@ -13,7 +13,6 @@ from prusa.connect.printer.const import StorageType, Source, FileType, \
     TransferType
 
 from .. import conditions
-from ..const import LOCAL_STORAGE_NAME
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.command import NotStateToPrint, FileNotFound
 from ..printer_adapter.job import Job
@@ -156,7 +155,7 @@ def file_upload(req, storage, path):
     if forbidden_characters(path):
         raise conditions.ForbiddenCharacters()
 
-    abs_path = join(get_os_path(f'/{LOCAL_STORAGE_NAME}'), path)
+    abs_path = join(get_os_path(f'/{app.cfg.printer.directory_name}'), path)
 
     if get_boolean_header(req.headers, 'Create-Folder'):
         Path(abs_path).mkdir(parents=True, exist_ok=True)

@@ -224,7 +224,7 @@ class FolderStorage(Storage):
     """
 
     def __init__(self, model: Model, cfg: Config):
-        FolderStorage.paths_to_storage = list(cfg.printer.directories)
+        FolderStorage.paths_to_storage = [cfg.printer.directory]
 
         model.folder_storage = StorageData(blacklisted_paths=[],
                                            blacklisted_names=[],

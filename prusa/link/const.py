@@ -118,7 +118,6 @@ PRINT_QUEUE_SIZE = 4
 # --- Storage ---
 MAX_FILENAME_LENGTH = 52
 SD_STORAGE_NAME = "SD Card"
-LOCAL_STORAGE_NAME = "PrusaLink gcodes"
 BLACKLISTED_TYPES: List[str] = []
 BLACKLISTED_PATHS = [
     "/dev",

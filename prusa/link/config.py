@@ -4,6 +4,8 @@ from logging import Formatter, StreamHandler
 from logging.handlers import SysLogHandler
 from os import getuid
 from os.path import abspath, join
+from pathlib import Path
+
 from pwd import getpwnam, getpwuid
 from typing import Iterable
 
@@ -153,18 +155,19 @@ class Config(Get):
                     ("port", str, "auto"),
                     ("baudrate", int, 115200),
                     ("settings", str, "./prusa_printer_settings.ini"),
-                    ("storage", tuple, [], ':'),
+                    # Support for monitoring mountpoints temporarily off
+                    # ("storage", tuple, [], ':'),
                     # relative to HOME
-                    ("directories", tuple, ("./PrusaLink gcodes", ), ':'),
+                    ("directory", str, "./PrusaLink gcodes")
                 )))
         if args.serial_port:
             self.printer.port = args.serial_port
 
         self.printer.settings = abspath(
             join(self.daemon.data_dir, self.printer.settings))
-        self.printer.directories = tuple(
-            abspath(join(self.daemon.data_dir, item))
-            for item in self.printer.directories)
+        self.printer.directory = abspath(join(self.daemon.data_dir,
+                                              self.printer.directory))
+        self.printer.directory_name = Path(self.printer.directory).name
 
         # [cameras]
         self.cameras = Model(
