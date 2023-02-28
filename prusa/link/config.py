@@ -294,8 +294,8 @@ class Settings(Get):
         Is there a reason for the wizard to be shown?
         """
         interested_in = [
-            self.printer["name"], self.printer["type"],
-            self.service_local["username"], self.service_local["digest"]
+            self.printer["type"], self.service_local["username"],
+            self.service_local["digest"]
         ]
         return not all(interested_in)
 
