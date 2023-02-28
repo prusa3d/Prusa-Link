@@ -320,10 +320,12 @@ def wizard_finish_skip_post(req):
     # pylint: disable=unused-argument
     wizard = app.wizard
     printer = wizard.daemon.prusa_link.printer
-    connect_url = Printer.connect_url(wizard.connect_hostname,
-                                      bool(wizard.connect_tls),
-                                      wizard.connect_port)
-    printer.set_connection(connect_url, wizard.connect_token)
+
+    if wizard.restored_connect:
+        connect_url = Printer.connect_url(wizard.connect_hostname,
+                                          bool(wizard.connect_tls),
+                                          wizard.connect_port)
+        printer.set_connection(connect_url, wizard.connect_token)
 
     wizard.write_settings(app.settings)
 
