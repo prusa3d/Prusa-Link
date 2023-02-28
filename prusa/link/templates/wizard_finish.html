@@ -26,16 +26,26 @@
         <!-- Credentials End -->
 
         <!-- Network -->
-        <div class="col">
-          <h3>Network</h3>
-          <ul>
-            {% if printer.network_info %}
-                <li>Hostname: <span class="white">{{ printer.network_info.hostname }}</span></li>
-                <li>Wifi MAC: <span class="white">{{ printer.network_info.wifi_mac }}</span></li>
-                <li>Wifi IPv4: <span class="white">{{ printer.network_info.wifi_ipv4 }}</span></li>
-            {% endif %}
-          </ul>
-        </div>
+        {% if printer.network_info %}
+            <div class="col">
+              <h3>Network</h3>
+              <ul>
+
+                  {% if printer.network_info.hostname %}
+                    <li>Hostname: <span class="white">{{ printer.network_info.hostname }}</span></li>
+                  {% endif %}
+
+                  {% if printer.network_info.wifi_mac %}
+                    <li>Wifi MAC: <span class="white">{{ printer.network_info.wifi_mac }}</span></li>
+                  {% endif %}
+
+                  {% if printer.network_info.wifi_ipv4 %}
+                    <li>Wifi IPv4: <span class="white">{{ printer.network_info.wifi_ipv4 }}</span></li>
+                  {% endif %}
+
+              </ul>
+            </div>
+        {% endif %}
         <!-- Network End -->
 
         <!-- Printer -->

@@ -95,6 +95,7 @@ class IPUpdater(ThreadedUpdatable):
         self.data.ssid = ssid
         self.data.is_wireless = is_wireless
         self.data.mac = mac
+        self.data.hostname = socket.gethostname()
 
     def update(self):
         """
