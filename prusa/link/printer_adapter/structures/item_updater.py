@@ -291,6 +291,7 @@ class ItemUpdater:
         Forcefully re-schedules invalidation. This can be used to enable
         polling, when auto reporting stops for example
         """
+        # pylint: disable=deprecated-method
         if current_thread() != self.refresher_thread:
             log.warning("Set called from a foreign thread: %s",
                         current_thread().name)

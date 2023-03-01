@@ -167,13 +167,16 @@ def fat_datetime_to_tuple(fat_datetime):
     return years, months, days, hours, minutes, seconds
 
 
+# pylint: disable=too-many-arguments
 def get_print_stats_gcode(quiet_percent=-1,
                           quiet_left=-1,
+                          quiet_change_in=-1,
                           normal_percent=-1,
-                          normal_left=-1):
+                          normal_left=-1,
+                          normal_change_in=-1):
     """Returns the gcode for setting print stats"""
-    return (f"M73 Q{quiet_percent} S{quiet_left} "
-            f"P{normal_percent} R{normal_left} ")
+    return (f"M73 Q{quiet_percent} S{quiet_left} C{quiet_change_in} "
+            f"P{normal_percent} R{normal_left} D{normal_change_in}")
 
 
 def get_d3_code(address: int, byte_count: int):
