@@ -30,17 +30,34 @@
             <div class="col">
               <h3>Network</h3>
               <ul>
+                  <li>Hostname: <span class="white">{{ printer.network_info.hostname }}</span></li>
 
-                  {% if printer.network_info.hostname %}
-                    <li>Hostname: <span class="white">{{ printer.network_info.hostname }}</span></li>
-                  {% endif %}
-
-                  {% if printer.network_info.wifi_mac %}
-                    <li>Wifi MAC: <span class="white">{{ printer.network_info.wifi_mac }}</span></li>
+                  {% if printer.network_info.wifi_ssid %}
+                    <li>WiFi SSID: <span class="white">{{ printer.network_info.wifi_ssid }}</span></li>
                   {% endif %}
 
                   {% if printer.network_info.wifi_ipv4 %}
-                    <li>Wifi IPv4: <span class="white">{{ printer.network_info.wifi_ipv4 }}</span></li>
+                    <li>WiFi IPv4: <span class="white">{{ printer.network_info.wifi_ipv4 }}</span></li>
+                  {% endif %}
+
+                  {% if printer.network_info.wifi_ipv6 %}
+                    <li>WiFi IPv6: <span class="white">{{ printer.network_info.wifi_ipv6 }}</span></li>
+                  {% endif %}
+
+                  {% if printer.network_info.wifi_mac %}
+                    <li>WiFi MAC: <span class="white">{{ printer.network_info.wifi_mac }}</span></li>
+                  {% endif %}
+
+                  {% if printer.network_info.lan_ipv4 %}
+                    <li>LAN IPv4: <span class="white">{{ printer.network_info.lan_ipv4 }}</span></li>
+                  {% endif %}
+
+                  {% if printer.network_info.lan_ipv6 %}
+                    <li>LAN IPv6: <span class="white">{{ printer.network_info.lan_ipv6 }}</span></li>
+                  {% endif %}
+
+                  {% if printer.network_info.lan_mac %}
+                    <li>LAN MAC: <span class="white">{{ printer.network_info.lan_mac }}</span></li>
                   {% endif %}
 
               </ul>
