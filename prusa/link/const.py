@@ -18,12 +18,6 @@ instance_id = uuid.uuid4()
 # e.g. Mon, 07 Nov 2022 13:52:49 GMT
 HEADER_DATETIME_FORMAT = "%a, %d %b %Y %X GMT"
 
-# Invalid characters for printer name and location
-INVALID_CHARACTERS = ['\'', '\"', '%']
-
-# Error message for invalid characters in printer name and / or location
-PRINTER_INVALID_CHARACTERS = "Name or location cointains invalid characters"
-
 PRINTER_TYPES = {
     250: PrinterType.I3MK25,
     252: PrinterType.I3MK25S,

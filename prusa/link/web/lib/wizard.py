@@ -8,7 +8,7 @@ from poorwsgi.digest import hexdigest
 from prusa.connect.printer import Printer, CondState
 from ...conditions import UPGRADED
 
-from ...const import PRINTER_CONF_TYPES, INVALID_CHARACTERS
+from ...const import PRINTER_CONF_TYPES
 from ...printer_adapter.printer_polling import PrinterPolling
 from ...printer_adapter.structures.item_updater import WatchedItem
 from ...printer_adapter.structures.regular_expressions import (
@@ -142,18 +142,6 @@ class Wizard:
         if password != repassword:
             errors['repassword'] = True
         self.errors['credentials'] = errors
-        return not errors
-
-    def check_printer(self):
-        """Check if printer name and location are valid."""
-        errors = {}
-        if any(ch in self.printer_name for ch in INVALID_CHARACTERS):
-            errors['name'] = True
-
-        if any(ch in self.printer_location for ch in INVALID_CHARACTERS):
-            errors['location'] = True
-
-        self.errors['printer'] = errors
         return not errors
 
     def check_serial(self):
