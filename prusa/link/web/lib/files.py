@@ -7,6 +7,7 @@ from os import statvfs
 from os.path import abspath, dirname, exists, join
 from time import sleep, time
 
+from gcode_metadata import FDMMetaData, estimated_to_seconds, get_metadata
 from poorwsgi.request import Headers, Request
 
 from prusa.connect.printer import Filesystem
@@ -23,11 +24,6 @@ from prusa.connect.printer.download import (
     filename_too_long,
     foldername_too_long,
     forbidden_characters,
-)
-from prusa.connect.printer.metadata import (
-    FDMMetaData,
-    estimated_to_seconds,
-    get_metadata,
 )
 
 from ... import conditions

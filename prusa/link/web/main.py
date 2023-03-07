@@ -7,6 +7,7 @@ from socket import gethostname
 from subprocess import CalledProcessError, check_output
 from sys import executable, version
 
+from gcode_metadata import get_metadata
 from pkg_resources import working_set  # type: ignore
 from poorwsgi import state
 from poorwsgi.digest import check_digest
@@ -19,7 +20,6 @@ from poorwsgi.response import (
 
 from prusa.connect.printer import __version__ as sdk_version
 from prusa.connect.printer.const import Source, State
-from prusa.connect.printer.metadata import get_metadata
 from prusa.connect.printer.models import filter_null
 
 from .. import __version__, conditions

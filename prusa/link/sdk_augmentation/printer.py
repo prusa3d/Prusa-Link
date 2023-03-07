@@ -4,13 +4,14 @@ from pathlib import Path
 from time import sleep
 from typing import Any, Dict
 
+from gcode_metadata import FDMMetaData
+
 from prusa.connect.printer import Printer as SDKPrinter
 from prusa.connect.printer import const
 from prusa.connect.printer.command import Command
 from prusa.connect.printer.conditions import API, HTTP, CondState
 from prusa.connect.printer.const import Source
 from prusa.connect.printer.files import File
-from prusa.connect.printer.metadata import FDMMetaData
 
 from .. import __version__
 from ..conditions import use_connect_errors
