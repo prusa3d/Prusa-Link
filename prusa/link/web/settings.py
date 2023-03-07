@@ -6,7 +6,6 @@ from poorwsgi.digest import check_digest
 from poorwsgi.response import JSONResponse
 
 from ..conditions import SN
-from ..const import INVALID_CHARACTERS, PRINTER_INVALID_CHARACTERS
 from .lib.auth import (REALM, check_api_digest, set_digest, valid_credentials,
                        valid_digests)
 from .lib.core import app
@@ -21,12 +20,6 @@ errors_titles = {
     'old_digest': 'Invalid old password',
     'same_digest': 'Nothing to change'
 }
-
-
-def set_settings_printer(name, location):
-    """Set new values to printer settings"""
-    app.daemon.settings.printer.name = name
-    app.daemon.settings.printer.location = location
 
 
 def set_settings_user(new_username, new_digest):
@@ -92,16 +85,6 @@ def api_settings_set(req):
     errors_ = {}
     kwargs = {}
 
-    # printer settings
-    if printer:
-        for character in INVALID_CHARACTERS:
-            if character in printer.get('name') or \
-                    character in printer.get('location'):
-                errors_ = {
-                    'title': 'Invalid characters',
-                    'message': PRINTER_INVALID_CHARACTERS
-                }
-
     # user settings
     if user:
         password = user.get('password')
@@ -122,7 +105,11 @@ def api_settings_set(req):
 
     if not errors_:
         if printer:
-            set_settings_printer(printer['name'], printer['location'])
+            if printer.get('name'):
+                app.daemon.settings.printer.name = printer['name'].strip()
+            if printer.get('location'):
+                app.daemon.settings.printer.location = \
+                    printer['location'].strip()
         if user:
             set_settings_user(user['username'], user['new_digest'])
         if farm_mode is not None:

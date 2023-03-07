@@ -96,10 +96,9 @@ def process_printer(config):
         if option == 'type':
             app.wizard.printer_type = printer['type']
         if option == 'name':
-            app.wizard.printer_name = printer['name'].replace("\"", "")
+            app.wizard.printer_name = printer['name'].strip()
         if option == 'location':
-            app.wizard.printer_location = \
-                printer['location'].replace("\"", "")
+            app.wizard.printer_location = printer['location'].strip()
         if option == 'farm_mode':
             app.wizard.settings.printer.farm_mode = \
                 printer.getboolean('farm_mode')
@@ -150,7 +149,7 @@ def process_local(config):
 
 def parse_settings(buffer):
     """Parse printer settings from buffer to wizard"""
-    config = ConfigParser()
+    config = ConfigParser(interpolation=None)
     config.read_string(buffer)
 
     # [printer]
@@ -254,22 +253,10 @@ def wizard_printer_post(req):
                         strict_parsing=app.strict_parsing)
     app.wizard.printer_name = form.get('name', '').strip()
     app.wizard.printer_location = form.get('location', '').strip()
-    if not app.wizard.check_printer():
-        redirect('/wizard/printer')
     redirect('/wizard/finish')
 
 
-@app.route('/wizard/connect/skip', method=state.METHOD_POST)
-@check_step('printer')
-def wizard_connect_post(req):
-    """Check and store values from wizard_connect page."""
-    # pylint: disable=unused-argument
-    app.wizard.connect_skip = True
-    redirect('/wizard/finish-register')
-
-
 @app.route('/wizard/finish')
-@check_step('printer')
 def wizard_finish(req):
     """Show wizard status and link to homepage."""
     wizard = app.wizard
@@ -314,7 +301,6 @@ def wizard_serial_set(req):
 
 
 @app.route('/wizard/finish-register-skip', method=state.METHOD_POST)
-@check_step('printer')
 def wizard_finish_skip_post(req):
     """Check and store values from wizard_connect page."""
     # pylint: disable=unused-argument
@@ -342,7 +328,6 @@ def wizard_finish_skip_post(req):
 
 
 @app.route('/wizard/finish-register', method=state.METHOD_POST)
-@check_step('printer')
 def wizard_finish_post(req):
     """Show wizard status and link to homepage."""
     # pylint: disable=unused-argument

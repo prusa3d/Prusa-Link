@@ -9,7 +9,7 @@ from typing import Iterable
 
 from extendparser.get import Get
 
-from .const import PRINTER_CONF_TYPES, INVALID_CHARACTERS
+from .const import PRINTER_CONF_TYPES
 
 CONNECT = 'connect.prusa3d.com'
 
@@ -48,15 +48,10 @@ def check_server_type(value):
         raise ValueError(f"Invalid value {value}")
 
 
-def remove_invalid_chars(string):
-    """Removes invalid characters from input string and returns it"""
-    return string.translate({ord(x): '' for x in INVALID_CHARACTERS}).strip()
-
-
 class Model(dict):
     """Config model based on dictionary.
 
-    It simple implement set and get attr methods.
+    It simply implements set and get attr methods.
     """
     def __getattr__(self, key):
         try:
@@ -238,10 +233,8 @@ class Settings(Get):
                                          ('location', str, ''),
                                          ('farm_mode', bool, False))))
 
-        # Remove all invalid characters from the printer name and location
-        self.printer["name"] = remove_invalid_chars(self.printer["name"])
-        self.printer["location"] = \
-            remove_invalid_chars(self.printer["location"])
+        self.printer['name'] = self.printer['name'].strip()
+        self.printer['location'] = self.printer['location'].strip()
 
         if self.printer.type and self.printer.type not in PRINTER_CONF_TYPES:
             raise ValueError("Settings file for an unsupported printer")
