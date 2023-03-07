@@ -16,6 +16,7 @@ from os.path import (
 from shutil import move, rmtree
 
 import validators  # type: ignore
+from gcode_metadata import FDMMetaData, get_metadata
 from poorwsgi import state
 from poorwsgi.request import FieldStorage
 from poorwsgi.response import FileResponse, JSONResponse, Response
@@ -24,7 +25,6 @@ from poorwsgi.results import hbytes
 from prusa.connect.printer import const
 from prusa.connect.printer.const import Source
 from prusa.connect.printer.download import forbidden_characters
-from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 
 from .. import conditions
 from ..const import PATH_WAIT_TIMEOUT
