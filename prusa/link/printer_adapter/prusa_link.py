@@ -121,7 +121,8 @@ class PrusaLink:
             config=self.settings,
             config_file_path=self.cfg.printer.settings,
             camera_controller=self.printer.camera_controller,
-            drivers=drivers
+            drivers=drivers,
+            auto_detect=self.cfg.cameras.auto_detect
         )
         self.camera_governor = CameraGovernor(self.camera_configurator,
                                               self.printer.camera_controller)
@@ -276,7 +277,7 @@ class PrusaLink:
         self.ip_updater.update()
         self.ip_updater.updated_signal.connect(self.ip_updated)
 
-        self.camera_governor.start(self.cfg.cameras.auto_detect)
+        self.camera_governor.start()
 
         # Leave the non-polled telemetry split from the rest
         self.auto_telemetry = AutoTelemetry(self.serial_parser,

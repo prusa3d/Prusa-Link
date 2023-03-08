@@ -25,23 +25,22 @@ class CameraGovernor:
         self._governance_quit_event = Event()
         self._governance_thread: Optional[Thread] = None
 
-    def _govern(self, auto_detect=True) -> None:
+    def _govern(self) -> None:
         """Monitors the cameras re-starts failed ones,
         optionally scans for newly connected ones"""
         log.debug("Running the camera governance routine")
         if self.camera_controller.disconnect_stuck_cameras():
             InterestingLogRotator.trigger("a stuck camera")
-        self.camera_configurator.load_cameras(auto_detect=auto_detect)
+        self.camera_configurator.load_cameras()
 
-    def start(self, auto_detect=True) -> None:
+    def start(self) -> None:
         """Starts the camera governing loop"""
         self._governance_quit_event.clear()
         target = partial(
             loop_until,
             loop_evt=self._governance_quit_event,
             run_every_sec=lambda: CAMERA_SCAN_INTERVAL,
-            to_run=self._govern,
-            auto_detect=lambda: auto_detect)
+            to_run=self._govern)
 
         self._governance_thread = Thread(
             target=target,
