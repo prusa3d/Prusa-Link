@@ -304,3 +304,15 @@ def transfer_info(req):
                 "to_print": transfer.to_print
             })
     return Response(status_code=state.HTTP_NO_CONTENT)
+
+
+@app.route('/api/v1/transfer', method=state.METHOD_DELETE)
+@check_api_digest
+def transfer_abort(req):
+    """Aborts the current transfer"""
+    # pylint: disable=unused-argument
+    transfer = app.daemon.prusa_link.printer.transfer
+    if transfer.in_progress:
+        transfer.stop()
+        return Response(status_code=state.HTTP_OK)
+    return Response(status_code=state.HTTP_NO_CONTENT)
