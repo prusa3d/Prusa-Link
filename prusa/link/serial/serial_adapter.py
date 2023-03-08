@@ -75,7 +75,7 @@ class SerialAdapter(metaclass=MCSingleton):
 
         # pylint: disable=too-many-arguments
         self.model: Model = model
-        self.model.serial_adapter = SerialAdapterData()
+        self.model.serial_adapter = SerialAdapterData(using_port=None)
         self.data: SerialAdapterData = model.serial_adapter
         self.configured_port = configured_port
         self.baudrate = baudrate

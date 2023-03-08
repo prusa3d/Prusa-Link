@@ -38,6 +38,7 @@ class IPUpdater(ThreadedUpdatable):
                                          local_ip6=None,
                                          is_wireless=False,
                                          update_ip_on=time(),
+                                         ssid=None,
                                          mac=None,
                                          hostname=None,
                                          username=None,
