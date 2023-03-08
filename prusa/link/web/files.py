@@ -4,12 +4,13 @@ from os import replace, unlink, rmdir, listdir
 from os.path import basename, exists, join, isdir, split
 from shutil import rmtree
 from pathlib import Path
-from time import sleep
+from time import sleep, monotonic
 from magic import Magic
 
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, Response
-from prusa.connect.printer.const import StorageType, Source, FileType
+from prusa.connect.printer.const import StorageType, Source, FileType, \
+    TransferType
 
 from .. import conditions
 from ..const import LOCAL_STORAGE_NAME
@@ -179,17 +180,31 @@ def file_upload(req, storage, path):
     filename = basename(abs_path)
     part_path = partfilepath(filename)
 
+    transfer = app.daemon.prusa_link.printer.transfer
+    transfer.start(TransferType.FROM_CLIENT, filename,
+                   to_print=print_after_upload)
+    transfer.size = req.content_length
+    transfer.start_ts = monotonic()
+
     with open(part_path, 'w+b') as temp:
         block = min(app.cached_size, req.content_length)
         data = req.read(block)
         while data:
+            if transfer.stop_ts:
+                break
             uploaded += temp.write(data)
+            transfer.transferred = uploaded
             # checksum.update(data) # - we don't use the value yet
             block = min(app.cached_size, req.content_length - uploaded)
             if block > 1:
                 data = req.read(block)
             else:
                 data = b''
+
+    transfer.type = TransferType.NO_TRANSFER
+
+    if req.content_length > uploaded:
+        raise conditions.FileUploadFailed()
 
     # Mine a real mime_type from the file using magic
     if req.mime_type == 'application/octet-stream':
