@@ -12,8 +12,8 @@ from typing import Optional
 from blinker import Signal  # type: ignore
 from prusa.connect.printer.const import State
 
-from ...const import (MAX_FILENAME_LENGTH, SD_FILESCAN_INTERVAL, SD_INTERVAL,
-                      SD_STORAGE_NAME, SFN_TO_LFN_EXTENSIONS)
+from ...const import (MAX_FILENAME_LENGTH, SD_INTERVAL, SD_STORAGE_NAME,
+                      SFN_TO_LFN_EXTENSIONS)
 from ...sdk_augmentation.file import SDFile
 from ...serial.helpers import (enqueue_list_from_str, enqueue_matchable,
                                wait_for_instruction)
@@ -206,7 +206,8 @@ class SDCard(ThreadedUpdatable):
     # Cycle fast, but re-scan only on events or in big intervals
     update_interval = SD_INTERVAL
 
-    def __init__(self, serial_queue: SerialQueue, serial_parser: ThreadedSerialParser,
+    def __init__(self, serial_queue: SerialQueue,
+                 serial_parser: ThreadedSerialParser,
                  state_manager: StateManager, model: Model):
 
         self.tree_updated_signal = Signal()  # kwargs: tree: FileTree
@@ -216,8 +217,10 @@ class SDCard(ThreadedUpdatable):
         self.menu_found_signal = Signal()  # kwargs: menu_sfn: str
 
         self.serial_parser = serial_parser
-        self.serial_parser.add_decoupled_handler(SD_PRESENT_REGEX, self.sd_inserted)
-        self.serial_parser.add_decoupled_handler(SD_EJECTED_REGEX, self.sd_ejected)
+        self.serial_parser.add_decoupled_handler(SD_PRESENT_REGEX,
+                                                 self.sd_inserted)
+        self.serial_parser.add_decoupled_handler(SD_EJECTED_REGEX,
+                                                 self.sd_ejected)
         self.serial_queue: SerialQueue = serial_queue
         self.state_manager = state_manager
         self.model = model
@@ -247,10 +250,11 @@ class SDCard(ThreadedUpdatable):
             return
         menu_sfn = node.attrs["sfn"].lower()
         if "SETREADY.G" not in node.children:
-            enqueue_list_from_str(self.serial_queue,
-                                  [f"M28 {menu_sfn}/setready.g", "M84", "M29"],
-                                  CONFIRMATION_REGEX,
-                                  to_front=True)
+            enqueue_list_from_str(
+                self.serial_queue,
+                [f"M28 {menu_sfn}/setready.g", "M84", "M29"],
+                CONFIRMATION_REGEX,
+                to_front=True)
         del file_tree_parser.tree.children["PrusaLink menu"]
         self.menu_found_signal.send(menu_sfn=menu_sfn)
 
@@ -267,13 +271,14 @@ class SDCard(ThreadedUpdatable):
         if self.state_manager.get_state() != State.IDLE:
             return
 
-        due_for_update = time() - self.data.last_updated > SD_FILESCAN_INTERVAL
+        # since_last_update = time() - self.data.last_updated
+        # due_for_update = since_last_update > SD_FILESCAN_INTERVAL
 
         # Do not update, if the tree wasn't invalidated.
         # Also, if there is no flash air, or if there is, but it wasn't long
         # enough from the last update
-        if not (self.data.invalidated or
-                (due_for_update and self.data.is_flash_air)):
+        if not self.data.invalidated:
+            # or due_for_update and self.data.is_flash_air:
             return
 
         self.data.last_updated = time()
