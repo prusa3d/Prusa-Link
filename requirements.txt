@@ -19,3 +19,4 @@ bidict
 python-magic
 pyudev
 PyTurboJPEG
+validators

@@ -7,6 +7,7 @@ from os.path import abspath, basename, dirname, exists, getctime, getsize, \
     join, isdir
 from shutil import move, rmtree
 
+import validators  # type: ignore
 from poorwsgi import state
 from poorwsgi.request import FieldStorage
 from poorwsgi.response import FileResponse, JSONResponse, Response
@@ -341,6 +342,10 @@ def api_download(req, storage):
 
     local = f'/{LOCAL_STORAGE_NAME}'
     url = req.json.get('url')
+    if not validators.url(url):
+        return JSONResponse(status_code=state.HTTP_BAD_REQUEST,
+                            title="Invalid URL",
+                            message="Inserted URL is not valid")
     filename = basename(url)
     check_filename(filename)
 
