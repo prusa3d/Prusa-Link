@@ -130,9 +130,6 @@ class StateManager(metaclass=MCSingleton):
             state_history=deque(maxlen=STATE_HISTORY_SIZE),
             last_state=State.BUSY,
             current_state=State.BUSY,
-            # Track how many errors we believe there are and don't
-            # leave the error state until all are resolved
-            error_count=0,
             awaiting_error_reason=False)
         self.data = self.model.state_manager
 
