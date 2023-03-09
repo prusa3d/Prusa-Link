@@ -10,8 +10,7 @@ from typing import Any, Dict, Optional, List, Type
 from prusa.connect.printer import Command as SDKCommand
 from prusa.connect.printer import DownloadMgr
 from prusa.connect.printer.camera_driver import CameraDriver
-from prusa.connect.printer.conditions import (API, COND_TRACKER, INTERNET,
-                                              CondState)
+from prusa.connect.printer.conditions import API, CondState
 from prusa.connect.printer.const import Command as CommandType
 from prusa.connect.printer.const import Event as EventType
 from prusa.connect.printer.camera_configurator import CameraConfigurator
@@ -721,8 +720,8 @@ class PrusaLink:
         printer_type_string = PRINTER_CONF_TYPES.inverse[self.printer.type]
         self.settings.printer.type = printer_type_string
         self.settings.service_connect.token = token
-        COND_TRACKER.add_tracked_condition_tree(INTERNET)
         self.settings.update_sections()
+        use_connect_errors(self.settings.use_connect())
         with open(self.cfg.printer.settings, 'w', encoding='utf-8') as ini:
             self.settings.write(ini)
 
