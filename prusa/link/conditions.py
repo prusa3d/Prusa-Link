@@ -108,7 +108,7 @@ def printer_status():
 
 def connect_status():
     """Returns a representation of the currently broken Connect condition"""
-    worst = NET_TRACKER.get_worst()
+    worst = COND_TRACKER.get_worst()
     if worst is None:
         if not Settings.instance.use_connect():
             return {"ok": True, "message": "Connect isn't configured"}
