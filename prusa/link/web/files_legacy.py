@@ -15,6 +15,7 @@ from poorwsgi.results import hbytes
 from prusa.connect.printer import const
 from prusa.connect.printer.const import Source
 from prusa.connect.printer.metadata import FDMMetaData, get_metadata
+from prusa.connect.printer.download import forbidden_characters
 
 from .. import conditions
 from ..const import LOCAL_STORAGE_NAME, PATH_WAIT_TIMEOUT
@@ -350,7 +351,7 @@ def api_download(req, storage):
     check_filename(filename)
 
     path_name = req.json.get('path', req.json.get('destination'))
-    new_filename = req.json.get('rename')
+    new_filename = req.json.get('rename').strip("/")
 
     path = join(local, path_name)
     to_select = req.json.get('to_select', False)
@@ -363,6 +364,12 @@ def api_download(req, storage):
         path = join(path, new_filename)
     else:
         path = join(path, filename)
+
+    if forbidden_characters(path):
+        return JSONResponse(
+            status_code=state.HTTP_BAD_REQUEST,
+            title="Forbidden characters in path",
+            message="Folder or file name contains forbidden characters")
 
     job = Job.get_instance()
 
