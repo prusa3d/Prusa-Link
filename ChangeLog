@@ -1,6 +1,8 @@
 # ChangeLog
 
-0.7.0rc3 (2023-03-01)
+0.7.0rc4
+
+0.7.0rc3 (2023-03-09)
     * Added v1 endpoints for flat filesystem structure, old struct is moved to
       files_legacy file
     * Added api/v1/update/<env> GET endpoint
@@ -12,8 +14,8 @@
         - Add control of last-modified header for snapshots
         - Add drop zone to files storage
         - Remove manual camera connection dialog
-	- Migrate to files api v1
-	- PrusaLink update
+        - Migrate to files api v1
+        - PrusaLink update
     * Added Force header to api/v1/files/<storage>/<path> DELETE endpoint for
       deletion of non-empty folder
     * Changed Print-After-Upload header value check for PUT
@@ -27,7 +29,7 @@
     * Added new endpoint for updating prusalink python package
     * Added api/v1/transfer endpoint
 
-0.7.0rc2
+0.7.0rc2 (2022-12-09)
     * Support thermal model errors (FW 3.12)
     * USB Camera
     * SD Card fixes
@@ -56,7 +58,7 @@
     * Fixed error when trying to get space info of SD Card
 
 
-0.7.0rc1
+0.7.0rc1 (2022-09-13)
     * Work around a bug: printer in serial print mode while wizard is shown
     * READY state changed to IDLE, PREPARED state changed to READY
     * New status display
