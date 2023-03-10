@@ -17,7 +17,8 @@ from prusa.connect.printer.conditions import (API, COND_TRACKER, HTTP,
                                               INTERNET, TOKEN)
 from prusa.connect.printer.const import State, TransferType
 
-from ..conditions import DEVICE, FW, ID, JOB_ID, LAN, PHY, SN, UPGRADED
+from ..conditions import DEVICE, FW, ID, JOB_ID, LAN, PHY, SN, UPGRADED, \
+    NET_TRACKER
 from ..config import Settings
 from ..const import (FW_MESSAGE_TIMEOUT, PRINTING_STATES, QUIT_INTERVAL,
                      SLEEP_SCREEN_TIMEOUT)
@@ -76,7 +77,7 @@ UPLOAD_PRIORITY = 20
 READY_PRIORITY = 11
 IDLE_PRIORITY = 10
 
-HTTP_ERROR_GRACE = 10
+NETWORK_ERROR_GRACE = 20
 
 
 def through_queue(func):
@@ -95,8 +96,12 @@ class LCDPrinter(metaclass=MCSingleton):
     """Reports PrusaLink status on the printer LCD whenever possible"""
 
     # pylint: disable=too-many-arguments
-    def __init__(self, serial_queue: SerialQueue, serial_parser: ThreadedSerialParser,
-                 model: Model, settings: Settings, printer: Printer):
+    def __init__(self,
+                 serial_queue: SerialQueue,
+                 serial_parser: ThreadedSerialParser,
+                 model: Model,
+                 settings: Settings,
+                 printer: Printer):
         self.serial_queue: SerialQueue = serial_queue
         self.serial_parser: ThreadedSerialParser = serial_parser
         self.model: Model = model
@@ -157,13 +162,14 @@ class LCDPrinter(metaclass=MCSingleton):
         # issues here.
         # pylint: disable=fixme
         # THIS HAS TO GO! FIXME!!!!
-        self.http_error_at = None
+        self.network_error_at = None
 
         self.fw_msg_end_at = time()
         self.idle_from = time()
         # Used for ignoring LCD status updated that we generate
         self.ignore = 0
-        self.serial_parser.add_decoupled_handler(LCD_UPDATE_REGEX, self.lcd_updated)
+        self.serial_parser.add_decoupled_handler(LCD_UPDATE_REGEX,
+                                                 self.lcd_updated)
 
         self.current_line = None
 
@@ -227,16 +233,17 @@ class LCDPrinter(metaclass=MCSingleton):
         # Again, don't let this stay here! This is wrong, bad,
         # and it kills your kittens!
         if error is None:
-            self.http_error_at = None
+            self.network_error_at = None
 
-        if error == HTTP:
-            if self.http_error_at is None:  # Silence the error until timeout
-                self.http_error_at = time()
+        if NET_TRACKER.is_tracked(error):  # Silence the error until timeout
+            if self.network_error_at is None:
+                self.network_error_at = time()
                 return None
 
-            time_since_error = time() - self.http_error_at
-            if time_since_error > HTTP_ERROR_GRACE:
-                return error
+            time_since_error = time() - self.network_error_at
+            if time_since_error < NETWORK_ERROR_GRACE:
+                return None
+
         return error
 
     def _check_errors(self):
@@ -269,6 +276,8 @@ class LCDPrinter(metaclass=MCSingleton):
                 # No scrolling errors, just a screen worth of explanations
                 # and another one for the IP address
                 text = ERROR_MESSAGES[error][:19].ljust(19)
+                log.warning("Displaying an error message %s", text)
+
                 ip = self.model.ip_updater.local_ip
                 if ip is not None:
                     text += f"see {ip}".ljust(19)
