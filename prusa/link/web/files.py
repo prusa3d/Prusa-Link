@@ -15,7 +15,7 @@ from prusa.connect.printer.const import StorageType, Source, FileType, \
 from .. import conditions
 from ..const import LOCAL_STORAGE_NAME
 from ..printer_adapter.command_handlers import StartPrint
-from ..printer_adapter.command import NotStateToPrint
+from ..printer_adapter.command import NotStateToPrint, FileNotFound
 from ..printer_adapter.job import Job
 from .lib.auth import check_api_digest
 from .lib.core import app
@@ -278,6 +278,8 @@ def file_start_print(req, storage, path):
             StartPrint(print_path, source=Source.WUI))
     except NotStateToPrint as exception:
         raise conditions.NotStateToPrint() from exception
+    except FileNotFound as exception:
+        raise conditions.FileNotFound from exception
 
     return Response(status_code=state.HTTP_NO_CONTENT)
 
