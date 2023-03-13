@@ -28,12 +28,15 @@ class NotStateToPrint(CommandFailed):
     """Exception class for signalling that printer is not in state to print"""
 
 
+class FileNotFound(CommandFailed):
+    """A specific error for files that have not been found and the command
+    failing because of that"""
+
+
 class Command:
-    """
-    Commands are like controllers, they do stuff and need a lot of info to
+    """Commands are like controllers, they do stuff and need a lot of info to
     do it. This class provides most of the components a command could want to
-    access or use.
-    """
+    access or use."""
     # pylint: disable=too-many-instance-attributes
     command_name = "command"
 
@@ -54,20 +57,13 @@ class Command:
 
         self.running = True
 
-    @staticmethod
-    def failed(message):
-        """A shorthand for raising an exception when a command fails"""
-        raise CommandFailed(message)
-
     def wait_while_running(self, instruction):
         """Wait until the instruction is done, or we quit"""
         wait_for_instruction(instruction, lambda: self.running)
 
     def do_instruction(self, message):
-        """
-        Shorthand for enqueueing and waiting for an instruction
-        Enqueues everything to front as commands have a higher priority
-        """
+        """Shorthand for enqueueing and waiting for an instruction
+        Enqueues everything to front as commands have a higher priority"""
         instruction = enqueue_instruction(self.serial_queue,
                                           message,
                                           to_front=True)
@@ -75,10 +71,8 @@ class Command:
         return instruction
 
     def do_matchable(self, message, regexp: re.Pattern):
-        """
-        Shorthand for enqueueing an waiting for a matchable instruction
-        Enqueues everything to front as commands have a higher priority
-        """
+        """Shorthand for enqueueing an waiting for a matchable instruction
+        Enqueues everything to front as commands have a higher priority"""
         instruction = enqueue_matchable(self.serial_queue,
                                         message,
                                         regexp,
@@ -91,12 +85,11 @@ class Command:
         self.wait_while_running(instruction)
 
         if not instruction.is_confirmed():
-            self.failed("Command interrupted")
+            raise CommandFailed("Command interrupted")
 
     def run_command(self) -> Dict[str, Any]:
-        """
-        Encapsulates the run command, provides default data for returning
-        """
+        """Encapsulates the run command, provides default data for
+        returning"""
         data = self._run_command()
         default_data = {"source": self.source}
         if data is not None:

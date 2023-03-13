@@ -19,7 +19,7 @@ from ..const import (PRINTER_BOOT_WAIT, QUIT_INTERVAL, RESET_PIN,
                      SERIAL_QUEUE_TIMEOUT, STATE_CHANGE_TIMEOUT)
 from ..serial.helpers import enqueue_instruction, enqueue_list_from_str
 from ..util import file_is_on_sd, round_to_five
-from .command import Command, NotStateToPrint
+from .command import Command, NotStateToPrint, CommandFailed, FileNotFound
 from .state_manager import StateChange
 from .structures.model_classes import JobState
 from .structures.regular_expressions import (OPEN_RESULT_REGEX,
@@ -93,7 +93,8 @@ class TryUntilState(Command):
         if not succeeded:
             log.debug("Could not get from %s to one of these: %s",
                       self.state_manager.get_state(), desired_states)
-            self.failed(f"Couldn't get to any of {state_names} states.")
+            raise CommandFailed(
+                f"Couldn't get to any of {state_names} states.")
 
     @abc.abstractmethod
     def _run_command(self):
@@ -130,7 +131,7 @@ class PausePrint(TryUntilState):
         before telling the printer to do the pause sequence.
         """
         if self.state_manager.get_state() != State.PRINTING:
-            self.failed("Cannot pause when not printing.")
+            raise CommandFailed("Cannot pause when not printing.")
 
         if self.model.file_printer.printing:
             self.file_printer.pause()
@@ -149,7 +150,7 @@ class ResumePrint(TryUntilState):
         so no communication here is required
         """
         if self.state_manager.get_state() != State.PAUSED:
-            self.failed("Cannot resume when not paused.")
+            raise CommandFailed("Cannot resume when not paused.")
 
         self._try_until_state(gcode="M602", desired_states={State.PRINTING})
 
@@ -205,7 +206,8 @@ class StartPrint(Command):
             self._start_print()
         else:
             if self.printer.fs.get(self.path_string) is None:
-                self.failed(f"The file at {self.path_string} does not exist.")
+                raise FileNotFound(
+                    f"The file at {self.path_string} does not exist.")
             self._start_file_print(self.path_string)
 
         self.job.set_file_path(str(path),
@@ -233,7 +235,8 @@ class StartPrint(Command):
         match: Match = instruction.match()
 
         if not match or match.group("ok") is None:  # Opening failed
-            self.failed(f"Wrong file name, or bad file. File name: {sd_path}")
+            raise CommandFailed(
+                f"Wrong file name, or bad file. File name: {sd_path}")
 
     def _start_print(self):
         """Sends a gcode to start the print of an already loaded file"""
@@ -267,8 +270,8 @@ class ExecuteGcode(Command):
         state = self.model.state_manager.current_state
         if not self.force:
             if state in {State.PRINTING, State.ATTENTION, State.ERROR}:
-                self.failed(f"Can't run '{self.gcode}' while in "
-                            f"f{state.name} state.")
+                raise CommandFailed(
+                    f"Can't run '{self.gcode}' while in f{state.name} state.")
 
         self.state_manager.expect_change(
             StateChange(command_id=self.command_id,
@@ -291,14 +294,14 @@ class ExecuteGcode(Command):
             self.wait_while_running(instruction)
 
             if not instruction.is_confirmed():
-                self.failed("Command interrupted")
+                raise CommandFailed("Command interrupted")
 
             match = instruction.match()
             if match:
                 if match.group("unknown") is not None:
-                    self.failed(f"Unknown command '{self.gcode}')")
-                elif match.group("cold") is not None:
-                    self.failed("Cold extrusion prevented")
+                    raise CommandFailed(f"Unknown command '{self.gcode}')")
+                if match.group("cold") is not None:
+                    raise CommandFailed("Cold extrusion prevented")
 
         # If the gcode execution did not cause a state change
         # stop expecting it
@@ -326,8 +329,8 @@ class FilamentCommand(Command):
         """
         state = self.model.state_manager.current_state
         if state in {State.PRINTING, State.ATTENTION, State.ERROR}:
-            self.failed(f"Can't run {self.command_name} while in "
-                        f"{state.name} state.")
+            raise CommandFailed(
+                f"Can't run {self.command_name} while in {state.name} state.")
 
         target_bed = self.parameters["bed_temperature"]
         target_print_temp = self.parameters["nozzle_temperature"]
@@ -403,8 +406,9 @@ class ResetPrinter(Command):
         as it shoul do on every boot.
         """
         if RESET_PIN == 23:
-            self.failed("Pin BCM_23 is by default connected straight to "
-                        "ground. This would destroy your pin.")
+            raise CommandFailed(
+                "Pin BCM_23 is by default connected straight to "
+                "ground. This would destroy your pin.")
 
         times_out_at = time() + self.timeout
         event = Event()
@@ -430,9 +434,10 @@ class ResetPrinter(Command):
         self.serial_parser.remove_handler(PRINTER_BOOT_REGEX, waiter)
 
         if time() > times_out_at:
-            self.failed("Your printer has ignored the reset signal, your RPi "
-                        "is broken or you have configured a wrong pin,"
-                        "or our serial reading component broke..")
+            raise CommandFailed(
+                "Your printer has ignored the reset signal, your RPi "
+                "is broken or you have configured a wrong pin,"
+                "or our serial reading component broke..")
 
 
 class JobInfo(Command):
@@ -442,16 +447,17 @@ class JobInfo(Command):
     def _run_command(self):
         """Returns job_info from the job component"""
         if self.model.job.job_state == JobState.IDLE:
-            self.failed("Cannot get job info, "
-                        "when there is no job in progress.")
+            raise CommandFailed(
+                "Cannot get job info, when there is no job in progress.")
 
         if self.model.job.job_id is None:
-            self.failed("Cannot get job info, don't know the job id yet.")
+            raise CommandFailed(
+                "Cannot get job info, don't know the job id yet.")
 
         # Happens when launching into a paused print
         if self.model.job.selected_file_path is None:
-            self.failed("Cannot get job info, "
-                        "don't know the file details yet.")
+            raise CommandFailed(
+                "Cannot get job info, don't know the file details yet.")
 
         data = self.job.get_job_info_data(
             for_connect=self.command_id is not None)
@@ -480,7 +486,8 @@ class SetReady(Command):
             StateChange(command_id=self.command_id,
                         default_source=self.source))
         if self.state_manager.get_state() not in {State.IDLE, State.READY}:
-            self.failed("Cannot get into READY from anywhere other than IDLE")
+            raise CommandFailed(
+                "Cannot get into READY from anywhere other than IDLE")
         self.state_manager.ready()
         self.state_manager.stop_expecting_change()
 
@@ -496,6 +503,6 @@ class CancelReady(Command):
                         default_source=self.source))
 
         if self.model.state_manager.base_state != State.READY:
-            self.failed("Cannot cancel READY when not actually ready.")
+            raise CommandFailed("Cannot cancel READY when not actually ready.")
         self.state_manager.idle()
         self.state_manager.stop_expecting_change()
