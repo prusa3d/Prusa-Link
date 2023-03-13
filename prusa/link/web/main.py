@@ -537,7 +537,8 @@ def job_info(req):
             "state": printer.state.value,
             "progress": float(tel.progress or 0),
             "time_remaining": tel.time_remaining,
-            "time_printing": int(tel.time_printing or 0)
+            "time_printing": int(tel.time_printing or 0),
+            "inaccurate_estimates": tel.inaccurate_estimates
         }
         status_job.update(fill_printfile_data(path=path, os_path=os_path,
                                               storage=storage))
