@@ -2,10 +2,11 @@
 import logging
 import subprocess
 from os import listdir
-from os.path import basename, getmtime, getsize, join
+from os.path import basename, dirname, getmtime, getsize, join
 from socket import gethostname
 from subprocess import check_output, CalledProcessError
 from sys import version, executable
+from pathlib import Path
 
 from pkg_resources import working_set
 from poorwsgi import state
@@ -27,7 +28,7 @@ from ..printer_adapter.command_handlers import (PausePrint, ResumePrint,
 from ..printer_adapter.job import Job, JobState
 from .lib.auth import REALM, check_api_digest, check_config
 from .lib.core import app
-from .lib.files import gcode_analysis, get_os_path
+from .lib.files import gcode_analysis, get_os_path, fill_printfile_data
 from .lib.view import package_to_api
 
 log = logging.getLogger(__name__)
@@ -508,6 +509,37 @@ def api_job_command(req):
                             message=str(err),
                             text=str(err))
 
+    return Response(status_code=state.HTTP_NO_CONTENT)
+
+
+@app.route("/api/v1/job")
+@check_api_digest
+def job_info(req):
+    """Returns info about current job"""
+    # pylint: disable=unused-argument
+    job = app.daemon.prusa_link.model.job
+    tel = app.daemon.prusa_link.model.latest_telemetry
+    printer = app.daemon.prusa_link.printer
+    path = job.selected_file_path
+    file_system = app.daemon.prusa_link.printer.fs
+
+    if path:
+        storage = "sdcard" if job.from_sd else "local"
+        os_path = file_system.get_os_path(path)
+        status_job = {
+            "id": job.job_id,
+            "name": basename(path),
+            "path": join('/', storage, *Path(dirname(path)).parts[2:]),
+            "display_path": dirname(path),
+            "size": job.selected_file_size,
+            "state": printer.state.value,
+            "progress": float(tel.progress or 0),
+            "time_remaining": tel.time_remaining,
+            "time_printing": int(tel.time_printing or 0)
+        }
+        status_job.update(fill_printfile_data(path=path, os_path=os_path,
+                                              storage=storage))
+        return JSONResponse(**status_job)
     return Response(status_code=state.HTTP_NO_CONTENT)
 
 
