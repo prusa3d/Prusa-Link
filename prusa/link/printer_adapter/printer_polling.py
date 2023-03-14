@@ -41,6 +41,8 @@ from .telemetry_passer import TelemetryPasser
 
 log = logging.getLogger(__name__)
 
+# pylint: disable=too-many-lines
+
 
 class InfoGroup(WatchedGroup):
     """A WatchedGroup with a flag for sending"""
@@ -230,7 +232,7 @@ class PrinterPolling:
         self.time_broken = WatchedItem("time_broken")
         self.time_remaining.validation_error_signal.connect(
             lambda _: self.set_time_broken(True), weak=False)
-        self.time_remaining.became_valid_signal.connect(
+        self.time_remaining.value_changed_signal.connect(
             lambda _: self.set_time_broken(False), weak=False)
 
         self.filament_change_in = WatchedItem(
@@ -239,6 +241,10 @@ class PrinterPolling:
             write_function=self._set_filament_change_in,
             on_fail_interval=None
         )
+
+        self.filament_change_in.validation_error_signal.connect(
+            lambda _: self.telemetry_passer.reset_value("filament_change_in"),
+            weak=False)
 
         self.inaccurate_estimates = WatchedItem("inaccurate_estimates")
         self.time_broken.value_changed_signal.connect(
@@ -991,9 +997,9 @@ class PrinterPolling:
     def _infer_estimate_accuracy(self):
         """Looks at the current state of things and infers whether the
         time estimates are accurate or not"""
-        if self.time_broken.value in {None, False}:
+        if self.time_broken.value in {None, True}:
             self.item_updater.set_value(self.inaccurate_estimates, True)
-        elif self.speed_multiplier.value != 1:
+        elif self.speed_multiplier.value != 100:
             self.item_updater.set_value(self.inaccurate_estimates, True)
         else:
             self.item_updater.set_value(self.inaccurate_estimates, False)

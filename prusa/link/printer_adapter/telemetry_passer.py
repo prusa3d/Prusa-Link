@@ -4,7 +4,7 @@ lot of factore. This module takes care of monitoring, how often to
 send telemetry and what actual telemetry to send
 """
 import logging
-from threading import Event, Lock, Thread
+from threading import Event, RLock, Thread
 from time import time
 from typing import Any
 
@@ -48,7 +48,7 @@ class TelemetryPasser(metaclass=MCSingleton):
         self.model: Model = model
         self.printer: Printer = printer
 
-        self.lock = Lock()
+        self.lock = RLock()
         self.notify_evt: Event = Event()
         self.running = True
         self.sleeping = False
@@ -57,8 +57,11 @@ class TelemetryPasser(metaclass=MCSingleton):
                              name="telemetry_passer")
         self.full_refresh_at = 0
 
+        self._filtered_keys = self._get_filtered_keys()
+
         self._last_sent: dict[str, Any] = {}
         self._to_send: dict[str, Any] = {}
+        self._latest_full: dict[str, Any] = {}
         self.model.latest_telemetry = Telemetry()
 
         self.last_activity_at = time()
@@ -80,8 +83,7 @@ class TelemetryPasser(metaclass=MCSingleton):
         """keeps spinning until supposed to stop
 
         The loop here facilitates the instant wakeup of the telemetry passer
-        after activity is observed
-        """
+        after activity is observed"""
         while self.running:
             self.notify_evt.clear()
             loop_until(loop_evt=self.notify_evt,
@@ -104,11 +106,9 @@ class TelemetryPasser(metaclass=MCSingleton):
         self.pass_telemetry()
 
     def _get_and_reset_telemetry(self):
-        """
-        Telemetry to send gets reset each send.
+        """Telemetry to send gets reset each send.
 
-        last_sent contains the values that connect should know about
-        """
+        last_sent contains the values that connect should know about"""
         with self.lock:
 
             # Update what we sent last time
@@ -119,10 +119,8 @@ class TelemetryPasser(metaclass=MCSingleton):
             return to_return
 
     def pass_telemetry(self):
-        """
-        Passes the telemetry to the SDK
-        and pushes the newer telemetry into the sent telemetry
-        """
+        """Passes the telemetry to the SDK
+        and pushes the newer telemetry into the sent telemetry"""
         if not Settings.instance.use_connect():
             log.debug("Connect isn't configured -> no telemetry")
             return
@@ -149,10 +147,8 @@ class TelemetryPasser(metaclass=MCSingleton):
         self.printer.telemetry(**telemetry)
 
     def _is_appropriate_for_state(self, key):
-        """
-        Return True, if the telemetry key is appropriate to send
-        in the state we're currently in
-        """
+        """Return True, if the telemetry key is appropriate to send
+        in the state we're currently in"""
         state = self.model.state_manager.current_state
         if state not in PRINTING_STATES and key in NOT_PRINTING_IGNORED:
             return False
@@ -160,18 +156,26 @@ class TelemetryPasser(metaclass=MCSingleton):
             return False
         return True
 
+    def _get_filtered_keys(self):
+        state = self.model.state_manager.current_state
+        if state not in PRINTING_STATES:
+            return NOT_PRINTING_IGNORED
+        if state == State.PRINTING:
+            return PRINTING_IGNORED
+        return set()
+
     def set_telemetry(self, new_telemetry: Telemetry):
-        """
-        Filters jitter, state inappropriate or unchanged data
-        Updates the telemetries with new data
-        """
+        """Filters jitter, state inappropriate or unchanged data
+        Updates the telemetries with new data"""
         with self.lock:
             new_telemetry_dict = new_telemetry.dict(exclude_none=True)
             for key, value in new_telemetry_dict.items():
                 if value is None:
                     continue
 
-                if not self._is_appropriate_for_state(key):
+                self._latest_full[key] = value
+
+                if key in self._filtered_keys:
                     # Internally we need to check against none
                     setattr(self.model.latest_telemetry, key, None)
                     continue
@@ -206,6 +210,12 @@ class TelemetryPasser(metaclass=MCSingleton):
 
         self._resend_telemetry_on_timer()
 
+    def reset_value(self, key):
+        """Resets the value for a key in local telemetry"""
+        with self.lock:
+            self._latest_full[key] = None
+            setattr(self.model.latest_telemetry, key, None)
+
     def _resend_telemetry_on_timer(self):
         """If sufficient time elapsed, mark all telemetry values to be sent"""
         if time() - self.full_refresh_at > TELEMETRY_REFRESH_INTERVAL:
@@ -213,13 +223,18 @@ class TelemetryPasser(metaclass=MCSingleton):
             self.resend_latest_telemetry()
 
     def state_changed(self):
-        """React to state changes by removing (or adding) info"""
+        """When the state changes, update what keys do we filter.
+        Call the setters on any keys for which the filtered status
+        changes, to update them"""
         with self.lock:
-            for key in Telemetry().dict():
-                if not self._is_appropriate_for_state(key):
-                    setattr(self.model.latest_telemetry, key, None)
-                    if key in self._to_send:
-                        del self._to_send[key]
+            new_filtered = self._get_filtered_keys()
+            differing = new_filtered ^ self._filtered_keys
+            self._filtered_keys = new_filtered
+
+            change_telemetry = Telemetry()
+            for key in differing:
+                setattr(change_telemetry, key, self._latest_full.get(key))
+            self.set_telemetry(change_telemetry)
 
     def activity_observed(self):
         """Call if any activity that constitutes waking up from sleep occurs"""
@@ -229,21 +244,17 @@ class TelemetryPasser(metaclass=MCSingleton):
             self.notify_evt.set()
 
     def wipe_telemetry(self):
-        """
-        Resets the telemetry, so the values don't lie
+        """Resets the telemetry, so the values don't lie
         Paired with polling value invalidation, this will get and send
-        fresh telemetry values
-        """
+        fresh telemetry values"""
         with self.lock:
             self.model.latest_telemetry = Telemetry()
             self._last_sent = {}
             self._to_send = {}
 
     def resend_latest_telemetry(self):
-        """
-        Move the latest telemetry, so it gets sent next time.
-        Great for reconnections and other telemetry forgetting situations
-        """
+        """Move the latest telemetry, so it gets sent next time.
+        Great for reconnections and other telemetry forgetting situations"""
         with self.lock:
             self._to_send = self.model.latest_telemetry.dict(exclude_none=True)
         self.pass_telemetry()
