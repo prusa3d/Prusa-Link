@@ -103,9 +103,9 @@
             <li>Fingerprint: <span class="white">{{ printer.fingerprint }}</span></li>
             <li>Token: <span class="white">{{ printer.token }}</span></li>
         {% if prusa_link %}
-            <li>Last Telemetry: <span class="white">{{ prusa_link.last_sent_telemetry }}</span></li>
+            <li>Telemetry</li>
             <ul>
-                {%- for key, val in prusa_link.model.last_telemetry %}
+                {%- for key, val in prusa_link.model.latest_telemetry %}
                 <li>{{ key }}: <span class="white">{{ val }}</span></li>
                 {%- endfor %}
             </ul>
