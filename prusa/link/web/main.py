@@ -230,10 +230,12 @@ def api_status(req):
 def api_version(req):
     """Return api version"""
     prusa_link = app.daemon.prusa_link
+    type_name = f"PrusaLink {prusa_link.printer.type.name}" \
+        if prusa_link.printer.type else 'Unknown printer type'
     retval = {
         'api': "0.9.0-legacy",
         'server': __version__,
-        'original': f"PrusaLink {prusa_link.printer.type.name}",
+        'original': type_name,
         'text': f"PrusaLink {__version__}",
         'firmware': prusa_link.printer.firmware,
         'sdk': sdk_version,
