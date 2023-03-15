@@ -62,12 +62,12 @@ def sdcard_simple_refs():
     }
 
 
-def local_refs(path: str, thumbnails: dict[str, bytes]):
+def local_refs(path: str):
     """Make refs structure for print file on local storage."""
     return {
         'download': f"/api/files/local{path}/raw",
         'icon': None,
-        'thumbnail': f"/api/thumbnails{path}.orig.png" if thumbnails else None
+        'thumbnail': f"/api/thumbnails{path}.orig.png"
     }
 
 
@@ -108,20 +108,33 @@ def fill_file_data(path: str, storage: str):
 
 def fill_printfile_data(path: str, os_path: str, storage: str,
                         simple: bool = False):
-    """Get file data for print file and fill them to the result dict"""
+    """
+    Get file data for print file and fill them to the result dict
+    :param path: path to file
+    :param os_path: absolute path to file
+    :param storage: name of the storage
+    :param simple: whether to return file metadata or just its refs
+    """
     result = {}
+
+    # local
     if storage == "local":
+        result['refs'] = local_refs(path)
+        if simple:
+            return result
         meta = FDMMetaData(os_path)
         meta.load_from_path(path)
         meta = get_metadata(os_path)
-        result['refs'] = local_refs(path, meta.thumbnails)
+        if not meta.thumbnails:
+            result['refs']['thumbnail'] = None
+
+    # sdcard
     else:
+        result['refs'] = sdcard_refs()
+        if simple:
+            return result
         meta = FDMMetaData(path)
         meta.load_from_path(path)
-        result['refs'] = sdcard_refs()
-
-    if simple:
-        return result
 
     result['meta'] = meta.data
     result['meta']['estimated_print_time'] = estimated_to_seconds(
@@ -222,7 +235,9 @@ def file_to_api(node, origin: str = 'local', path: str = '/',
             os_path = get_os_path(path)
             if os_path and meta.is_cache_fresh():
                 meta.load_cache()
-            result['refs'] = local_refs(path, meta.thumbnails)
+            result['refs'] = local_refs(path)
+            if not meta.thumbnails:
+                result['refs']['thumbnail'] = None
 
         else:
             meta.load_from_path(path)

@@ -273,7 +273,10 @@ def api_file_info(req, storage, path):
             meta.load_from_path(path)
         else:
             meta = get_metadata(os_path)
-        result['refs'] = local_refs(path, meta.thumbnails)
+        result['refs'] = local_refs(path)
+        if not meta.thumbnails:
+            result['refs']['thumbnail'] = None
+
         result['size'] = getsize(os_path)
         result['date'] = int(getctime(os_path))
 
