@@ -51,6 +51,8 @@ PICAMERA_MODELS = {
     "ov5647",
     "imx708",
     "imx708_noir",
+    "imx708_wide",
+    "imx708_wide_noir",
 }
 
 SUPPORTED_PIXEL_FORMAT = "YUYV"
