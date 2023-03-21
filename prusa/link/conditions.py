@@ -235,11 +235,11 @@ class FileSizeMismatch(BadRequestError):
     id = "file-size-mismatch"
 
 
-class NotSupportedFileType(BadRequestError):
-    """400 Not supported file"""
-    title = "Not Supported File Type"
-    text = "Uploaded file type is not supported."
-    id = "not-supported-file-type"
+class InvalidIniFileFormat(BadRequestError):
+    """400 Invalid ini file format."""
+    title = "Invalid ini File Format"
+    text = "Format or the structure of your ini file is invalid."
+    id = "invalid-ini-file-format"
 
 
 class InvalidBooleanHeader(BadRequestError):
@@ -289,6 +289,14 @@ class CantResolveHostname(BadRequestError):
     title = "Can't resolve hostname"
     text = "Can't resolve PrusaConnect hostname"
     id = "cant-resolve-hostname"
+
+
+class NotSupportedFileType(LinkError):
+    """415 Not supported file"""
+    title = "Not Supported File Type"
+    text = "Uploaded file type is not supported."
+    id = "not-supported-file-type"
+    status_code = state.HTTP_UNSUPPORTED_MEDIA_TYPE
 
 
 class ForbiddenError(LinkError):
