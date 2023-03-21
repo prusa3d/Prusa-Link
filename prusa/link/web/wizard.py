@@ -1,5 +1,5 @@
 """Wizard endpoints"""
-from configparser import ConfigParser
+from configparser import ConfigParser, MissingSectionHeaderError
 from functools import wraps
 from time import sleep
 
@@ -149,8 +149,11 @@ def process_local(config):
 
 def parse_settings(buffer):
     """Parse printer settings from buffer to wizard"""
-    config = ConfigParser(interpolation=None)
-    config.read_string(buffer)
+    try:
+        config = ConfigParser(interpolation=None)
+        config.read_string(buffer)
+    except MissingSectionHeaderError as exception:
+        raise conditions.InvalidIniFileFormat() from exception
 
     # [printer]
     if config.has_section(PRINTER):
