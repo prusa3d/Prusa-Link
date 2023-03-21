@@ -231,7 +231,9 @@ class Settings(Get):
         self.printer = Model(
             self.get_section('printer', (('type', str, ''), ('name', str, ''),
                                          ('location', str, ''),
-                                         ('farm_mode', bool, False))))
+                                         ('farm_mode', bool, False),
+                                         ("network_error_chime", bool, False),
+                                         )))
 
         self.printer['name'] = self.printer['name'].strip()
         self.printer['location'] = self.printer['location'].strip()

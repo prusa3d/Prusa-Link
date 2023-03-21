@@ -116,11 +116,15 @@ class LCDPrinter(metaclass=MCSingleton):
 
         self.notiff_event = Event()
 
-        self.print_screen = Screen(order=1)
-        self.wizard_screen = Screen(chime_gcode=WELCOME_CHIME)
-        self.wait_screen = Screen(resets_idle=False)
-        self.error_screen = Screen(chime_gcode=ERROR_CHIME)
+        if self.settings.printer.network_error_chime:
+            self.error_screen = Screen(chime_gcode=ERROR_CHIME)
+        else:
+            self.error_screen = Screen()
+
         self.upload_screen = Screen(chime_gcode=UPLOAD_CHIME)
+        self.wizard_screen = Screen(chime_gcode=WELCOME_CHIME)
+        self.print_screen = Screen(order=1)
+        self.wait_screen = Screen(resets_idle=False)
         self.ready_screen = Screen(resets_idle=False)
         self.idle_screen = Screen(resets_idle=False)
 
