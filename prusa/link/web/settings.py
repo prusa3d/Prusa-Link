@@ -36,6 +36,24 @@ def save_settings():
         app.daemon.settings.write(ini)
 
 
+def update_apikey(api_key):
+    """Set new value to api-key"""
+    # Update API key in the app
+    app.api_key = api_key
+
+    # Update API key in the printer
+    app.daemon.prusa_link.printer.api_key = api_key
+
+    # Update API key in the prusa_printer_settings.ini file
+    app.daemon.settings.service_local.api_key = api_key
+    app.daemon.settings.update_sections()
+    save_settings()
+
+    # Send info about changes to Connect
+    printer = app.daemon.prusa_link.printer
+    printer.event_cb(**printer.get_info())
+
+
 @app.route('/api/ports')
 def api_ports(req):
     """Returns dict of available ports and its parameters"""
@@ -149,16 +167,7 @@ def regenerate_api_key(req):
     else:
         api_key = token_urlsafe(10)
 
-    # Update API key in the app
-    app.api_key = api_key
-
-    # Update API key in the printer
-    app.daemon.prusa_link.printer.api_key = api_key
-
-    # Update API key in the prusa_printer_settings.ini file
-    app.daemon.settings.service_local.api_key = api_key
-    app.daemon.settings.update_sections()
-    save_settings()
+    update_apikey(api_key)
 
     return JSONResponse(**{"api-key": api_key})
 
@@ -168,9 +177,7 @@ def regenerate_api_key(req):
 def delete_api_key(req):
     """Replace Api-Key in settings and ini file with empty string"""
     # pylint: disable=unused-argument
-    app.daemon.settings.service_local.api_key = ''
-    app.daemon.settings.update_sections()
-    save_settings()
+    update_apikey('')
 
     return JSONResponse(status_code=state.HTTP_OK)
 
