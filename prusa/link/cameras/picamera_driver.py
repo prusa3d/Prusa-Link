@@ -5,7 +5,7 @@ import select
 import gc
 import logging
 
-from typing import Dict, Optional, Callable
+from typing import Dict, Optional, Callable, Any
 
 from prusa.connect.printer.camera import Resolution
 from prusa.connect.printer.camera_driver import CameraDriver
@@ -22,13 +22,13 @@ log = logging.getLogger(__name__)
 PICAMERA_SUPPORTED = False
 try:
     from libcamera import (  # type: ignore
-         CameraManager, Camera,
-         StreamConfiguration, Stream, StreamFormats, StreamRole, PixelFormat,
-         Request, Size, FrameBufferAllocator, controls, Rectangle)
+        CameraManager, Camera,
+        StreamConfiguration, Stream, StreamFormats, StreamRole, PixelFormat,
+        Request, Size, FrameBufferAllocator, controls, Rectangle, ControlId)
 except ImportError:
     CameraManager = Camera = StreamConfiguration = Stream = StreamFormats = \
         StreamRole = PixelFormat = Request = Size = FrameBufferAllocator = \
-        controls = Rectangle = None
+        controls = Rectangle = ControlId = None
 else:
     PICAMERA_SUPPORTED = True
 
@@ -67,8 +67,8 @@ def param_change(func):
         self.camera.stop()
         self.encoder.stop()
         func(self, new_param)
-        self.encoder.start()
-        self.camera.start()
+        self._start()
+
     return inner
 
 
@@ -115,6 +115,8 @@ class PiCameraDriver(CameraDriver):
         self.scaler_crop = Rectangle(Size(3200, 2400))
 
         self.encoder = None
+
+        self.controls_to_set: Dict[ControlId, Any] = {}
 
     @staticmethod
     def get_resolutions(camera: Camera, stream_role: StreamRole,
@@ -190,6 +192,12 @@ class PiCameraDriver(CameraDriver):
             CapabilityType.IMAGING,
             CapabilityType.RESOLUTION
         })
+
+        if controls.LensPosition in self.camera.controls:
+            self._capabilities.add(CapabilityType.FOCUS)
+            # Defaults to infinity
+            self._config["focus"] = str(0.0)
+
         sensor_resolutions = self.get_resolutions(
             self.camera, StreamRole.Raw)
         self._available_resolutions = self.get_resolutions(
@@ -209,6 +217,17 @@ class PiCameraDriver(CameraDriver):
             self._available_resolutions, self._config)
         self._set_resolution(initial_resolution)
         self._config["resolution"] = str(initial_resolution)
+
+        self._start()
+
+    def _start(self):
+        """A method to start the camera and the encoder after connecting
+        or parameter change"""
+        # set controls again
+        if controls.AfMode in self.camera.controls:
+            self.controls_to_set[controls.AfMode] = \
+                controls.AfModeEnum.Manual
+        self.controls_to_set[controls.ScalerCrop] = self.scaler_crop
 
         self.encoder.start()
         self.camera.start()
@@ -289,14 +308,30 @@ class PiCameraDriver(CameraDriver):
         self.encoder.height = resolution.height
         self.encoder.stride = self.stream.configuration.stride
 
+    def _focus_transform(self, value):
+        """Transforms the focus value from 0 - 1 to the range
+        supported by the camera"""
+        min_position = self.camera.controls[controls.LensPosition].min
+        max_position = self.camera.controls[controls.LensPosition].max
+        position_range = max_position - min_position
+        return value * position_range - min_position
+
+    def set_focus(self, focus):
+        """Sets the camera resolution"""
+        self.controls_to_set[controls.LensPosition] = \
+            self._focus_transform(focus)
+
     def take_a_photo(self):
         """Asks for eight photos but is only interested in the last one"""
         prctl_name()
-        log.warning("Taking a photo!")
+        log.debug("Taking a photo!")
 
         self.request.reuse()
-        self.request.set_control(controls.ScalerCrop,
-                                 self.scaler_crop)
+
+        for control_id, value in self.controls_to_set.items():
+            self.request.set_control(control_id, value)
+        self.controls_to_set.clear()
+
         self.camera.queue_request(self.request)
 
         started_at = time()
@@ -311,9 +346,9 @@ class PiCameraDriver(CameraDriver):
             # we would need to handle a negative time remaining as well
             select.select((self.camera_manager.event_fd,), (), (), remaining)
 
-        log.warning("Converting a photo")
+        log.debug("Converting a photo")
         data = self.encoder.encode(self.stream.configuration.frame_size)
-        log.warning("Done converting a photo")
+        log.debug("Done converting a photo")
         return data
 
     def _disconnect(self):
