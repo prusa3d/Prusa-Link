@@ -200,7 +200,7 @@ def api_status(req):
 
     # --- Job ---
     if job.job_state is not JobState.IDLE:
-        progress = (tel.progress or 0) / 100.0
+        progress = float(tel.progress or 0)
         time_remaining = tel.time_remaining
         time_printing = tel.time_printing
 
