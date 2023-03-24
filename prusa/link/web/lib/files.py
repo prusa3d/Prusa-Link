@@ -283,6 +283,9 @@ def check_filename(filename: str):
     if forbidden_characters(filename):
         raise conditions.ForbiddenCharacters()
 
+    if not filename.lower().endswith(GCODE_EXTENSIONS):
+        raise conditions.NotSupportedFileType()
+
 
 def check_foldername(foldername: str):
     """Check foldername length and format"""
