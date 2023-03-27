@@ -1,1 +1,1 @@
-wiringpi
+wiringpi~=2.60.1
