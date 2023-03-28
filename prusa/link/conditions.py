@@ -315,6 +315,20 @@ class NotFoundError(LinkError):
     id = "not-found"
 
 
+class GoneError(LinkError):
+    """410 Gone"""
+    title = "Target Resource Unavailable"
+    text = "Target resource is unavailable."
+    status_code = state.HTTP_GONE
+    id = "file-gone"
+
+
+class ThumbnailUnavailable(GoneError):
+    """410 Thumbnail Unavailable"""
+    title = "Thumbnail Unavailable"
+    text = "Thumbnail is unavailable."
+
+
 class FileNotFound(NotFoundError):
     """404 File Not Found"""
     title = "File Not Found"

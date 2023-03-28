@@ -481,7 +481,7 @@ def api_thumbnails(req, path):
 
     meta.load_cache()
     if not meta.thumbnails:
-        raise conditions.FileNotFound()
+        raise conditions.ThumbnailUnavailable()
 
     biggest = b''
     for data in meta.thumbnails.values():
