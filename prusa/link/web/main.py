@@ -525,23 +525,43 @@ def job_info(req):
     path = job.selected_file_path
     file_system = app.daemon.prusa_link.printer.fs
 
+    # Whether the print data comes from the serial line instead of file
+    serial_print = False
+
     if path:
         storage = "sdcard" if job.from_sd else "local"
         os_path = file_system.get_os_path(path)
+
         status_job = {
             "id": job.job_id,
-            "name": basename(path),
-            "path": join('/', storage, *Path(dirname(path)).parts[2:]),
-            "display_path": dirname(path),
-            "size": job.selected_file_size,
             "state": printer.state.value,
             "progress": float(tel.progress or 0),
             "time_remaining": tel.time_remaining,
             "time_printing": int(tel.time_printing or 0),
             "inaccurate_estimates": tel.inaccurate_estimates
         }
-        status_job.update(fill_printfile_data(path=path, os_path=os_path,
-                                              storage=storage))
+
+        if serial_print:
+            source_info = {
+                "serial_print": True
+            }
+        else:
+            source_info = {
+                "file": {
+                    "name": basename(path),
+                    "path": join('/', storage, *Path(dirname(path)).parts[2:]),
+                    "display_path": dirname(path),
+                    "size": job.selected_file_size,
+                }
+
+            }
+            source_info["file"].update(fill_printfile_data(
+                path=path,
+                os_path=os_path,
+                storage=storage))
+
+        status_job.update(source_info)
+
         return JSONResponse(**status_job)
     return Response(status_code=state.HTTP_NO_CONTENT)
 
