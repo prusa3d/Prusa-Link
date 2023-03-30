@@ -315,6 +315,12 @@ class NotFoundError(LinkError):
     id = "not-found"
 
 
+class NotCurrentJob(NotFoundError):
+    """404 Not current job"""
+    title = "Not Current Job"
+    text = "Given job id does not belong to current job"
+
+
 class GoneError(LinkError):
     """410 Gone"""
     title = "Target Resource Unavailable"
@@ -378,6 +384,12 @@ class NotPrinting(ConflictError):
     """409 Printer is not printing"""
     title = "Printer Is Not Printing"
     text = "Operation you want can only be done when printer is printing."
+
+
+class NotPaused(ConflictError):
+    """409 Printer is not paused"""
+    title = "Printer Is Not Paused"
+    text = "Operation you want can only be done when printer is paused."
 
 
 class FileCurrentlyPrinted(ConflictError):

@@ -546,6 +546,70 @@ def job_info(req):
     return Response(status_code=state.HTTP_NO_CONTENT)
 
 
+@app.route("/api/v1/job/<job_id:int>", method=state.METHOD_DELETE)
+@check_api_digest
+def job_stop(req, job_id):
+    """Stop job with given id"""
+    # pylint: disable=unused-argument
+    job = app.daemon.prusa_link.model.job
+    job_data = app.daemon.prusa_link.model.job
+    printer_state = app.daemon.prusa_link.printer.state
+    command_queue = app.daemon.prusa_link.command_queue
+
+    if job.job_id != job_id:
+        raise conditions.NotCurrentJob()
+
+    if printer_state == State.PRINTING \
+            and job_data.job_state == JobState.IN_PROGRESS:
+        command_queue.enqueue_command(StopPrint(source=Source.WUI))
+    else:
+        raise conditions.NotPrinting()
+
+    return Response(status_code=state.HTTP_NO_CONTENT)
+
+
+@app.route("/api/v1/job/<job_id:int>/<command>", method=state.METHOD_PUT)
+@check_api_digest
+def job_command(req, job_id, command):
+    """Execute command on job with given id"""
+    # pylint: disable=unused-argument
+    job = app.daemon.prusa_link.model.job
+    job_data = app.daemon.prusa_link.model.job
+    printer_state = app.daemon.prusa_link.printer.state
+    command_queue = app.daemon.prusa_link.command_queue
+
+    if job.job_id != job_id:
+        raise conditions.NotCurrentJob()
+
+    try:
+        # Pause job with given id
+        if command == "pause":
+            if printer_state == State.PRINTING \
+                    and job_data.job_state == JobState.IN_PROGRESS:
+                command_queue.enqueue_command(PausePrint(source=Source.WUI))
+            else:
+                raise conditions.NotPrinting()
+
+        # Resume paused job with given id
+        elif command == "resume":
+            if printer_state == State.PAUSED:
+                command_queue.enqueue_command(ResumePrint(source=Source.WUI))
+            else:
+                raise conditions.NotPaused()
+
+        # Continue in job with given id after timelapse capture
+        elif command == "continue":  # Not implemented yet
+            pass
+
+    except CommandFailed as err:
+        return JSONResponse(status_code=state.HTTP_INTERNAL_SERVER_ERROR,
+                            title='COMMAND FAILED',
+                            message=str(err),
+                            text=str(err))
+
+    return Response(status_code=state.HTTP_NO_CONTENT)
+
+
 @app.route("/api/v1/update/<env>")
 @check_api_digest
 def api_update(req, env):
