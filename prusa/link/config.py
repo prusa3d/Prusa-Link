@@ -182,6 +182,10 @@ class Config(Get):
             log_level = "DEBUG"
         elif args.info:
             log_level = "INFO"
+        if args.warn:
+            log_level = "WARN"
+        elif args.error:
+            log_level = "ERROR"
         else:
             log_level = logging.root.level
 
