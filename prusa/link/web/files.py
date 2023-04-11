@@ -23,7 +23,8 @@ from .lib.files import (check_os_path, check_read_only, storage_display_path,
                         fill_printfile_data, get_os_path, check_storage,
                         get_files_size, partfilepath, make_headers, check_job,
                         fill_file_data, get_last_modified, make_cache_headers,
-                        check_cache_headers, get_boolean_header)
+                        check_cache_headers, get_boolean_header,
+                        forbidden_characters)
 
 log = logging.getLogger(__name__)
 
@@ -151,6 +152,10 @@ def file_upload(req, storage, path):
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
     # pylint: disable=too-many-locals
+
+    if forbidden_characters(path):
+        raise conditions.ForbiddenCharacters()
+
     allowed_types = ['application/octet-stream', 'text/x.gcode']
 
     # If the type is unknown, it will be checked after successful upload
