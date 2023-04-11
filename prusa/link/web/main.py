@@ -2,11 +2,10 @@
 import logging
 import subprocess
 from os import listdir
-from os.path import basename, dirname, getmtime, getsize, join
+from os.path import basename, getmtime, getsize, join
 from socket import gethostname
 from subprocess import check_output, CalledProcessError
 from sys import version, executable
-from pathlib import Path
 
 from pkg_resources import working_set
 from poorwsgi import state
@@ -526,22 +525,28 @@ def job_info(req):
     file_system = app.daemon.prusa_link.printer.fs
 
     if path:
+        file = file_system.get(path)
         storage = "sdcard" if job.from_sd else "local"
         os_path = file_system.get_os_path(path)
         status_job = {
+            "file": {
+                "name": file.name,
+                "display_name": file.name,
+                "path": path,
+                "display_path": path,
+                "size": file.size,
+                "m_timestamp": file.attrs["m_timestamp"]
+            },
             "id": job.job_id,
-            "name": basename(path),
-            "path": join('/', storage, *Path(dirname(path)).parts[2:]),
-            "display_path": dirname(path),
-            "size": job.selected_file_size,
             "state": printer.state.value,
             "progress": float(tel.progress or 0),
             "time_remaining": tel.time_remaining,
             "time_printing": int(tel.time_printing or 0),
             "inaccurate_estimates": tel.inaccurate_estimates
         }
-        status_job.update(fill_printfile_data(path=path, os_path=os_path,
-                                              storage=storage))
+        status_job["file"].update(fill_printfile_data(
+            path=path, os_path=os_path, storage=storage))
+
         return JSONResponse(**status_job)
     return Response(status_code=state.HTTP_NO_CONTENT)
 
