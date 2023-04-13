@@ -141,5 +141,9 @@ setup(
     ],
     python_requires=">=3.9",
     install_requires=REQUIRES,
-    entry_points={'console_scripts': ['prusalink = prusa.link.__main__:main']},
+    entry_points={'console_scripts': [
+        'prusalink = prusa.link.__main__:main',
+        'prusalink-manager = prusa.link.multi_instance.'
+        'multi_instance:main'
+    ]},
     cmdclass={'build_static': BuildStatic})

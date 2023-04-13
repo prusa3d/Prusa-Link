@@ -71,13 +71,9 @@ class Model(dict):
 
 class Config(Get):
     """This class handles prusalink.ini configuration file."""
-    instance = None
+    # pylint: disable=too-many-branches
 
     def __init__(self, args):
-        # pylint: disable=too-many-branches
-        if Config.instance is not None:
-            raise RuntimeError('Config is singleton')
-
         super().__init__()
 
         self.read(args.config)
@@ -177,7 +173,29 @@ class Config(Get):
                     ("auto_detect", bool, True),
                 )))
 
-        Config.instance = self
+    def set_section(self, name, model):
+        """Set section from model"""
+        if name not in self:
+            self.add_section(name)
+        for key, val in model.items():
+            # FIXME: HACKS! We are at the limits of extendparser
+            if name == "printer" and key == "storage":
+                value = ":".join(val)
+                self.set(name, key, value)
+            elif name == "daemon" and key == "home":
+                continue
+            elif name == "printer" and key == "directory_name":
+                continue
+            else:
+                self.set(name, key, str(val))
+
+    def update_sections(self):
+        """Update config from attributes."""
+        self.set_section('daemon', self.daemon)
+        self.set_section('log', self.log_settings)
+        self.set_section('http', self.http)
+        self.set_section('printer', self.printer)
+        self.set_section('cameras', self.cameras)
 
     def set_global_log_level(self, args):
         """Set default global log level from command line."""
