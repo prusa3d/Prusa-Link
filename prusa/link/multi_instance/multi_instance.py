@@ -1,43 +1,35 @@
 """A module that manages configurations and running instances of
 PrusaLink when running more of those on a single pi"""
 
-import argparse
 import copy
 import glob
+import queue
+import threading
+
 import grp
 import logging
 import os
-import pwd
-import queue
 import re
 import shlex
 import shutil
-import stat
 import subprocess
-import sys
-import threading
 from functools import partial
 from pathlib import Path
 from threading import Thread
+
 from time import monotonic, sleep
 
 import pyudev  # type: ignore
 from extendparser import Get
 
-from ..config import Config, Model
 from ..const import QUIT_INTERVAL
+from ..config import Config, Model
 from ..util import ensure_directory
-
-logging.basicConfig(
-    level=logging.WARNING,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
 
 log = logging.getLogger(__name__)
 
 # Named pipe for communication from the web app to the privileged component
-COMMS_PIPE_PATH = "/tmp/prusalink-instance-manager"
+COMMS_PIPE_PATH = "/var/run/prusalink/instance-manager"
 
 # An udev rule to call a script that will tell us a printer has been connected
 CONNECTED_RULE_PATH = "/etc/udev/rules.d/99-prusalink-manager-trigger.rules"
@@ -46,13 +38,12 @@ CONNECTED_RULE_PATTERN = \
     'ATTRS{{idProduct}}=="{model_id}", ' \
     'RUN+="/bin/su {username} -c \\"prusalink-manager rescan\\""'
 
-DEFAULT_UID = 1000  # Default user UID
 
 VALID_SN_REGEX = re.compile(r"^(?P<sn>^CZPX\d{4}X\d{3}X.\d{5})$")
 
 # keys are the manufacturer ids, values are supported models
 SUPPORTED = {
-    "2c99": {"0001", "0002"},
+    "2c99": {"0001", "0002"}
 }
 
 MULTI_INSTANCE_CONFIG_PATH = "/etc/prusalink/multi_instance.ini"
@@ -80,95 +71,7 @@ UDEV_SYMLINK_TIMEOUT = 30  # seconds
 
 # The port of the main site
 # This plus one, so 8081 will be the port of the first PrusaLink instance
-PORT = 8080
-
-
-def refresh_udev_rules():
-    """Tells the udev system to load its rules again"""
-    subprocess.run(['udevadm', 'control', '--reload'], check=True)
-    subprocess.run(['udevadm', 'trigger', '-s', 'tty'], check=True)
-
-
-def get_usb_printers():
-    """Gets serial devices that are on the supported list
-    and have a valid S/N"""
-    devices = []
-    context = pyudev.Context()
-    for device in context.list_devices(subsystem='tty'):
-        vendor_id = device.properties.get('ID_VENDOR_ID')
-        model_id = device.properties.get('ID_MODEL_ID')
-
-        # If the vendor is not supported, we get an empty set
-        supported_models = SUPPORTED.get(vendor_id, set())
-        is_supported = model_id in supported_models
-
-        serial_number = device.properties.get("ID_SERIAL_SHORT", "")
-        valid_sn = VALID_SN_REGEX.match(serial_number)
-        if not is_supported or not valid_sn:
-            continue
-
-        device = PrinterDevice(
-            vendor_id=vendor_id,
-            model_id=model_id,
-            serial_number=serial_number,
-            path=device.properties.get("DEVNAME", "Unknown"),
-        )
-        log.warning("Found: %s", serial_number)
-        devices.append(device)
-    return devices
-
-
-def delete_matching(pattern, delete_method):
-    """Deletes files or directories matching a glob"""
-    log.debug("Deleting matching: %s using %s()",
-              pattern, delete_method.__name__)
-    matching_files = glob.glob(pattern)
-
-    for file in matching_files:
-        try:
-            delete_method(file)
-            log.debug("Deleted %s", file)
-        except Exception:  # pylint: disable=broad-except
-            log.exception("Error deleting %s", file)
-
-
-def delete_matching_files(pattern):
-    """Deletes matching files"""
-    delete_matching(pattern, delete_method=os.remove)
-
-
-def delete_matching_folders(pattern):
-    """Deletes matching folders"""
-    delete_matching(pattern, delete_method=shutil.rmtree)
-
-
-def wait_for_symlink(symlink_path):
-    """Waits for a symlink to appear on the specified path"""
-    time_started = monotonic()
-    while not os.path.islink(symlink_path):
-        sleep(0.5)
-        log.debug("Waiting for symlink: %s", symlink_path)
-        if monotonic() - time_started > UDEV_SYMLINK_TIMEOUT:
-            raise TimeoutError("The expected printer symlinks "
-                               "didn't appear in tme")
-
-
-def get_user_info(username=None):
-    """Gets user info either using the default UID or the suplied username"""
-    if username is not None:
-        try:
-            return pwd.getpwnam(username)
-        except KeyError:
-            log.error("Could not find a home folder for user %s. "
-                      "Exiting...", username)
-            sys.exit(1)
-    else:
-        try:
-            return pwd.getpwuid(DEFAULT_UID)
-        except KeyError:
-            log.error("Could not find a home folder for uid %s"
-                      "Exiting...", DEFAULT_UID)
-            sys.exit(1)
+DEFAULT_PORT_RANGE_START = 8080
 
 
 class FakeArgs:
@@ -208,12 +111,21 @@ class MultiInstanceConfig(Get):
         super().__init__()
         self.read(MULTI_INSTANCE_CONFIG_PATH)
         self.printers = []
+        self.web = Model(
+            self.get_section(
+                "web",
+                (
+                    ("port_range_start", int, DEFAULT_PORT_RANGE_START),
+                )
+            )
+        )
 
         for section in self.sections():
-            try:
-                self.add_from_section(section)
-            except (FileNotFoundError, AttributeError):
-                continue
+            if section.startswith("printer"):
+                try:
+                    self.add_from_section(section)
+                except (FileNotFoundError, AttributeError):
+                    continue
 
     def add(self, printer_number, serial_number, config_path):
         """Adds a new printer config using specified parameters"""
@@ -226,8 +138,8 @@ class MultiInstanceConfig(Get):
                     ("number", int, printer_number),
                     ("serial_number", str, serial_number),
                     ("config_path", str, config_path),
-                ),
-            ),
+                )
+            )
         )
         printer.name = printer_name
         self.printers.append(printer)
@@ -241,8 +153,8 @@ class MultiInstanceConfig(Get):
                     ("number", int, None),
                     ("serial_number", str, None),
                     ("config_path", str, None),
-                ),
-            ),
+                )
+            )
         )
         printer.name = section_name
         for value in printer.values():
@@ -265,9 +177,19 @@ class MultiInstanceConfig(Get):
                     continue
                 self.set(printer.name, key, str(val))
 
+        # Remove printers that don't exist anymore
         for section in self.sections():
-            if section not in known_printers:
-                self.remove_section(section)
+            if not section.startswith("printer"):
+                continue
+            if section in known_printers:
+                continue
+            self.remove_section(section)
+
+        if "web" not in self:
+            self.add_section("web")
+
+        for key, val in self.web.items():
+            self.set("web", key, str(val))
 
         with open(MULTI_INSTANCE_CONFIG_PATH, "w", encoding="UTF-8") as file:
             self.write(file)
@@ -276,17 +198,17 @@ class MultiInstanceConfig(Get):
 class InstanceController:
     """Component that manages the multi instance components"""
 
-    def __init__(self, username=None):
+    def __init__(self, user_info):
 
         self.running = False
         self.command_execution_thread = None
 
         self.command_queue = queue.Queue()
         self.command_handlers = {
-            "rescan": self.rescan,
+            "rescan": self.rescan
         }
 
-        self.user_info = get_user_info(username)
+        self.user_info = user_info
         self.multi_instance_config = MultiInstanceConfig()
 
         self._setup_connected_trigger()
@@ -303,6 +225,7 @@ class InstanceController:
 
     def run(self):
         """Handles commands from the named pipe IPC"""
+        ensure_directory(Path(COMMS_PIPE_PATH).parent)
         if os.path.exists(COMMS_PIPE_PATH):
             os.remove(COMMS_PIPE_PATH)
         os.mkfifo(COMMS_PIPE_PATH)
@@ -321,7 +244,7 @@ class InstanceController:
                     log.info("read: '%s' from pipe", command)
                     self.command_queue.put(command)
             except KeyboardInterrupt:
-                sys.exit(0)
+                break
             except Exception:  # pylint: disable=broad-except
                 log.exception("Exception occurred while multi-instancing "
                               "synergy and stuff")
@@ -349,7 +272,7 @@ class InstanceController:
                 rule_lines.append(CONNECTED_RULE_PATTERN.format(
                     vendor_id=vendor_id,
                     model_id=model_id,
-                    username=self.user_info.pw_name,
+                    username=self.user_info.pw_name
                 ))
         contents = "\n".join(rule_lines)
         with open(CONNECTED_RULE_PATH, "w", encoding="UTF-8") as file:
@@ -410,7 +333,7 @@ class RunnerComponent:
             pass
         start_command = PRUSALINK_START_PATTERN.format(
             username=self.user_info.pw_name,
-            config_path=config_path,
+            config_path=config_path
         )
         log.debug(shlex.split(start_command))
         subprocess.run(shlex.split(start_command), check=True, timeout=10)
@@ -524,7 +447,7 @@ class ConfigComponent:
             vendor_id=printer.vendor_id,
             model_id=printer.model_id,
             serial_number=printer.serial_number,
-            symlink_name=symlink_name,
+            symlink_name=symlink_name
         )
 
         log.debug("Udev rule: %s", printer.serial_number)
@@ -555,7 +478,8 @@ class ConfigComponent:
         Returns:
             str: The path of the created configuration file.
         """
-        port = PORT + printer_number
+        port_range_start = self.multi_instance_config.web.port_range_start
+        port = port_range_start + printer_number
         auto_detect_cameras = printer_number == 1
 
         config = Config(FakeArgs(path=config_path))
@@ -633,72 +557,76 @@ class ConfigComponent:
             # Delete the printer's multi_instance_config.ini entry
             multi_instance_config.printers.remove(printer)
 
-        if not multi_instance_config.printers:
-            delete_matching_files(MULTI_INSTANCE_CONFIG_PATH)
-        else:
-            multi_instance_config.save()
+        multi_instance_config.save()
 
         refresh_udev_rules()
 
 
-def rescan():
-    """Notify the manager that a connection has been established
-    by writing "connected" to the communication pipe."""
-    if not stat.S_ISFIFO(os.stat(COMMS_PIPE_PATH).st_mode):
-        print("Cannot communicate to manager. Missing named pipe")
-        sys.exit(1)
-    try:
-        file_descriptor = os.open(path=COMMS_PIPE_PATH,
-                                  flags=os.O_WRONLY | os.O_NONBLOCK)
-        with open(file_descriptor, "w", encoding="UTF-8") as file:
-            file.write("rescan")
-    except BlockingIOError:
-        log.exception("No one is reading from the pipe, exiting.")
-        sys.exit(1)
-    except OSError:
-        log.exception("An error occurred trying to write to the pipe.")
-        sys.exit(1)
+def refresh_udev_rules():
+    """Tells the udev system to load its rules again"""
+    subprocess.run(['udevadm', 'control', '--reload'], check=True)
+    subprocess.run(['udevadm', 'trigger', '-s', 'tty'], check=True)
 
 
-def main():
-    """The main function for the PrusaLink instance manager.
-    Parses command-line arguments and runs the instance controller"""
-    parser = argparse.ArgumentParser(
-        description="Multi instance suite for PrusaLink")
+def get_usb_printers():
+    """Gets serial devices that are on the supported list
+    and have a valid S/N"""
+    devices = []
+    context = pyudev.Context()
+    for device in context.list_devices(subsystem='tty'):
+        vendor_id = device.properties.get('ID_VENDOR_ID')
+        model_id = device.properties.get('ID_MODEL_ID')
 
-    subparsers = parser.add_subparsers(dest="command",
-                                       help="Available commands")
+        # If the vendor is not supported, we get an empty set
+        supported_models = SUPPORTED.get(vendor_id, set())
+        is_supported = model_id in supported_models
 
-    # Create a subparser for the start_daemon command
-    start_parser = subparsers.add_parser(
-        "start",
-        help="Start the instance managing daemon (needs root privileges)")
-    start_parser.add_argument(
-        "-u", "--username", required=False,
-        help="Which users to use for running and storing everything")
+        serial_number = device.properties.get("ID_SERIAL_SHORT", "")
+        valid_sn = VALID_SN_REGEX.match(serial_number)
+        if not is_supported or not valid_sn:
+            continue
 
-    subparsers.add_parser(
-        "clean",
-        help="Danger! cleans all PrusaLink multi instance configuration")
-
-    # Create a subparser for the printer_connected command
-    subparsers.add_parser(
-        "rescan",
-        help="Notify the daemon a printer has been connected")
-
-    args = parser.parse_args()
-    if args.command == "start":
-        username = args.username
-        instance_controller = InstanceController(username=username)
-        instance_controller.load_all()
-        instance_controller.run()
-    elif args.command == "clean":
-        ConfigComponent.clear_configuration()
-    elif args.command == "rescan":
-        rescan()
-    else:
-        parser.print_help()
+        device = PrinterDevice(
+            vendor_id=vendor_id,
+            model_id=model_id,
+            serial_number=serial_number,
+            path=device.properties.get("DEVNAME", "Unknown"),
+        )
+        log.warning("Found: %s", serial_number)
+        devices.append(device)
+    return devices
 
 
-if __name__ == "__main__":
-    main()
+def delete_matching(pattern, delete_method):
+    """Deletes files or directories matching a glob"""
+    log.debug("Deleting matching: %s using %s()",
+              pattern, delete_method.__name__)
+    matching_files = glob.glob(pattern)
+
+    for file in matching_files:
+        try:
+            delete_method(file)
+            log.debug("Deleted %s", file)
+        except Exception:  # pylint: disable=broad-except
+            log.exception("Error deleting %s", file)
+
+
+def delete_matching_files(pattern):
+    """Deletes matching files"""
+    delete_matching(pattern, delete_method=os.remove)
+
+
+def delete_matching_folders(pattern):
+    """Deletes matching folders"""
+    delete_matching(pattern, delete_method=shutil.rmtree)
+
+
+def wait_for_symlink(symlink_path):
+    """Waits for a symlink to appear on the specified path"""
+    time_started = monotonic()
+    while not os.path.islink(symlink_path):
+        sleep(0.5)
+        log.debug("Waiting for symlink: %s", symlink_path)
+        if monotonic() - time_started > UDEV_SYMLINK_TIMEOUT:
+            raise TimeoutError("The expected printer symlinks "
+                               "didn't appear in tme")

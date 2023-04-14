@@ -2,14 +2,16 @@
 from importlib.resources import files
 from os.path import join
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, pass_context
+from jinja2.runtime import Context
 from jinja2_template_info import TemplateInfoExtension
+from poorwsgi import redirect
 
 from prusa.connect.printer.const import PrinterType
 
 from .core import app
 
-TEMPL_PATH = (files('jinja2_template_info'),
+TEMPL_PATH = (str(files('jinja2_template_info')),
               join(str(files('prusa.link')), 'templates'))
 
 
@@ -27,26 +29,54 @@ def printer_type(type_):
     return "Unknown"
 
 
+@pass_context
+def add_prefix(context: Context, uri):
+    """Add prefix to uri."""
+    prefix = context.get('uri_prefix')
+    return add_prefix_noflask(prefix, uri)
+
+
+def add_prefix_noflask(prefix, uri):
+    """Add prefix to uri."""
+    if uri[0] != '/':
+        raise ValueError("The supplied URI does not start with a slash, "
+                         "so it is probably not meant to be prefixed")
+    if prefix:
+        return f"{prefix}{uri}"
+    return uri
+
+
+def redirect_with_proxy(req, uri):
+    """Modifies the redirect uri to include the proxy prefix."""
+    redirect(
+        add_prefix_noflask(
+            prefix=req.headers.get("X-Forwarded-Prefix"),
+            uri=uri
+        )
+    )
+
+
+env = Environment(loader=FileSystemLoader(TEMPL_PATH),
+                  extensions=[
+                      'jinja2.ext.i18n', 'jinja2.ext.do',
+                      'jinja2.ext.loopcontrols'
+                  ])
+
+env.filters['printer_type'] = printer_type
+env.filters['prefixed'] = add_prefix
+
+
 def package_to_api(pkg):
     """Convert pkg_resources.DistInfoDistribution to API."""
     return {
         'name': pkg.project_name,
         'version': pkg.version,
-        'path': pkg.module_path,
+        'path': pkg.module_path
     }
 
 
 def generate_page(request, template, **kwargs):
     """Return generated ouptut fromjinja template."""
-
-    env = Environment(loader=FileSystemLoader(TEMPL_PATH),
-                      extensions=[
-                          'jinja2.ext.i18n', 'jinja2.ext.do',
-                          'jinja2.ext.loopcontrols',
-                      ])
-
-    env.filters['printer_type'] = printer_type
-
     if app.debug:
         env.add_extension(TemplateInfoExtension)
         env.globals['template_info'].data = kwargs.copy()
@@ -54,5 +84,6 @@ def generate_page(request, template, **kwargs):
         kwargs['debug'] = True
 
     kwargs['this_uri'] = request.uri
+    kwargs['uri_prefix'] = request.headers.get("X-Forwarded-Prefix")
     tmpl = env.get_template(template)
     return tmpl.render(kwargs)

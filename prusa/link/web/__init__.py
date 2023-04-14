@@ -53,18 +53,13 @@ def init(daemon):
         app.set_route('/link-info', link_info)
 
 
-def run_http(daemon, foreground=False):
-    """Run http thread"""
-    prctl.set_name("pl#http")
-    log.info('Starting server for http://%s:%d', daemon.cfg.http.address,
-             daemon.cfg.http.port)
-
-    init(daemon)
+def run_server(address, port, application, exit_on_error=False):
+    """Runs a server for an app object, on the supplied address and port"""
     while True:
         try:
-            httpd = make_server(daemon.cfg.http.address,
-                                daemon.cfg.http.port,
-                                app,
+            httpd = make_server(address,
+                                port,
+                                application,
                                 server_class=ThreadingServer,
                                 handler_class=RequestHandler)
 
@@ -75,10 +70,23 @@ def run_http(daemon, foreground=False):
             return 0
         except Exception:  # pylint: disable=broad-except
             log.exception("Exception")
-            if foreground:
+            if exit_on_error:
                 log.info("Shutdown http")
                 return 1
         sleep(1)
 
 
-__all__ = ["app"]
+def run_http(daemon, foreground=False):
+    """Run http thread"""
+    prctl.set_name("pl#http")
+    log.info('Starting server for http://%s:%d', daemon.cfg.http.address,
+             daemon.cfg.http.port)
+
+    init(daemon)
+    run_server(address=daemon.cfg.http.address,
+               port=daemon.cfg.http.port,
+               application=app,
+               exit_on_error=foreground)
+
+
+__all__ = ["app", "run_server"]

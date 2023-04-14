@@ -3,7 +3,7 @@ from configparser import ConfigParser, MissingSectionHeaderError
 from functools import wraps
 from time import sleep
 
-from poorwsgi import abort, redirect, state
+from poorwsgi import abort, state, redirect
 from poorwsgi.request import FieldStorage
 
 from prusa.connect.printer import Printer
@@ -12,7 +12,7 @@ from .. import conditions
 from ..web.connection import compose_register_url
 from .lib.auth import REALM
 from .lib.core import app
-from .lib.view import generate_page
+from .lib.view import generate_page, redirect_with_proxy
 from .lib.wizard import execute_sn_gcode, sn_write_success
 
 # prusa_printer_settings.ini file sections
@@ -33,7 +33,7 @@ def check_printer(fun):
         if not daemon.prusa_link \
                 or not daemon.prusa_link.printer \
                 or not conditions.SN:
-            redirect('/wizard')
+            redirect_with_proxy(req, '/wizard')
         return fun(req)
 
     return handler
@@ -47,7 +47,7 @@ def check_step(step):
         def handler(req):
             # if errors from step isn't empty, it is True too
             if app.wizard.errors.get(step, True):
-                redirect(f'/wizard/{step}')
+                redirect_with_proxy(req, f'/wizard/{step}')
             return fun(req)
 
         return handler
@@ -204,7 +204,7 @@ def wizard_restore_post(req):
     except TimeoutError as exception:
         raise conditions.RequestTimeout() from exception
 
-    redirect('/wizard/credentials')
+    redirect_with_proxy(req, '/wizard/credentials')
 
 
 @app.route('/wizard/credentials')
@@ -230,15 +230,15 @@ def wizard_credentials_post(req):
         repassword = form.get('repassword', '')
 
         if not app.wizard.check_credentials(password, repassword):
-            redirect('/wizard/credentials')
+            redirect_with_proxy(req, '/wizard/credentials')
 
         app.wizard.set_digest(password)
     else:
 
         if not app.wizard.check_username():
-            redirect('/wizard/credentials')
+            redirect_with_proxy(req, '/wizard/credentials')
 
-    redirect('/wizard/printer')
+    redirect_with_proxy(req, '/wizard/printer')
 
 
 @app.route('/wizard/printer')
@@ -257,7 +257,7 @@ def wizard_printer_post(req):
                         strict_parsing=app.strict_parsing)
     app.wizard.printer_name = form.get('name', '').strip()
     app.wizard.printer_location = form.get('location', '').strip()
-    redirect('/wizard/finish')
+    redirect_with_proxy(req, '/wizard/finish')
 
 
 @app.route('/wizard/finish')
@@ -291,17 +291,17 @@ def wizard_serial_set(req):
     wizard.serial = form.get('serial', '').strip()
 
     if not app.wizard.check_serial():
-        redirect('/wizard/serial')
+        redirect_with_proxy(req, '/wizard/serial')
 
     execute_sn_gcode(wizard.serial, serial_queue)
     if sn_write_success():
-        redirect('/wizard/credentials')
+        redirect_with_proxy(req, '/wizard/credentials')
 
     # TODO: A redirect to "please wait, ensure the printer is idle"
     #  and "please try again or contact support" after a timer could be nice
 
     app.wizard.errors['serial']['not_obtained'] = True
-    redirect('/wizard/serial')
+    redirect_with_proxy(req, '/wizard/serial')
 
 
 @app.route('/wizard/finish-register-skip', method=state.METHOD_POST)
@@ -328,7 +328,7 @@ def wizard_finish_skip_post(req):
         if printer.sn:
             break
         sleep(.1)
-    redirect('/')
+    redirect_with_proxy(req, '/')
 
 
 @app.route('/wizard/finish-register', method=state.METHOD_POST)
@@ -355,9 +355,9 @@ def wizard_finish_post(req):
     # register printer
     if wizard.connect_token:
         printer.connection_from_settings(app.settings)
-        redirect('/')
+        redirect_with_proxy(req, '/')
     elif app.settings.service_connect.token:
-        redirect('/')
+        redirect_with_proxy(req, '/')
     else:
         # set connect connection
         name = wizard.printer_name
@@ -379,4 +379,4 @@ def check_wizard_access(req):
 
     if app.settings.is_wizard_needed() \
             and req.path == '/' and req.method != "HEAD":
-        redirect('/wizard')
+        redirect_with_proxy(req, '/wizard')

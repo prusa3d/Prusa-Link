@@ -88,7 +88,7 @@
                         {% endif %}
                     </div>
 
-                <a href="/wizard" class="btn btn-outline-light align-center" style="width: 200px;margin: 2em auto;display: block;">Refresh</a>
+                <a href={{ "/wizard" | prefixed }} class="btn btn-outline-light align-center" style="width: 200px;margin: 2em auto;display: block;">Refresh</a>
 
             {% elif not wizard.daemon.prusa_link or not wizard.daemon.prusa_link.printer %}
 
@@ -103,7 +103,7 @@
 
             {# TODO: some prusa-link log to see what's happen. #}
 
-            <a href="/wizard" class="btn btn-outline-light align-center" style="width: 200px;margin: 2em auto;display: block;">Refresh</a>
+            <a href={{ "/wizard" | prefixed }} class="btn btn-outline-light align-center" style="width: 200px;margin: 2em auto;display: block;">Refresh</a>
             {# TODO: do some javascript call to check the printer, and then refresh is automaticaly #}
 
             {% else %}
@@ -139,7 +139,7 @@
                 {% elif not conditions.SN %}
                     <div class="col"><b>Great!</b> You can continue to set Serial Number</div>
                     <div class="col-xs-auto">
-                        <a href="/wizard/serial" class="btn btn-outline-light">Serial Number | NEXT <img src="img/arrow-right.svg" height="16" /></a>
+                        <a href={{ "/wizard/serial" | prefixed }} class="btn btn-outline-light">Serial Number | NEXT <img src="img/arrow-right.svg" height="16" /></a>
                     </div>
                 {% else %}
                     <div class="col"><b>Great!</b> You can continue to set up your credentials, <b>or</b> you can restore printer settings from your <i>prusa_printer_settings.ini</i> file</div>
@@ -152,11 +152,11 @@
             <div class="container navigation">
               <div class="row">
                   <div class="col">
-                    <a id="restore_btn" href="/wizard/restore" class="btn btn-outline-light full-width" onmouseover="changeIconImage('img/reset-icon-black.svg')" onmouseout="changeIconImage('img/reset-icon-white.svg')">Restore settings <img id="restore_icon" height="25" src="img/reset-icon-white.svg">
+                    <a id="restore_btn" href={{ "/wizard/restore" | prefixed }} class="btn btn-outline-light full-width" onmouseover="changeIconImage('img/reset-icon-black.svg')" onmouseout="changeIconImage('img/reset-icon-white.svg')">Restore settings <img id="restore_icon" height="25" src="img/reset-icon-white.svg">
                     </a>
                   </div>
                   <div class="col-sm-auto">
-                    <a href="/wizard/credentials" class="btn btn-outline-light full-width">Setup credentials | NEXT <img src="img/arrow-right.svg" height="16" /></a>
+                    <a href={{ "/wizard/credentials" | prefixed }} class="btn btn-outline-light full-width">Setup credentials | NEXT <img src="img/arrow-right.svg" height="16" /></a>
                   </div>
               </div>
             </div>
