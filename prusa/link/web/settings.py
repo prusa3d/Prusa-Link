@@ -85,7 +85,8 @@ def api_settings(req):
             "printer": {
                 "name": printer_settings.name,
                 "location": printer_settings.location,
-                "farm_mode": printer_settings.farm_mode
+                "farm_mode": printer_settings.farm_mode,
+                "network_error_chime": printer_settings.network_error_chime
             }
         })
 
@@ -100,6 +101,7 @@ def api_settings_set(req):
     printer = req.json.get('printer')
     user = req.json.get('user')
     farm_mode = req.json.get('farm_mode')
+    network_error_chime = req.json.get('network_error_chime')
     errors_ = {}
     kwargs = {}
 
@@ -132,6 +134,9 @@ def api_settings_set(req):
             set_settings_user(user['username'], user['new_digest'])
         if farm_mode is not None:
             app.daemon.settings.printer.farm_mode = farm_mode
+        if network_error_chime is not None:
+            app.daemon.settings.printer.network_error_chime = \
+                network_error_chime
 
         if printer or user or farm_mode is not None:
             app.daemon.settings.update_sections()

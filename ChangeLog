@@ -2,6 +2,7 @@
 
 0.7.0rc4
     * Fixed printer sends info about api key change to Connect after change
+    * Added the network error beep setting to the web API
 
 0.7.0rc3 (2023-03-09)
     * Added v1 endpoints for flat filesystem structure, old struct is moved to
