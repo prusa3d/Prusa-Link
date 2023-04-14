@@ -156,89 +156,94 @@ def file_upload(req, storage, path):
     if forbidden_characters(path):
         raise conditions.ForbiddenCharacters()
 
-    allowed_types = ['application/octet-stream', 'text/x.gcode']
-
-    # If the type is unknown, it will be checked after successful upload
-    mime_type = req.mime_type or 'application/octet-stream'
-
-    if mime_type not in allowed_types:
-        raise conditions.UnsupportedMediaError()
-
-    if not req.content_length > 0:
-        raise conditions.LengthRequired()
-
     abs_path = join(get_os_path(f'/{LOCAL_STORAGE_NAME}'), path)
-    overwrite = get_boolean_header(req.headers, 'Overwrite')
 
-    if not overwrite:
-        if exists(abs_path):
-            raise conditions.FileAlreadyExists()
+    if get_boolean_header(req.headers, 'Create-Folder'):
+        Path(abs_path).mkdir(parents=True, exist_ok=True)
+    else:
+        allowed_types = ['application/octet-stream', 'text/x.gcode']
 
-    print_after_upload = get_boolean_header(req.headers, 'Print-After-Upload')
+        # If the type is unknown, it will be checked after successful upload
+        mime_type = req.mime_type or 'application/octet-stream'
 
-    uploaded = 0
-    # checksum = sha256() # - # We don't use this value yet
-
-    # Create folders within the path
-    Path(split(abs_path)[0]).mkdir(parents=True, exist_ok=True)
-
-    filename = basename(abs_path)
-    part_path = partfilepath(filename)
-
-    transfer = app.daemon.prusa_link.printer.transfer
-    transfer.start(TransferType.FROM_CLIENT, filename,
-                   to_print=print_after_upload)
-    transfer.size = req.content_length
-    transfer.start_ts = monotonic()
-
-    with open(part_path, 'w+b') as temp:
-        block = min(app.cached_size, req.content_length)
-        data = req.read(block)
-        while data:
-            if transfer.stop_ts:
-                break
-            uploaded += temp.write(data)
-            transfer.transferred = uploaded
-            # checksum.update(data) # - we don't use the value yet
-            block = min(app.cached_size, req.content_length - uploaded)
-            if block > 1:
-                data = req.read(block)
-            else:
-                data = b''
-
-    transfer.type = TransferType.NO_TRANSFER
-
-    if req.content_length > uploaded:
-        raise conditions.FileUploadFailed()
-
-    # Mine a real mime_type from the file using magic
-    if req.mime_type == 'application/octet-stream':
-        mime_type = Magic(mime=True).from_file(abs_path)
         if mime_type not in allowed_types:
-            unlink(abs_path)
             raise conditions.UnsupportedMediaError()
 
-    if not overwrite:
-        if exists(abs_path):
-            raise conditions.FileAlreadyExists()
+        if not req.content_length > 0:
+            raise conditions.LengthRequired()
 
-    replace(part_path, abs_path)
+        overwrite = get_boolean_header(req.headers, 'Overwrite')
 
-    if print_after_upload:
-        tries = 0
-        print_path = storage_display_path(storage, path)
+        if not overwrite:
+            if exists(abs_path):
+                raise conditions.FileAlreadyExists()
 
-        # Filesystem may need some time to update
-        while not app.daemon.prusa_link.printer.fs.get(print_path):
-            sleep(0.1)
-            tries += 1
-            if tries >= 10:
-                raise conditions.RequestTimeout()
-        try:
-            app.daemon.prusa_link.command_queue.do_command(
-                StartPrint(print_path, source=Source.WUI))
-        except NotStateToPrint as exception:
-            raise conditions.NotStateToPrint() from exception
+        print_after_upload = get_boolean_header(req.headers,
+                                                'Print-After-Upload')
+
+        uploaded = 0
+        # checksum = sha256() # - # We don't use this value yet
+
+        # Create folders within the path
+        Path(split(abs_path)[0]).mkdir(parents=True, exist_ok=True)
+
+        filename = basename(abs_path)
+        part_path = partfilepath(filename)
+
+        transfer = app.daemon.prusa_link.printer.transfer
+        transfer.start(TransferType.FROM_CLIENT, filename,
+                       to_print=print_after_upload)
+        transfer.size = req.content_length
+        transfer.start_ts = monotonic()
+
+        with open(part_path, 'w+b') as temp:
+            block = min(app.cached_size, req.content_length)
+            data = req.read(block)
+            while data:
+                if transfer.stop_ts:
+                    break
+                uploaded += temp.write(data)
+                transfer.transferred = uploaded
+                # checksum.update(data) # - we don't use the value yet
+                block = min(app.cached_size, req.content_length - uploaded)
+                if block > 1:
+                    data = req.read(block)
+                else:
+                    data = b''
+
+        transfer.type = TransferType.NO_TRANSFER
+
+        if req.content_length > uploaded:
+            raise conditions.FileUploadFailed()
+
+        # Mine a real mime_type from the file using magic
+        if req.mime_type == 'application/octet-stream':
+            mime_type = Magic(mime=True).from_file(abs_path)
+            if mime_type not in allowed_types:
+                unlink(abs_path)
+                raise conditions.UnsupportedMediaError()
+
+        if not overwrite:
+            if exists(abs_path):
+                raise conditions.FileAlreadyExists()
+
+        replace(part_path, abs_path)
+
+        if print_after_upload:
+            tries = 0
+            print_path = storage_display_path(storage, path)
+
+            # Filesystem may need some time to update
+            while not app.daemon.prusa_link.printer.fs.get(print_path):
+                sleep(0.1)
+                tries += 1
+                if tries >= 10:
+                    raise conditions.RequestTimeout()
+            try:
+                app.daemon.prusa_link.command_queue.do_command(
+                    StartPrint(print_path, source=Source.WUI))
+            except NotStateToPrint as exception:
+                raise conditions.NotStateToPrint() from exception
 
     return Response(status_code=state.HTTP_CREATED)
 
