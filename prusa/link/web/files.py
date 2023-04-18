@@ -69,9 +69,28 @@ def storage_info(req):
     return JSONResponse(storage_list=storage_list)
 
 
-@app.route('/api/v1/files/<storage>')
-@app.route('/api/v1/files/<storage>/')
-@app.route('/api/v1/files/<storage>/<path:re:.+(?!/raw)>')
+@app.route('/api/v1/files/<storage>', method=state.METHOD_HEAD)
+@app.route('/api/v1/files/<storage>/', method=state.METHOD_HEAD)
+@app.route('/api/v1/files/<storage>/<path:re:.+(?!/raw)>',
+           method=state.METHOD_HEAD)
+def head_file_info(req, storage, path=None):
+    """Returns headers info about specific file or folder"""
+    # pylint: disable=unused-argument
+    file_system = app.daemon.prusa_link.printer.fs
+    last_modified = get_last_modified(file_system)
+
+    # If no path is inserted, return root of the storage
+    path = storage_display_path(storage, path)
+
+    headers = make_cache_headers(last_modified)
+    headers.update(make_headers(storage, path))
+    return Response(headers=headers)
+
+
+@app.route('/api/v1/files/<storage>', method=state.METHOD_GET)
+@app.route('/api/v1/files/<storage>/', method=state.METHOD_GET)
+@app.route('/api/v1/files/<storage>/<path:re:.+(?!/raw)>',
+           method=state.METHOD_GET)
 @check_api_digest
 @check_storage
 def file_info(req, storage, path=None):
