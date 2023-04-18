@@ -1,5 +1,6 @@
 venv
 .idea
+.env
 __pycache__
 *.pyc
 build
