@@ -488,4 +488,5 @@ def api_thumbnails(req, path):
     for data in meta.thumbnails.values():
         if len(data) > len(biggest):
             biggest = data
-    return Response(decodebytes(biggest), headers=headers)
+    return Response(decodebytes(biggest), headers=headers,
+                    content_type="image/png")
