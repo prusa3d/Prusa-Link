@@ -126,6 +126,7 @@ def api_info(req):
         'name': printer_settings.name,
         'location': printer_settings.location,
         'farm_mode': printer_settings.farm_mode,
+        "network_error_chime": printer_settings.network_error_chime,
         'nozzle_diameter': printer.nozzle_diameter,
         'min_extrusion_temp': LimitsMK3S.min_temp_nozzle_e,
         'serial': printer.sn,
