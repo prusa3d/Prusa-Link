@@ -12,7 +12,7 @@
                 <div class="img-center">
                     <img src="img/printers/rpi_mk3.svg" height="200px"/>
                 </div>
-                <h3>Unfortunately we can't detect your printer on any serial port, or it's booting.</h3>
+                <h3>Unfortunately, we can’t detect your printer on any serial port, or the printer is booting.</h3>
                 <p>Please make sure the RPi port is set to ON and your printer is idle, showing the status screen. You can also try going over your connections one more time.</p>
                 <p>PrusaLink takes some time to properly initialize. Try waiting a few seconds and refresh the page. If the problem still persists, power cycle your printer / PrusaLink and try again.</p>
 
@@ -21,7 +21,7 @@
                 <div onclick="showPortsSection()" id="ports_section_show">Show more info...</div>
                 <div id="ports_section">
                         {% if wizard.daemon.prusa_link.model.serial_adapter.ports %}
-                            <h3>Below you can find a list of detected ports and its status.</h3>
+                            <h3>Below, you can find a list of detected ports and their status.</h3>
                             <p class="align-center" id="ports"></p>
                             <script>
                                 function showPortsSection() {
@@ -142,7 +142,7 @@
                         <a href="/wizard/serial" class="btn btn-outline-light">Serial Number | NEXT <img src="img/arrow-right.svg" height="16" /></a>
                     </div>
                 {% else %}
-                    <div class="col"><b>Great!</b> You can continue to setup your credentials, <b>or</b> you can restore printer settings from your <i>prusa_printer_settings.ini</i> file</div>
+                    <div class="col"><b>Great!</b> You can continue to set up your credentials, <b>or</b> you can restore printer settings from your <i>prusa_printer_settings.ini</i> file</div>
                     <br/>
                     <div class="col-xs-auto">
 
