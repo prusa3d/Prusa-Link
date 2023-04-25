@@ -7,7 +7,7 @@
 <div class="container">
   <div class="row">
     <div class="col-md-12">
-        <h1>Local settings recapitulation</h1>
+        <h1>Local Settings Summary</h1>
         {% set printer = wizard.daemon.prusa_link.printer %}
         {% set cfg = wizard.daemon.cfg %}
     </div>
@@ -97,8 +97,8 @@
             {% if wizard.restored_connect %}
                 <div>Your Prusa Connect settings was restored from configuration file</div>
             {% else %}
-            <div>Prusa Connect is a web service, where you have a complete overview of all your 3D printers at all times.</br>
-                You can link your PrusaLink with Prusa Connect <b>now</b>, using button down below.</div>
+            <div>Prusa Connect is a web service that gives you a complete overview of all your 3D printers at all times.</br>
+                 PrusaLink with Prusa Connect right <b>now</b>, using the button below.</div>
             {% endif %}
         </div>
     </div>
