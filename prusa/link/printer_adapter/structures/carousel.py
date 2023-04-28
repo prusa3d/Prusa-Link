@@ -185,14 +185,14 @@ class Carousel:
 
         self._react()
 
-    def enable(self, screen: Screen):
+    def enable(self, screen: Screen, silent=False):
         """Enables a screen, if it's a one with a greater or equal priority
         than those currently shown, it will get shown"""
         self.verify_tracked(screen)
         if screen in self.enabled_screens:
             return  # Has no effect
 
-        screen.to_chime = True
+        screen.to_chime = not silent
         self.enabled_screens.add(screen)
         self._react()
 
