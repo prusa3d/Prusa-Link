@@ -116,10 +116,7 @@ class LCDPrinter(metaclass=MCSingleton):
 
         self.notiff_event = Event()
 
-        if self.settings.printer.network_error_chime:
-            self.error_screen = Screen(chime_gcode=ERROR_CHIME)
-        else:
-            self.error_screen = Screen()
+        self.error_screen = Screen(chime_gcode=ERROR_CHIME)
 
         self.upload_screen = Screen(chime_gcode=UPLOAD_CHIME)
         self.wizard_screen = Screen(chime_gcode=WELCOME_CHIME)
@@ -233,9 +230,7 @@ class LCDPrinter(metaclass=MCSingleton):
             self.carousel.disable(self.print_screen)
 
     def _filter_http(self, error):
-        """Filter the rogue error until timeout is reached"""
-        # Again, don't let this stay here! This is wrong, bad,
-        # and it kills your kittens!
+        """Filter any network errors for the first X seconds"""
         if error is None:
             self.network_error_at = None
 
@@ -268,7 +263,18 @@ class LCDPrinter(metaclass=MCSingleton):
             self.carousel.disable(self.error_screen)
         elif error is not None and error_grace_ended:
             # An error has been discovered, tell the user what it is
-            self.carousel.enable(self.error_screen)
+            current_state = self.model.state_manager.current_state
+
+            silence_because_network = (
+                NET_TRACKER.is_tracked(error)
+                and not self.settings.printer.network_error_chime
+            )
+            silence_because_printing = current_state == State.PRINTING
+
+            self.carousel.enable(
+                screen=self.error_screen,
+                silent=silence_because_network or silence_because_printing
+            )
 
             conditions = {
                 "lan": LAN.state,
