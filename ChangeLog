@@ -1,6 +1,6 @@
 # ChangeLog
 
-0.7.0rc4
+0.7.0 (2023-05-19)
     * Fixed printer sends info about api key change to Connect after change
     * Added the network error beep setting to the web API
     * Support renaming gcodes directory (cfg and API)

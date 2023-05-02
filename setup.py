@@ -126,6 +126,7 @@ setup(
     author_email=__author_email__,
     maintainer=__author_name__,
     maintainer_email=__author_email__,
+    lincese="Freeware",
     url="https://github.com/prusa3d/Prusa-Link",
     packages=find_namespace_packages(include=['prusa.*']),
     include_package_data=True,
@@ -137,6 +138,7 @@ setup(
     classifiers=[
         "Development Status :: 4 - Beta",
         "Natural Language :: English",
+        "License :: Freeware",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 3 :: Only",
     ],
