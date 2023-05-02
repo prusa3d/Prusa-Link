@@ -565,7 +565,7 @@ def job_stop(req, job_id):
     if job.job_id != job_id:
         raise conditions.NotCurrentJob()
 
-    if printer_state == State.PRINTING \
+    if printer_state == State.PRINTING or printer_state == State.PAUSED \
             and job_data.job_state == JobState.IN_PROGRESS:
         command_queue.enqueue_command(StopPrint(source=Source.WUI))
     else:
