@@ -6,6 +6,10 @@
     * Support renaming gcodes directory (cfg and API)
     * Added a multi-instace auto config and starter utility
     * Disable error beeps during prints
+    * Static Web update
+    	- Using v1 endpoints for job and transfer
+	- Creating and Deleting folders
+	- Translation update
 
 0.7.0rc3 (2023-03-09)
     * Added v1 endpoints for flat filesystem structure, old struct is moved to
