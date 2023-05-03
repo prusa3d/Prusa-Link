@@ -660,7 +660,8 @@ def api_update_post(req, env):
         try:
             output = \
                 check_output(
-                    'pip install -U --upgrade-strategy eager prusalink',
+                    'pip install -U '
+                    '--upgrade-strategy only-if-needed prusalink',
                     shell=True, stderr=subprocess.STDOUT).decode()
 
             # No update available
