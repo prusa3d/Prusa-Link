@@ -626,8 +626,8 @@ def api_update(req, env):
     if env == "prusalink":
         try:
             output = check_output(
-                [executable, '-m', 'pip', 'install', '--dry-run', '-U',
-                 'prusalink'], stderr=subprocess.STDOUT).decode()
+                [executable, '-m', 'pip', 'install', '--no-deps', '--dry-run',
+                 '-U', 'prusalink'], stderr=subprocess.STDOUT).decode()
         # There's a problem with package installation, or it does not exist
         except CalledProcessError as exception:
             raise conditions.UnavailableUpdate(exception.output.decode()) \
