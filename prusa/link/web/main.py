@@ -660,17 +660,16 @@ def api_update_post(req, env):
         try:
             output = \
                 check_output(
-                    'pip install -U '
-                    '--upgrade-strategy only-if-needed prusalink',
-                    shell=True, stderr=subprocess.STDOUT).decode()
+                    [executable, '-m', 'pip', 'install', '-U',
+                     '--upgrade-strategy', 'only-if-needed', 'prusalink'],
+                    stderr=subprocess.STDOUT).decode()
 
             # No update available
-            if "Requirement already satisfied" in output:
+            if "Installing collected packages" not in output:
                 return Response(status_code=state.HTTP_NO_CONTENT)
 
             # New version was installed correctly - restart PrusaLink
-            with subprocess.Popen(['prusalink', 'restart'], close_fds=True):
-                pass
+            app.daemon.restart([])
             return Response(status_code=state.HTTP_OK)
 
         # There's a problem with package installation, or it does not exist

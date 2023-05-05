@@ -92,12 +92,13 @@ class Daemon:
     @staticmethod
     def restart(argv: List):
         """Restart prusa link by command line tool."""
-        with Popen(['prusa-link', 'restart'] + argv,
-                   start_new_session=True,
-                   stdin=sys.stdin,
-                   stdout=sys.stdout,
-                   stderr=sys.stderr):
-            pass
+        # pylint: disable=consider-using-with
+        Popen([sys.executable, '-m', 'prusa.link', 'restart'] + argv,
+              start_new_session=True,
+              stdin=sys.stdin,
+              stdout=sys.stdout,
+              stderr=sys.stderr,
+              close_fds=True)
 
     def sigterm(self, signum, frame):
         """Raise KeyboardInterrupt exceptions in threads."""
