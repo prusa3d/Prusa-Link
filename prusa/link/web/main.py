@@ -668,7 +668,9 @@ def api_update_post(req, env):
             if "Requirement already satisfied" in output:
                 return Response(status_code=state.HTTP_NO_CONTENT)
 
-            # New version was installed correctly
+            # New version was installed correctly - restart PrusaLink
+            with subprocess.Popen(['prusalink', 'restart'], close_fds=True):
+                pass
             return Response(status_code=state.HTTP_OK)
 
         # There's a problem with package installation, or it does not exist
