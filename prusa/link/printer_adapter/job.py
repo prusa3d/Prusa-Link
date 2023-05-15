@@ -108,7 +108,7 @@ class Job(metaclass=MCSingleton):
         self.data.path_incomplete = True
         self.data.inbuilt_reporting = None
         self.change_state(JobState.IDLE)
-        log.debug("Job ended")
+        log.info("Job ended")
         self.job_id_updated_signal.send(self,
                                         job_id=self.data.get_job_id_for_api())
 
