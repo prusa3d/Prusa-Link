@@ -34,8 +34,9 @@ class FilePrinter(metaclass=MCSingleton):
     """
 
     # pylint: disable=too-many-arguments
-    def __init__(self, serial_queue: SerialQueue, serial_parser: ThreadedSerialParser,
-                 model: Model, cfg: Config, print_stats: PrintStats) -> None:
+    def __init__(self, serial_queue: SerialQueue,
+                 serial_parser: ThreadedSerialParser, model: Model,
+                 cfg: Config, print_stats: PrintStats) -> None:
         self.serial_queue = serial_queue
         self.serial_parser = serial_parser
         self.print_stats = print_stats
@@ -62,10 +63,10 @@ class FilePrinter(metaclass=MCSingleton):
 
         self.serial_parser.add_decoupled_handler(
             POWER_PANIC_REGEX, lambda sender, match: self.power_panic())
-        self.serial_parser.add_decoupled_handler(CANCEL_REGEX,
-                                       lambda sender, match: self.stop_print())
-        self.serial_parser.add_decoupled_handler(RESUMED_REGEX,
-                                       lambda sender, match: self.resume())
+        self.serial_parser.add_decoupled_handler(
+            CANCEL_REGEX, lambda sender, match: self.stop_print())
+        self.serial_parser.add_decoupled_handler(
+            RESUMED_REGEX, lambda sender, match: self.resume())
 
         self.thread: Optional[Thread] = None
 
@@ -185,6 +186,8 @@ class FilePrinter(metaclass=MCSingleton):
                 self.print_stopped_signal.send(self)
             else:
                 self.print_finished_signal.send(self)
+
+            self.print_stats.reset_stats()
 
     def print_gcode(self, gcode):
         """Sends a gcode to print, keeps a small buffer of gcodes

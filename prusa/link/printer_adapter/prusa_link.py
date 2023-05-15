@@ -679,9 +679,15 @@ class PrusaLink:
         self.job.process_mixed_path(path)
 
     def _reset_print_stats(self) -> None:
-        """Reset print stats on the printer to say -1"""
+        """Reset print stats on the printer and in telemetry"""
         gcode = get_print_stats_gcode()
         enqueue_instruction(self.serial_queue, gcode)
+
+        self.telemetry_passer.set_telemetry(Telemetry(
+            time_printing=0,
+            time_remaining=0,
+            filament_change_in=0
+        ))
 
     def file_printer_started_printing(self, _) -> None:
         """Tells the state manager about a new print job starting"""
