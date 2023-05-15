@@ -4,7 +4,7 @@ import logging
 from math import inf
 from multiprocessing import Event
 from queue import Empty, PriorityQueue, Queue
-from threading import RLock, Thread, current_thread
+from threading import RLock, Thread
 from time import time
 from typing import Any, Callable, Iterable, Optional, Set
 
@@ -291,10 +291,6 @@ class ItemUpdater:
         Forcefully re-schedules invalidation. This can be used to enable
         polling, when auto reporting stops for example
         """
-        # pylint: disable=deprecated-method
-        if current_thread() != self.refresher_thread:
-            log.warning("Set called from a foreign thread: %s",
-                        current_thread().name)
 
         self._validate_is_tracked(item)
 

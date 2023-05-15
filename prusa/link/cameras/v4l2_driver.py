@@ -416,7 +416,7 @@ class V4L2Driver(CameraDriver):
                 continue
             else:
                 camera_id = " ".join((name, serial))
-                log.info("Camera id is %s", camera_id)
+                log.debug("Camera id is %s", camera_id)
                 available[camera_id] = {
                     "path": path,
                     "name": name

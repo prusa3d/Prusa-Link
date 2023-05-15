@@ -91,7 +91,7 @@ class PiCameraDriver(CameraDriver):
                 if str(name) == "Model":
                     model = value
                     break
-            log.info("picamera found model: %s", model)
+            log.debug("picamera found model: %s", model)
             if model in PICAMERA_MODELS:
                 available[camera.id] = {
                     "id_string": camera.id,
