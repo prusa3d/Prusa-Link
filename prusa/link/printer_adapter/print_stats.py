@@ -33,9 +33,7 @@ class PrintStats:
         reporting
         :param file_path: path of the file to analyze
         """
-        self.data.total_gcode_count = 0
-        self.data.print_time = 0
-        self.data.has_inbuilt_stats = False
+        self.reset_stats()
 
         with open(file_path, encoding='utf-8') as gcode_file:
             for line in gcode_file:
@@ -49,6 +47,12 @@ class PrintStats:
         log.info(
             "New file analyzed. It %s inbuilt percent and time reporting.",
             'has' if self.data.has_inbuilt_stats else 'does not have')
+
+    def reset_stats(self):
+        """resets the tracked print stats"""
+        self.data.total_gcode_count = 0
+        self.data.print_time = 0
+        self.data.has_inbuilt_stats = False
 
     def end_time_segment(self):
         """
