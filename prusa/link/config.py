@@ -68,6 +68,23 @@ class Model(dict):
         return Model(cfg.get_section(name, options))
 
 
+class FakeArgs:
+    """Fake arguments for the config.py component"""
+
+    def __init__(self, path):
+        self.config = path
+        self.debug = False
+        self.foreground = True
+        self.pidfile = None
+        self.module_log_level = None
+        self.address = None
+        self.tcp_port = None
+        self.link_info = None
+        self.serial_port = None
+        self.debug = False
+        self.info = False
+
+
 class Config(Get):
     """This class handles prusalink.ini configuration file."""
     # pylint: disable=too-many-branches

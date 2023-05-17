@@ -7,7 +7,7 @@ from socket import gethostname
 from subprocess import CalledProcessError, check_output
 from sys import executable, version
 
-from pkg_resources import working_set
+from pkg_resources import working_set  # type: ignore
 from poorwsgi import state
 from poorwsgi.digest import check_digest
 from poorwsgi.response import (

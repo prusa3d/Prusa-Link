@@ -3,6 +3,7 @@ import datetime
 import logging
 import multiprocessing
 import os
+import pwd
 import socket
 import typing
 from hashlib import sha256
@@ -88,10 +89,14 @@ def get_clean_path(path):
     return str(Path(path))
 
 
-def ensure_directory(directory):
+def ensure_directory(directory, chown_username=None):
     """If missing, makes directories, along the supplied path"""
     if not os.path.exists(directory):
         os.makedirs(directory)
+        if chown_username is None:
+            return
+        user_info = pwd.getpwnam(chown_username)
+        os.chown(directory, user_info.pw_uid, user_info.pw_gid)
 
 
 def get_checksum(message: str):

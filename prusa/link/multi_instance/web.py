@@ -3,21 +3,21 @@ import logging
 from hashlib import sha256
 from multiprocessing import Lock
 from typing import Optional
+from wsgiref.simple_server import make_server
 
 from time import monotonic
 
 import urllib3  # type: ignore
-import prctl  # type: ignore
 from poorwsgi import Application
 from poorwsgi.state import METHOD_ALL
 from poorwsgi.response import JSONResponse, GeneratorResponse
 from inotify_simple import INotify, flags  # type: ignore
 
-from ..config import Config
-from .multi_instance import MultiInstanceConfig, \
-    FakeArgs, MULTI_INSTANCE_CONFIG_PATH
+from .config_component import MultiInstanceConfig
+from .const import MULTI_INSTANCE_CONFIG_PATH
+from ..config import Config, FakeArgs
 from ..web.errors import not_found
-from ..web import run_server
+from ..web import ThreadingServer, RequestHandler
 from ..web.lib.core import STATIC_DIR
 from ..web.lib.view import generate_page
 
@@ -86,16 +86,16 @@ app.document_root = STATIC_DIR
 app.debug = True
 
 
-def run_multi_instance_server(port):
-    """Run the multi instance manager server"""
-    prctl.set_name("plmi#web")
-
+def get_server_instance(port):
+    """Returns an instance of the instance manager web server"""
     app.info_keeper = InfoKeeper(MULTI_INSTANCE_CONFIG_PATH)
-
-    log.info('Starting server for http://%s:%d', ADDRESS,
-             port)
-
-    run_server(ADDRESS, port, app, exit_on_error=False)
+    log.info('Starting server for http://%s:%d', ADDRESS, port)
+    httpd = make_server(ADDRESS,
+                        port,
+                        app,
+                        server_class=ThreadingServer,
+                        handler_class=RequestHandler)
+    return httpd
 
 
 @app.route('/')
@@ -179,4 +179,4 @@ def proxy(req, printer_number, path):
     return not_found(req)
 
 
-__all__ = ["app", "run_multi_instance_server"]
+__all__ = ["app", "get_server_instance"]

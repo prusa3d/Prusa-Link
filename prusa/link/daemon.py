@@ -1,6 +1,7 @@
 """Daemon class implementation."""
-import ctypes
 import logging
+from threading import Thread
+
 import sys
 from subprocess import Popen
 from typing import List
@@ -10,29 +11,9 @@ import prctl  # type: ignore
 from .config import Settings
 from .printer_adapter import prusa_link
 from .printer_adapter.prusa_link import PrusaLink
-from .printer_adapter.updatable import Thread
-from .web import run_http
+from .web import WebServer
 
 log = logging.getLogger(__name__)
-
-
-class ExThread(Thread):
-    """threading.Thread with raise_exception method."""
-    def raise_exception(self, exc):
-        """Raise exception in thread."""
-        if not self.is_alive():
-            log.info("Thread %s is not alive", self.name)
-            return
-
-        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(
-            ctypes.c_long(self.ident), ctypes.py_object(exc))
-        if res == 0:
-            log.error("Invalid thread id for %s", self.name)
-            raise ValueError("Invalid thread id")
-        if res > 1:
-            ctypes.pythonapi.PyThreadState_SetAsyncExc(self.ident, 0)
-            log.error("Exception raise failure for %s", self.name)
-            raise RuntimeError('Exception raise failure')
 
 
 class Daemon:
@@ -57,9 +38,7 @@ class Daemon:
 
         prctl.set_name("pl#main")
         self.settings = Settings(self.cfg.printer.settings)
-        self.http = ExThread(target=run_http,
-                             args=(self, not daemon),
-                             name="http")
+        self.http = WebServer(self, not daemon)
 
         if self.settings.service_local.enable:
             self.http.start()
@@ -70,8 +49,7 @@ class Daemon:
             self.prusa_link = PrusaLink(self.cfg, self.settings)
         except Exception:  # pylint: disable=broad-except
             adapter_logger.exception("Adapter was not start")
-            self.http.raise_exception(KeyboardInterrupt)
-            self.http.join()
+            self.http.stop()
             return 1
 
         try:
@@ -81,12 +59,11 @@ class Daemon:
             adapter_logger.info('Keyboard interrupt')
             adapter_logger.info("Shutdown adapter")
             self.prusa_link.stop()
-            self.http.raise_exception(KeyboardInterrupt)
-            self.http.join()
+            self.http.stop()
             return 0
         except Exception:  # pylint: disable=broad-except
             adapter_logger.exception("Unknown Exception")
-            self.http.raise_exception(KeyboardInterrupt)
+            self.http.stop()
             return 1
 
     @staticmethod
@@ -100,9 +77,13 @@ class Daemon:
               stderr=sys.stderr,
               close_fds=True)
 
-    def sigterm(self, signum, frame):
+    def sigterm(self, *_):
         """Raise KeyboardInterrupt exceptions in threads."""
-        # pylint: disable=unused-argument
-        self.http.raise_exception(KeyboardInterrupt)
-        if self.prusa_link:
-            self.prusa_link.stop()
+        def inner():
+            self.http.stop()
+            if self.prusa_link:
+                self.prusa_link.stop()
+            log.warning("Shutdown complete")
+
+        log.info("SIGTERM received, shutting down PrusaLink")
+        Thread(target=inner, daemon=False).start()
