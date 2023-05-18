@@ -103,6 +103,6 @@ class Daemon:
     def sigterm(self, signum, frame):
         """Raise KeyboardInterrupt exceptions in threads."""
         # pylint: disable=unused-argument
+        self.http.raise_exception(KeyboardInterrupt)
         if self.prusa_link:
             self.prusa_link.stop()
-        self.http.raise_exception(KeyboardInterrupt)
