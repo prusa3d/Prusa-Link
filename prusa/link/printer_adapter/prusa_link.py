@@ -184,9 +184,9 @@ class PrusaLink:
                                                 self.lcd_printer)
 
         # Set Transfer callbacks
-        self.printer.transfer.started_cb = self.lcd_printer.notify
-        self.printer.transfer.progress_cb = self.lcd_printer.notify
-        self.printer.transfer.stopped_cb = self.lcd_printer.notify
+        self.printer.transfer.started_cb = self.transfer_activity_observed
+        self.printer.transfer.progress_cb = self.transfer_activity_observed
+        self.printer.transfer.stopped_cb = self.transfer_activity_observed
         for state in ROOT_COND:
             state.add_broke_handler(lambda *_: self.lcd_printer.notify())
             state.add_fixed_handler(lambda *_: self.lcd_printer.notify())
@@ -879,6 +879,11 @@ class PrusaLink:
     def connection_renewed(self, *_) -> None:
         """Reacts to the connection with connect being ok again"""
         self.telemetry_passer.resend_latest_telemetry()
+
+    def transfer_activity_observed(self, *_) -> None:
+        """Notifies PrusaLink components about a transfer happening"""
+        self.telemetry_passer.activity_observed()
+        self.lcd_printer.notify()
 
     def log_tm_error(self, _, match: re.Match) -> None:
         """Logs the temperature model errors"""
