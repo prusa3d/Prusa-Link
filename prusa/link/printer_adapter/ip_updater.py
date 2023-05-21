@@ -91,7 +91,7 @@ class IPUpdater(ThreadedUpdatable):
                 if card_info is None:
                     continue
             ssid_bytes = card_info["ssid"]
-            ssid = ssid_bytes.decode("ASCII")
+            ssid = ssid_bytes.decode()
 
         self.data.ssid = ssid
         self.data.is_wireless = is_wireless
