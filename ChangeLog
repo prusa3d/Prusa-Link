@@ -1,4 +1,6 @@
 # ChangeLog
+Dev
+    * Fix printer returning to READY instead of IDLE
 
 0.7.1dev0
     * Fixed HTTP response status on HEAD request for non-existing files
