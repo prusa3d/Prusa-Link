@@ -709,6 +709,11 @@ class StateManager(metaclass=MCSingleton):
                 self.data.override_state is not State.ATTENTION:
             self.data.printing_state = None
 
+            # Make sure that if we just finished a print, or we stopped one,
+            # we return to IDLE
+            if self.data.base_state == State.READY:
+                self.data.base_state = State.IDLE
+
         self._clear_attention()
 
     def _attention_timer_handler(self):
