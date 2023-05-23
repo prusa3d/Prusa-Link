@@ -98,6 +98,10 @@ def head_file_info(req, storage, path=None):
     # If no path is inserted, return root of the storage
     path = storage_display_path(storage, path)
 
+    file = file_system.get(path)
+    if not file:
+        raise conditions.FileNotFound()
+
     headers = make_cache_headers(last_modified)
     headers.update(make_headers(storage, path))
     return Response(headers=headers)
