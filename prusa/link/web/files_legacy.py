@@ -311,7 +311,7 @@ def api_file_info(req, storage, path):
         meta = FDMMetaData(path)
         meta.load_from_path(path)
         result['refs'] = sdcard_refs()
-        result['ro'] = True
+        result['read_only'] = True
 
     headers = make_headers(storage, path)
 
