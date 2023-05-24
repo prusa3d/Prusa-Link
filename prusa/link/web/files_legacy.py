@@ -3,8 +3,16 @@ This is a deprecated legacy code"""
 import logging
 from base64 import decodebytes
 from os import makedirs, replace, unlink
-from os.path import abspath, basename, dirname, exists, getctime, getsize, \
-    join, isdir
+from os.path import (
+    abspath,
+    basename,
+    dirname,
+    exists,
+    getctime,
+    getsize,
+    isdir,
+    join,
+)
 from shutil import move, rmtree
 
 import validators  # type: ignore
@@ -12,24 +20,40 @@ from poorwsgi import state
 from poorwsgi.request import FieldStorage
 from poorwsgi.response import FileResponse, JSONResponse, Response
 from poorwsgi.results import hbytes
+
 from prusa.connect.printer import const
 from prusa.connect.printer.const import Source
-from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 from prusa.connect.printer.download import forbidden_characters
+from prusa.connect.printer.metadata import FDMMetaData, get_metadata
 
 from .. import conditions
 from ..const import PATH_WAIT_TIMEOUT
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.job import Job, JobState
 from ..printer_adapter.prusa_link import TransferCallbackState
-from .lib.files import check_storage, check_os_path, check_read_only, \
-    callback_factory, check_foldername, check_filename, partfilepath
 from .lib.auth import check_api_digest
 from .lib.core import app
-from .lib.files import (file_to_api, gcode_analysis, get_os_path, local_refs,
-                        sdcard_refs, sort_files, make_headers, check_job,
-                        storage_display_path, get_last_modified,
-                        make_cache_headers, check_cache_headers)
+from .lib.files import (
+    callback_factory,
+    check_cache_headers,
+    check_filename,
+    check_foldername,
+    check_job,
+    check_os_path,
+    check_read_only,
+    check_storage,
+    file_to_api,
+    gcode_analysis,
+    get_last_modified,
+    get_os_path,
+    local_refs,
+    make_cache_headers,
+    make_headers,
+    partfilepath,
+    sdcard_refs,
+    sort_files,
+    storage_display_path,
+)
 
 log = logging.getLogger(__name__)
 
@@ -331,7 +355,7 @@ def api_transfer_info(req):
                 and round(transfer.progress / 100, 4),
                 "remaining_time": transfer.time_remaining(),
                 "to_select": transfer.to_select,
-                "to_print": transfer.to_print
+                "to_print": transfer.to_print,
             })
     return Response(status_code=state.HTTP_NO_CONTENT)
 

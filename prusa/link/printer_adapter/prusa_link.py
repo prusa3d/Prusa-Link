@@ -5,26 +5,33 @@ import re
 from enum import Enum
 from threading import Event
 from threading import enumerate as enumerate_threads
-from typing import Any, Dict, Optional, List, Type
+from typing import Any, Dict, List, Optional, Type
 
 from prusa.connect.printer import Command as SDKCommand
 from prusa.connect.printer import DownloadMgr
+from prusa.connect.printer.camera_configurator import CameraConfigurator
 from prusa.connect.printer.camera_driver import CameraDriver
 from prusa.connect.printer.conditions import API, CondState
 from prusa.connect.printer.const import Command as CommandType
 from prusa.connect.printer.const import Event as EventType
-from prusa.connect.printer.camera_configurator import CameraConfigurator
 from prusa.connect.printer.const import Source, State
 from prusa.connect.printer.files import File
 from prusa.connect.printer.models import Sheet as SDKSheet
+
 from ..camera_governor import CameraGovernor
-from ..cameras.v4l2_driver import V4L2Driver
 from ..cameras.picamera_driver import PiCameraDriver
+from ..cameras.v4l2_driver import V4L2Driver
 from ..conditions import HW, ROOT_COND, UPGRADED, use_connect_errors
 from ..config import Config, Settings
-from ..const import (BASE_STATES, MK25_PRINTERS, PATH_WAIT_TIMEOUT,
-                     PRINTER_CONF_TYPES, PRINTER_TYPES, PRINTING_STATES,
-                     SD_STORAGE_NAME)
+from ..const import (
+    BASE_STATES,
+    MK25_PRINTERS,
+    PATH_WAIT_TIMEOUT,
+    PRINTER_CONF_TYPES,
+    PRINTER_TYPES,
+    PRINTING_STATES,
+    SD_STORAGE_NAME,
+)
 from ..interesting_logger import InterestingLogRotator
 from ..sdk_augmentation.printer import MyPrinter
 from ..serial.helpers import enqueue_instruction, enqueue_matchable
@@ -33,12 +40,26 @@ from ..serial.serial_adapter import SerialAdapter
 from ..serial.serial_parser import ThreadedSerialParser
 from ..serial.serial_queue import MonitoredSerialQueue
 from ..service_discovery import ServiceDiscovery
-from ..util import get_print_stats_gcode, make_fingerprint, is_potato_cpu
+from ..util import (
+    get_print_stats_gcode,
+    is_potato_cpu,
+    make_fingerprint,
+    prctl_name,
+)
 from .auto_telemetry import AutoTelemetry
-from .command_handlers import (CancelReady, ExecuteGcode, JobInfo,
-                               LoadFilament, PausePrint, ResetPrinter,
-                               ResumePrint, SetReady, StartPrint, StopPrint,
-                               UnloadFilament)
+from .command_handlers import (
+    CancelReady,
+    ExecuteGcode,
+    JobInfo,
+    LoadFilament,
+    PausePrint,
+    ResetPrinter,
+    ResumePrint,
+    SetReady,
+    StartPrint,
+    StopPrint,
+    UnloadFilament,
+)
 from .command_queue import CommandQueue, CommandResult
 from .file_printer import FilePrinter
 from .filesystem.sd_card import SDState
@@ -55,14 +76,15 @@ from .state_manager import StateChange, StateManager
 from .structures.item_updater import WatchedItem
 from .structures.model_classes import PrintState, Telemetry
 from .structures.module_data_classes import Sheet
-from .structures.regular_expressions import (MBL_TRIGGER_REGEX,
-                                             PAUSE_PRINT_REGEX,
-                                             PRINTER_BOOT_REGEX,
-                                             RESUME_PRINT_REGEX,
-                                             TM_ERROR_LOG_REGEX)
+from .structures.regular_expressions import (
+    MBL_TRIGGER_REGEX,
+    PAUSE_PRINT_REGEX,
+    PRINTER_BOOT_REGEX,
+    RESUME_PRINT_REGEX,
+    TM_ERROR_LOG_REGEX,
+)
 from .telemetry_passer import TelemetryPasser
 from .updatable import Thread
-from ..util import prctl_name
 
 log = logging.getLogger(__name__)
 
@@ -121,7 +143,7 @@ class PrusaLink:
             config_file_path=self.cfg.printer.settings,
             camera_controller=self.printer.camera_controller,
             drivers=drivers,
-            auto_detect=self.cfg.cameras.auto_detect
+            auto_detect=self.cfg.cameras.auto_detect,
         )
         self.camera_governor = CameraGovernor(self.camera_configurator,
                                               self.printer.camera_controller)
@@ -552,7 +574,7 @@ class PrusaLink:
         for sheet in printer_sheets:
             sdk_sheets.append({
                 "name": sheet.name,
-                "z_offset": sheet.z_offset
+                "z_offset": sheet.z_offset,
             })
         self.printer.sheet_settings = sdk_sheets
         self.printer.event_cb(event=EventType.INFO,
@@ -686,7 +708,7 @@ class PrusaLink:
         self.telemetry_passer.set_telemetry(Telemetry(
             time_printing=0,
             time_remaining=0,
-            filament_change_in=0
+            filament_change_in=0,
         ))
 
     def file_printer_started_printing(self, _) -> None:

@@ -8,7 +8,6 @@ import typing
 from hashlib import sha256
 from pathlib import Path
 from threading import Event, current_thread
-
 from time import time
 from typing import Callable, Union
 

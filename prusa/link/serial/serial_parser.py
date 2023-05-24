@@ -12,7 +12,7 @@ import re
 from functools import partial
 from queue import Queue
 from threading import Lock, Thread
-from typing import Any, Callable, Dict, Union, Optional, Match
+from typing import Any, Callable, Dict, Match, Optional, Union
 
 from blinker import Signal  # type: ignore
 from sortedcontainers import SortedKeyList  # type: ignore

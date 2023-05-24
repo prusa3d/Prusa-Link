@@ -11,8 +11,13 @@ from typing import List, Set
 from blinker import Signal  # type: ignore
 
 from ...config import Config
-from ...const import (BLACKLISTED_NAMES, BLACKLISTED_PATHS, BLACKLISTED_TYPES,
-                      DIR_RESCAN_INTERVAL, QUIT_INTERVAL)
+from ...const import (
+    BLACKLISTED_NAMES,
+    BLACKLISTED_PATHS,
+    BLACKLISTED_TYPES,
+    DIR_RESCAN_INTERVAL,
+    QUIT_INTERVAL,
+)
 from ...util import ensure_directory, get_clean_path
 from ..model import Model
 from ..structures.module_data_classes import StorageData

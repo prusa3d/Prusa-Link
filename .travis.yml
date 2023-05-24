@@ -1,8 +1,11 @@
 ---
+dist: bionic
+
 language: python
 
 python:
  - "3.9"
+ - "3.11"
 
 git:
  submodules: false
@@ -14,9 +17,10 @@ install:
  - pip3 install git+https://github.com/prusa3d/Prusa-Connect-SDK-Printer.git@master#egg=prusa.connect.sdk.printer
  - pip3 install -U -r requirements.txt
  - pip3 install -U types-pkg_resources
- - pip3 install -U pytest pytest-pylint pytest-doctestplus pytest-mypy mock
+ - pip3 install -U ruff pytest pytest-pylint pytest-doctestplus pytest-mypy mock
 
 script:
+  - ruff check .
   - PYTHONPATH=`pwd` pytest -v --mypy --pylint --doctest-plus --doctest-rst prusa/link
   - PYTHONPATH=`pwd` pytest -v --mypy --pylint --doctest-plus --doctest-rst tests
 

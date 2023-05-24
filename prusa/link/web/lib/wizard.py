@@ -5,14 +5,19 @@ from threading import Event
 from urllib.request import urlopen
 
 from poorwsgi.digest import hexdigest
-from prusa.connect.printer import Printer, CondState
-from ...conditions import UPGRADED
 
+from prusa.connect.printer import CondState, Printer
+
+from ...conditions import UPGRADED
 from ...const import PRINTER_CONF_TYPES
 from ...printer_adapter.printer_polling import PrinterPolling
 from ...printer_adapter.structures.item_updater import WatchedItem
 from ...printer_adapter.structures.regular_expressions import (
-    NEW_SN_REGEX, VALID_PASSWORD_REGEX, VALID_SN_REGEX, VALID_USERNAME_REGEX)
+    NEW_SN_REGEX,
+    VALID_PASSWORD_REGEX,
+    VALID_SN_REGEX,
+    VALID_USERNAME_REGEX,
+)
 from ...serial.helpers import enqueue_instruction
 from ..lib.auth import REALM
 from ..lib.core import app

@@ -7,9 +7,15 @@ from typing import Optional
 
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, TextResponse
-from prusa.connect.printer.conditions import (COND_TRACKER, HTTP, INTERNET,
-                                              TOKEN, Condition,
-                                              ConditionTracker)
+
+from prusa.connect.printer.conditions import (
+    COND_TRACKER,
+    HTTP,
+    INTERNET,
+    TOKEN,
+    Condition,
+    ConditionTracker,
+)
 
 from .config import Settings
 
@@ -147,7 +153,7 @@ class LinkError(RuntimeError):
         """Return JSONResponse for error."""
         kwargs = {
             "title": self.title,
-            "message": self.text
+            "message": self.text,
         }
         if self.url:
             kwargs['url'] = self.url

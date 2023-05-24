@@ -4,7 +4,7 @@ import math
 from collections import deque
 from copy import copy
 from time import time
-from typing import Deque, List, Set, Optional
+from typing import Deque, List, Optional, Set
 
 
 class LCDLine:

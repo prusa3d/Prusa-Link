@@ -1,30 +1,41 @@
 """Contains implementation of a driver for Rpi Cameras"""
-from time import time
-
-import select
 import gc
 import logging
-
-from typing import Dict, Optional, Callable, Any
+import select
+from time import time
+from typing import Any, Callable, Dict, Optional
 
 from prusa.connect.printer.camera import Resolution
 from prusa.connect.printer.camera_driver import CameraDriver
-from prusa.connect.printer.const import CapabilityType, NotSupported, \
-    CAMERA_WAIT_TIMEOUT
+from prusa.connect.printer.const import (
+    CAMERA_WAIT_TIMEOUT,
+    CapabilityType,
+    NotSupported,
+)
 
-from . import v4l2
-from .encoders import MJPEGEncoder, BufferDetails, \
-    get_appropriate_encoder
 from ..util import is_potato_cpu, prctl_name
+from . import v4l2
+from .encoders import BufferDetails, MJPEGEncoder, get_appropriate_encoder
 
 log = logging.getLogger(__name__)
 
 PICAMERA_SUPPORTED = False
 try:
     from libcamera import (  # type: ignore
-        CameraManager, Camera,
-        StreamConfiguration, Stream, StreamFormats, StreamRole, PixelFormat,
-        Request, Size, FrameBufferAllocator, controls, Rectangle, ControlId)
+        Camera,
+        CameraManager,
+        ControlId,
+        FrameBufferAllocator,
+        PixelFormat,
+        Rectangle,
+        Request,
+        Size,
+        Stream,
+        StreamConfiguration,
+        StreamFormats,
+        StreamRole,
+        controls,
+    )
 except ImportError:
     CameraManager = Camera = StreamConfiguration = Stream = StreamFormats = \
         StreamRole = PixelFormat = Request = Size = FrameBufferAllocator = \
@@ -190,7 +201,7 @@ class PiCameraDriver(CameraDriver):
         self._capabilities = ({
             CapabilityType.TRIGGER_SCHEME,
             CapabilityType.IMAGING,
-            CapabilityType.RESOLUTION
+            CapabilityType.RESOLUTION,
         })
 
         if controls.LensPosition in self.camera.controls:

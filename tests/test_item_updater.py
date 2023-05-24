@@ -12,7 +12,10 @@ from unittest.mock import Mock
 import pytest
 
 from prusa.link.printer_adapter.structures.item_updater import (  # type:ignore
-    ItemUpdater, WatchedGroup, WatchedItem)
+    ItemUpdater,
+    WatchedGroup,
+    WatchedItem,
+)
 
 logging.basicConfig(level="DEBUG")
 
@@ -240,7 +243,7 @@ def test_scheduled_invalidation(updater_instance: ItemUpdater):
 
     group_valid = EventSetMock(spec={})
     watched_group = WatchedGroup([
-        item_1, item_2, item_3, item_4, item_5, item_6, item_7, item_8, item_9
+        item_1, item_2, item_3, item_4, item_5, item_6, item_7, item_8, item_9,
     ])
     watched_group.became_valid_signal.connect(group_valid)
 
@@ -630,7 +633,7 @@ def test_group_updating(updater_instance: ItemUpdater):
     updater_instance.add_item(item, start_tracking=False)
     group = WatchedGroup([item])
     item.became_valid_signal.connect(
-        lambda _: updater_instance.invalidate_group(group), weak=False
+        lambda _: updater_instance.invalidate_group(group), weak=False,
     )
     for _ in range(100):
         updater_instance.invalidate(item)

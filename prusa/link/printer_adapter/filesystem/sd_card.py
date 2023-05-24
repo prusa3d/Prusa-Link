@@ -10,13 +10,21 @@ from time import time
 from typing import Optional
 
 from blinker import Signal  # type: ignore
+
 from prusa.connect.printer.const import State
 
-from ...const import (MAX_FILENAME_LENGTH, SD_INTERVAL, SD_STORAGE_NAME,
-                      SFN_TO_LFN_EXTENSIONS)
+from ...const import (
+    MAX_FILENAME_LENGTH,
+    SD_INTERVAL,
+    SD_STORAGE_NAME,
+    SFN_TO_LFN_EXTENSIONS,
+)
 from ...sdk_augmentation.file import SDFile
-from ...serial.helpers import (enqueue_list_from_str, enqueue_matchable,
-                               wait_for_instruction)
+from ...serial.helpers import (
+    enqueue_list_from_str,
+    enqueue_matchable,
+    wait_for_instruction,
+)
 from ...serial.serial_parser import ThreadedSerialParser
 from ...serial.serial_queue import SerialQueue
 from ...util import fat_datetime_to_tuple
@@ -24,9 +32,12 @@ from ..model import Model
 from ..state_manager import StateManager
 from ..structures.model_classes import SDState
 from ..structures.module_data_classes import SDCardData
-from ..structures.regular_expressions import (CONFIRMATION_REGEX, LFN_CAPTURE,
-                                              SD_EJECTED_REGEX,
-                                              SD_PRESENT_REGEX)
+from ..structures.regular_expressions import (
+    CONFIRMATION_REGEX,
+    LFN_CAPTURE,
+    SD_EJECTED_REGEX,
+    SD_PRESENT_REGEX,
+)
 from ..updatable import ThreadedUpdatable
 
 log = logging.getLogger(__name__)

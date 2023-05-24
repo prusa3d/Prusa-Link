@@ -12,32 +12,51 @@ from time import time
 from typing import Callable
 
 import unidecode
+
 from prusa.connect.printer import Printer
-from prusa.connect.printer.conditions import (API, COND_TRACKER, HTTP,
-                                              INTERNET, TOKEN)
+from prusa.connect.printer.conditions import (
+    API,
+    COND_TRACKER,
+    HTTP,
+    INTERNET,
+    TOKEN,
+)
 from prusa.connect.printer.const import State, TransferType
 
-from ..conditions import DEVICE, FW, ID, JOB_ID, LAN, PHY, SN, UPGRADED, \
-    NET_TRACKER
+from ..conditions import (
+    DEVICE,
+    FW,
+    ID,
+    JOB_ID,
+    LAN,
+    NET_TRACKER,
+    PHY,
+    SN,
+    UPGRADED,
+)
 from ..config import Settings
-from ..const import (FW_MESSAGE_TIMEOUT, PRINTING_STATES, QUIT_INTERVAL,
-                     SLEEP_SCREEN_TIMEOUT)
+from ..const import (
+    FW_MESSAGE_TIMEOUT,
+    PRINTING_STATES,
+    QUIT_INTERVAL,
+    SLEEP_SCREEN_TIMEOUT,
+)
 from ..serial.helpers import enqueue_instruction, wait_for_instruction
 from ..serial.serial_parser import ThreadedSerialParser
 from ..serial.serial_queue import SerialQueue
+from ..util import prctl_name
 from .model import Model
 from .structures.carousel import Carousel, LCDLine, Screen
 from .structures.mc_singleton import MCSingleton
 from .structures.model_classes import JobState
 from .structures.regular_expressions import LCD_UPDATE_REGEX
 from .updatable import Thread
-from ..util import prctl_name
 
 log = logging.getLogger(__name__)
 
 WELCOME_CHIME = [
     "M300 P100 S3200", "M300 P25 S0", "M300 P25 S4800", "M300 P75 S0",
-    "M300 P25 S4800"
+    "M300 P25 S4800",
 ]
 
 ERROR_CHIME = ["M300 P600 S5"]
@@ -56,13 +75,13 @@ ERROR_MESSAGES = {
     INTERNET: "No Internet access",
     LAN: "No LAN access",
     PHY: "No usable NIC",
-    DEVICE: "No network hardware"
+    DEVICE: "No network hardware",
 }
 
 FROM_TRANSFER_TYPES = {
     TransferType.FROM_PRINTER, TransferType.FROM_WEB,
     TransferType.FROM_CONNECT, TransferType.FROM_CLIENT,
-    TransferType.FROM_SLICER
+    TransferType.FROM_SLICER,
 }
 
 TO_TRANSFER_TYPES = {TransferType.TO_CONNECT, TransferType.TO_CLIENT}
@@ -128,7 +147,7 @@ class LCDPrinter(metaclass=MCSingleton):
         self.carousel = Carousel([
             self.print_screen, self.wizard_screen, self.wait_screen,
             self.error_screen, self.upload_screen, self.ready_screen,
-            self.idle_screen
+            self.idle_screen,
         ])
 
         self.carousel.set_priority(self.print_screen, PRINT_PRIORITY)
@@ -273,12 +292,12 @@ class LCDPrinter(metaclass=MCSingleton):
 
             self.carousel.enable(
                 screen=self.error_screen,
-                silent=silence_because_network or silence_because_printing
+                silent=silence_because_network or silence_because_printing,
             )
 
             conditions = {
                 "lan": LAN.state,
-                "error": error
+                "error": error,
             }
             if self.error_screen.conditions != conditions:
                 self.error_screen.conditions = conditions
@@ -310,7 +329,7 @@ class LCDPrinter(metaclass=MCSingleton):
             conditions = {
                 "lan": LAN.state,
                 "wizard_needed": wizard_needed,
-                "ip": ip
+                "ip": ip,
             }
             if self.wizard_screen.conditions != conditions:
                 self.wizard_screen.conditions = conditions

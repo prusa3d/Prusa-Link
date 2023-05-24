@@ -1,25 +1,28 @@
 """Contains implementation of a camera driver utilizing the V4L2 API"""
-import re
-
+import collections
 import ctypes
-import os
 import errno
 import fcntl
-import select
-import logging
-import pathlib
 import fractions
-import collections
-from typing import Any
+import logging
+import os
+import pathlib
+import re
+import select
 from glob import glob
+from typing import Any
 
-from prusa.connect.printer.camera_driver import CameraDriver
 from prusa.connect.printer.camera import Resolution
-from prusa.connect.printer.const import CapabilityType, NotSupported, \
-    CAMERA_WAIT_TIMEOUT
-from .encoders import MJPEGEncoder, BufferDetails, get_appropriate_encoder
-from . import v4l2
+from prusa.connect.printer.camera_driver import CameraDriver
+from prusa.connect.printer.const import (
+    CAMERA_WAIT_TIMEOUT,
+    CapabilityType,
+    NotSupported,
+)
+
 from ..util import is_potato_cpu, prctl_name
+from . import v4l2
+from .encoders import BufferDetails, MJPEGEncoder, get_appropriate_encoder
 
 log = logging.getLogger(__name__)
 
@@ -33,11 +36,11 @@ Info = collections.namedtuple(
 )
 
 ImageFormat = collections.namedtuple(
-    "ImageFormat", "type description flags pixel_format"
+    "ImageFormat", "type description flags pixel_format",
 )
 
 FrameType = collections.namedtuple(
-    "FrameType", "pixel_format width height"
+    "FrameType", "pixel_format width height",
 )
 
 
@@ -63,7 +66,7 @@ def frame_sizes(file_descriptor, pixel_formats):
                 sizes.append(FrameType(
                     pixel_format=pixel_format,
                     width=size.discrete.width,
-                    height=size.discrete.height
+                    height=size.discrete.height,
                 ))
             size.index += 1
     return sizes
@@ -111,7 +114,7 @@ def read_info(filename):
                 flags=fmt.flags,
                 description=fmt.description.decode(),
                 pixel_format=pixel_format,
-            )
+            ),
         )
         pixel_formats.add(pixel_format)
 
@@ -387,7 +390,7 @@ class V4L2Driver(CameraDriver):
 
     name = "V4L2"
     REQUIRES_SETTINGS = {
-        "path": "Path to the V4L2 device like '/dev/video1'"
+        "path": "Path to the V4L2 device like '/dev/video1'",
     }
 
     @staticmethod
@@ -419,7 +422,7 @@ class V4L2Driver(CameraDriver):
                 log.debug("Camera id is %s", camera_id)
                 available[camera_id] = {
                     "path": path,
-                    "name": name
+                    "name": name,
                 }
         return available
 
@@ -439,7 +442,7 @@ class V4L2Driver(CameraDriver):
         self._capabilities = ({
             CapabilityType.TRIGGER_SCHEME,
             CapabilityType.IMAGING,
-            CapabilityType.RESOLUTION
+            CapabilityType.RESOLUTION,
         })
 
         extra_unsupported_formats = set()

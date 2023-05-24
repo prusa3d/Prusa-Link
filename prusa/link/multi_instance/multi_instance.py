@@ -4,19 +4,18 @@ PrusaLink when running more of those on a single pi"""
 import argparse
 import copy
 import glob
-import queue
-import threading
-
 import grp
 import logging
 import os
 import pwd
+import queue
 import re
 import shlex
 import shutil
 import stat
 import subprocess
 import sys
+import threading
 from functools import partial
 from pathlib import Path
 from threading import Thread
@@ -25,14 +24,14 @@ from time import monotonic, sleep
 import pyudev  # type: ignore
 from extendparser import Get
 
-from ..const import QUIT_INTERVAL
 from ..config import Config, Model
+from ..const import QUIT_INTERVAL
 from ..util import ensure_directory
 
 logging.basicConfig(
     level=logging.WARNING,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 
 log = logging.getLogger(__name__)
@@ -53,7 +52,7 @@ VALID_SN_REGEX = re.compile(r"^(?P<sn>^CZPX\d{4}X\d{3}X.\d{5})$")
 
 # keys are the manufacturer ids, values are supported models
 SUPPORTED = {
-    "2c99": {"0001", "0002"}
+    "2c99": {"0001", "0002"},
 }
 
 MULTI_INSTANCE_CONFIG_PATH = "/etc/prusalink/multi_instance.ini"
@@ -227,8 +226,8 @@ class MultiInstanceConfig(Get):
                     ("number", int, printer_number),
                     ("serial_number", str, serial_number),
                     ("config_path", str, config_path),
-                )
-            )
+                ),
+            ),
         )
         printer.name = printer_name
         self.printers.append(printer)
@@ -242,8 +241,8 @@ class MultiInstanceConfig(Get):
                     ("number", int, None),
                     ("serial_number", str, None),
                     ("config_path", str, None),
-                )
-            )
+                ),
+            ),
         )
         printer.name = section_name
         for value in printer.values():
@@ -284,7 +283,7 @@ class InstanceController:
 
         self.command_queue = queue.Queue()
         self.command_handlers = {
-            "rescan": self.rescan
+            "rescan": self.rescan,
         }
 
         self.user_info = get_user_info(username)
@@ -350,7 +349,7 @@ class InstanceController:
                 rule_lines.append(CONNECTED_RULE_PATTERN.format(
                     vendor_id=vendor_id,
                     model_id=model_id,
-                    username=self.user_info.pw_name
+                    username=self.user_info.pw_name,
                 ))
         contents = "\n".join(rule_lines)
         with open(CONNECTED_RULE_PATH, "w", encoding="UTF-8") as file:
@@ -411,7 +410,7 @@ class RunnerComponent:
             pass
         start_command = PRUSALINK_START_PATTERN.format(
             username=self.user_info.pw_name,
-            config_path=config_path
+            config_path=config_path,
         )
         log.debug(shlex.split(start_command))
         subprocess.run(shlex.split(start_command), check=True, timeout=10)
@@ -525,7 +524,7 @@ class ConfigComponent:
             vendor_id=printer.vendor_id,
             model_id=printer.model_id,
             serial_number=printer.serial_number,
-            symlink_name=symlink_name
+            symlink_name=symlink_name,
         )
 
         log.debug("Udev rule: %s", printer.serial_number)

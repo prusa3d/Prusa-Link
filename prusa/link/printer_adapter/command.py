@@ -7,10 +7,13 @@ from typing import Any, Dict
 from prusa.connect.printer.const import Source
 
 from ..sdk_augmentation.printer import MyPrinter
-from ..serial.helpers import (enqueue_instruction, enqueue_matchable,
-                              wait_for_instruction)
-from ..serial.serial_parser import ThreadedSerialParser
+from ..serial.helpers import (
+    enqueue_instruction,
+    enqueue_matchable,
+    wait_for_instruction,
+)
 from ..serial.serial_adapter import SerialAdapter
+from ..serial.serial_parser import ThreadedSerialParser
 from ..serial.serial_queue import MonitoredSerialQueue
 from .file_printer import FilePrinter
 from .job import Job

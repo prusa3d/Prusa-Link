@@ -1,20 +1,28 @@
 """Camera web API - /api/v1/cameras handlers"""
-from time import time, sleep
 from datetime import datetime, timedelta
+from time import sleep, time
 
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, Response
 
 from prusa.connect.printer.camera import Camera
-from prusa.connect.printer.const import CameraAlreadyConnected, \
-    NotSupported, CameraNotDetected, ConfigError, CapabilityType, \
-    TRIGGER_SCHEME_TO_SECONDS
+from prusa.connect.printer.const import (
+    TRIGGER_SCHEME_TO_SECONDS,
+    CameraAlreadyConnected,
+    CameraNotDetected,
+    CapabilityType,
+    ConfigError,
+    NotSupported,
+)
 
-from ..const import HEADER_DATETIME_FORMAT
-
-from .lib.core import app
+from ..const import (
+    CAMERA_REGISTER_TIMEOUT,
+    HEADER_DATETIME_FORMAT,
+    QUIT_INTERVAL,
+    TIME_FOR_SNAPSHOT,
+)
 from .lib.auth import check_api_digest
-from ..const import CAMERA_REGISTER_TIMEOUT, QUIT_INTERVAL, TIME_FOR_SNAPSHOT
+from .lib.core import app
 
 DEFAULT_PHOTO_EXPIRATION_TIMEOUT = 30  # 30s
 
@@ -56,7 +64,7 @@ def photo_by_camera_id(camera_id, req):
         'Date': format_header(datetime.utcnow()),
         'Last-Modified': format_header(last_modified),
         'Expires': format_header(expires),
-        'Cache-Control': f'private, max-age={timeout}'
+        'Cache-Control': f'private, max-age={timeout}',
     }
 
     if 'If-Modified-Since' in req.headers:
@@ -116,7 +124,7 @@ def list_cameras(_):
             "connected": connected,
             "detected": camera_id in camera_configurator.detected,
             "stored": camera_id in camera_configurator.stored,
-            "registered": registered
+            "registered": registered,
         }
         camera_list.append(list_item)
 

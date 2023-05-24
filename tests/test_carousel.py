@@ -2,7 +2,10 @@
 from time import time
 
 from prusa.link.printer_adapter.structures.carousel import (  # type:ignore
-    Carousel, LCDLine, Screen)
+    Carousel,
+    LCDLine,
+    Screen,
+)
 
 
 def test_line():

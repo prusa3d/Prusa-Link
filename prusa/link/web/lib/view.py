@@ -4,6 +4,7 @@ from os.path import join
 
 from jinja2 import Environment, FileSystemLoader
 from jinja2_template_info import TemplateInfoExtension
+
 from prusa.connect.printer.const import PrinterType
 
 from .core import app
@@ -31,7 +32,7 @@ def package_to_api(pkg):
     return {
         'name': pkg.project_name,
         'version': pkg.version,
-        'path': pkg.module_path
+        'path': pkg.module_path,
     }
 
 
@@ -41,7 +42,7 @@ def generate_page(request, template, **kwargs):
     env = Environment(loader=FileSystemLoader(TEMPL_PATH),
                       extensions=[
                           'jinja2.ext.i18n', 'jinja2.ext.do',
-                          'jinja2.ext.loopcontrols'
+                          'jinja2.ext.loopcontrols',
                       ])
 
     env.filters['printer_type'] = printer_type

@@ -1,29 +1,39 @@
 """Check and modify an input dictionary using recursion"""
+from datetime import datetime
 from functools import wraps
+from hashlib import md5
 from io import FileIO
 from os import statvfs
 from os.path import abspath, dirname, exists, join
 from time import sleep, time
-from datetime import datetime
-from hashlib import md5
 
-from poorwsgi.request import Request, Headers
+from poorwsgi.request import Headers, Request
 
 from prusa.connect.printer import Filesystem
-from prusa.connect.printer.const import Source, Event, State, \
-    TransferType, GCODE_EXTENSIONS
-from prusa.connect.printer.metadata import FDMMetaData, get_metadata, \
-    estimated_to_seconds
-from prusa.connect.printer.download import (Transfer, TransferRunningError,
-                                            filename_too_long,
-                                            foldername_too_long,
-                                            forbidden_characters)
+from prusa.connect.printer.const import (
+    GCODE_EXTENSIONS,
+    Event,
+    Source,
+    State,
+    TransferType,
+)
+from prusa.connect.printer.download import (
+    Transfer,
+    TransferRunningError,
+    filename_too_long,
+    foldername_too_long,
+    forbidden_characters,
+)
+from prusa.connect.printer.metadata import (
+    FDMMetaData,
+    estimated_to_seconds,
+    get_metadata,
+)
 
-from .core import app
 from ... import conditions
-from ...printer_adapter.job import JobState
-from ...const import SD_STORAGE_NAME, HEADER_DATETIME_FORMAT
-from ...printer_adapter.job import Job
+from ...const import HEADER_DATETIME_FORMAT, SD_STORAGE_NAME
+from ...printer_adapter.job import Job, JobState
+from .core import app
 
 
 def get_os_path(abs_path):
@@ -50,14 +60,14 @@ def get_os_path(abs_path):
 def local_simple_refs(path: str):
     """Make refs structure for firmware and other files on local storage"""
     return {
-        'download': f"/api/files/local{path}/raw"
+        'download': f"/api/files/local{path}/raw",
     }
 
 
 def sdcard_simple_refs():
     """Make refs structure for firmware and other files on SD Card"""
     return {
-        'download': None
+        'download': None,
     }
 
 
@@ -66,7 +76,7 @@ def local_refs(path: str):
     return {
         'download': f"/api/files/local{path}/raw",
         'icon': None,
-        'thumbnail': f"/api/thumbnails{path}.orig.png"
+        'thumbnail': f"/api/thumbnails{path}.orig.png",
     }
 
 
@@ -75,7 +85,7 @@ def sdcard_refs():
     return {
         'download': None,
         'icon': None,
-        'thumbnail': None
+        'thumbnail': None,
     }
 
 
@@ -87,7 +97,7 @@ def gcode_analysis(meta):
     return {
         'estimatedPrintTime': estimated,
         'material': meta.get('filament_type'),
-        'layerHeight': meta.get('layer_height')
+        'layerHeight': meta.get('layer_height'),
         # filament struct
         # dimensions
         # printingArea
@@ -465,7 +475,7 @@ def make_headers(storage: str, path: str) -> dict:
     headers = {
         'Read-Only': str(storage != "local"),
         'Currently-Printed':
-            str(Job.get_instance().data.selected_file_path == path)
+            str(Job.get_instance().data.selected_file_path == path),
     }
     return headers
 
@@ -494,7 +504,7 @@ def make_cache_headers(last_modified: datetime) -> dict:
     headers = {
         'Last-Modified': last_modified_str,
         'ETag': etag,
-        'Date': datetime.utcnow().strftime(HEADER_DATETIME_FORMAT)
+        'Date': datetime.utcnow().strftime(HEADER_DATETIME_FORMAT),
     }
 
     return headers

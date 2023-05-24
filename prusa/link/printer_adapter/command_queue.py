@@ -9,10 +9,10 @@ from threading import Event, RLock
 from typing import Any, Dict, Optional
 
 from ..const import QUIT_INTERVAL
+from ..util import prctl_name
 from .command import Command, CommandFailed
 from .telemetry_passer import TelemetryPasser
 from .updatable import Thread
-from ..util import prctl_name
 
 log = logging.getLogger(__name__)
 

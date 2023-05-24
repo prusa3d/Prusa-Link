@@ -8,7 +8,9 @@ from poorwsgi.response import HTTPException, Response
 from poorwsgi.session import check_token
 
 from ...printer_adapter.structures.regular_expressions import (
-    VALID_PASSWORD_REGEX, VALID_USERNAME_REGEX)
+    VALID_PASSWORD_REGEX,
+    VALID_USERNAME_REGEX,
+)
 from .core import app
 
 log = logging.getLogger(__name__)
