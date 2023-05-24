@@ -60,7 +60,7 @@ def alternative_filename(long_filename: str,
 
 def get_root():
     """Gets the root node for sd card files"""
-    return SDFile(name=SD_STORAGE_NAME, is_dir=True, ro=True)
+    return SDFile(name=SD_STORAGE_NAME, is_dir=True, read_only=True)
 
 
 class FileTreeParser:

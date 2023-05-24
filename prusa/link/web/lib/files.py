@@ -162,7 +162,7 @@ def file_to_api(node, origin: str = 'local', path: str = '/',
     >>> fs.get('/PrusaLink gcodes/Examples')
     >>> app.daemon = Mock()
     >>> app.daemon.prusa_link.printer.fs = fs
-    >>> files = {'type': 'DIR', 'name': '/', 'ro': True, 'children':[
+    >>> files = {'type': 'DIR', 'name': '/', 'read_only': True, 'children':[
     ...     {'type': 'DIR', 'name': 'SD Card', 'children':[
     ...         {'type': 'DIR', 'name': 'Examples', 'children':[
     ...             {'type': 'FILE', 'name': '1.gcode'},
@@ -218,7 +218,7 @@ def file_to_api(node, origin: str = 'local', path: str = '/',
     if node['type'] == 'DIR':
         if name == SD_STORAGE_NAME:
             origin = 'sdcard'
-            result['ro'] = True
+            result['read_only'] = True
 
         result['type'] = 'folder'
         result['typePath'] = ['folder']
@@ -251,7 +251,7 @@ def file_to_api(node, origin: str = 'local', path: str = '/',
         else:
             meta.load_from_path(path)
             result['refs'] = sdcard_refs()
-            result['ro'] = True
+            result['read_only'] = True
 
         result['gcodeAnalysis'] = gcode_analysis(meta.data)
 

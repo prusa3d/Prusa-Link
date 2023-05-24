@@ -19,7 +19,8 @@ class SDFile(File):
             if node is None:
                 raise FileNotFoundError(f"Can't find the node at {path} to add"
                                         f" the child named {name} to.")
-            node.add(is_dir=is_dir, name=name, ro=True, sfn=sfn, **attrs)
+            node.add(is_dir=is_dir, name=name, read_only=True, sfn=sfn,
+                     **attrs)
 
     def add_directory(self, path: Path, name, sfn, **attrs):
         """Shorthand for adding directories"""
