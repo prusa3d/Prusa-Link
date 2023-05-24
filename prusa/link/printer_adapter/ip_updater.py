@@ -7,6 +7,7 @@ import pyric  # type: ignore
 from blinker import Signal  # type: ignore
 from pyric import pyw  # type: ignore
 from pyric.pyw import Card  # type: ignore
+
 from prusa.connect.printer.conditions import CondState
 
 from ..conditions import LAN

@@ -112,7 +112,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         data = {
             "source": Source.CONNECT,
             "event": const.Event.FILE_INFO,
-            "path": string_path
+            "path": string_path,
         }
 
         file: File = self.fs.get(string_path)

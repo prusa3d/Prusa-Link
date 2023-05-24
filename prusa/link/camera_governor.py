@@ -2,11 +2,12 @@
 and for auto adding them"""
 import logging
 from functools import partial
-from threading import Thread, Event
+from threading import Event, Thread
 from typing import Optional
 
 from prusa.connect.printer.camera_configurator import CameraConfigurator
 from prusa.connect.printer.camera_controller import CameraController
+
 from .const import CAMERA_SCAN_INTERVAL
 from .interesting_logger import InterestingLogRotator
 from .util import loop_until
@@ -45,7 +46,7 @@ class CameraGovernor:
         self._governance_thread = Thread(
             target=target,
             name="camera_governance",
-            daemon=True
+            daemon=True,
         )
         self._governance_thread.start()
 

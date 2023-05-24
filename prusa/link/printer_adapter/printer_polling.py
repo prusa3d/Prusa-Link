@@ -10,15 +10,23 @@ from datetime import timedelta
 from typing import List
 
 from packaging.version import Version
+
 from prusa.connect.printer import Printer
 from prusa.connect.printer.conditions import CondState
 
 from ..conditions import FW, ID, JOB_ID, SN
 from ..config import Settings
-from ..const import (FAST_POLL_INTERVAL, MINIMAL_FIRMWARE,
-                     PRINT_MODE_ID_PAIRING, PRINT_STATE_PAIRING, PRINTER_TYPES,
-                     QUIT_INTERVAL, SLOW_POLL_INTERVAL,
-                     VERY_SLOW_POLL_INTERVAL, MK25_PRINTERS)
+from ..const import (
+    FAST_POLL_INTERVAL,
+    MINIMAL_FIRMWARE,
+    MK25_PRINTERS,
+    PRINT_MODE_ID_PAIRING,
+    PRINT_STATE_PAIRING,
+    PRINTER_TYPES,
+    QUIT_INTERVAL,
+    SLOW_POLL_INTERVAL,
+    VERY_SLOW_POLL_INTERVAL,
+)
 from ..serial.helpers import enqueue_matchable, wait_for_instruction
 from ..serial.serial_parser import ThreadedSerialParser
 from ..serial.serial_queue import SerialQueue
@@ -26,17 +34,31 @@ from ..util import get_d3_code, make_fingerprint
 from .filesystem.sd_card import SDCard
 from .job import Job
 from .model import Model
-from .structures.item_updater import (ItemUpdater, SideEffectOnly,
-                                      WatchedGroup, WatchedItem)
-from .structures.model_classes import (EEPROMParams, NetworkInfo, PrintMode,
-                                       Telemetry)
+from .structures.item_updater import (
+    ItemUpdater,
+    SideEffectOnly,
+    WatchedGroup,
+    WatchedItem,
+)
+from .structures.model_classes import (
+    EEPROMParams,
+    NetworkInfo,
+    PrintMode,
+    Telemetry,
+)
 from .structures.module_data_classes import Sheet
-from .structures.regular_expressions import (D3_OUTPUT_REGEX, FW_REGEX,
-                                             M27_OUTPUT_REGEX, MBL_REGEX,
-                                             NOZZLE_REGEX, PERCENT_REGEX,
-                                             PRINT_INFO_REGEX,
-                                             PRINTER_TYPE_REGEX, SN_REGEX,
-                                             VALID_SN_REGEX)
+from .structures.regular_expressions import (
+    D3_OUTPUT_REGEX,
+    FW_REGEX,
+    M27_OUTPUT_REGEX,
+    MBL_REGEX,
+    NOZZLE_REGEX,
+    PERCENT_REGEX,
+    PRINT_INFO_REGEX,
+    PRINTER_TYPE_REGEX,
+    SN_REGEX,
+    VALID_SN_REGEX,
+)
 from .telemetry_passer import TelemetryPasser
 
 log = logging.getLogger(__name__)
@@ -122,18 +144,18 @@ class PrinterPolling:
 
         self.sheet_settings = WatchedItem(
             "sheet_settings",
-            gather_function=self._get_sheet_settings
+            gather_function=self._get_sheet_settings,
         )
 
         self.active_sheet = WatchedItem(
             "active_sheet",
-            gather_function=self.get_active_sheet
+            gather_function=self.get_active_sheet,
         )
 
         self.printer_info = InfoGroup([
             self.network_info, self.printer_type, self.firmware_version,
             self.nozzle_diameter, self.serial_number, self.sheet_settings,
-            self.active_sheet
+            self.active_sheet,
         ])
 
         for item in self.printer_info:
@@ -165,21 +187,21 @@ class PrinterPolling:
         self.print_mode = WatchedItem(
             "print_mode",
             gather_function=self._get_print_mode,
-            interval=SLOW_POLL_INTERVAL
+            interval=SLOW_POLL_INTERVAL,
         )
 
         self.mbl = WatchedItem(
             "mbl",
             gather_function=self._get_mbl,
             validation_function=self._validate_mbl,
-            on_fail_interval=None
+            on_fail_interval=None,
         )
 
         self.flash_air = WatchedItem(
             "flash_air",
             gather_function=self._get_flash_air,
             write_function=self._set_flash_air,
-            validation_function=lambda value: isinstance(value, bool)
+            validation_function=lambda value: isinstance(value, bool),
         )
         self.other_stuff = WatchedGroup([
             self.job_id, self.print_mode, self.mbl, self.flash_air])
@@ -215,7 +237,7 @@ class PrinterPolling:
             "print_progress",
             gather_function=self._get_print_info,
             validation_function=self._validate_progress,
-            write_function=self._set_print_progress
+            write_function=self._set_print_progress,
         )
 
         self.progress_broken = WatchedItem("progress_broken")
@@ -239,7 +261,7 @@ class PrinterPolling:
             "filament_change_in",
             validation_function=self._validate_time_till,
             write_function=self._set_filament_change_in,
-            on_fail_interval=None
+            on_fail_interval=None,
         )
 
         self.filament_change_in.validation_error_signal.connect(
@@ -252,7 +274,7 @@ class PrinterPolling:
         self.speed_multiplier.value_changed_signal.connect(
             lambda _: self._infer_estimate_accuracy(), weak=False)
         self.inaccurate_estimates.value_changed_signal.connect(
-            self._set_inaccurate_estimates
+            self._set_inaccurate_estimates,
         )
 
         # M27 results
@@ -314,7 +336,7 @@ class PrinterPolling:
             self.total_print_time,
             self.progress_broken,
             self.time_broken,
-            self.inaccurate_estimates
+            self.inaccurate_estimates,
         ])
 
         for item in self.telemetry:

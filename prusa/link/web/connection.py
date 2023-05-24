@@ -5,6 +5,7 @@ from urllib.request import urlopen
 
 from poorwsgi import state
 from poorwsgi.response import JSONResponse
+
 from prusa.connect.printer import Printer
 from prusa.connect.printer.const import RegistrationStatus
 
@@ -68,21 +69,21 @@ def api_connection(req):
                 "baudrates": [cfg.printer.baudrate],
                 "printerProfiles": [{
                     "id": "_default",
-                    "name": "Prusa MK3S"
+                    "name": "Prusa MK3S",
                 }],
-                "autoconnect": True
+                "autoconnect": True,
             },
             "connect": {
                 "hostname": service_connect.hostname,
                 "port": service_connect.port,
                 "tls": bool(service_connect.tls),
                 "registration": registration.value,
-                "code": code
+                "code": code,
             },
             "states": {
                 "printer": conditions.printer_status(),
-                "connect": conditions.connect_status()
-            }
+                "connect": conditions.connect_status(),
+            },
         })
 
 

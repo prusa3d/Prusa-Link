@@ -15,16 +15,23 @@ from typing import Dict, Optional, Set
 from prusa.connect.printer.const import Event as EventConst
 from prusa.connect.printer.const import Source, State
 
-from ..const import (PRINTER_BOOT_WAIT, QUIT_INTERVAL, RESET_PIN,
-                     SERIAL_QUEUE_TIMEOUT, STATE_CHANGE_TIMEOUT)
+from ..const import (
+    PRINTER_BOOT_WAIT,
+    QUIT_INTERVAL,
+    RESET_PIN,
+    SERIAL_QUEUE_TIMEOUT,
+    STATE_CHANGE_TIMEOUT,
+)
 from ..serial.helpers import enqueue_instruction, enqueue_list_from_str
 from ..util import file_is_on_sd, round_to_five
-from .command import Command, NotStateToPrint, CommandFailed, FileNotFound
+from .command import Command, CommandFailed, FileNotFound, NotStateToPrint
 from .state_manager import StateChange
 from .structures.model_classes import JobState
-from .structures.regular_expressions import (OPEN_RESULT_REGEX,
-                                             PRINTER_BOOT_REGEX,
-                                             REJECTION_REGEX)
+from .structures.regular_expressions import (
+    OPEN_RESULT_REGEX,
+    PRINTER_BOOT_REGEX,
+    REJECTION_REGEX,
+)
 
 log = logging.getLogger(__name__)
 
@@ -117,7 +124,7 @@ class StopPrint(TryUntilState):
         self._try_until_state(gcode="M603",
                               desired_states={
                                   State.STOPPED, State.IDLE, State.READY,
-                                  State.FINISHED
+                                  State.FINISHED,
                               })
 
 

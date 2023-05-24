@@ -4,8 +4,11 @@ from threading import Event
 from typing import Callable, List
 
 from ..const import QUIT_INTERVAL
-from ..serial.instruction import (Instruction, MandatoryMatchableInstruction,
-                                  MatchableInstruction)
+from ..serial.instruction import (
+    Instruction,
+    MandatoryMatchableInstruction,
+    MatchableInstruction,
+)
 from .serial_queue import SerialQueue
 
 

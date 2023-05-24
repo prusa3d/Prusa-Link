@@ -12,10 +12,15 @@ from prusa.connect.printer import Printer
 from prusa.connect.printer.const import State
 
 from ..config import Settings
-from ..const import (JITTER_THRESHOLD, PRINTING_STATES,
-                     TELEMETRY_IDLE_INTERVAL, TELEMETRY_PRINTING_INTERVAL,
-                     TELEMETRY_SLEEP_AFTER, TELEMETRY_SLEEPING_INTERVAL,
-                     TELEMETRY_REFRESH_INTERVAL)
+from ..const import (
+    JITTER_THRESHOLD,
+    PRINTING_STATES,
+    TELEMETRY_IDLE_INTERVAL,
+    TELEMETRY_PRINTING_INTERVAL,
+    TELEMETRY_REFRESH_INTERVAL,
+    TELEMETRY_SLEEP_AFTER,
+    TELEMETRY_SLEEPING_INTERVAL,
+)
 from ..util import loop_until
 from .model import Model
 from .structures.mc_singleton import MCSingleton
@@ -30,13 +35,13 @@ QUEUE_LENGTH_LIMIT = 4
 JITTERY_TEMPERATURES = {"temp_nozzle", "temp_bed"}
 ACTIVATING_CHANGES = {
     "target_nozzle", "target_bed", "axis_x", "axis_y", "axis_z",
-    "target_fan_print", "speed"
+    "target_fan_print", "speed",
 }
 NOT_PRINTING_IGNORED = {
     "time_printing",
     "time_remaining",
     "progress",
-    "inaccurate_estimates"
+    "inaccurate_estimates",
 }
 PRINTING_IGNORED = {"axis_x", "axis_y"}
 

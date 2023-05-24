@@ -4,8 +4,10 @@ from typing import List
 
 from ..serial.serial_parser import ThreadedSerialParser
 from .printer_polling import PrinterPolling
-from .structures.regular_expressions import (CONFIRMATION_REGEX,
-                                             PRINT_INFO_REGEX)
+from .structures.regular_expressions import (
+    CONFIRMATION_REGEX,
+    PRINT_INFO_REGEX,
+)
 
 
 class PrintStatDoubler:
@@ -24,8 +26,10 @@ class PrintStatDoubler:
 
         self.matches: List[re.Match] = []
 
-        self.serial_parser.add_decoupled_handler(PRINT_INFO_REGEX, self.matched)
-        self.serial_parser.add_decoupled_handler(CONFIRMATION_REGEX, self.reset)
+        self.serial_parser.add_decoupled_handler(
+                PRINT_INFO_REGEX, self.matched)
+        self.serial_parser.add_decoupled_handler(
+                CONFIRMATION_REGEX, self.reset)
 
     def reset(self, sender, match):
         """Resets the accumulated stat lines from the list"""

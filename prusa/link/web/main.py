@@ -4,30 +4,38 @@ import subprocess
 from os import listdir
 from os.path import basename, getmtime, getsize, join
 from socket import gethostname
-from subprocess import check_output, CalledProcessError
-from sys import version, executable
+from subprocess import CalledProcessError, check_output
+from sys import executable, version
 
 from pkg_resources import working_set
 from poorwsgi import state
 from poorwsgi.digest import check_digest
-from poorwsgi.response import (EmptyResponse, FileResponse, JSONResponse,
-                               Response)
+from poorwsgi.response import (
+    EmptyResponse,
+    FileResponse,
+    JSONResponse,
+    Response,
+)
+
 from prusa.connect.printer import __version__ as sdk_version
 from prusa.connect.printer.const import Source, State
 from prusa.connect.printer.metadata import get_metadata
 from prusa.connect.printer.models import filter_null
 
 from .. import __version__, conditions
-from ..const import (GZ_SUFFIX, LOGS_FILES, LOGS_PATH, instance_id,
-                     LimitsMK3S)
+from ..const import GZ_SUFFIX, LOGS_FILES, LOGS_PATH, LimitsMK3S, instance_id
 from ..printer_adapter.command import CommandFailed
-from ..printer_adapter.command_handlers import (PausePrint, ResumePrint,
-                                                SetReady, StartPrint,
-                                                StopPrint)
+from ..printer_adapter.command_handlers import (
+    PausePrint,
+    ResumePrint,
+    SetReady,
+    StartPrint,
+    StopPrint,
+)
 from ..printer_adapter.job import Job, JobState
 from .lib.auth import REALM, check_api_digest, check_config
 from .lib.core import app
-from .lib.files import gcode_analysis, get_os_path, fill_printfile_data
+from .lib.files import fill_printfile_data, gcode_analysis, get_os_path
 from .lib.view import package_to_api
 
 log = logging.getLogger(__name__)
@@ -41,7 +49,7 @@ PRINTER_STATES = {
     State.FINISHED: "Operational",
     State.STOPPED: "Cancelling",
     State.ERROR: "Error",
-    State.ATTENTION: "Error"
+    State.ATTENTION: "Error",
 }
 
 # From which states the printer can be set to READY state
@@ -91,7 +99,7 @@ def api_logs(req):
             logs_list.append({
                 'name': file,
                 'size': getsize(path),
-                'date': int(getmtime(path))
+                'date': int(getmtime(path)),
             })
     logs_list = sorted(logs_list, key=lambda key: key['name'])
 
@@ -131,7 +139,7 @@ def api_info(req):
         'min_extrusion_temp': LimitsMK3S.min_temp_nozzle_e,
         'serial': printer.sn,
         'hostname': service_connect.hostname,
-        'port': service_connect.port
+        'port': service_connect.port,
     }
 
     return JSONResponse(**info)
@@ -155,11 +163,11 @@ def api_status(req):
     storage_list = [
         {
             "path": "/local",
-            "read_only": False
+            "read_only": False,
         },
         {
             "path": "/sdcard",
-            "read_only": True
+            "read_only": True,
         }]
 
     for storage in storage_dict.values():
@@ -185,7 +193,7 @@ def api_status(req):
         "status_connect": conditions.connect_status(),
         "status_printer": conditions.printer_status(),
         "target_nozzle": tel.target_nozzle,
-        "target_bed": tel.target_bed
+        "target_bed": tel.target_bed,
     }
 
     # X and Y axes data are available only when the axes are not moving
@@ -208,7 +216,7 @@ def api_status(req):
             "id": job.job_id,
             "progress": progress,
             "time_remaining": time_remaining,
-            "time_printing": int(time_printing) if time_printing else None
+            "time_printing": int(time_printing) if time_printing else None,
         }
         status["job"] = status_job
 
@@ -218,7 +226,7 @@ def api_status(req):
             "id": transfer.transfer_id,
             "time_transferring": transfer.time_transferring(),
             "progress": round(transfer.progress, 2),
-            "data_transferred": transfer.transferred
+            "data_transferred": transfer.transferred,
         }
         status["transfer"] = status_transfer
 
@@ -240,9 +248,9 @@ def api_version(req):
         'firmware': prusa_link.printer.firmware,
         'sdk': sdk_version,
         'capabilities': {
-            "upload-by-put": True
+            "upload-by-put": True,
         },
-        'hostname': gethostname()
+        'hostname': gethostname(),
     }
     try:
         show_system_info = bool(int(req.args.get('system', False)))
@@ -305,7 +313,7 @@ def api_printer(req):
                 },
             },
             "sd": {
-                "ready": sd_ready
+                "ready": sd_ready,
             },
             "state": {
                 "text": PRINTER_STATES[printer.state],
@@ -323,8 +331,8 @@ def api_printer(req):
                     "finished": printer.state == State.FINISHED,
                     # Compatibility, PREPARED will be changed to READY
                     "prepared": printer.ready,
-                    "link_state": link_state
-                }
+                    "link_state": link_state,
+                },
             },
             "telemetry": {
                 "temp-bed": tel.temp_bed,
@@ -334,15 +342,15 @@ def api_printer(req):
                 "print-speed": tel.speed,
                 "axis_x": tel.axis_x,
                 "axis_y": tel.axis_y,
-                "axis_z": tel.axis_z
+                "axis_z": tel.axis_z,
             },
             "storage": {
                 "local": {
                     "free_space": free_space,
-                    "total_space": total_space
+                    "total_space": total_space,
                 },
-                "sd_card": None
-            }
+                "sd_card": None,
+            },
         })
 
 
@@ -406,7 +414,7 @@ def api_job(req):
             'name': basename(job.selected_file_path),
             'path': job.selected_file_path,
             'size': job.selected_file_size,
-            'origin': 'sdcard' if job.from_sd else 'local'
+            'origin': 'sdcard' if job.from_sd else 'local',
         }
 
         if file_['origin'] == 'local':
@@ -426,7 +434,7 @@ def api_job(req):
             'path': None,
             'date': None,
             'size': None,
-            'origin': None
+            'origin': None,
         }
 
     file_['display'] = file_['name']
@@ -447,7 +455,7 @@ def api_job(req):
                 "lastPrintTime": None,
                 "filament": None,
                 "file": file_,
-                "user": "_api"
+                "user": "_api",
             },
             "progress": {
                 "completion": progress,
@@ -459,7 +467,7 @@ def api_job(req):
                 "printSpeed": tel.speed,
                 "flow_factor": tel.flow,
             },
-            "state": PRINTER_STATES[printer.state]
+            "state": PRINTER_STATES[printer.state],
         })
 
 
@@ -536,14 +544,14 @@ def job_info(req):
                 "path": path,
                 "display_path": path,
                 "size": file.size,
-                "m_timestamp": file.attrs["m_timestamp"]
+                "m_timestamp": file.attrs["m_timestamp"],
             },
             "id": job.job_id,
             "state": printer.state.value,
             "progress": float(tel.progress or 0),
             "time_remaining": tel.time_remaining,
             "time_printing": int(tel.time_printing or 0),
-            "inaccurate_estimates": tel.inaccurate_estimates
+            "inaccurate_estimates": tel.inaccurate_estimates,
         }
         status_job["file"].update(fill_printfile_data(
             path=path, os_path=os_path, storage=storage))

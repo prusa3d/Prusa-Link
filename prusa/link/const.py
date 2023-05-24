@@ -9,6 +9,7 @@ from typing import List
 
 from bidict import bidict
 from packaging.version import Version
+
 from prusa.connect.printer.const import PrinterType, State
 
 from .printer_adapter.structures.model_classes import PrintMode, PrintState
@@ -33,7 +34,7 @@ PRINTER_CONF_TYPES = bidict({
     "MK2.5": PrinterType.I3MK25,
     "MK2.5S": PrinterType.I3MK25S,
     "MK3": PrinterType.I3MK3,
-    "MK3S": PrinterType.I3MK3S
+    "MK3S": PrinterType.I3MK3S,
 })
 
 DATA_PATH = path.abspath(path.join(str(files('prusa.link')), 'data'))
@@ -46,12 +47,12 @@ MK25_PRINTERS = {PrinterType.I3MK25.value, PrinterType.I3MK25S.value}
 JOB_STARTING_STATES = {State.PRINTING, State.PAUSED}
 JOB_ENDING_STATES = {
     State.FINISHED,
-    State.STOPPED
+    State.STOPPED,
 }
 JOB_DESTROYING_STATES = {
      State.ERROR,
      State.IDLE,  # These are needed for the job to end through ATTENTION
-     State.BUSY
+     State.BUSY,
      }
 
 JITTER_THRESHOLD = 0.5
@@ -232,5 +233,5 @@ PRINT_MODE_PAIRING = {"SILENT": PrintMode.SILENT, "NORMAL": PrintMode.NORMAL}
 PRINT_MODE_ID_PAIRING = {
     0: PrintMode.NORMAL,
     1: PrintMode.SILENT,
-    2: PrintMode.AUTO
+    2: PrintMode.AUTO,
 }

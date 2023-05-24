@@ -2,10 +2,16 @@
 
 from .structures.mc_singleton import MCSingleton
 from .structures.model_classes import Telemetry
-from .structures.module_data_classes import (FilePrinterData, IPUpdaterData,
-                                             JobData, PrintStatsData,
-                                             SDCardData, StateManagerData,
-                                             StorageData, SerialAdapterData)
+from .structures.module_data_classes import (
+    FilePrinterData,
+    IPUpdaterData,
+    JobData,
+    PrintStatsData,
+    SDCardData,
+    SerialAdapterData,
+    StateManagerData,
+    StorageData,
+)
 
 
 class Model(metaclass=MCSingleton):

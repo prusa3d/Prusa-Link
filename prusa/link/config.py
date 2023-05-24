@@ -5,7 +5,6 @@ from logging.handlers import SysLogHandler
 from os import getuid
 from os.path import abspath, join
 from pathlib import Path
-
 from pwd import getpwnam, getpwuid
 from typing import Iterable
 
@@ -154,7 +153,7 @@ class Config(Get):
                     # Support for monitoring mountpoints temporarily off
                     # ("storage", tuple, [], ':'),
                     # relative to HOME
-                    ("directory", str, "./PrusaLink gcodes")
+                    ("directory", str, "./PrusaLink gcodes"),
                 )))
         if args.serial_port:
             self.printer.port = args.serial_port
@@ -311,7 +310,7 @@ class Settings(Get):
         """
         interested_in = [
             self.printer["type"], self.service_local["username"],
-            self.service_local["digest"]
+            self.service_local["digest"],
         ]
         return not all(interested_in)
 

@@ -8,9 +8,13 @@ from ..serial.serial_parser import ThreadedSerialParser
 from ..serial.serial_queue import SerialQueue
 from .model import Model
 from .structures.model_classes import Telemetry
-from .structures.regular_expressions import (FAN_REGEX, HEATING_HOTEND_REGEX,
-                                             HEATING_REGEX, POSITION_REGEX,
-                                             TEMPERATURE_REGEX)
+from .structures.regular_expressions import (
+    FAN_REGEX,
+    HEATING_HOTEND_REGEX,
+    HEATING_REGEX,
+    POSITION_REGEX,
+    TEMPERATURE_REGEX,
+)
 from .telemetry_passer import TelemetryPasser
 from .updatable import ThreadedUpdatable
 
@@ -23,18 +27,22 @@ class AutoTelemetry(ThreadedUpdatable):
     thread_name = "temp_ensurer"
     update_interval = 10
 
-    def __init__(self, serial_parser: ThreadedSerialParser, serial_queue: SerialQueue,
+    def __init__(self, serial_parser: ThreadedSerialParser,
+                 serial_queue: SerialQueue,
                  model: Model, telemetry_passer: TelemetryPasser):
         super().__init__()
         self.serial_parser = serial_parser
         self.serial_queue = serial_queue
         self.model: Model = model
         self.telemetry_passer = telemetry_passer
-        self.serial_parser.add_decoupled_handler(TEMPERATURE_REGEX, self.temps_recorded)
-        self.serial_parser.add_decoupled_handler(HEATING_REGEX, self.temps_recorded)
-        self.serial_parser.add_decoupled_handler(HEATING_HOTEND_REGEX,
-                                       self.temps_recorded)
-        self.serial_parser.add_decoupled_handler(POSITION_REGEX, self.positions_recorded)
+        self.serial_parser.add_decoupled_handler(
+                TEMPERATURE_REGEX, self.temps_recorded)
+        self.serial_parser.add_decoupled_handler(
+                HEATING_REGEX, self.temps_recorded)
+        self.serial_parser.add_decoupled_handler(
+                HEATING_HOTEND_REGEX, self.temps_recorded)
+        self.serial_parser.add_decoupled_handler(
+                POSITION_REGEX, self.positions_recorded)
         self.serial_parser.add_decoupled_handler(FAN_REGEX, self.fans_recorded)
 
         self.last_seen_positions = 0.

@@ -11,21 +11,34 @@ from typing import List, Optional
 
 import pyudev  # type: ignore
 from blinker import Signal  # type: ignore
+
 from prusa.connect.printer.conditions import CondState
 
 from ..conditions import SERIAL
-from ..const import PRINTER_BOOT_WAIT, SERIAL_REOPEN_TIMEOUT, PRINTER_TYPES, \
-    PRUSA_VENDOR_ID, RESET_PIN
+from ..const import (
+    PRINTER_BOOT_WAIT,
+    PRINTER_TYPES,
+    PRUSA_VENDOR_ID,
+    RESET_PIN,
+    SERIAL_REOPEN_TIMEOUT,
+)
 from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
-from ..printer_adapter.structures.module_data_classes import Port, \
-    SerialAdapterData
-from ..printer_adapter.structures.regular_expressions import \
-    PRINTER_TYPE_REGEX, FW_REGEX, BUSY_REGEX, ATTENTION_REGEX, VALID_SN_REGEX
+from ..printer_adapter.structures.module_data_classes import (
+    Port,
+    SerialAdapterData,
+)
+from ..printer_adapter.structures.regular_expressions import (
+    ATTENTION_REGEX,
+    BUSY_REGEX,
+    FW_REGEX,
+    PRINTER_TYPE_REGEX,
+    VALID_SN_REGEX,
+)
 from ..printer_adapter.updatable import Thread
-from .serial import SerialException, Serial
-from .serial_parser import ThreadedSerialParser
 from ..util import decode_line, prctl_name
+from .serial import Serial, SerialException
+from .serial_parser import ThreadedSerialParser
 
 log = logging.getLogger(__name__)
 

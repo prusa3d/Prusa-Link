@@ -9,8 +9,13 @@ from enum import Enum
 from typing import Deque, Optional
 
 from ..config import Config
-from ..const import (DEFAULT_THRESHOLD, HEAP_RATIO, IGNORE_ABOVE, QUEUE_SIZE,
-                     USE_DYNAMIC_THRESHOLD)
+from ..const import (
+    DEFAULT_THRESHOLD,
+    HEAP_RATIO,
+    IGNORE_ABOVE,
+    QUEUE_SIZE,
+    USE_DYNAMIC_THRESHOLD,
+)
 from ..printer_adapter.structures.heap import HeapItem, MaxHeap, MinHeap
 from ..util import ensure_directory, get_clean_path
 

@@ -1,18 +1,16 @@
 """Setup.py for PrusaLink software."""
+import logging
 import os
 import re
-import logging
-
 from grp import getgrnam
 from shutil import copyfile, copytree
 from subprocess import run
 from sys import stderr
 
-from setuptools import find_namespace_packages, Command, setup  # type: ignore
+from setuptools import Command, find_namespace_packages, setup  # type: ignore
 
-from prusa.link import __author_email__, __author_name__
+from prusa.link import __author_email__, __author_name__, __version__
 from prusa.link import __doc__ as description  # type: ignore
-from prusa.link import __version__
 
 RPI_MODEL_PATH = "/sys/firmware/devicetree/base/model"
 RE_GIT = re.compile(r'(-e )?git\+|:')
@@ -60,9 +58,10 @@ def doc():
 class BuildStatic(Command):
     """Build static html files, need docker."""
     description = __doc__
-    user_options = [('target-dir=', 't',
-                     "target build directory (default: './prusa/link/static')")
-                    ]
+    user_options = [
+            ('target-dir=', 't',
+             "target build directory (default: './prusa/link/static')"),
+            ]
     target_dir = None
 
     def initialize_options(self):
@@ -147,6 +146,6 @@ setup(
     entry_points={'console_scripts': [
         'prusalink = prusa.link.__main__:main',
         'prusalink-manager = prusa.link.multi_instance.'
-        'multi_instance:main'
+        'multi_instance:main',
     ]},
     cmdclass={'build_static': BuildStatic})

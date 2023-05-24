@@ -12,17 +12,30 @@ from time import time
 from typing import Deque, List, Optional
 
 from blinker import Signal  # type: ignore
+
 from prusa.connect.printer.conditions import CondState
 
 from ..conditions import RPI_ENABLED, SERIAL
 from ..config import Config
-from ..const import (HISTORY_LENGTH, MAX_INT, QUIT_INTERVAL, RX_SIZE,
-                     SERIAL_QUEUE_MONITOR_INTERVAL, SERIAL_QUEUE_TIMEOUT)
+from ..const import (
+    HISTORY_LENGTH,
+    MAX_INT,
+    QUIT_INTERVAL,
+    RX_SIZE,
+    SERIAL_QUEUE_MONITOR_INTERVAL,
+    SERIAL_QUEUE_TIMEOUT,
+)
 from ..interesting_logger import InterestingLogRotator
 from ..printer_adapter.structures.mc_singleton import MCSingleton
 from ..printer_adapter.structures.regular_expressions import (
-    ATTENTION_REGEX, BUSY_REGEX, CONFIRMATION_REGEX, HEATING_HOTEND_REGEX,
-    HEATING_REGEX, M110_REGEX, RESEND_REGEX)
+    ATTENTION_REGEX,
+    BUSY_REGEX,
+    CONFIRMATION_REGEX,
+    HEATING_HOTEND_REGEX,
+    HEATING_REGEX,
+    M110_REGEX,
+    RESEND_REGEX,
+)
 from ..printer_adapter.updatable import Thread
 from ..util import loop_until, prctl_name
 from .instruction import Instruction, MatchableInstruction

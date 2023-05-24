@@ -11,9 +11,11 @@ from .command import CommandFailed
 from .command_handlers import SetReady
 from .command_queue import CommandQueue
 from .lcd_printer import LCDPrinter
-from .structures.regular_expressions import (OPEN_RESULT_REGEX,
-                                             PRINT_DONE_REGEX,
-                                             START_PRINT_REGEX)
+from .structures.regular_expressions import (
+    OPEN_RESULT_REGEX,
+    PRINT_DONE_REGEX,
+    START_PRINT_REGEX,
+)
 
 log = logging.getLogger(__name__)
 
@@ -38,9 +40,12 @@ class SpecialCommands:
         self.start_print_signal = Signal()
         self.print_done_signal = Signal()
 
-        serial_parser.add_decoupled_handler(OPEN_RESULT_REGEX, self.handle_file)
-        serial_parser.add_decoupled_handler(START_PRINT_REGEX, self.handle_start)
-        serial_parser.add_decoupled_handler(PRINT_DONE_REGEX, self.handle_done)
+        serial_parser.add_decoupled_handler(
+                OPEN_RESULT_REGEX, self.handle_file)
+        serial_parser.add_decoupled_handler(
+                START_PRINT_REGEX, self.handle_start)
+        serial_parser.add_decoupled_handler(
+                PRINT_DONE_REGEX, self.handle_done)
 
     def menu_folder_found(self, _, menu_sfn):
         """An SD with the special menu has been inserted"""

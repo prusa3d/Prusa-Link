@@ -1,29 +1,46 @@
 """/api/v1/files endpoint handlers"""
 import logging
-from os import replace, unlink, rmdir, listdir
-from os.path import basename, exists, join, isdir, split
-from shutil import rmtree
+from os import listdir, replace, rmdir, unlink
+from os.path import basename, exists, isdir, join, split
 from pathlib import Path
-from time import sleep, monotonic
-from magic import Magic
+from shutil import rmtree
+from time import monotonic, sleep
 
+from magic import Magic
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, Response
-from prusa.connect.printer.const import StorageType, Source, FileType, \
-    TransferType
+
+from prusa.connect.printer.const import (
+    FileType,
+    Source,
+    StorageType,
+    TransferType,
+)
 
 from .. import conditions
+from ..printer_adapter.command import FileNotFound, NotStateToPrint
 from ..printer_adapter.command_handlers import StartPrint
-from ..printer_adapter.command import NotStateToPrint, FileNotFound
 from ..printer_adapter.job import Job
 from .lib.auth import check_api_digest
 from .lib.core import app
-from .lib.files import (check_os_path, check_read_only, storage_display_path,
-                        fill_printfile_data, get_os_path, check_storage,
-                        get_files_size, partfilepath, make_headers, check_job,
-                        fill_file_data, get_last_modified, make_cache_headers,
-                        check_cache_headers, get_boolean_header,
-                        forbidden_characters)
+from .lib.files import (
+    check_cache_headers,
+    check_job,
+    check_os_path,
+    check_read_only,
+    check_storage,
+    fill_file_data,
+    fill_printfile_data,
+    forbidden_characters,
+    get_boolean_header,
+    get_files_size,
+    get_last_modified,
+    get_os_path,
+    make_cache_headers,
+    make_headers,
+    partfilepath,
+    storage_display_path,
+)
 
 log = logging.getLogger(__name__)
 
@@ -37,11 +54,11 @@ def storage_info(req):
     storage_list = [{
         'type': StorageType.LOCAL.value,
         'path': '/local',
-        'available': False
+        'available': False,
     }, {
         'type': StorageType.SDCARD.value,
         'path': '/sdcard',
-        'available': False
+        'available': False,
     }]
 
     for storage in storage_dict.values():
@@ -331,7 +348,7 @@ def transfer_info(req):
                 "transferred": transfer.transferred,
                 "time_remaining": transfer.time_remaining(),
                 "time_transferring": transfer.time_transferring(),
-                "to_print": transfer.to_print
+                "to_print": transfer.to_print,
             })
     return Response(status_code=state.HTTP_NO_CONTENT)
 

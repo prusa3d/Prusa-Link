@@ -5,6 +5,7 @@ from time import sleep
 
 from poorwsgi import abort, redirect, state
 from poorwsgi.request import FieldStorage
+
 from prusa.connect.printer import Printer
 
 from .. import conditions

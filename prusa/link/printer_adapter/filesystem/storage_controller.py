@@ -7,6 +7,7 @@ import logging
 from typing import Optional
 
 from blinker import Signal  # type: ignore
+
 from prusa.connect.printer.files import File
 
 from ...printer_adapter.model import Model
@@ -28,7 +29,8 @@ class StorageController:
 
     # pylint: disable=too-many-arguments
     def __init__(self, cfg, serial_queue: SerialQueue,
-                 serial_parser: ThreadedSerialParser, state_manager: StateManager,
+                 serial_parser: ThreadedSerialParser,
+                 state_manager: StateManager,
                  model: Model):
         self.folder_attached_signal = Signal()
         self.folder_detached_signal = Signal()

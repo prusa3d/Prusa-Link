@@ -5,14 +5,14 @@ import abc
 import ctypes
 import fcntl
 import functools
-import os
 import mmap
+import os
 import select
 from enum import Enum
 from math import sqrt
 
 import numpy as np
-from turbojpeg import TurboJPEG, TJSAMP_422  # type: ignore
+from turbojpeg import TJSAMP_422, TurboJPEG  # type: ignore
 
 from . import v4l2
 
@@ -229,13 +229,13 @@ class MJPEGEncoder(Encoder):
 
         ingest_format = self._pre_fill_format(
             format_type=v4l2.V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-            pixel_format=v4l2.V4L2_PIX_FMT_YUYV
+            pixel_format=v4l2.V4L2_PIX_FMT_YUYV,
         )
         fcntl.ioctl(self.file_object, v4l2.VIDIOC_S_FMT, ingest_format)
 
         coded_format = self._pre_fill_format(
             format_type=v4l2.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-            pixel_format=v4l2.V4L2_PIX_FMT_MJPEG
+            pixel_format=v4l2.V4L2_PIX_FMT_MJPEG,
         )
         coded_format.fmt.pix_mp.plane_fmt[0].bytesperline = 0
         coded_format.fmt.pix_mp.plane_fmt[0].sizeimage = 512 << 10
@@ -253,7 +253,7 @@ class MJPEGEncoder(Encoder):
         # The raw data buffer will get re-used from libcamera in this case
         self.coded_buffer = self._get_buffer(
             v4l2.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-            v4l2.V4L2_MEMORY_MMAP
+            v4l2.V4L2_MEMORY_MMAP,
         )
         fcntl.ioctl(self.file_object, v4l2.VIDIOC_QUERYBUF, self.coded_buffer)
         plane = self.coded_buffer.m.planes[0]
@@ -262,12 +262,12 @@ class MJPEGEncoder(Encoder):
             length=plane.length,
             offset=plane.m.mem_offset,
             prot=mmap.PROT_READ | mmap.PROT_WRITE,
-            flags=mmap.MAP_SHARED
+            flags=mmap.MAP_SHARED,
         )
 
         self.ingest_buffer = self._get_buffer(
             v4l2.V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-            self.ingest_buffer_memory
+            self.ingest_buffer_memory,
         )
         fcntl.ioctl(self.file_object, v4l2.VIDIOC_QUERYBUF, self.ingest_buffer)
         if self.ingest_buffer_memory == v4l2.V4L2_MEMORY_MMAP:
@@ -277,7 +277,7 @@ class MJPEGEncoder(Encoder):
                 length=plane.length,
                 offset=plane.m.mem_offset,
                 prot=mmap.PROT_READ | mmap.PROT_WRITE,
-                flags=mmap.MAP_SHARED
+                flags=mmap.MAP_SHARED,
             )
 
         fcntl.ioctl(self.file_object, v4l2.VIDIOC_QBUF, self.coded_buffer)

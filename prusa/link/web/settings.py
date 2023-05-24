@@ -6,11 +6,20 @@ from poorwsgi.digest import check_digest
 from poorwsgi.response import JSONResponse
 
 from ..conditions import SN
-from .lib.auth import (REALM, check_api_digest, set_digest, valid_credentials,
-                       valid_digests)
+from .lib.auth import (
+    REALM,
+    check_api_digest,
+    set_digest,
+    valid_credentials,
+    valid_digests,
+)
 from .lib.core import app
-from .lib.wizard import (execute_sn_gcode, new_sn_format,
-                         sn_write_success, valid_sn_format)
+from .lib.wizard import (
+    execute_sn_gcode,
+    new_sn_format,
+    sn_write_success,
+    valid_sn_format,
+)
 
 errors_titles = {
     'username_spaces': 'Spaces in username',
@@ -18,7 +27,7 @@ errors_titles = {
     'password': 'Invalid new password',
     'repassword': 'Invalid re-password',
     'old_digest': 'Invalid old password',
-    'same_digest': 'Nothing to change'
+    'same_digest': 'Nothing to change',
 }
 
 
@@ -66,7 +75,7 @@ def api_ports(req):
             ports.append(port.dict())
 
         return JSONResponse(**{
-            "ports": ports
+            "ports": ports,
         })
     return JSONResponse(status_code=state.HTTP_SERVICE_UNAVAILABLE)
 
@@ -86,8 +95,8 @@ def api_settings(req):
                 "name": printer_settings.name,
                 "location": printer_settings.location,
                 "farm_mode": printer_settings.farm_mode,
-                "network_error_chime": printer_settings.network_error_chime
-            }
+                "network_error_chime": printer_settings.network_error_chime,
+            },
         })
 
 

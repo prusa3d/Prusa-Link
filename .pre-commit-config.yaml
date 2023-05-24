@@ -14,11 +14,11 @@ repos:
   #  rev: v2.4.4
   #  hooks:
   #    - id: pylint
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: 'v0.0.269'
+    hooks:
+    - id: ruff
   - repo: https://gitlab.com/pycqa/flake8
     rev: 3.9.2
     hooks:
       - id: flake8
-  # - repo: https://github.com/pre-commit/mirrors-isort
-  #   rev: 'v5.10.1'  # Use the revision sha / tag you want to point at
-  #   hooks:
-  #     - id: isort
