@@ -106,12 +106,12 @@
 
       <div class="row">
         <div class="col-md-12">
-            <form method="post" action="/wizard/finish-register-skip" id="skip"></form>
-            <form method="post" action="/wizard/finish-register" id="form" target="_blank">
+            <form method="post" action="{{ "/wizard/finish-register-skip" | prefixed }}" id="skip"></form>
+            <form method="post" action="{{ "/wizard/finish-register" | prefixed }}" id="form" target="_blank">
                 <div class="container navigation">
                   <div class="row">
                       <div class="col">
-                        <a href="/wizard/printer" class="btn btn-back btn-outline-light full-width"><img src="../img/arrow-left.svg" height="16" /> BACK | Printer info</a>
+                        <a href={{ "/wizard/printer" | prefixed }} class="btn btn-back btn-outline-light full-width"><img src="../img/arrow-left.svg" height="16" /> BACK | Printer info</a>
                       </div>
                       <div class="col-sm-auto">
                         <button form="skip" onclick="document.getElementById('skip').submit();" type="submit" class="btn btn-back btn-outline-light full-width">Save printer | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
@@ -129,7 +129,7 @@
 
     <script>
         function finish() {
-            setTimeout(() => {window.location.href = '/';}, 500);
+            setTimeout(() => {window.location.href = "{{ "/" | prefixed }}";}, 500);
             document.getElementById('form').submit();
         }
     </script>

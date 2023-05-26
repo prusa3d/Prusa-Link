@@ -1,10 +1,10 @@
 # ChangeLog
-Dev
-    * Fix printer returning to READY instead of IDLE
 
 0.7.1dev0
     * Fixed HTTP response status on HEAD request for non-existing files
     * Attribute ro renamed to read_only
+    * Fix printer returning to READY instead of IDLE
+    * Respect the X-Forwarded-Prefix header in Wizard
 
 0.7.0 (2023-05-19)
     * Fixed printer sends info about api key change to Connect after change

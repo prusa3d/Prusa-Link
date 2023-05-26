@@ -93,6 +93,11 @@ it should de-elevate itself after the web server is up, or start it as a normal
 user on port 8080 - or any other, then redirect the port 80 to the port
 PrusaLink is listening on using these commands.
 
+### Running behind a reverse-proxy
+If you got a proxy that changes the URI path, add the
+X-Forwarded-Prefix header. PrusaLink will use it to construct the correct
+URLs for the web interface.
+
 ```bash
 # use -i to specify the interface affected
 iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
