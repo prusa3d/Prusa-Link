@@ -1,10 +1,10 @@
 """Init file for web application module."""
 import logging
+from threading import Thread
 from time import sleep
 from wsgiref.simple_server import make_server
 
-import prctl  # type: ignore
-
+from ..util import prctl_name
 from .lib.auth import REALM
 from .lib.classes import RequestHandler, ThreadingServer
 from .lib.core import app
@@ -24,8 +24,8 @@ __import__('controls', globals=globals(), level=1)
 __import__('cameras', globals=globals(), level=1)
 
 
-def init(daemon):
-    """Set application variables."""
+def init_web_app(daemon):
+    """Initializes the app object for the web server to use"""
     app.cfg = daemon.cfg
     app.settings = daemon.settings
     app.debug = daemon.cfg.debug
@@ -34,7 +34,9 @@ def init(daemon):
 
     service_local = app.settings.service_local
     if service_local.username and service_local.digest:
-        app.auth_map.set(REALM, service_local.username, service_local.digest)
+        app.auth_map.set(REALM,
+                         service_local.username,
+                         service_local.digest)
         log.info("Authentication was set")
     else:
         log.info("No authentication was set")
@@ -53,32 +55,60 @@ def init(daemon):
         app.set_route('/link-info', link_info)
 
 
-def run_http(daemon, foreground=False):
-    """Run http thread"""
-    prctl.set_name("pl#http")
-    log.info('Starting server for http://%s:%d', daemon.cfg.http.address,
-             daemon.cfg.http.port)
+class WebServer:
+    """A web server class for PrusaLink components"""
 
-    init(daemon)
-    while True:
-        try:
-            httpd = make_server(daemon.cfg.http.address,
-                                daemon.cfg.http.port,
-                                app,
-                                server_class=ThreadingServer,
-                                handler_class=RequestHandler)
+    def __init__(self, application, address, port, exit_on_error=False):
+        """Set application variables."""
+        self.application = application
+        self.address = address
+        self.port = port
+        self.exit_on_error = exit_on_error
 
-            httpd.timeout = 0.5
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            log.info("Shutdown http")
-            return 0
-        except Exception:  # pylint: disable=broad-except
-            log.exception("Exception")
-            if foreground:
+        self.thread = None
+        self.httpd = None
+
+    def start(self):
+        """Starts the server"""
+        self.thread = Thread(
+            target=self.run, daemon=True, name="httpd")
+        self.thread.start()
+
+    def run(self):
+        """Code for the server thread"""
+        prctl_name()
+
+        log.info('Starting server for http://%s:%d', self.address,
+                 self.port)
+        while True:
+            self.httpd = make_server(self.address,
+                                     self.port,
+                                     self.application,
+                                     server_class=ThreadingServer,
+                                     handler_class=RequestHandler)
+            self.httpd.timeout = 0.5
+
+            try:
+                self.httpd.serve_forever()
+            except Exception:  # pylint: disable=broad-except
+                log.exception("Exception in httpd")
+                if self.exit_on_error:
+                    log.info("Shutdown http")
+                    raise
+                log.info("Restarting httpd")
+                sleep(1)
+                continue
+            else:
                 log.info("Shutdown http")
-                return 1
-        sleep(1)
+                return
+
+    def stop(self):
+        """Stops the server"""
+        if not self.httpd:
+            return
+        self.httpd.shutdown()
+        self.thread.join()
+        log.info('Server stopped')
 
 
-__all__ = ["app"]
+__all__ = ['init_web_app', 'WebServer']

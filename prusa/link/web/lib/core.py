@@ -13,7 +13,7 @@ STATIC_DIR = abspath(
                                              'static')))
 
 
-class PrusaLink(Application):
+class LinkWebApp(Application):
     """Extended Application object."""
     cfg = None
     settings = None
@@ -22,7 +22,7 @@ class PrusaLink(Application):
     api_key = None
 
 
-app = application = PrusaLink(__package__)
+app = application = LinkWebApp(__package__)
 app.keep_blank_values = 1
 app.auto_form = False  # only POST /api/files/<target> endpoints get HTML form
 app.document_root = STATIC_DIR
