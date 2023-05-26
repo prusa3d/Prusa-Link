@@ -99,7 +99,7 @@ def stop(pid):
     try:
         kill(pid, SIGKILL)
     except ProcessLookupError:
-        log.warning("Could not find a prcess with pid %s to kill", pid)
+        log.warning("Could not find a process with pid %s to kill", pid)
     wait_process(pid, EXIT_TIMEOUT)
 
 
