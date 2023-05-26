@@ -1,0 +1,31 @@
+{# vim:set softtabstop=2: -#}
+{% set title = 'Multi-Instance landing page' -%}
+{#% set refresh = 15 %#}
+{% include "_header.html" %}
+{% set active="welcome" %}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="align-leftr">PrusaLink instances</h1>
+
+            <ul>
+                {% for printer in printer_info.values() %}
+                    <li>
+                        <a href="{{ printer.number }}/">
+                            {{ printer.name[0]|upper }}{{ printer.name[1:] }}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>{# /col-md-12 so end of content #}
+    </div>{# /row #}
+</div>{# /container #}
+
+<script>
+     function changeIconImage(img) {
+    document.getElementById('restore_icon').style.content = `url(${img})`;
+  }
+</script>
+
+{% include "_footer.html" %}
