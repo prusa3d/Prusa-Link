@@ -207,7 +207,8 @@ class PiCameraDriver(CameraDriver):
         if controls.LensPosition in self.camera.controls:
             self._capabilities.add(CapabilityType.FOCUS)
             # Defaults to infinity
-            self._config["focus"] = str(0.0)
+            self._config["focus"] = self._config.get("focus", str(0.0))
+            self.set_focus(float(self._config["focus"]))
 
         sensor_resolutions = self.get_resolutions(
             self.camera, StreamRole.Raw)
