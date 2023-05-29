@@ -23,6 +23,14 @@ from prusa.connect.printer.const import (
 from ..util import is_potato_cpu, prctl_name
 from . import v4l2
 from .encoders import BufferDetails, MJPEGEncoder, get_appropriate_encoder
+from .v4l2 import (
+    V4L2_CID_FOCUS_ABSOLUTE,
+    V4L2_CID_FOCUS_AUTO,
+    VIDIOC_QUERYCTRL,
+    VIDIOC_S_CTRL,
+    v4l2_control,
+    v4l2_queryctrl,
+)
 
 log = logging.getLogger(__name__)
 
@@ -32,7 +40,7 @@ log = logging.getLogger(__name__)
 Info = collections.namedtuple(
     "Info",
     "driver card bus_info version physical_capabilities capabilities "
-    "formats frame_sizes",
+    "formats frame_sizes, focus_info",
 )
 
 ImageFormat = collections.namedtuple(
@@ -41,6 +49,10 @@ ImageFormat = collections.namedtuple(
 
 FrameType = collections.namedtuple(
     "FrameType", "pixel_format width height",
+)
+
+FocusInfo = collections.namedtuple(
+    "FocusInfo", "available min max step",
 )
 
 
@@ -118,6 +130,34 @@ def read_info(filename):
         )
         pixel_formats.add(pixel_format)
 
+    focus_info = None
+
+    focus_auto = v4l2_queryctrl()
+    focus_auto.id = V4L2_CID_FOCUS_AUTO
+
+    focus_absolute = v4l2_queryctrl()
+    focus_absolute.id = V4L2_CID_FOCUS_ABSOLUTE
+
+    try:
+        if fcntl.ioctl(file_descriptor, VIDIOC_QUERYCTRL, focus_auto) != 0:
+            raise RuntimeError("Unable to get focus auto")
+        if fcntl.ioctl(file_descriptor, VIDIOC_QUERYCTRL, focus_absolute) != 0:
+            raise RuntimeError("Unable to get focus absolute")
+    except (OSError, RuntimeError):
+        focus_info = FocusInfo(
+            available=False,
+            min=None,
+            max=None,
+            step=None,
+        )
+    else:
+        focus_info = FocusInfo(
+            available=True,
+            min=focus_absolute.minimum,
+            max=focus_absolute.maximum,
+            step=focus_absolute.step,
+        )
+
     return Info(
         driver=caps.driver.decode(),
         card=caps.card.decode(),
@@ -127,6 +167,7 @@ def read_info(filename):
         capabilities=device_capabilities,
         formats=formats,
         frame_sizes=frame_sizes(file_descriptor, pixel_formats),
+        focus_info=focus_info,
     )
 
 
@@ -318,6 +359,13 @@ class V4L2Camera:
                     "review/R12F7RYUKPCQX7/?ie=UTF8 ")
             raise
 
+        if self.info.focus_info.available:
+            # Set the focus to absolute
+            self._ioctl(v4l2.VIDIOC_S_CTRL,
+                        v4l2.v4l2_control(id=V4L2_CID_FOCUS_AUTO,
+                                          value=0),
+                        )
+
     def stop(self):
         """Stops all V4L2 capturing activity and frees everything"""
         if self.is_stopped:
@@ -347,6 +395,23 @@ class V4L2Camera:
             raise TimeoutError("Getting the next frame timed out")
         self._ioctl(v4l2.VIDIOC_DQBUF, buffer)
         return buffer
+
+    def set_focus(self, value):
+        """Sets absolute focus - source value from 0 to 1"""
+        value_range = self.info.focus_info.max - self.info.focus_info.min
+        scaled_value = value * value_range
+        value_in_step = (scaled_value
+                         - (scaled_value % self.info.focus_info.step))
+        final_value = int(value_in_step + self.info.focus_info.min)
+
+        # Create a v4l2_control structure with the control ID and value
+        control = v4l2_control()
+        control.id = V4L2_CID_FOCUS_ABSOLUTE
+        control.value = final_value
+
+        # Use the ioctl call to set the control value
+        if self._ioctl(VIDIOC_S_CTRL, control) != 0:
+            raise RuntimeError("Unable to set control value")
 
 
 def get_media_device_path(device: V4L2Camera):
@@ -447,12 +512,16 @@ class V4L2Driver(CameraDriver):
 
         extra_unsupported_formats = set()
         self.device = V4L2Camera(path)
+        if self.device.info.focus_info.available:
+            self._capabilities.add(CapabilityType.FOCUS)
+            self._config["focus"] = self._config.get("focus", str(0.0))
+
         self._available_resolutions = set()
         for frame_type in self.device.info.frame_sizes:
             resolution = Resolution(width=frame_type.width,
                                     height=frame_type.height)
 
-            # Prefer MJPEG over others
+            # Prefer MJPEG to others
             if resolution in self._resolution_to_format:
                 pixel_format = self._resolution_to_format[resolution]
                 if pixel_format == v4l2.V4L2_PIX_FMT_MJPEG:
@@ -490,6 +559,8 @@ class V4L2Driver(CameraDriver):
 
         self.device.start()
         self.encoder.start()
+        if CapabilityType.FOCUS in self.capabilities:
+            self.set_focus(float(self._config["focus"]))
 
     @param_change
     def set_resolution(self, resolution):
@@ -510,6 +581,10 @@ class V4L2Driver(CameraDriver):
         self.encoder.height = resolution.height
         self.encoder.stride = (resolution.width
                                * BYTES_PER_PIXEL.get(pixel_format, 0))
+
+    def set_focus(self, focus):
+        """Sets the camera focus"""
+        self.device.set_focus(focus)
 
     def take_a_photo(self):
         """Takes a photo, blocking while doing it"""
