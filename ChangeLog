@@ -6,6 +6,8 @@
     * Fix printer returning to READY instead of IDLE
     * Respect the X-Forwarded-Prefix header in Wizard
     * Add focus support for the v4l2 cameras
+    * Add a multi-instance web waypoint, use a reverse proxy to navigate to the correct instances
+    * Automatically redirect from the multi-instance waypoint if exactly one printer is configured
 
 0.7.0 (2023-05-19)
     * Fixed printer sends info about api key change to Connect after change

@@ -84,6 +84,23 @@ app.document_root = STATIC_DIR
 app.debug = True
 
 
+def single_instance_redirect(func):
+    """Decorator that redirects to the single instance if there is only one
+    printer configured"""
+    def wrapper(req, *args, **kwargs):
+        """Wrapper function"""
+        if len(req.app.info_keeper.printer_info) == 1:
+            first_printer = next(iter(
+                req.app.info_keeper.printer_info.values()))
+            return proxy(req,
+                         first_printer.number,
+                         req.path,
+                         use_proxy_headers=False)
+        return func(req, *args, **kwargs)
+
+    return wrapper
+
+
 def get_web_server(port):
     """Returns an instance of the instance manager web server"""
     app.info_keeper = InfoKeeper(MULTI_INSTANCE_CONFIG_PATH)
@@ -93,8 +110,10 @@ def get_web_server(port):
 
 
 @app.route('/')
+@single_instance_redirect
 def index(req):
     """The waypoint to point the user to a PrusaLink instance"""
+
     return generate_page(req,
                          "multi-instance.html",
                          printer_info=req.app.info_keeper.printer_info)
@@ -140,8 +159,11 @@ def file_data_generator(file_like, length):
 
 
 @app.route(r'/<printer_number:re:\d+>/<path:re:.*>', method=METHOD_ALL)
-def proxy(req, printer_number, path):
-    """A reverse proxy to pass requests to IP/number to IP:printer_port"""
+def proxy(req, printer_number, path, use_proxy_headers=True):
+    """A reverse proxy to pass requests to IP/number to IP:printer_port
+
+    @param use_proxy_headers: When re-directing to a single instance,
+    we re-use the whole uri path, no need for an extra prefix header"""
 
     printer_info = req.app.info_keeper.printer_info
     printer = printer_info.get(int(printer_number))
@@ -149,7 +171,8 @@ def proxy(req, printer_number, path):
         pool_manager = urllib3.PoolManager()
 
         proxied_headers = dict(req.headers)
-        proxied_headers["X-Forwarded-Prefix"] = f"/{printer_number}"
+        if use_proxy_headers:
+            proxied_headers["X-Forwarded-Prefix"] = f"/{printer_number}"
 
         log.debug("Passing request for path %s", path)
         response = pool_manager.request(
@@ -170,4 +193,12 @@ def proxy(req, printer_number, path):
                 'Content-Type', "text/html; charset=utf-8"),
             status_code=response.status,
             headers=dict(response.headers))
+    return not_found(req)
+
+
+@app.default(METHOD_ALL)
+@single_instance_redirect
+def fallback(req):
+    """If there's more or less than one printer configured, this is the
+    404 page"""
     return not_found(req)
