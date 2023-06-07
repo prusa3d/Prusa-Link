@@ -4,14 +4,13 @@ import logging
 import os
 import pwd
 import signal
-import stat
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from logging.handlers import SysLogHandler
 from pathlib import Path
-from time import monotonic, sleep
 
 from daemon import DaemonContext  # type: ignore
+from ipcqueue import posixmq  # type: ignore
 from lockfile.pidlockfile import PIDLockFile  # type: ignore
 
 from ..__main__ import check_process
@@ -20,14 +19,14 @@ from ..config import LOG_FORMAT_SYSLOG, Config, FakeArgs
 from ..util import ensure_directory
 from .config_component import ConfigComponent, MultiInstanceConfig
 from .const import (
-    COMMS_PIPE_PATH,
-    COMMUNICATION_TIMEOUT,
     DEFAULT_UID,
     MANAGER_PID_PATH,
     RUN_DIRECTORY,
     SERVER_PID_PATH,
+    UDEV_REFRESH_QUEUE_NAME,
 )
 from .controller import Controller
+from .ipc_consumer import IPCConsumer
 from .web import get_web_server
 
 log = logging.getLogger(__name__)
@@ -185,29 +184,14 @@ def stop(quiet=False):
 def rescan():
     """Notify the manager that a connection has been established
     by writing "connected" to the communication pipe."""
-    if not stat.S_ISFIFO(os.stat(COMMS_PIPE_PATH).st_mode):
-        log.error("Cannot communicate to manager. Missing named pipe")
+    queue_path = IPCConsumer.get_queue_path(UDEV_REFRESH_QUEUE_NAME)
+    if not os.path.exists(queue_path):
+        log.error("Cannot communicate to manager. Missing queue")
         raise FileNotFoundError("Missing named pipe")
 
-    timeout_at = monotonic() + COMMUNICATION_TIMEOUT
-    # If the pipe is not being waited on at the moment, we will get an
-    # exception. So let's keep trying for a while
-    while True:
-        try:
-            file_descriptor = os.open(path=COMMS_PIPE_PATH,
-                                      flags=os.O_WRONLY | os.O_NONBLOCK)
-            with open(file_descriptor, "w", encoding="UTF-8") as file:
-                file.write("rescan")
-
-        except (OSError, FileNotFoundError):
-            if monotonic() < timeout_at:
-                sleep(0.1)
-                continue
-
-            log.exception("Cannot talk to manager")
-            raise
-
-        break
+    ipc_queue = posixmq.Queue(UDEV_REFRESH_QUEUE_NAME)
+    ipc_queue.put("rescan")
+    ipc_queue.close()
 
 
 def main():

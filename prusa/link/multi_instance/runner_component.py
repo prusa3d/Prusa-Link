@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 class LoadedInstance:
     """Keeps info about already running instances"""
 
-    def __init__(self, config, config_path):
+    def __init__(self, config: Config, config_path: str):
         self.config = config
         self.config_path = config_path
 
@@ -46,7 +46,7 @@ class RunnerComponent:
         for thread in threads:
             thread.join()
 
-    def load_instance(self, config_path):
+    def load_instance(self, config_path: str):
         """Starts an instance and gives it the specified config
         in an argument"""
         for loaded in self.loaded:
@@ -67,7 +67,7 @@ class RunnerComponent:
         subprocess.run(shlex.split(start_command),
                        check=True,
                        timeout=10,
-                       stdin=subprocess.DEVNULL,
-                       stdout=subprocess.DEVNULL,
+                       stdin=subprocess.DEVNULL,  # DaemonContext needs
+                       stdout=subprocess.DEVNULL,  # these to not be None
                        stderr=subprocess.DEVNULL)
         self.loaded.append(LoadedInstance(config, config_path))

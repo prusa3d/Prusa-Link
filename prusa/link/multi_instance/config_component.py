@@ -1,6 +1,5 @@
 """A module for managing the configuration files of multiple
 PrusaLink instances"""
-import glob
 import grp
 import logging
 import os
@@ -224,7 +223,7 @@ class ConfigComponent:
                 continue
 
             printer_number += 1
-            log.warning("Configuring: %s", printer.serial_number)
+            log.debug("Configuring: %s", printer.serial_number)
             try:
                 self.configure_instance(printer, printer_number)
             except Exception:  # pylint: disable=broad-except
@@ -370,16 +369,16 @@ class ConfigComponent:
                 data_dir = config.daemon.data_dir
 
                 # Delete PrusaLink files in the data directory
-                ConfigComponent.delete_matching_files(
+                ConfigComponent.delete_file(
                     config.daemon.pid_file)
-                ConfigComponent.delete_matching_files(
+                ConfigComponent.delete_file(
                     config.daemon.power_panic_file)
-                ConfigComponent.delete_matching_files(
+                ConfigComponent.delete_file(
                     config.daemon.threshold_file)
 
-                ConfigComponent.delete_matching_folders(
+                ConfigComponent.delete_folder(
                     config.printer.directory)
-                ConfigComponent.delete_matching_files(
+                ConfigComponent.delete_file(
                     config.printer.settings)
 
                 # If the data directory is now empty, delete it
@@ -388,14 +387,12 @@ class ConfigComponent:
                     os.rmdir(data_dir)
 
             # Delete the printer's configuration file
-            ConfigComponent.delete_matching_files(
-                pattern=CONFIG_PATH_PATTERN.format(
-                    number=printer.number))
+            ConfigComponent.delete_file(
+                CONFIG_PATH_PATTERN.format(number=printer.number))
 
             # Delete the printer's udev rule
-            ConfigComponent.delete_matching_files(
-                pattern=RULE_PATH_PATTERN.format(
-                    number=printer.number))
+            ConfigComponent.delete_file(
+                RULE_PATH_PATTERN.format(number=printer.number))
 
             # Delete the printer's multi_instance_config.ini entry
             multi_instance_config.printers.remove(printer)
@@ -438,28 +435,22 @@ class ConfigComponent:
         subprocess.run(['udevadm', 'trigger', '-s', 'tty'], check=True)
 
     @staticmethod
-    def delete_matching(pattern, delete_method):
-        """Deletes files or directories matching a glob"""
-        log.debug("Deleting matching: %s using %s()",
-                  pattern, delete_method.__name__)
-        matching_files = glob.glob(pattern)
-
-        for file in matching_files:
-            try:
-                delete_method(file)
-                log.debug("Deleted %s", file)
-            except Exception:  # pylint: disable=broad-except
-                log.exception("Error deleting %s", file)
+    def delete_file(path):
+        """Deletes a file, catching exceptions"""
+        try:
+            os.remove(path)
+            log.debug("Deleted %s", path)
+        except Exception:  # pylint: disable=broad-except
+            log.exception("Error deleting %s", path)
 
     @staticmethod
-    def delete_matching_files(pattern):
-        """Deletes matching files"""
-        ConfigComponent.delete_matching(pattern, delete_method=os.remove)
-
-    @staticmethod
-    def delete_matching_folders(pattern):
-        """Deletes matching folders"""
-        ConfigComponent.delete_matching(pattern, delete_method=shutil.rmtree)
+    def delete_folder(path):
+        """Deletes a folder, catching exceptions"""
+        try:
+            shutil.rmtree(path)
+            log.debug("Deleted %s", path)
+        except Exception:  # pylint: disable=broad-except
+            log.exception("Error deleting %s", path)
 
     @staticmethod
     def wait_for_symlink(symlink_path):
