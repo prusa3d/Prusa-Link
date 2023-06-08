@@ -163,6 +163,108 @@ def cant_connect(req):
     return response_error(req, conditions.CantConnect())
 
 
+@app.route('/error/cant-move-axis')
+def cant_move_axis(req):
+    """Error handler for 400 Can't move axis"""
+    return response_error(req, conditions.CantMoveAxis())
+
+
+@app.route('/error/cant-move-axis-z')
+def cant_move_axis_z(req):
+    """Error handler for 400 Can't move axis Z"""
+    return response_error(req, conditions.CantMoveAxisZ())
+
+
+@app.route('/error/cant-resolve-hostname')
+def cant_resolve_hostname(req):
+    """Error handler for 400 Can't resolve hostname"""
+    return response_error(req, conditions.CantResolveHostname())
+
+
+@app.route('/error/destination-same-as-source')
+def destination_same_as_source(req):
+    """Error handler for 400 Destination same as source"""
+    return response_error(req, conditions.DestinationSameAsSource())
+
+
+@app.route('/error/dir-not-empty')
+def directory_not_empty(req):
+    """Error handler for 409 Directory not empty"""
+    return response_error(req, conditions.DirectoryNotEmpty())
+
+
+@app.route('/error/file-already-exists')
+def file_already_exists(req):
+    """Error handler for 409 File already exists"""
+    return response_error(req, conditions.FileAlreadyExists())
+
+
+@app.route('/error/file-upload-failed')
+def file_upload_failed(req):
+    """Error handler for 400 File upload failed"""
+    return response_error(req, conditions.FileUploadFailed())
+
+
+@app.route('/error/folder-already-exists')
+def folder_already_exists(req):
+    """Error handler for 409 Folder already exists"""
+    return response_error(req, conditions.FolderAlreadyExists())
+
+
+@app.route('/error/invalid-boolean-header')
+def invalid_boolean_header(req):
+    """Error handler for 400 Invalid boolean header"""
+    return response_error(req, conditions.InvalidBooleanHeader())
+
+
+@app.route('/error/length-required')
+def length_required(req):
+    """Error handler for 411 Length required"""
+    return response_error(req, conditions.LengthRequired())
+
+
+@app.route('/error/not-state-to-print')
+def not_state_to_print(req):
+    """Error handler for 409 Not state to print"""
+    return response_error(req, conditions.NotStateToPrint())
+
+
+@app.route('/error/storage-not-exist')
+def storage_not_exist(req):
+    """Error handler for 409 Storage not exist"""
+    return response_error(req, conditions.StorageNotExist())
+
+
+@app.route('/error/temperature-too-high')
+def temperature_too_high(req):
+    """Error handler for 400 Temperature too high"""
+    return response_error(req, conditions.TemperatureTooHigh())
+
+
+@app.route('/error/temperature-too-low')
+def temperature_too_low(req):
+    """Error handler for 400 Temperature too low"""
+    return response_error(req, conditions.TemperatureTooLow())
+
+
+@app.route('/error/transfer-stopped')
+def transfer_stopped(req):
+    """Error handler for 409 Transfer stopped"""
+    return response_error(req, conditions.TransferStopped())
+
+
+@app.route('/error/value-too-high')
+def value_too_high(req):
+    """Error handler for 400 Value too high"""
+    return response_error(req, conditions.ValueTooHigh())
+
+
+@app.route('/error/value-too-low')
+def value_too_low(req):
+    """Error handler for 400 Value too low"""
+    return response_error(req, conditions.ValueTooLow())
+
+
 @app.http_state(410)
 def gone(req):
     """Error handler for 410 Gone.
