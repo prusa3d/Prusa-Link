@@ -10,7 +10,6 @@ from logging.handlers import SysLogHandler
 from pathlib import Path
 
 from daemon import DaemonContext  # type: ignore
-from ipcqueue import posixmq  # type: ignore
 from lockfile.pidlockfile import PIDLockFile  # type: ignore
 
 from ..__main__ import check_process
@@ -26,7 +25,7 @@ from .const import (
     UDEV_REFRESH_QUEUE_NAME,
 )
 from .controller import Controller
-from .ipc_consumer import IPCConsumer
+from .ipc_queue_adapter import IPCSender
 from .web import get_web_server
 
 log = logging.getLogger(__name__)
@@ -184,14 +183,10 @@ def stop(quiet=False):
 def rescan():
     """Notify the manager that a connection has been established
     by writing "connected" to the communication pipe."""
-    queue_path = IPCConsumer.get_queue_path(UDEV_REFRESH_QUEUE_NAME)
-    if not os.path.exists(queue_path):
+    try:
+        IPCSender.send_and_close(UDEV_REFRESH_QUEUE_NAME, "rescan")
+    except FileNotFoundError:
         log.error("Cannot communicate to manager. Missing queue")
-        raise FileNotFoundError("Missing named pipe")
-
-    ipc_queue = posixmq.Queue(UDEV_REFRESH_QUEUE_NAME)
-    ipc_queue.put("rescan")
-    ipc_queue.close()
 
 
 def main():

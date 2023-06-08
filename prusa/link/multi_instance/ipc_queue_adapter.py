@@ -13,16 +13,16 @@ from ..util import prctl_name
 log = logging.getLogger(__name__)
 
 
+def get_queue_path(queue_name):
+    """Returns the path to a message queue with the given name"""
+    # os path join needs the queue name without the leading slash
+    if queue_name.startswith("/"):
+        queue_name = queue_name[1:]
+    return os.path.join("/dev/mqueue", queue_name)
+
+
 class IPCConsumer:
     """Class that sets up and consumes a message queue"""
-
-    @staticmethod
-    def get_queue_path(queue_name):
-        """Returns the path to a message queue with the given name"""
-        # os path join needs the queue name without the leading slash
-        if queue_name.startswith("/"):
-            queue_name = queue_name[1:]
-        return os.path.join("/dev/mqueue", queue_name)
 
     def __init__(self,
                  queue_name,
@@ -32,7 +32,7 @@ class IPCConsumer:
             raise ValueError("Queue name must start with a slash")
 
         self.queue_name = queue_name
-        self.queue_path = self.get_queue_path(queue_name)
+        self.queue_path = get_queue_path(queue_name)
         self.chown_uid = chown_uid if chown_uid is not None else os.getuid()
         self.chown_gid = chown_gid if chown_gid is not None else os.getgid()
 
@@ -84,7 +84,8 @@ class IPCConsumer:
             except queue.Empty:
                 continue
 
-            log.debug("read: '%s' from ipc queue", command)
+            log.debug("read: '%s' from ipc queue '%s'",
+                      command, self.queue_name)
             try:
                 if command in self.command_handlers:
                     self.command_handlers[command]()
@@ -94,3 +95,43 @@ class IPCConsumer:
             except Exception:  # pylint: disable=broad-except
                 log.exception("Exception occurred while handling an IPC"
                               " command")
+
+
+class IPCSender:
+    """A class that allows for easy sending of messages to message consumers"""
+
+    @staticmethod
+    def send_and_close(queue_name, message):
+        """Sends a message to the specified queue, if it exists,
+        then detaches from it"""
+        ipc_sender = IPCSender(queue_name)
+        ipc_sender.send(message)
+        ipc_sender.close()
+
+    def __init__(self, queue_name):
+        self.queue_name = queue_name
+        self.queue_path = get_queue_path(queue_name)
+        if not os.path.exists(self.queue_path):
+            raise FileNotFoundError(f"The ipc queue named {self.queue_path} "
+                                    f"does not exist")
+
+        self.ipc_queue = posixmq.Queue(self.queue_name)
+
+    def send(self, message):
+        """Sends a message to the queue"""
+        while True:
+            try:
+                self.ipc_queue.put(message)
+            except posixmq.QueueError.INTERRUPTED:
+                continue
+
+            log.debug("sent: '%s' to ipc queue '%s'",
+                      message, self.queue_name)
+            break
+
+    def close(self):
+        """Detaches from the queue"""
+        self.ipc_queue.close()
+
+    def __del__(self):
+        self.close()
