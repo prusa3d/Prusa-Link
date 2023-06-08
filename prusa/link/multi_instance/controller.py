@@ -4,7 +4,7 @@ import logging
 
 from .config_component import ConfigComponent, MultiInstanceConfig
 from .const import UDEV_REFRESH_QUEUE_NAME
-from .ipc_consumer import IPCConsumer
+from .ipc_queue_adapter import IPCConsumer
 from .runner_component import RunnerComponent
 
 log = logging.getLogger(__name__)
