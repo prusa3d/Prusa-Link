@@ -131,6 +131,7 @@ class LinkError(RuntimeError):
     path: Optional[str] = None
     details: Optional[str] = None
     url: str = ''
+    use_basic_template = True
 
     def __init__(self, details: str = ""):
         if details:
@@ -138,7 +139,10 @@ class LinkError(RuntimeError):
         if self.id:
             self.path = '/error/' + self.id
         # pylint: disable=consider-using-f-string
-        self.template = 'error-%s.html' % self.id
+        if self.use_basic_template:
+            self.template = "error.html"
+        else:
+            self.template = 'error-%s.html' % self.id
         super().__init__(self.text)
 
     def set_url(self, req):
@@ -457,7 +461,7 @@ class FileAlreadyExists(LinkError):
     """409 File Already Exists"""
     title = "File Already Exists"
     text = "File already exists."
-    id = "file-already-exist"
+    id = "file-already-exists"
     status_code = state.HTTP_CONFLICT
 
 
@@ -465,7 +469,7 @@ class FolderAlreadyExists(LinkError):
     """409 Folder Already Exists"""
     title = "Folder Already Exists"
     text = "Folder already exists."
-    id = "folder-already-exist"
+    id = "folder-already-exists"
     status_code = state.HTTP_CONFLICT
 
 
