@@ -8,6 +8,7 @@ from ..util import prctl_name
 from .lib.auth import REALM
 from .lib.classes import RequestHandler, ThreadingServer
 from .lib.core import app
+from .lib.view import setup_template_info
 from .lib.wizard import Wizard
 from .link_info import link_info
 
@@ -29,6 +30,7 @@ def init_web_app(daemon):
     app.cfg = daemon.cfg
     app.settings = daemon.settings
     app.debug = daemon.cfg.debug
+    setup_template_info()
 
     app.daemon = daemon
 

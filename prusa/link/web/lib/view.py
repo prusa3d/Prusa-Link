@@ -64,8 +64,14 @@ env = Environment(loader=FileSystemLoader(TEMPL_PATH),
 
 env.filters['printer_type'] = printer_type
 env.filters['prefixed'] = prefix_filter
-if app.debug:
-    env.add_extension(TemplateInfoExtension)
+
+
+# This needs to be called after the app.debug is set
+# app.debug is not set on import time
+def setup_template_info():
+    """Setup template info."""
+    if app.debug:
+        env.add_extension(TemplateInfoExtension)
 
 
 def package_to_api(pkg):
