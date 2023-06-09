@@ -64,8 +64,6 @@ env = Environment(loader=FileSystemLoader(TEMPL_PATH),
 
 env.filters['printer_type'] = printer_type
 env.filters['prefixed'] = prefix_filter
-if app.debug:
-    env.add_extension(TemplateInfoExtension)
 
 
 def package_to_api(pkg):
@@ -80,11 +78,15 @@ def package_to_api(pkg):
 def generate_page(request, template, **kwargs):
     """Return generated ouptut fromjinja template."""
     if app.debug:
-        env.globals['template_info'].data = kwargs.copy()
+        eval_env = env.overlay()
+        eval_env.add_extension(TemplateInfoExtension)
+        env.globals["template_info"].data = kwargs.copy()
         env.globals['template_info'].template = template
         kwargs['debug'] = True
+    else:
+        eval_env = env
 
     kwargs['this_uri'] = request.uri
     kwargs['uri_prefix'] = request.headers.get("X-Forwarded-Prefix")
-    tmpl = env.get_template(template)
+    tmpl = eval_env.get_template(template)
     return tmpl.render(kwargs)
