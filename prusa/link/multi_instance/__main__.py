@@ -42,6 +42,30 @@ def get_logger_file_descriptors():
     return file_descriptors
 
 
+class StderrLogAdapter:
+    """This class is used to redirect stderr to a logger"""
+
+    def __init__(self, name, level=logging.INFO):
+        self.logger = logging.getLogger(name)
+        self.level = level
+        self.buffer = []
+
+    def write(self, message):
+        """Write method that accumulates messages for later logging."""
+        parts = message.split("\n")
+        for part in parts[:-1]:
+            self.buffer.append(part)
+            self.flush()
+        self.buffer.append(parts[-1])
+
+    def flush(self):
+        """Flushes the accumulated messages to the logger."""
+        if not self.buffer:
+            return
+        self.logger.log(self.level, "".join(self.buffer))
+        self.buffer.clear()
+
+
 class Manager:
     """This class represents the process that runs the controller"""
 
@@ -66,6 +90,7 @@ class Manager:
         )
 
         with context:
+            sys.stderr = StderrLogAdapter("mi_stderr", logging.ERROR)
             self.controller = Controller(user_info=self.user_info)
             self.controller.run()
 
@@ -101,6 +126,7 @@ class Server:
         )
 
         with context:
+            sys.stderr = StderrLogAdapter("mi_server_stderr", logging.ERROR)
             config = MultiInstanceConfig()
             self.web_server = get_web_server(config.web.port_range_start)
             self.web_server.start()
