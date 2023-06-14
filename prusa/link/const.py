@@ -235,3 +235,8 @@ PRINT_MODE_ID_PAIRING = {
     1: PrintMode.SILENT,
     2: PrintMode.AUTO,
 }
+
+# keys are the manufacturer ids, values are supported models
+SUPPORTED_PRINTERS = {
+    "2c99": {"0001", "0002"},
+}

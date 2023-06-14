@@ -20,14 +20,7 @@ CONNECTED_RULE_PATTERN = \
     'ATTRS{{idProduct}}=="{model_id}", ' \
     'RUN+="/bin/su {username} -c \\"prusalink-manager rescan\\""'
 
-DEFAULT_UID = 1000  # Default user UID
-
 VALID_SN_REGEX = re.compile(r"^(?P<sn>^CZPX\d{4}X\d{3}X.\d{5})$")
-
-# keys are the manufacturer ids, values are supported models
-SUPPORTED = {
-    "2c99": {"0001", "0002"},
-}
 
 MULTI_INSTANCE_CONFIG_PATH = "/etc/prusalink/multi_instance.ini"
 

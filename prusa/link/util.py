@@ -13,9 +13,11 @@ from time import time
 from typing import Callable, Union
 
 import prctl  # type: ignore
+import pyudev  # type: ignore
 import unidecode
 
-from .const import SD_STORAGE_NAME
+from .const import SD_STORAGE_NAME, SUPPORTED_PRINTERS
+from .multi_instance.const import VALID_SN_REGEX
 
 log = logging.getLogger(__name__)
 
@@ -222,3 +224,53 @@ def decode_line(line: bytes):
 def is_potato_cpu():
     """Returns True if your CPU is a potato"""
     return multiprocessing.cpu_count() == 1
+
+
+class PrinterDevice:
+    """The data model for the usb detected printer"""
+
+    def __init__(self, vendor_id: str,
+                 model_id: str,
+                 serial_number: str,
+                 path: str):
+        self.vendor_id = vendor_id
+        self.model_id = model_id
+        self.serial_number = serial_number
+        self.path = path
+
+
+def get_usb_printers():
+    """Gets serial devices that are on the supported list
+    and have a valid S/N"""
+    devices = []
+    context = pyudev.Context()
+    for device in context.list_devices(subsystem='tty'):
+        vendor_id = device.properties.get('ID_VENDOR_ID')
+        if isinstance(vendor_id, str) and vendor_id.startswith("0x"):
+            vendor_id = device.properties.get('ID_USB_VENDOR_ID', "")
+
+        model_id = device.properties.get('ID_MODEL_ID')
+        if isinstance(model_id, str) and model_id.startswith("0x"):
+            model_id = device.properties.get('ID_USB_MODEL_ID', "")
+
+        path = device.properties.get("DEVNAME", "")
+
+        # If the vendor is not supported, we get an empty set
+        supported_models = SUPPORTED_PRINTERS.get(vendor_id, set())
+        is_supported = model_id in supported_models
+        serial_number = device.properties.get("ID_SERIAL_SHORT", "")
+        if not serial_number:
+            serial_number = device.properties.get(
+                "ID_USB_SERIAL_SHORT", "")
+        valid_sn = VALID_SN_REGEX.match(serial_number)
+        if not is_supported or not valid_sn or not path:
+            continue
+
+        device = PrinterDevice(
+            vendor_id=vendor_id,
+            model_id=model_id,
+            serial_number=serial_number,
+            path=path,
+        )
+        devices.append(device)
+    return devices
