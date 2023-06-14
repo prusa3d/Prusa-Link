@@ -10,11 +10,11 @@ from pathlib import Path
 from time import monotonic, sleep
 from typing import List
 
-import pyudev  # type: ignore
 from extendparser import Get
 
 from ..config import Config, FakeArgs, Model
-from ..util import ensure_directory
+from ..const import SUPPORTED_PRINTERS
+from ..util import PrinterDevice, ensure_directory, get_usb_printers
 from .const import (
     CONFIG_PATH_PATTERN,
     CONNECTED_RULE_PATH,
@@ -27,25 +27,10 @@ from .const import (
     PRINTER_SYMLINK_PATTERN,
     RULE_PATH_PATTERN,
     RULE_PATTERN,
-    SUPPORTED,
     UDEV_SYMLINK_TIMEOUT,
-    VALID_SN_REGEX,
 )
 
 log = logging.getLogger(__name__)
-
-
-class PrinterDevice:
-    """The data model for the usb detected printer"""
-
-    def __init__(self, vendor_id: str,
-                 model_id: str,
-                 serial_number: str,
-                 path: str):
-        self.vendor_id = vendor_id
-        self.model_id = model_id
-        self.serial_number = serial_number
-        self.path = path
 
 
 class MultiInstanceConfig(Get):
@@ -217,7 +202,7 @@ class ConfigComponent:
         """
         configured = []
         printer_number = self.highest_printer_number
-        for printer in self.get_usb_printers():
+        for printer in get_usb_printers():
             log.debug("Found printer: %s", printer.serial_number)
             if self.is_configured(printer.serial_number):
                 continue
@@ -239,7 +224,7 @@ class ConfigComponent:
         self.teardown_connected_trigger()
 
         rule_lines = []
-        for vendor_id, model_ids in SUPPORTED.items():
+        for vendor_id, model_ids in SUPPORTED_PRINTERS.items():
             for model_id in model_ids:
                 log.info("Adding rule for %s:%s", vendor_id, model_id)
                 rule_lines.append(CONNECTED_RULE_PATTERN.format(
@@ -400,33 +385,6 @@ class ConfigComponent:
         multi_instance_config.save()
 
         ConfigComponent.refresh_udev_rules()
-
-    @staticmethod
-    def get_usb_printers():
-        """Gets serial devices that are on the supported list
-        and have a valid S/N"""
-        devices = []
-        context = pyudev.Context()
-        for device in context.list_devices(subsystem='tty'):
-            vendor_id = device.properties.get('ID_VENDOR_ID')
-            model_id = device.properties.get('ID_MODEL_ID')
-
-            # If the vendor is not supported, we get an empty set
-            supported_models = SUPPORTED.get(vendor_id, set())
-            is_supported = model_id in supported_models
-            serial_number = device.properties.get("ID_SERIAL_SHORT", "")
-            valid_sn = VALID_SN_REGEX.match(serial_number)
-            if not is_supported or not valid_sn:
-                continue
-
-            device = PrinterDevice(
-                vendor_id=vendor_id,
-                model_id=model_id,
-                serial_number=serial_number,
-                path=device.properties.get("DEVNAME", "Unknown"),
-            )
-            devices.append(device)
-        return devices
 
     @staticmethod
     def refresh_udev_rules():
