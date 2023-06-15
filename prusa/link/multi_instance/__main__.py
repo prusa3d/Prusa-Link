@@ -5,6 +5,7 @@ import os
 import pwd
 import signal
 import sys
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from logging.handlers import SysLogHandler
 from pathlib import Path
@@ -29,6 +30,25 @@ from .ipc_queue_adapter import IPCSender
 from .web import get_web_server
 
 log = logging.getLogger(__name__)
+
+
+def main_thread_exception(exc_type, exc_value, exc_traceback):
+    """Log unhandled exceptions"""
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    log.exception("Unhandled exception reached top level",
+                  exc_info=(exc_type, exc_value, exc_traceback))
+
+
+def thread_exception(_):
+    """Re-raise unhandled exceptions in threads to call sys.excepthook"""
+    raise  # pylint: disable=misplaced-bare-raise
+
+
+threading.excepthook = thread_exception
+sys.excepthook = main_thread_exception
 
 
 def get_logger_file_descriptors():
