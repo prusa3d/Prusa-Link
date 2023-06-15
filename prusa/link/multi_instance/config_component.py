@@ -28,7 +28,9 @@ from .const import (
     RULE_PATH_PATTERN,
     RULE_PATTERN,
     UDEV_SYMLINK_TIMEOUT,
+    WEB_REFRESH_QUEUE_NAME,
 )
+from .ipc_queue_adapter import IPCSender
 
 log = logging.getLogger(__name__)
 
@@ -216,6 +218,10 @@ class ConfigComponent:
                 continue
             configured.append(printer.serial_number)
         self.highest_printer_number = printer_number
+
+        if configured:
+            IPCSender(WEB_REFRESH_QUEUE_NAME).send("refresh")
+
         return configured
 
     def setup_connected_trigger(self):
@@ -385,6 +391,7 @@ class ConfigComponent:
         multi_instance_config.save()
 
         ConfigComponent.refresh_udev_rules()
+        IPCSender(WEB_REFRESH_QUEUE_NAME).send("refresh")
 
     @staticmethod
     def refresh_udev_rules():

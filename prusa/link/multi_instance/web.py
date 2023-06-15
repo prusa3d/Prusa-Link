@@ -6,7 +6,6 @@ from time import monotonic
 from typing import Optional
 
 import urllib3  # type: ignore
-from inotify_simple import INotify, flags  # type: ignore
 from poorwsgi import Application
 from poorwsgi.response import GeneratorResponse, JSONResponse
 from poorwsgi.state import METHOD_ALL
@@ -17,7 +16,8 @@ from ..web.errors import not_found
 from ..web.lib.core import STATIC_DIR
 from ..web.lib.view import generate_page
 from .config_component import MultiInstanceConfig
-from .const import MULTI_INSTANCE_CONFIG_PATH
+from .const import WEB_REFRESH_QUEUE_NAME
+from .ipc_queue_adapter import IPCConsumer
 
 log = logging.getLogger(__name__)
 
@@ -34,28 +34,27 @@ class InfoKeeper:
             self.name = name
             self.port = port
 
-    def __init__(self, path):
+    def __init__(self):
         self._lock = Lock()
-        self._reload_override = True
-        self.inotify = INotify()
+        self._refresh = True
+        self.ipc_consumer = IPCConsumer(WEB_REFRESH_QUEUE_NAME)
+        self.ipc_consumer.add_handler("refresh", self.refresh)
+        self.ipc_consumer.start()
         self._printer_info = {}
 
-        watch_flags = (flags.CLOSE_WRITE
-                       | flags.MOVED_TO
-                       | flags.MOVED_FROM
-                       | flags.DELETE
-                       | flags.CREATE)
-        self.inotify.add_watch(path, watch_flags)
+    def refresh(self):
+        """Causes the printer info to be refreshed on the next access"""
+        self._refresh = True
 
     @property
     def printer_info(self):
         """Gets the current printer info, updates it if anything changes on
         disk"""
         with self._lock:
-            if not self.inotify.read(timeout=0) and not self._reload_override:
+            if not self._refresh:
                 return self._printer_info
 
-            self._reload_override = False
+            self._refresh = False
             multi_instance_config = MultiInstanceConfig()
             self._printer_info.clear()
             for printer in multi_instance_config.printers:
@@ -103,7 +102,7 @@ def single_instance_redirect(func):
 
 def get_web_server(port):
     """Returns an instance of the instance manager web server"""
-    app.info_keeper = InfoKeeper(MULTI_INSTANCE_CONFIG_PATH)
+    app.info_keeper = InfoKeeper()
     log.info('Starting server for http://%s:%d', ADDRESS, port)
     web_server = WebServer(app, ADDRESS, port)
     return web_server
