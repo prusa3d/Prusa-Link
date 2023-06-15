@@ -80,15 +80,22 @@ class IPCConsumer:
 
         while self.running:
             try:
-                command = self.ipc_queue.get(block=True, timeout=QUIT_INTERVAL)
+                message = self.ipc_queue.get(block=True, timeout=QUIT_INTERVAL)
             except queue.Empty:
                 continue
+            except posixmq.QueueError as exc:
+                if exc.errno == posixmq.QueueError.INTERRUPTED:
+                    continue
+                raise
 
+            command, args, kwargs = message
+
+            # pylint: disable=logging-too-many-args
             log.debug("read: '%s' from ipc queue '%s'",
-                      command, self.queue_name)
+                      message, self.queue_name)
             try:
                 if command in self.command_handlers:
-                    self.command_handlers[command]()
+                    self.command_handlers[command](*args, **kwargs)
                 else:
                     log.debug("Unknown command for multi instance '%s'",
                               command)
@@ -101,11 +108,11 @@ class IPCSender:
     """A class that allows for easy sending of messages to message consumers"""
 
     @staticmethod
-    def send_and_close(queue_name, message):
+    def send_and_close(queue_name, command, *args, **kwargs):
         """Sends a message to the specified queue, if it exists,
         then detaches from it"""
         ipc_sender = IPCSender(queue_name)
-        ipc_sender.send(message)
+        ipc_sender.send(command, *args, **kwargs)
         ipc_sender.close()
 
     def __init__(self, queue_name):
@@ -117,14 +124,18 @@ class IPCSender:
 
         self.ipc_queue = posixmq.Queue(self.queue_name)
 
-    def send(self, message):
+    def send(self, command, *args, **kwargs):
         """Sends a message to the queue"""
+        message = (command, args, kwargs)
         while True:
             try:
                 self.ipc_queue.put(message)
-            except posixmq.QueueError.INTERRUPTED:
-                continue
+            except posixmq.QueueError as exc:
+                if exc.errno == posixmq.QueueError.INTERRUPTED:
+                    continue
+                raise
 
+            # pylint: disable=logging-too-many-args
             log.debug("sent: '%s' to ipc queue '%s'",
                       message, self.queue_name)
             break
