@@ -134,4 +134,8 @@ class IPCSender:
         self.ipc_queue.close()
 
     def __del__(self):
-        self.close()
+        """Make sure the queue got closed on destruct"""
+        try:
+            self.close()
+        except posixmq.QueueError:
+            pass
