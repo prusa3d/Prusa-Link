@@ -4,9 +4,7 @@
 
 import logging
 import math
-from threading import Event
 from time import sleep, time
-from unittest import mock
 from unittest.mock import Mock
 
 import pytest
@@ -17,49 +15,11 @@ from prusa.link.printer_adapter.structures.item_updater import (  # type:ignore
     WatchedItem,
 )
 
+from .util import EventSetMock, WaitingMock
+
 logging.basicConfig(level="DEBUG")
 
 THRESHOLD = 0.05
-
-
-def waiter(event: Event):
-    """
-    Waits for the supplied event, returns a constant that allows a Mock
-    to behave nicely
-    """
-    event.wait()
-    return mock.DEFAULT
-
-
-class WaitingMock(Mock):
-    """
-    Waits for its built in event when called, otherwise it's a regular mock
-    """
-    def __init__(self, *args, side_effect=None, **kwargs):
-        if side_effect is not None:
-            raise AttributeError("Do not provide a side effect to this mock, "
-                                 "it has its own waiting one")
-
-        super().__init__(
-            *args,
-            side_effect=lambda *args, **kwargs: waiter(self.event),
-            **kwargs)
-        self.event = Event()
-
-
-class EventSetMock(Mock):
-    """
-    Sets its built in event when called, otherwise it's a regular mock
-    """
-    def __init__(self, *args, side_effect=None, **kwargs):
-        if side_effect is not None:
-            raise AttributeError("Do not provide a side effect to this mock, "
-                                 "it has its own waiting one")
-
-        super().__init__(*args,
-                         side_effect=lambda *args, **kwargs: self.event.set(),
-                         **kwargs)
-        self.event = Event()
 
 
 @pytest.fixture
