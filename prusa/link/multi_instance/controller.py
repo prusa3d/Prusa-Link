@@ -1,10 +1,11 @@
 """A module implementing the controller of the PrusaLink Instance Manager"""
 
 import logging
+import os
 
 from .config_component import ConfigComponent, MultiInstanceConfig
-from .const import UDEV_REFRESH_QUEUE_NAME
-from .ipc_queue_adapter import IPCConsumer
+from .const import UDEV_REFRESH_QUEUE_NAME, WEB_REFRESH_QUEUE_NAME
+from .ipc_queue_adapter import IPCConsumer, IPCSender
 from .runner_component import RunnerComponent
 
 log = logging.getLogger(__name__)
@@ -27,6 +28,9 @@ class Controller:
                                         chown_uid=self.user_info.pw_uid,
                                         chown_gid=self.user_info.pw_gid)
         self.ipc_consumer.add_handler("rescan", self.rescan)
+
+        self.config_component.config_changed_signal.connect(
+            self.config_changed)
 
     def run(self):
         """Starts the controller"""
@@ -52,3 +56,14 @@ class Controller:
         """Stops the controller"""
         self.config_component.teardown_connected_trigger()
         self.ipc_consumer.stop()
+
+    def remove_all_printers(self):
+        """Removes all printers from the config"""
+        self.config_component.remove_all_printers()
+
+    def config_changed(self, *_):
+        """A callback handler for when the config changes"""
+        # Notify the web server that the config has changed
+        IPCSender(WEB_REFRESH_QUEUE_NAME).send("refresh")
+        # Try to prevent config corruption on unexpected shutdown
+        os.sync()

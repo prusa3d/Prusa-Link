@@ -10,6 +10,7 @@ from pathlib import Path
 from time import monotonic, sleep
 from typing import List
 
+from blinker import Signal
 from extendparser import Get
 
 from ..config import Config, FakeArgs, Model
@@ -28,9 +29,7 @@ from .const import (
     RULE_PATH_PATTERN,
     RULE_PATTERN,
     UDEV_SYMLINK_TIMEOUT,
-    WEB_REFRESH_QUEUE_NAME,
 )
-from .ipc_queue_adapter import IPCSender
 
 log = logging.getLogger(__name__)
 
@@ -138,6 +137,8 @@ class ConfigComponent:
 
         self.highest_printer_number = self._get_highest_printer_number()
 
+        self.config_changed_signal = Signal()
+
     def configure_instance(self, printer: PrinterDevice, printer_number):
         """Oversees the creation of an instance configuration for
         a detected prnter device"""
@@ -169,16 +170,14 @@ class ConfigComponent:
 
         except Exception:  # pylint: disable=broad-except
             log.exception("Failed adding printer number %s", printer_number)
-            self.clean(numbers_to_remove=[printer_number])
+            self.remove_printers(numbers_to_remove=[printer_number])
             raise
 
-    @staticmethod
-    def clear_configuration():
+    def remove_all_printers(self):
         """Clears the configuration of all printers"""
-
-        multi_instance_config = MultiInstanceConfig()
-        numbers_to_remove = [p.number for p in multi_instance_config.printers]
-        ConfigComponent.clean(numbers_to_remove=numbers_to_remove)
+        numbers_to_remove = [p.number for p in
+                             self.multi_instance_config.printers]
+        self.remove_printers(numbers_to_remove=numbers_to_remove)
 
     def is_configured(self, serial_number):
         """Checks whether a printer with the specified serial number
@@ -220,7 +219,7 @@ class ConfigComponent:
         self.highest_printer_number = printer_number
 
         if configured:
-            IPCSender(WEB_REFRESH_QUEUE_NAME).send("refresh")
+            self.config_changed_signal.send()
 
         return configured
 
@@ -327,8 +326,7 @@ class ConfigComponent:
             config.write(file)
         log.debug(str(config_path))
 
-    @staticmethod
-    def clean(numbers_to_remove: List[int]):
+    def remove_printers(self, numbers_to_remove: List[int]):
         """Remove printer configuration files, udev rules,
         and printer directories according to multi_instance_config.ini
 
@@ -391,7 +389,7 @@ class ConfigComponent:
         multi_instance_config.save()
 
         ConfigComponent.refresh_udev_rules()
-        IPCSender(WEB_REFRESH_QUEUE_NAME).send("refresh")
+        self.config_changed_signal.send()
 
     @staticmethod
     def refresh_udev_rules():
