@@ -17,7 +17,7 @@ from ..__main__ import check_process
 from ..__main__ import stop as stop_process
 from ..config import LOG_FORMAT_SYSLOG, Config, FakeArgs
 from ..util import ensure_directory
-from .config_component import ConfigComponent, MultiInstanceConfig
+from .config_component import MultiInstanceConfig
 from .const import (
     DEFAULT_UID,
     MANAGER_PID_PATH,
@@ -200,6 +200,13 @@ def stop(quiet=False):
                             quiet)
 
 
+def clean(user_info):
+    """Stops the MultiInstance Manager and removes all printers"""
+    stop(quiet=True)
+    controller = Controller(user_info)
+    controller.remove_all_printers()
+
+
 def rescan():
     """Notify the manager that a connection has been established
     by writing "connected" to the communication pipe."""
@@ -273,8 +280,7 @@ def main():
     elif args.command == "stop":
         stop()
     elif args.command == "clean":
-        stop(quiet=True)
-        ConfigComponent.clear_configuration()
+        clean(user_info)
     elif args.command == "rescan":
         rescan()
     else:
