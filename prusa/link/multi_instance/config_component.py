@@ -313,6 +313,7 @@ class ConfigComponent:
         config.daemon.threshold_file = Path(data_folder, "threshold.data")
         config.daemon.user = self.user_info.pw_name
         config.daemon.group = grp.getgrgid(self.user_info.pw_gid).gr_name
+        config.daemon.printer_number = printer_number
         config.printer.port = serial_port
         config.printer.settings = Path(data_folder,
                                        "prusa_printer_settings.ini")
