@@ -147,6 +147,10 @@ def main():
                         type=str,
                         help="Serial (printer's) port or 'auto'",
                         metavar="<PORT>")
+    parser.add_argument("-n",
+                        "--printer-number",
+                        type=int,
+                        help="Multi-instance printer number to show in wizard")
     parser.add_argument("-i",
                         "--info",
                         action="store_true",

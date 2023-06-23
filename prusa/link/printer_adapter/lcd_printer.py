@@ -34,7 +34,7 @@ from ..conditions import (
     SN,
     UPGRADED,
 )
-from ..config import Settings
+from ..config import Config, Settings
 from ..const import (
     FW_MESSAGE_TIMEOUT,
     PRINTING_STATES,
@@ -120,12 +120,14 @@ class LCDPrinter(metaclass=MCSingleton):
                  serial_parser: ThreadedSerialParser,
                  model: Model,
                  settings: Settings,
-                 printer: Printer):
+                 printer: Printer,
+                 config: Config):
         self.serial_queue: SerialQueue = serial_queue
         self.serial_parser: ThreadedSerialParser = serial_parser
         self.model: Model = model
         self.settings: Settings = settings
         self.printer: Printer = printer
+        self.config: Config = config
 
         self.event_queue: Queue[Callable[[], None]] = Queue()
 
@@ -333,12 +335,17 @@ class LCDPrinter(metaclass=MCSingleton):
             }
             if self.wizard_screen.conditions != conditions:
                 self.wizard_screen.conditions = conditions
-                # Can't have a capital G because FW doesn't understand
-                # What's a print command and what's not. It differentiates
-                # between them using `"G" in command` condition
-                self.carousel.set_text(self.wizard_screen,
-                                       f"go: {self.model.ip_updater.local_ip}",
-                                       last_line_extra=10)
+                printer_number = self.config.daemon.printer_number
+                local_ip = self.model.ip_updater.local_ip
+                if printer_number is not None:
+                    text = f"{local_ip}/{printer_number}"
+                else:
+                    # Can't have a capital G because old FW doesn't understand
+                    # What's a print command and what's not. It differentiated
+                    # between them using `"G" in command` condition
+                    text = f"go: {local_ip}"
+                self.carousel.set_text(
+                    self.wizard_screen, text, last_line_extra=10)
         else:
             self._message_and_disable(self.wizard_screen, "Setup completed")
 
@@ -428,15 +435,20 @@ class LCDPrinter(metaclass=MCSingleton):
         """Should the idle screen be shown? And what should it say?"""
         if time() - self.idle_from > SLEEP_SCREEN_TIMEOUT and LAN:
             self.carousel.enable(self.idle_screen)
-            ip = self.model.ip_updater.local_ip
+            local_ip = self.model.ip_updater.local_ip
+            printer_number = self.config.daemon.printer_number
+            if printer_number is not None:
+                ip_text = f"{local_ip}/{printer_number}"
+            else:
+                ip_text = f"{local_ip}"
             speed = self.model.latest_telemetry.speed
-            conditions = {"ip": ip, "speed": speed}
+            conditions = {"ip": local_ip, "speed": speed}
             if self.idle_screen.conditions != conditions:
                 self.idle_screen.conditions = conditions
                 if speed != 42:
                     self.carousel.set_text(self.idle_screen,
                                            "PrusaLink OK.".ljust(19) +
-                                           f"{ip}".ljust(19),
+                                           f"{ip_text}".ljust(19),
                                            scroll_amount=19,
                                            last_line_extra=12)
                 else:

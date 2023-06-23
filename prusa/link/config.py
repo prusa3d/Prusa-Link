@@ -83,6 +83,7 @@ class FakeArgs:
         self.serial_port = None
         self.debug = False
         self.info = False
+        self.printer_number = None
 
 
 class Config(Get):
@@ -106,6 +107,7 @@ class Config(Get):
                     ("threshold_file", str, "./threshold.data"),
                     ("user", str, "pi"),
                     ("group", str, "pi"),
+                    ("printer_number", int, None),
                 )))
         if args.foreground or getuid() != 0:
             pwd = getpwuid(getuid())
@@ -119,6 +121,8 @@ class Config(Get):
 
         if args.pidfile:
             self.daemon.pid_file = abspath(args.pidfile)
+        if args.printer_number is not None:
+            self.daemon.printer_number = args.printer_number
 
         for file_ in ('pid_file', 'power_panic_file', 'threshold_file'):
             setattr(
