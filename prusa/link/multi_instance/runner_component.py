@@ -24,9 +24,11 @@ class LoadedInstance:
 class RunnerComponent:
     """The component that handles starting instance"""
 
-    def __init__(self, multi_instance_config, user_info):
+    def __init__(self, multi_instance_config, user_info,
+                 prepend_executables_with):
         self.multi_instance_config = multi_instance_config
         self.user_info = user_info
+        self.prepend_executables_with = prepend_executables_with
         self.loaded = []
 
     def start_configured(self):
@@ -60,6 +62,7 @@ class RunnerComponent:
         except FileNotFoundError:
             pass
         start_command = PRUSALINK_START_PATTERN.format(
+            prepend=self.prepend_executables_with,
             username=self.user_info.pw_name,
             config_path=config_path,
         )
