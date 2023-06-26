@@ -14,15 +14,19 @@ log = logging.getLogger(__name__)
 class Controller:
     """Glue between the multi instance components"""
 
-    def __init__(self, user_info):
+    def __init__(self, user_info, prepend_executables_with):
         self.user_info = user_info
 
         self.multi_instance_config = MultiInstanceConfig()
 
         self.config_component = ConfigComponent(
-            self.multi_instance_config, self.user_info)
+            self.multi_instance_config,
+            self.user_info,
+            prepend_executables_with)
         self.runner_component = RunnerComponent(
-            self.multi_instance_config, self.user_info)
+            self.multi_instance_config,
+            self.user_info,
+            prepend_executables_with)
 
         self.ipc_consumer = IPCConsumer(UDEV_REFRESH_QUEUE_NAME,
                                         chown_uid=self.user_info.pw_uid,

@@ -18,7 +18,7 @@ CONNECTED_RULE_PATH = "/etc/udev/rules.d/99-prusalink-manager-trigger.rules"
 CONNECTED_RULE_PATTERN = \
     'SUBSYSTEM=="tty", ATTRS{{idVendor}}=="{vendor_id}", ' \
     'ATTRS{{idProduct}}=="{model_id}", ' \
-    'RUN+="/bin/su {username} -c \\"prusalink-manager rescan\\""'
+    'RUN+="/bin/su {username} -c \\"{prepend}prusalink-manager rescan\\""'
 
 VALID_SN_REGEX = re.compile(r"^(?P<sn>^CZPX\d{4}X\d{3}X.\d{5})$")
 
@@ -40,7 +40,7 @@ RULE_PATTERN = 'SUBSYSTEM=="tty", ' \
                'SYMLINK+="{symlink_name}"'
 
 PRUSALINK_START_PATTERN = \
-    'su {username} -c "prusalink -i -c {config_path} start"'
+    'su {username} -c "{prepend}prusalink -i -c {config_path} start"'
 
 # How long to wait for the printer symlink to appear in devices
 UDEV_SYMLINK_TIMEOUT = 30  # seconds
