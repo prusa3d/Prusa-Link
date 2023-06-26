@@ -19,6 +19,7 @@ from ..config import LOG_FORMAT_SYSLOG, Config, FakeArgs
 from ..util import ensure_directory
 from .config_component import MultiInstanceConfig
 from .const import (
+    DEFAULT_EXECUTABLE,
     DEFAULT_UID,
     MANAGER_PID_PATH,
     RUN_DIRECTORY,
@@ -67,7 +68,7 @@ class Manager:
 
     pid_file = PIDLockFile(MANAGER_PID_PATH)
 
-    def __init__(self, user_info):
+    def __init__(self, user_info, prusalink_executable):
         self.user_info = user_info
 
         if self.pid_file.is_locked():
@@ -86,7 +87,9 @@ class Manager:
         )
 
         with context:
-            self.controller = Controller(user_info=self.user_info)
+            self.controller = Controller(
+                user_info=self.user_info,
+                prusalink_executable=prusalink_executable)
             self.controller.run()
 
     def _sigterm_handler(self, *_):
@@ -151,10 +154,10 @@ def get_username(username=None):
             raise
 
 
-def start(user_info):
+def start(user_info, prusalink_executable):
     """Starts the instance manager processes"""
     if os.fork() == 0:
-        Manager(user_info)
+        Manager(user_info, prusalink_executable)
         sys.exit(0)
     if os.fork() == 0:
         Server(user_info)
@@ -200,10 +203,10 @@ def stop(quiet=False):
                             quiet)
 
 
-def clean(user_info):
+def clean(user_info, prusalink_executable):
     """Stops the MultiInstance Manager and removes all printers"""
     stop(quiet=True)
-    controller = Controller(user_info)
+    controller = Controller(user_info, prusalink_executable)
     controller.remove_all_printers()
 
 
@@ -234,6 +237,9 @@ def main():
     parser.add_argument(
         "-u", "--username", required=False,
         help="Which users to use for running and storing everything")
+    parser.add_argument(
+        "-e", "--executable", required=False,
+        help="Path to the PrusaLink executable")
 
     subparsers = parser.add_subparsers(dest="command",
                                        help="Available commands")
@@ -272,15 +278,16 @@ def main():
 
     safe_username = get_username(args.username)
     user_info = pwd.getpwnam(safe_username)
+    prusalink_executable = args.executable or DEFAULT_EXECUTABLE
 
     ensure_directory(RUN_DIRECTORY, chown_username=safe_username)
 
     if args.command == "start":
-        start(user_info)
+        start(user_info, prusalink_executable)
     elif args.command == "stop":
         stop()
     elif args.command == "clean":
-        clean(user_info)
+        clean(user_info, prusalink_executable)
     elif args.command == "rescan":
         rescan()
     else:

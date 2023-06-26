@@ -130,10 +130,12 @@ class MultiInstanceConfig(Get):
 class ConfigComponent:
     """Manages the configuration files and directories"""
 
-    def __init__(self, multi_instance_config, user_info):
+    def __init__(self, multi_instance_config, user_info,
+                 prusalink_executable):
         # -- create multi instance config --
         self.multi_instance_config = multi_instance_config
         self.user_info = user_info
+        self.prusalink_executable = prusalink_executable
 
         self.highest_printer_number = self._get_highest_printer_number()
 
@@ -236,6 +238,7 @@ class ConfigComponent:
                     vendor_id=vendor_id,
                     model_id=model_id,
                     username=self.user_info.pw_name,
+                    prusalink_executable=self.prusalink_executable,
                 ))
         contents = "\n".join(rule_lines)
         log.info("Writing udev rule:\n%s", contents)
