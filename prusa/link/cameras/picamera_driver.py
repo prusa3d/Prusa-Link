@@ -3,6 +3,7 @@ import gc
 import logging
 import select
 from time import time
+from types import MappingProxyType
 from typing import Any, Callable, Dict, Optional
 
 from prusa.connect.printer.camera import Resolution
@@ -88,7 +89,7 @@ class PiCameraDriver(CameraDriver):
 
     name = "PiCamera"
     supported = PICAMERA_SUPPORTED
-    REQUIRES_SETTINGS: Dict[str, str] = {}
+    REQUIRES_SETTINGS: MappingProxyType[str, str] = MappingProxyType({})
 
     @staticmethod
     def _scan():

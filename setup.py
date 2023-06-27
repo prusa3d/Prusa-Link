@@ -6,6 +6,7 @@ from grp import getgrnam
 from shutil import copyfile, copytree
 from subprocess import run
 from sys import stderr
+from typing import ClassVar
 
 from setuptools import Command, find_namespace_packages, setup  # type: ignore
 
@@ -58,7 +59,7 @@ def doc():
 class BuildStatic(Command):
     """Build static html files, need docker."""
     description = __doc__
-    user_options = [
+    user_options: ClassVar[list[str]] = [
             ('target-dir=', 't',
              "target build directory (default: './prusa/link/static')"),
             ]

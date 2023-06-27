@@ -7,6 +7,7 @@ import struct
 import termios
 from select import select
 from time import time
+from types import MappingProxyType
 
 TIOCM_DTR_str = struct.pack('I', termios.TIOCM_DTR)
 TIOCM_RTS_str = struct.pack('I', termios.TIOCM_RTS)
@@ -18,7 +19,7 @@ class SerialException(RuntimeError):
 
 class Serial:
     """PySerial compatible class."""
-    baudrates = {115200: termios.B115200}
+    baudrates = MappingProxyType({115200: termios.B115200})
 
     def __init__(self, port: str, baudrate: int, timeout: int):
         """

@@ -6,7 +6,7 @@ import abc
 import logging
 import os
 import select
-from typing import List, Set
+from typing import ClassVar, List, Set
 
 from blinker import Signal  # type: ignore
 
@@ -32,7 +32,7 @@ class Storage(ThreadedUpdatable):
     of storage
     """
 
-    paths_to_storage: List[str] = []
+    paths_to_storage: ClassVar[List[str]] = []
 
     def __init__(self, model: Model):
         super().__init__()
