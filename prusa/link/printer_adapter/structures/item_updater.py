@@ -104,6 +104,19 @@ class WatchedItem(Watchable):
     def __repr__(self):
         return super().__repr__() + ": " + self.name
 
+    def __lt__(self, other):
+        if not isinstance(other, WatchedItem):
+            return NotImplemented
+        return self.name < other.name
+
+    def __eq__(self, other):
+        if not isinstance(other, WatchedItem):
+            return NotImplemented
+        return self.name == other.name
+
+    def __hash__(self):
+        return hash(self.name)
+
 
 class WatchedGroup(Watchable):
     """

@@ -4,6 +4,7 @@
 
 import logging
 import math
+from queue import PriorityQueue
 from time import sleep, time
 from unittest.mock import Mock
 
@@ -599,3 +600,15 @@ def test_group_updating(updater_instance: ItemUpdater):
         updater_instance.invalidate(item)
         item_gather.event.wait(THRESHOLD)
         item_gather.event.clear()
+
+
+def test_priority_queue():
+    """Tests that you can have two watched items with the same priority
+    and the app does not throw an error"""
+    item_1 = WatchedItem("item_1")
+    item_2 = WatchedItem("item_2")
+    queue = PriorityQueue()
+    queue.put((1, item_1))
+    queue.put((1, item_2))
+    queue.get()
+    queue.get()
