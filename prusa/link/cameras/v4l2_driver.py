@@ -376,10 +376,11 @@ class V4L2Camera:
 
         # Request there be 0 buffers ready - deallocate them
         self._buffer_request(count=0)
-
-        self.buffer_details.mmap.close()
-        self._file_object.close()
-        self._file_object = None
+        if self.buffer_details is not None:
+            self.buffer_details.mmap.close()
+        if self._file_object is not None:
+            self._file_object.close()
+            self._file_object = None
 
     def next_frame(self):
         """Asks for the next frame, leaves the buffer memory accessible
@@ -601,8 +602,15 @@ class V4L2Driver(CameraDriver):
         except OSError:
             log.exception("Camera %s could not be closed",
                           self.camera_id)
+        except Exception:  # pylint: disable=broad-except
+            log.exception("Camera %s could not be closed - unknown error",
+                          self.camera_id)
+
         try:
             self.encoder.stop()
         except OSError:
             log.exception("Encoder for %s could not be closed",
+                          self.camera_id)
+        except Exception:  # pylint: disable=broad-except
+            log.exception("Encoder for %s could not be closed - unknown error",
                           self.camera_id)
