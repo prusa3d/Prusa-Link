@@ -10,6 +10,7 @@ import os
 import select
 from enum import Enum
 from math import sqrt
+from types import MappingProxyType
 
 import numpy as np
 from turbojpeg import TJSAMP_422, TurboJPEG  # type: ignore
@@ -120,11 +121,13 @@ class MJPEGEncoder(Encoder):
     DEVICE_PATH = "/dev/video11"
 
     # These are suggested bitrates for 1080p30 in Mbps
-    BITRATE_TABLE = {Quality.VERY_LOW: 6,
-                     Quality.LOW: 12,
-                     Quality.MEDIUM: 18,
-                     Quality.HIGH: 27,
-                     Quality.VERY_HIGH: 45}
+    BITRATE_TABLE = MappingProxyType({
+        Quality.VERY_LOW: 6,
+        Quality.LOW: 12,
+        Quality.MEDIUM: 18,
+        Quality.HIGH: 27,
+        Quality.VERY_HIGH: 45,
+    })
 
     # Use only one buffer, so no indexes need to exist
     BUFFER_INDEX = 0
@@ -359,11 +362,13 @@ class MJPEGEncoder(Encoder):
 
 class JPEGEncoder(Encoder):
     """Encoder using the TurboJPEG library (CPU encoding)"""
-    QUALITY_TABLE = {Quality.VERY_LOW: 25,
-                     Quality.LOW: 50,
-                     Quality.MEDIUM: 70,
-                     Quality.HIGH: 85,
-                     Quality.VERY_HIGH: 95}
+    QUALITY_TABLE = MappingProxyType({
+        Quality.VERY_LOW: 25,
+        Quality.LOW: 50,
+        Quality.MEDIUM: 70,
+        Quality.HIGH: 85,
+        Quality.VERY_HIGH: 95,
+    })
 
     def __init__(self):
         super().__init__()

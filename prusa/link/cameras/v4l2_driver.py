@@ -10,6 +10,7 @@ import pathlib
 import re
 import select
 from glob import glob
+from types import MappingProxyType
 from typing import Any
 
 from prusa.connect.printer.camera import Resolution
@@ -206,7 +207,7 @@ def iter_video_capture_devices(path="/dev"):
 
 class MediaDeviceInfo(ctypes.Structure):
     """A data structure for getting media device info"""
-    _fields_ = [
+    _fields_ = (
         ("driver", ctypes.c_char * 16),
         ("model", ctypes.c_char * 32),
         ("serial", ctypes.c_char * 40),
@@ -215,7 +216,7 @@ class MediaDeviceInfo(ctypes.Structure):
         ("hw_revision", ctypes.c_uint32),
         ("driver_version", ctypes.c_uint32),
         ("reserved", ctypes.c_uint32 * 31),
-    ]
+    )
 
 
 SUPPORTED_PIXEL_FORMATS = {v4l2.V4L2_PIX_FMT_MJPEG, v4l2.V4L2_PIX_FMT_YUYV}
@@ -455,9 +456,9 @@ class V4L2Driver(CameraDriver):
     """Linux V4L2 USB webcam driver"""
 
     name = "V4L2"
-    REQUIRES_SETTINGS = {
+    REQUIRES_SETTINGS = MappingProxyType({
         "path": "Path to the V4L2 device like '/dev/video1'",
-    }
+    })
 
     @staticmethod
     def _scan():
