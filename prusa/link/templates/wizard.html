@@ -93,14 +93,7 @@
 
             {% elif not wizard.daemon.prusa_link or not wizard.daemon.prusa_link.printer %}
 
-            <h3>We have encountered problems talking to your printer</h3>
-            <p>Please make sure the RPi port is set to ON and your printer is idle, showing the status screen.
-                You can also try going over your connections one more time.</p>
-
-            <p>PrusaLink takes some time to properly initialize. Try waiting a few seconds and refresh the page. If the problem still persists, power cycle your printer / PrusaLink and try again.</p>
-
-            <p>If everything fails, let us know on <a href="https://forum.prusaprinters.org/forum/prusa-connect-prusalink/">the forum</a>
-                or contact support at info@prusa3d.com</p>
+            <h2 class="align-center">PrusaLink is starting...</h2>
 
             {# TODO: some prusa-link log to see what's happen. #}
 
