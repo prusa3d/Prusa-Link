@@ -143,3 +143,5 @@ MBL_TRIGGER_REGEX = re.compile(r"^(tmc\d+_home_enter\(axes_mask=0x..\))|"
 TM_ERROR_LOG_REGEX = re.compile(r"TM: error \|(?P<deviation>-?\d+\.?\d*)\|"
                                 r"[<>](?P<threshold>-?\d+\.?\d*)")
 TM_ERROR_CLEARED = re.compile(r"^TM: error cleared$")
+
+URLS_FOR_WIZARD = re.compile(r"/(\d{1,3})?/?")

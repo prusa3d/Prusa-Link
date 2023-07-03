@@ -9,6 +9,7 @@ from poorwsgi.request import FieldStorage
 from prusa.connect.printer import Printer
 
 from .. import conditions
+from ..printer_adapter.structures.regular_expressions import URLS_FOR_WIZARD
 from ..web.connection import compose_register_url
 from .lib.auth import REALM
 from .lib.core import app
@@ -378,5 +379,5 @@ def check_wizard_access(req):
         abort(410)  # auth map is configured, wizard is denied
 
     if app.settings.is_wizard_needed() \
-            and req.path == '/' and req.method != "HEAD":
+            and URLS_FOR_WIZARD.fullmatch(req.path) and req.method != "HEAD":
         redirect_with_proxy(req, '/wizard')

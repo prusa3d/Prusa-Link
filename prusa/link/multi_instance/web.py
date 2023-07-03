@@ -163,7 +163,8 @@ def proxy(req, printer_number, path, use_proxy_headers=True):
 
     @param use_proxy_headers: When re-directing to a single instance,
     we re-use the whole uri path, no need for an extra prefix header"""
-
+    if path.startswith("/"):
+        path = path[1:]
     printer_info = req.app.info_keeper.printer_info
     printer = printer_info.get(int(printer_number))
     if printer is not None:
