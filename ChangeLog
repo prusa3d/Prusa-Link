@@ -1,5 +1,8 @@
 # ChangeLog
 
+0.7.1rc2
+    * Add an automatic PrusaLink image builder script
+
 0.7.1rc1 (2023-08-10)
     * Fixed HTTP response status on HEAD request for non-existing files
     * Attribute ro renamed to read_only
