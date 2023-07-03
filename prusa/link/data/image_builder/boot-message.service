@@ -1,0 +1,9 @@
+[Unit]
+Description=Boot message
+
+[Service]
+Type=simple
+ExecStart=/bin/sh -c 'stty -F /dev/ttyAMA0 115200; printf \'M117 RPi booting...\n\' > /dev/ttyAMA0'
+
+[Install]
+WantedBy=basic.target
