@@ -12,6 +12,16 @@
     * Fix an error when dosconnecting from a cammera that failed to connect
     * Fix an intermittent error that was killing instances for like two years
     * Differentiate between multi instance printers by showing the printer number on the LCD screen
+    * Static Web update
+        - Fix behavior on SD card ejection
+        - Add simple camera focus control if supported
+        - Add default value for connect hostname
+        - Update translations
+        - Add tooltips for error status texts in telemetry
+        - Add confirmation modal to overwrite a file by upload
+        - Fix undefined printer states displaying
+        - Hide zero temperatures in telemetry
+        - Add support to be running behind the proxy
 
 0.7.0 (2023-05-19)
     * Fixed printer sends info about api key change to Connect after change
@@ -93,7 +103,6 @@
        - notifies about errors
        - shows an idle screen with the IP address after 30min
        - add idle screen and show transfers during print pauses
-
     * Name and location of printer value validation
     * Fix negative timeout being possible in serial read
     * Additional Connect (un)registration support
@@ -137,10 +146,13 @@
        - Project preview is now not dependent on `/api/job` endpoint
        - Confirm dialog after uploade via drag zone
        - Nozzle diameter
+<<<<<<< Updated upstream
        - Offline mode
        - Connect Like icons
        - Translaction fallbacks
 
+=======
+>>>>>>> Stashed changes
      * Differentiate between FW and ID errors in the wizard, update texts
      * Fixed download ref, added total storage space info
      * Added storage space info to api/printer
