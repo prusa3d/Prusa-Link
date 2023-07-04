@@ -177,7 +177,7 @@ def proxy(req, printer_number, path, use_proxy_headers=True):
         log.debug("Passing request for path %s", path)
         response = pool_manager.request(
             method=req.method,
-            url=f"http://localhost:{printer.port}/{path}",
+            url=f"http://localhost:{printer.port}/{path}?{req.query}",
             headers=proxied_headers,
             preload_content=False,
             body=file_data_generator(req, get_content_length(req.headers)),
