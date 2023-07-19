@@ -3,6 +3,7 @@ import logging
 import re
 from collections import deque
 from threading import Event, RLock, Thread, Timer
+from time import monotonic
 from typing import Dict, Optional, Union
 
 from blinker import Signal  # type: ignore
@@ -13,7 +14,7 @@ from prusa.connect.printer.const import Source, State
 from ..conditions import HW, SERIAL
 from ..config import Config, Settings
 from ..const import ERROR_REASON_TIMEOUT, STATE_HISTORY_SIZE, \
-    ATTENTION_CLEAR_INTERVAL
+    ATTENTION_CLEAR_INTERVAL, PRINT_END_TIMEOUT
 from ..serial.serial_parser import ThreadedSerialParser
 from .model import Model
 from .structures.mc_singleton import MCSingleton
@@ -181,6 +182,10 @@ class StateManager(metaclass=MCSingleton):
         # so the attention does not get cleared.
         # Let's clear it on a timer instead
         self.attention_clearing_timer = self.new_attention_timer()
+
+        # We need to stay in the STOPPED and FINISHED states for a while
+        # for Connect to take and save the last print photo
+        self.print_ended_at = None
 
         regex_handlers = {
             BUSY_REGEX: lambda sender, match: self.busy(),
@@ -576,7 +581,7 @@ class StateManager(metaclass=MCSingleton):
         state to STOPPED
         """
         if self.believe_not_printing:
-            if self.data.printing_state == State.PRINTING:
+            if self.data.printing_state in (State.PRINTING, State.PAUSED):
                 self.stopped()
             else:
                 self.not_printing()
@@ -628,6 +633,7 @@ class StateManager(metaclass=MCSingleton):
     def finished(self):
         """Sets the printing state to FINISHED if we are printing"""
         if self.data.printing_state == State.PRINTING:
+            self.print_ended_at = monotonic()
             self.data.printing_state = State.FINISHED
 
     @state_influencer(StateChange(to_states={State.READY: Source.USER}))
@@ -679,6 +685,7 @@ class StateManager(metaclass=MCSingleton):
         """
         if self.data.printing_state in {State.PRINTING, State.PAUSED}:
             self.unsure_whether_printing = False
+            self.print_ended_at = monotonic()
             self.data.printing_state = State.STOPPED
 
         if self.fan_error_name is not None:
@@ -707,12 +714,13 @@ class StateManager(metaclass=MCSingleton):
 
         if self.data.printing_state in {State.STOPPED, State.FINISHED} and \
                 self.data.override_state is not State.ATTENTION:
-            self.data.printing_state = None
+            if monotonic() > self.print_ended_at + PRINT_END_TIMEOUT:
+                self.data.printing_state = None
 
-            # Make sure that if we just finished a print, or we stopped one,
-            # we return to IDLE
-            if self.data.base_state == State.READY:
-                self.data.base_state = State.IDLE
+                # Make sure that if we just finished a print, or we
+                # stopped one, we return to IDLE
+                if self.data.base_state == State.READY:
+                    self.data.base_state = State.IDLE
 
         self._clear_attention()
 
