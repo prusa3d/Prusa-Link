@@ -52,7 +52,7 @@ Git and Pip are needed for installation, while pigpio is only needed if the
 RPi GPIO pins are to be used.
 
 ```bash
-sudo apt install git python3-pip pigpio libcap-dev libmagic1 libturbojpeg0 libatlas-base-dev python3-numpy
+sudo apt install git python3-pip pigpio libcap-dev libmagic1 libturbojpeg0 libatlas-base-dev python3-numpy libffi-dev
 
 # If you are using different distro (e.g. Ubuntu), use libturbojpeg library
 # instead of libturbojpeg0
