@@ -23,6 +23,7 @@
         - Hide zero temperatures in telemetry
         - Add support to be running behind the proxy
     * Hold the STOPPED and FINISHED state for at least 11s
+    * Fix MK2(.5)S SN being broken on multi-instance images
 
 0.7.0 (2023-05-19)
     * Fixed printer sends info about api key change to Connect after change
