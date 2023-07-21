@@ -196,7 +196,7 @@ class SerialAdapter(metaclass=MCSingleton):
                 paths.extend(glob.glob("/dev/ttyUSB*"))
             else:
                 # Follow symlinks to the real device file
-                device_path = os.path.relpath(self.configured_port)
+                device_path = os.path.realpath(self.configured_port)
                 paths = [device_path]
 
             # Pair the usb printer paths with their serial numbers
