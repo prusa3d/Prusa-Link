@@ -8,6 +8,8 @@ import abc
 import logging
 from pathlib import Path
 from re import Match
+from subprocess import STDOUT, CalledProcessError, check_call, check_output
+from sys import executable
 from threading import Event
 from time import time
 from typing import Dict, Optional, Set
@@ -34,6 +36,21 @@ from .structures.regular_expressions import (
 )
 
 log = logging.getLogger(__name__)
+
+
+def check_update_prusalink():
+    """Run the bash script to check for PrusaLink updates and return output"""
+    return check_output(
+        [executable, '-m', 'pip', 'install', '--no-deps', '--dry-run',
+         '-U', 'prusalink'], stderr=STDOUT).decode()
+
+
+def update_prusalink():
+    """Run the bash script to update PrusaLink and return output"""
+    return check_output(
+        [executable, '-m', 'pip', 'install', '-U',
+         '--upgrade-strategy', 'only-if-needed', 'prusalink'],
+        stderr=STDOUT).decode()
 
 
 class TryUntilState(Command):
@@ -445,6 +462,28 @@ class ResetPrinter(Command):
                 "Your printer has ignored the reset signal, your RPi "
                 "is broken or you have configured a wrong pin,"
                 "or our serial reading component broke..")
+
+
+class UpgradeLink(Command):
+    """Class for upgrading PrusaLink"""
+    command_name = "upgrade_link"
+
+    def _run_command(self):
+        try:
+            output = update_prusalink()
+
+            # No update available
+            if "Installing collected packages" not in output:
+                raise CommandFailed("No update available")
+
+            # New version was installed correctly - restart PrusaLink
+            check_call([executable, '-m', 'prusalink', 'restart'])
+            log.info("PrusaLink upgraded successfully")
+
+        # There's a problem with package installation, or it does not exist
+        except CalledProcessError as exception:
+            raise CommandFailed("There's a problem with package installation, "
+                                "or it does not exist") from exception
 
 
 class JobInfo(Command):

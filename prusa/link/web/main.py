@@ -1,11 +1,10 @@
 """Main pages and core API"""
 import logging
-import subprocess
 from os import listdir
 from os.path import basename, getmtime, getsize, join
 from socket import gethostname
-from subprocess import CalledProcessError, check_output
-from sys import executable, version
+from subprocess import CalledProcessError
+from sys import version
 
 from gcode_metadata import get_metadata
 from pkg_resources import working_set  # type: ignore
@@ -31,6 +30,8 @@ from ..printer_adapter.command_handlers import (
     SetReady,
     StartPrint,
     StopPrint,
+    check_update_prusalink,
+    update_prusalink,
 )
 from ..printer_adapter.job import Job, JobState
 from .lib.auth import REALM, check_api_digest, check_config
@@ -633,9 +634,8 @@ def api_update(req, env):
 
     if env == "prusalink":
         try:
-            output = check_output(
-                [executable, '-m', 'pip', 'install', '--no-deps', '--dry-run',
-                 '-U', 'prusalink'], stderr=subprocess.STDOUT).decode()
+            output = check_update_prusalink()
+
         # There's a problem with package installation, or it does not exist
         except CalledProcessError as exception:
             raise conditions.UnavailableUpdate(exception.output.decode()) \
@@ -666,11 +666,7 @@ def api_update_post(req, env):
     # pylint: disable=unused-argument
     if env == "prusalink":
         try:
-            output = \
-                check_output(
-                    [executable, '-m', 'pip', 'install', '-U',
-                     '--upgrade-strategy', 'only-if-needed', 'prusalink'],
-                    stderr=subprocess.STDOUT).decode()
+            output = update_prusalink()
 
             # No update available
             if "Installing collected packages" not in output:
