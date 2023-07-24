@@ -59,6 +59,7 @@ from .command_handlers import (
     StartPrint,
     StopPrint,
     UnloadFilament,
+    UpgradeLink,
 )
 from .command_queue import CommandQueue, CommandResult
 from .file_printer import FilePrinter
@@ -160,6 +161,7 @@ class PrusaLink:
         self.printer.set_handler(CommandType.GCODE, self.execute_gcode)
         self.printer.set_handler(CommandType.PAUSE_PRINT, self.pause_print)
         self.printer.set_handler(CommandType.RESET_PRINTER, self.reset_printer)
+        self.printer.set_handler(CommandType.UPGRADE, self.upgrade_link)
         self.printer.set_handler(CommandType.RESUME_PRINT, self.resume_print)
         self.printer.set_handler(CommandType.START_PRINT, self.start_print)
         self.printer.set_handler(CommandType.STOP_PRINT, self.stop_print)
@@ -503,6 +505,13 @@ class PrusaLink:
         """
         command = ResetPrinter(command_id=caller.command_id)
         return self.command_queue.force_command(command)
+
+    def upgrade_link(self, caller: SDKCommand) -> CommandResult:
+        """
+        Connects the command to upgrade link from CONNECT with its handler
+        """
+        command = UpgradeLink(command_id=caller.command_id)
+        return self.command_queue.do_command(command)
 
     def job_info(self, caller: SDKCommand) -> CommandResult:
         """
