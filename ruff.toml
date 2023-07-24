@@ -131,5 +131,6 @@ ignore = [
     "PIE810",   # Call `startswith` once with a `tuple`
     "S607",     # Starting a process with a partial executable path
     "RUF005",   # Consider `[sys.executable, "-m", "prusa.link", "restart", *argv]` instead of concatenation
+    "RUF015",   # Prefer `next(iter(screen.lines()))` over single element slice
     "S104",     # Possible binding to all interfaces¸
 ]
