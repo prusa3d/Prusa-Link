@@ -55,8 +55,8 @@ sudo apt install -y python3-picamera2 --no-install-recommends
 pip install PrusaLink
 
 # Or install straight from GitHub
-pip install git+https://github.com/prusa3d/Prusa-Connect-SDK-Printer.git
 pip install git+https://github.com/prusa3d/gcode-metadata.git
+pip install git+https://github.com/prusa3d/Prusa-Connect-SDK-Printer.git
 pip install git+https://github.com/prusa3d/Prusa-Link.git
 ```
 
