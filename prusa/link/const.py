@@ -28,6 +28,7 @@ PRINTER_TYPES = {
     20300: PrinterType.I3MK3,
     302: PrinterType.I3MK3S,
     20302: PrinterType.I3MK3S,
+    30302: PrinterType.I3MK3S,
 }
 
 PRINTER_CONF_TYPES = bidict({
