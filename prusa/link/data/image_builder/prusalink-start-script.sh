@@ -12,6 +12,14 @@ message() {
    printf "M117 $2\n" > "$1"
 }
 
+wifi_nic_name=$(find /sys/class/net -follow -maxdepth 2 -name wireless 2> /dev/null | cut -d / -f 5)
+if [ $? -eq 0 ] && [ -n "$wifi_nic_name" ]; then
+    /sbin/iwconfig "$wifi_nic_name" power off
+    if [ $? -eq 0 ]; then
+        printf "Turned off power management for $wifi_nic_name\n" > "$1"
+    fi
+fi
+
 username=$(id -nu 1000)
 
 set_up_port "/dev/ttyAMA0"
