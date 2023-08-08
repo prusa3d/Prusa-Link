@@ -25,12 +25,14 @@ from ..conditions import HW, ROOT_COND, UPGRADED, use_connect_errors
 from ..config import Config, Settings
 from ..const import (
     BASE_STATES,
+    EVENT_TICK_INTERVAL,
     MK25_PRINTERS,
     PATH_WAIT_TIMEOUT,
     PRINTER_CONF_TYPES,
     PRINTER_TYPES,
     PRINTING_STATES,
     SD_STORAGE_NAME,
+    InputEventName,
 )
 from ..interesting_logger import InterestingLogRotator
 from ..sdk_augmentation.printer import MyPrinter
@@ -62,6 +64,8 @@ from .command_handlers import (
     UpgradeLink,
 )
 from .command_queue import CommandQueue, CommandResult
+from .event_processor import EventInfo, EventProcessor
+from .event_processor_utils import SerialEventInfoFactory, Ticker
 from .file_printer import FilePrinter
 from .filesystem.sd_card import SDState
 from .filesystem.storage_controller import StorageController
@@ -69,17 +73,19 @@ from .ip_updater import IPUpdater
 from .job import Job, JobState
 from .lcd_printer import LCDPrinter
 from .model import Model
-from .print_stat_doubler import PrintStatDoubler
 from .print_stats import PrintStats
 from .printer_polling import PrinterPolling
 from .special_commands import SpecialCommands
 from .state_manager import StateChange, StateManager
+from .state_watchers.print_stat_doubler import PrintStatDoubler
 from .structures.item_updater import WatchedItem
 from .structures.model_classes import PrintState, Telemetry
 from .structures.module_data_classes import Sheet
 from .structures.regular_expressions import (
+    CONFIRMATION_REGEX,
     MBL_TRIGGER_REGEX,
     PAUSE_PRINT_REGEX,
+    PRINT_INFO_REGEX,
     PRINTER_BOOT_REGEX,
     RESUME_PRINT_REGEX,
     TM_ERROR_LOG_REGEX,
@@ -208,6 +214,46 @@ class PrusaLink:
                                                 self.command_queue,
                                                 self.lcd_printer)
 
+        # --- Event processing ---
+
+        self.event_processor = EventProcessor()
+        self.serial_info_event_factory = SerialEventInfoFactory(
+            self.serial_parser,
+        )
+
+        # - Input event setup -
+        # set up event ticking so events can use timeouts
+        self.ticker = Ticker(EVENT_TICK_INTERVAL)
+        self.event_processor.track_event(
+            EventInfo(
+                name=InputEventName.TICK,
+                registration=self.ticker.set_handler,
+            ),
+        )
+        self.event_processor.track_event(
+            self.serial_info_event_factory.create(
+                name=InputEventName.OK_RECEIVED,
+                regexp=CONFIRMATION_REGEX,
+            ),
+        )
+        self.event_processor.track_event(
+            self.serial_info_event_factory.create(
+                name=InputEventName.PRINT_INFO_RECEIVED,
+                regexp=PRINT_INFO_REGEX,
+            ),
+        )
+
+        # - Watcher setup -
+        self.event_processor.add_watcher(
+            PrintStatDoubler(),
+        )
+
+        # - Output event setup -
+        self.event_processor.add_output_event_handler(
+            PrintStatDoubler.OutputEvent.PRINT_INFO,
+            self.printer_polling.print_info_handler,
+        )
+
         # Set Transfer callbacks
         self.printer.transfer.started_cb = self.transfer_activity_observed
         self.printer.transfer.progress_cb = self.transfer_activity_observed
@@ -219,9 +265,6 @@ class PrusaLink:
         self.serial_parser.add_decoupled_handler(
             MBL_TRIGGER_REGEX,
             lambda sender, match: self.printer_polling.invalidate_mbl())
-
-        self.print_stat_doubler = PrintStatDoubler(self.serial_parser,
-                                                   self.printer_polling)
 
         # Bind signals
         self.serial_queue.serial_queue_failed.connect(self.serial_queue_failed)
@@ -375,6 +418,8 @@ class PrusaLink:
         was_printing = self.model.file_printer.printing
 
         self.quit_evt.set()
+        self.event_processor.stop()
+        self.ticker.stop()
         self.camera_governor.stop()
         self.file_printer.stop()
         self.command_queue.stop()
@@ -405,6 +450,8 @@ class PrusaLink:
         log.debug("Stop signalled")
 
         if not fast:
+            self.event_processor.wait_stopped()
+            self.ticker.wait_stopped()
             self.service_discovery.unregister()
             self.file_printer.wait_stopped()
             self.telemetry_passer.wait_stopped()

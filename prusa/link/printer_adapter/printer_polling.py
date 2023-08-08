@@ -615,7 +615,7 @@ class PrinterPolling:
         """Polls the print info, but instead of returning it, it uses
         another method, that will eventually set it"""
         matches = self.do_multimatch("M73", PRINT_INFO_REGEX)
-        self.print_info_handler(self, matches)
+        self.print_info_handler(matches)
 
         raise SideEffectOnly()
 
@@ -697,11 +697,9 @@ class PrinterPolling:
         self.item_updater.set_value(self.time_remaining_guesstimate,
                                     guesstimation)
 
-    def print_info_handler(self, sender, matches: List[re.Match]):
+    def print_info_handler(self, matches: List[re.Match]):
         """One special handler supporting polling and spontaneous
         unsolicited reporting of progress and minutes remaining"""
-        assert sender is not None
-
         class PrintInfo:
             """A shell for print stat data"""
             def __init__(self):

@@ -3,6 +3,7 @@ Contains almost every constant for the printer communication part of
 PrusaLink
 """
 import uuid
+from enum import Enum
 from importlib.resources import files  # type: ignore
 from os import path
 from typing import List
@@ -68,6 +69,7 @@ TELEMETRY_SLEEPING_INTERVAL = 4  # can be sleeping in any state
 TELEMETRY_SLEEP_AFTER = 3 * 60
 TELEMETRY_REFRESH_INTERVAL = 5 * 60  # full telemetry re-send
 
+EVENT_TICK_INTERVAL = 0.2
 FAST_POLL_INTERVAL = 1
 SLOW_POLL_INTERVAL = 10  # for values, that aren't that important
 VERY_SLOW_POLL_INTERVAL = 30
@@ -242,3 +244,10 @@ PRINT_MODE_ID_PAIRING = {
 SUPPORTED_PRINTERS = {
     "2c99": {"0001", "0002"},
 }
+
+
+class InputEventName(Enum):
+    """Event names for input events of the EventProcessor"""
+    TICK = "TICK"
+    OK_RECEIVED = "OK_RECEIVED"
+    PRINT_INFO_RECEIVED = "PRINT_STATS_RECEIVED"
