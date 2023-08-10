@@ -1,6 +1,6 @@
 # ChangeLog
 
-0.7.1dev0
+0.7.1rc1 (2023-08-10)
     * Fixed HTTP response status on HEAD request for non-existing files
     * Attribute ro renamed to read_only
     * Fix printer returning to READY instead of IDLE
@@ -151,13 +151,9 @@
        - Project preview is now not dependent on `/api/job` endpoint
        - Confirm dialog after uploade via drag zone
        - Nozzle diameter
-<<<<<<< Updated upstream
        - Offline mode
        - Connect Like icons
        - Translaction fallbacks
-
-=======
->>>>>>> Stashed changes
      * Differentiate between FW and ID errors in the wizard, update texts
      * Fixed download ref, added total storage space info
      * Added storage space info to api/printer
