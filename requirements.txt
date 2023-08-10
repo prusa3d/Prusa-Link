@@ -1,4 +1,4 @@
-prusa.connect.sdk.printer>=0.7.1dev0
+prusa.connect.sdk.printer>=0.7.1rc1
 gcode-metadata
 pip>=22.2.0
 bidict~=0.22.1
