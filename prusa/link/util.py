@@ -10,7 +10,7 @@ from hashlib import sha256
 from pathlib import Path
 from threading import Event, current_thread
 from time import time
-from typing import Callable, Union
+from typing import Callable
 
 import prctl  # type: ignore
 import pyudev  # type: ignore
@@ -201,7 +201,7 @@ def get_d3_code(address: int, byte_count: int):
     return f"D3 Ax{format(address, 'x').upper()} C{byte_count}"
 
 
-def round_to_five(number: Union[float, int]):
+def round_to_five(number: float):
     """Rounds a number to the nearest five
 
     >>> round_to_five(23)
