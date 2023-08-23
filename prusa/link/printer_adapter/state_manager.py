@@ -7,12 +7,10 @@ from time import monotonic
 from typing import Dict, Optional, Union
 
 from blinker import Signal  # type: ignore
-from prusa.connect.printer import Printer
 from prusa.connect.printer.conditions import Condition, CondState
 from prusa.connect.printer.const import Source, State
 
 from ..conditions import HW, SERIAL
-from ..config import Config, Settings
 from ..const import ERROR_REASON_TIMEOUT, STATE_HISTORY_SIZE, \
     ATTENTION_CLEAR_INTERVAL, PRINT_END_TIMEOUT
 from ..serial.serial_parser import ThreadedSerialParser
@@ -101,14 +99,10 @@ class StateManager(metaclass=MCSingleton):
     # pylint: disable=too-many-instance-attributes,
     # pylint: disable=too-many-public-methods
     # pylint: disable=too-many-arguments
-    def __init__(self, serial_parser: ThreadedSerialParser, model: Model,
-                 sdk_printer: Printer, cfg: Config, settings: Settings):
+    def __init__(self, serial_parser: ThreadedSerialParser, model: Model):
 
         self.serial_parser: ThreadedSerialParser = serial_parser
         self.model: Model = model
-        self.sdk_printer: Printer = sdk_printer
-        self.cfg = cfg
-        self.settings = settings
 
         self.pre_state_change_signal = Signal()  # kwargs: command_id: int
         self.post_state_change_signal = Signal()

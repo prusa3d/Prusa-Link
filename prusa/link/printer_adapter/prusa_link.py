@@ -70,7 +70,6 @@ from .job import Job, JobState
 from .lcd_printer import LCDPrinter
 from .model import Model
 from .print_stat_doubler import PrintStatDoubler
-from .print_stats import PrintStats
 from .printer_polling import PrinterPolling
 from .special_commands import SpecialCommands
 from .state_manager import StateChange, StateManager
@@ -78,6 +77,7 @@ from .structures.item_updater import WatchedItem
 from .structures.model_classes import PrintState, Telemetry
 from .structures.module_data_classes import Sheet
 from .structures.regular_expressions import (
+    LCD_UPDATE_REGEX,
     MBL_TRIGGER_REGEX,
     PAUSE_PRINT_REGEX,
     PRINTER_BOOT_REGEX,
@@ -98,6 +98,7 @@ class TransferCallbackState(Enum):
     PRINTER_IN_ATTENTION = 3
 
 
+# TODO: Can i somehow make subcontrollers to isolate some of the components?
 class PrusaLink:
     """
     This class is the controller for PrusaLink, more specifically the part
@@ -120,7 +121,7 @@ class PrusaLink:
         self.model = Model()
 
         # These start by themselves
-        self.service_discovery = ServiceDiscovery(self.cfg)
+        self.service_discovery = ServiceDiscovery(self.cfg.http.port)
 
         self.serial_parser = ThreadedSerialParser()
 
@@ -129,8 +130,10 @@ class PrusaLink:
                                     configured_port=cfg.printer.port,
                                     baudrate=cfg.printer.baudrate)
 
-        self.serial_queue = MonitoredSerialQueue(self.serial,
-                                                 self.serial_parser, self.cfg)
+        self.serial_queue = MonitoredSerialQueue(
+            serial_adapter=self.serial,
+            serial_parser=self.serial_parser,
+            threshold_path=self.cfg.daemon.threshold_file)
         # -----
 
         self.printer = MyPrinter()
@@ -180,20 +183,22 @@ class PrusaLink:
             RESUME_PRINT_REGEX, lambda sender, match: self.fw_resume_print())
 
         # Init components first, so they all exist for signal binding stuff
-        self.lcd_printer = LCDPrinter(self.serial_queue, self.serial_parser,
-                                      self.model, self.settings, self.printer,
-                                      self.cfg)
-        self.job = Job(self.serial_parser, self.serial_queue, self.model,
+        # TODO: does not need printer, the transfer object should be
+        #  viewable from elsewhere imo
+        self.lcd_printer = LCDPrinter(self.serial_queue, self.model,
+                                      self.settings, self.printer,
+                                      self.cfg.daemon.printer_number)
+        self.serial_parser.add_decoupled_handler(
+            LCD_UPDATE_REGEX, self.lcd_printer.lcd_updated)
+
+        self.job = Job(self.serial_queue, self.model,
                        self.printer)
-        self.state_manager = StateManager(self.serial_parser, self.model,
-                                          self.printer, self.cfg,
-                                          self.settings)
-        self.print_stats = PrintStats(self.model)
+        self.state_manager = StateManager(self.serial_parser, self.model)
+
         self.file_printer = FilePrinter(self.serial_queue, self.serial_parser,
-                                        self.model, self.cfg, self.print_stats)
+                                        self.model, self.cfg)
         self.storage_controller = StorageController(cfg, self.serial_queue,
                                                     self.serial_parser,
-                                                    self.state_manager,
                                                     self.model)
         self.ip_updater = IPUpdater(self.model, self.serial_queue)
         self.telemetry_passer = TelemetryPasser(self.model, self.printer)
@@ -201,12 +206,10 @@ class PrusaLink:
                                               self.serial_parser, self.printer,
                                               self.model,
                                               self.telemetry_passer, self.job,
-                                              self.storage_controller.sd_card,
-                                              self.settings)
+                                              self.storage_controller.sd_card)
         self.command_queue = CommandQueue()
         self.special_commands = SpecialCommands(self.serial_parser,
-                                                self.command_queue,
-                                                self.lcd_printer)
+                                                self.command_queue)
 
         # Set Transfer callbacks
         self.printer.transfer.started_cb = self.transfer_activity_observed

@@ -14,7 +14,6 @@ from ...printer_adapter.model import Model
 from ...sdk_augmentation.file import SDFile
 from ...serial.serial_parser import ThreadedSerialParser
 from ...serial.serial_queue import SerialQueue
-from ..state_manager import StateManager
 from .sd_card import SDCard
 from .storage import FolderStorage  # FilesystemStorage
 
@@ -30,7 +29,6 @@ class StorageController:
     # pylint: disable=too-many-arguments
     def __init__(self, cfg, serial_queue: SerialQueue,
                  serial_parser: ThreadedSerialParser,
-                 state_manager: StateManager,
                  model: Model):
         self.folder_attached_signal = Signal()
         self.folder_detached_signal = Signal()
@@ -40,11 +38,10 @@ class StorageController:
 
         self.serial_parser = serial_parser
         self.serial_queue: SerialQueue = serial_queue
-        self.state_manager = state_manager
         self.model = model
 
         self.sd_card = SDCard(self.serial_queue, self.serial_parser,
-                              self.state_manager, self.model)
+                              self.model)
         self.sd_card.sd_attached_signal.connect(self.sd_attached)
         self.sd_card.sd_detached_signal.connect(self.sd_detached)
         self.sd_card.menu_found_signal.connect(self.menu_found)
