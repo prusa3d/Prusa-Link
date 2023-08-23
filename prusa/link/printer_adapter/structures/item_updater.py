@@ -44,7 +44,6 @@ class WatchedItem(Watchable):
     def __init__(self,
                  name,
                  gather_function: Optional[Callable[[], Any]] = None,
-                 write_function: Optional[Callable[[Any], None]] = None,
                  validation_function: Optional[Callable[[Any], bool]] = None,
                  interval=None,
                  timeout=None,
@@ -72,15 +71,8 @@ class WatchedItem(Watchable):
         def _default_validation(value):
             return True
 
-        # pylint: disable=unused-argument
-        def _default_write(value):
-            ...
-
         if validation_function is None:
             validation_function = _default_validation
-
-        if write_function is None:
-            write_function = _default_write
 
         # A function that returns a value, or throws an error
         # If it returns None, The value is not written and the item gets
@@ -88,12 +80,11 @@ class WatchedItem(Watchable):
         self.gather_function: Optional[Callable[[], Any]] = gather_function
         # If valid, returns Ture, if not, throws an error or returns False
         self.validation_function: Callable[[Any], bool] = validation_function
-        # Takes care of putting the value in the right places
-        # Shall not throw anything EVER!
-        self.write_function: Callable[["WatchedItem"], None] = write_function
-
         # -- Signals --
 
+        # Sent when the value is successfully gathered and validated
+        # Even if it does not change
+        self.refreshed_signal = Signal()  # sender is the value
         self.timed_out_signal = Signal()
         self.error_refreshing_signal = Signal()
         self.validation_error_signal = Signal()  # kwargs: validation exception
@@ -471,7 +462,7 @@ class ItemUpdater:
                 log.debug("Item %s got a new value! old: %s new: %s",
                           item.name, item.value, value)
             item.value = value
-            item.write_function(value)
+            item.refreshed_signal.send(value)
             was_invalid = not item.valid
             item.valid = True
             item.times_out_at = inf

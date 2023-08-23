@@ -136,7 +136,7 @@ class PrusaLink:
             threshold_path=self.cfg.daemon.threshold_file)
         # -----
 
-        self.printer = MyPrinter()
+        self.printer = MyPrinter(model=self.model)
 
         drivers: List[Type[CameraDriver]] = [V4L2Driver]
         if PiCameraDriver.supported:

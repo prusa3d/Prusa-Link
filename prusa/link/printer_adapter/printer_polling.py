@@ -5,11 +5,8 @@ Hope I can get most of printer polling to use this mechanism.
 import itertools
 import logging
 import re
-import struct
 from datetime import timedelta
 from typing import List
-
-from packaging.version import Version
 
 from prusa.connect.printer import Printer
 from prusa.connect.printer.conditions import CondState
@@ -17,9 +14,6 @@ from prusa.connect.printer.conditions import CondState
 from ..conditions import FW, ID, JOB_ID, SN
 from ..const import (
     FAST_POLL_INTERVAL,
-    MINIMAL_FIRMWARE,
-    MK25_PRINTERS,
-    PRINT_MODE_ID_PAIRING,
     PRINT_STATE_PAIRING,
     PRINTER_TYPES,
     QUIT_INTERVAL,
@@ -33,6 +27,22 @@ from ..util import get_d3_code, make_fingerprint
 from .filesystem.sd_card import SDCard
 from .job import Job
 from .model import Model
+from .polling_items import (
+    ActiveSheetItem,
+    FirmwareVersionItem,
+    FlashAirItem,
+    FlowMultiplierItem,
+    MBLItem,
+    NetworkInfoItem,
+    NozzleDiameterItem,
+    PrinterTypeItem,
+    PrintModeItem,
+    SerialNumberItem,
+    SheetSettingsItem,
+    SpeedMultiplierItem,
+    TotalFilamentItem,
+    TotalPrintTimeItem,
+)
 from .structures.item_updater import (
     ItemUpdater,
     SideEffectOnly,
@@ -41,28 +51,17 @@ from .structures.item_updater import (
 )
 from .structures.model_classes import (
     EEPROMParams,
-    NetworkInfo,
     PrintMode,
     Telemetry,
 )
-from .structures.module_data_classes import Sheet
 from .structures.regular_expressions import (
     D3_OUTPUT_REGEX,
-    FW_REGEX,
     M27_OUTPUT_REGEX,
-    MBL_REGEX,
-    NOZZLE_REGEX,
-    PERCENT_REGEX,
     PRINT_INFO_REGEX,
-    PRINTER_TYPE_REGEX,
-    SN_REGEX,
-    VALID_SN_REGEX,
 )
 from .telemetry_passer import TelemetryPasser
 
 log = logging.getLogger(__name__)
-
-# pylint: disable=too-many-lines
 
 
 class InfoGroup(WatchedGroup):
@@ -78,9 +77,6 @@ class InfoGroup(WatchedGroup):
 
 
 # TODO: Don't like how parsing and result signal handling are mixed
-# instead, i would put the signal handling elsewhere
-# Also, having the external validators and whatnot seems unnecessarily complex
-# subclass WatchedItems and move them inside
 class PrinterPolling:
     """Sets up the tracked values for info_updater"""
 
@@ -92,7 +88,6 @@ class PrinterPolling:
                  printer: Printer, model: Model,
                  telemetry_passer: TelemetryPasser,
                  job: Job, sd_card: SDCard) -> None:
-        super().__init__()
         self.item_updater = ItemUpdater()
         self.serial_queue = serial_queue
         self.serial_parser = serial_parser
@@ -103,56 +98,43 @@ class PrinterPolling:
         self.sd_card = sd_card
 
         # Printer info (for init and SEND_INFO)
-        self.network_info = WatchedItem("network_info",
-                                        gather_function=self._get_network_info,
-                                        write_function=self._set_network_info)
+        self.network_info = NetworkInfoItem(self.serial_queue, self.model)
+        self.network_info.refreshed_signal.connect(
+            self._set_network_info,
+        )
 
-        self.printer_type = WatchedItem(
-            "printer_type",
-            gather_function=self._get_printer_type,
-            write_function=self._set_printer_type,
-            validation_function=self._validate_printer_type)
+        self.printer_type = PrinterTypeItem(self.serial_queue)
+        self.printer_type.refreshed_signal.connect(self._set_printer_type)
         self.printer_type.became_valid_signal.connect(
             self._printer_type_became_valid)
         self.printer_type.val_err_timeout_signal.connect(
             lambda _: self._set_id_condition(CondState.NOK), weak=False)
 
-        self.firmware_version = WatchedItem(
-            "firmware_version",
-            gather_function=self._get_firmware_version,
-            write_function=self._set_firmware_version,
-            validation_function=self._validate_fw_version)
+        self.firmware_version = FirmwareVersionItem(self.serial_queue)
+        self.firmware_version.refreshed_signal.connect(
+            self._set_firmware_version)
         self.firmware_version.became_valid_signal.connect(
             self._firmware_version_became_valid)
         self.firmware_version.val_err_timeout_signal.connect(
             lambda _: self._set_fw_condition(CondState.NOK), weak=False)
 
-        self.nozzle_diameter = WatchedItem(
-            "nozzle_diameter",
-            gather_function=self._get_nozzle_diameter,
-            write_function=self._set_nozzle_diameter)
+        self.nozzle_diameter = NozzleDiameterItem(self.serial_queue)
+        self.nozzle_diameter.refreshed_signal.connect(
+            self._set_nozzle_diameter)
         self.nozzle_diameter.interval = 10
 
-        self.serial_number = WatchedItem(
-            "serial_number",
-            gather_function=self._get_serial_number,
-            write_function=self._set_serial_number,
-            validation_function=self._validate_serial_number)
+        self.serial_number = SerialNumberItem(self.serial_queue, self.model)
         self.serial_number.timeout = 25
+        self.serial_number.refreshed_signal.connect(
+            self._set_serial_number)
         self.serial_number.became_valid_signal.connect(
             lambda _: self._set_sn_condition(CondState.OK), weak=False)
         self.serial_number.val_err_timeout_signal.connect(
             lambda _: self._set_sn_condition(CondState.NOK), weak=False)
 
-        self.sheet_settings = WatchedItem(
-            "sheet_settings",
-            gather_function=self._get_sheet_settings,
-        )
+        self.sheet_settings = SheetSettingsItem(self.serial_queue)
 
-        self.active_sheet = WatchedItem(
-            "active_sheet",
-            gather_function=self.get_active_sheet,
-        )
+        self.active_sheet = ActiveSheetItem(self.serial_queue)
 
         self.printer_info = InfoGroup([
             self.network_info, self.printer_type, self.firmware_version,
@@ -163,7 +145,6 @@ class PrinterPolling:
         for item in self.printer_info:
             self.item_updater.add_item(item, start_tracking=False)
 
-        # TODO: Put this outside
         for item in self.printer_info:
             if item.name in {"active_sheet", "sheet_settings"}:
                 continue
@@ -179,32 +160,22 @@ class PrinterPolling:
         self.job_id = WatchedItem(
             "job_id",
             gather_function=self._get_job_id,
-            write_function=self._set_job_id,
         )
+        self.job_id.refreshed_signal.connect(self._set_job_id)
         self.job_id.became_valid_signal.connect(
             lambda _: self._set_job_id_condition(CondState.OK), weak=False)
         self.job_id.val_err_timeout_signal.connect(
             lambda _: self._set_job_id_condition(CondState.NOK), weak=False)
 
-        self.print_mode = WatchedItem(
-            "print_mode",
-            gather_function=self._get_print_mode,
-            interval=SLOW_POLL_INTERVAL,
+        self.print_mode = PrintModeItem(
+            self.serial_queue,
         )
 
-        self.mbl = WatchedItem(
-            "mbl",
-            gather_function=self._get_mbl,
-            validation_function=self._validate_mbl,
-            on_fail_interval=None,
-        )
+        self.mbl = MBLItem(self.serial_queue)
 
-        self.flash_air = WatchedItem(
-            "flash_air",
-            gather_function=self._get_flash_air,
-            write_function=self._set_flash_air,
-            validation_function=lambda value: isinstance(value, bool),
-        )
+        self.flash_air = FlashAirItem(self.serial_queue)
+        self.flash_air.refreshed_signal.connect(self._set_flash_air)
+
         self.other_stuff = WatchedGroup([
             self.job_id, self.print_mode, self.mbl, self.flash_air])
 
@@ -216,19 +187,13 @@ class PrinterPolling:
         self.item_updater.set_value(self.print_mode, PrintMode.SILENT)
 
         # Telemetry
-        self.speed_multiplier = WatchedItem(
-            "speed_multiplier",
-            gather_function=self._get_speed_multiplier,
-            write_function=self._set_speed_multiplier,
-            validation_function=self._validate_percent,
-            interval=FAST_POLL_INTERVAL)
+        self.speed_multiplier = SpeedMultiplierItem(self.serial_queue)
+        self.speed_multiplier.refreshed_signal.connect(
+            self._set_speed_multiplier)
 
-        self.flow_multiplier = WatchedItem(
-            "flow_multiplier",
-            gather_function=self._get_flow_multiplier,
-            write_function=self._set_flow_multiplier,
-            validation_function=self._validate_percent,
-            interval=FAST_POLL_INTERVAL)
+        self.flow_multiplier = FlowMultiplierItem(self.serial_queue)
+        self.flow_multiplier.refreshed_signal.connect(
+            self._set_flow_multiplier)
 
         # Print info can be autoreported or polled
 
@@ -239,8 +204,9 @@ class PrinterPolling:
             "print_progress",
             gather_function=self._get_print_info,
             validation_function=self._validate_progress,
-            write_function=self._set_print_progress,
         )
+        self.print_progress.refreshed_signal.connect(
+            self._set_print_progress)
 
         self.progress_broken = WatchedItem("progress_broken")
         self.print_progress.validation_error_signal.connect(
@@ -250,8 +216,9 @@ class PrinterPolling:
 
         self.time_remaining = WatchedItem(
             "time_remaining",
-            validation_function=self._validate_time_till,
-            write_function=self._set_time_remaining)
+            validation_function=self._validate_time_till)
+        self.time_remaining.refreshed_signal.connect(
+            self._set_time_remaining)
 
         self.time_broken = WatchedItem("time_broken")
         self.time_remaining.validation_error_signal.connect(
@@ -262,9 +229,10 @@ class PrinterPolling:
         self.filament_change_in = WatchedItem(
             "filament_change_in",
             validation_function=self._validate_time_till,
-            write_function=self._set_filament_change_in,
             on_fail_interval=None,
         )
+        self.filament_change_in.refreshed_signal.connect(
+            self._set_filament_change_in)
 
         self.filament_change_in.validation_error_signal.connect(
             lambda _: self.telemetry_passer.reset_value("filament_change_in"),
@@ -279,7 +247,7 @@ class PrinterPolling:
             self._set_inaccurate_estimates,
         )
 
-        # M27 results
+        # --- M27 results ---
         # These are sometimes auto reported, but due to some technical
         # limitations, I'm not able to read them when auto reported
         self.print_state = WatchedItem("print_state",
@@ -292,35 +260,34 @@ class PrinterPolling:
 
         self.byte_position = WatchedItem("byte_position")
 
-        self.progress_from_bytes = WatchedItem(
-            "progress_from_bytes",
-            write_function=self._set_progress_from_bytes)
+        self.progress_from_bytes = WatchedItem("progress_from_bytes")
+        self.progress_from_bytes.refreshed_signal.connect(
+            self._set_progress_from_bytes)
         self.byte_position.value_changed_signal.connect(
             self._get_progress_from_byte_position)
 
-        self.sd_seconds_printing = WatchedItem(
-            "sd_seconds_printing",
-            write_function=self._set_sd_seconds_printing)
+        self.sd_seconds_printing = WatchedItem("sd_seconds_printing")
+        self.sd_seconds_printing.refreshed_signal.connect(
+            self._set_sd_seconds_printing)
 
         self.time_remaining_guesstimate = WatchedItem(
-            "time_remaining_guesstimate",
-            write_function=self._set_time_remaining_guesstimate)
+            "time_remaining_guesstimate")
+        self.time_remaining_guesstimate.refreshed_signal.connect(
+            self._set_time_remaining_guesstimate)
         self.byte_position.value_changed_signal.connect(
             self._guess_time_remaining)
         self.sd_seconds_printing.value_changed_signal.connect(
             self._guess_time_remaining)
 
-        self.total_filament = WatchedItem(
-            "total_filament",
-            gather_function=self._get_total_filament,
-            write_function=self._set_total_filament,
-            on_fail_interval=SLOW_POLL_INTERVAL)
+        # --- Statistics ---
 
-        self.total_print_time = WatchedItem(
-            "total_print_time",
-            gather_function=self._get_total_print_time,
-            write_function=self._set_total_print_time,
-            on_fail_interval=SLOW_POLL_INTERVAL)
+        self.total_filament = TotalFilamentItem(self.serial_queue)
+        self.total_filament.refreshed_signal.connect(
+            self._set_total_filament)
+
+        self.total_print_time = TotalPrintTimeItem(self.serial_queue)
+        self.total_print_time.refreshed_signal.connect(
+            self._set_total_print_time)
 
         self.telemetry = WatchedGroup([
             self.speed_multiplier,
@@ -416,6 +383,47 @@ class PrinterPolling:
         self._change_interval(self.active_sheet, SLOW_POLL_INTERVAL)
         self._change_interval(self.flash_air, VERY_SLOW_POLL_INTERVAL)
 
+    # --- Startup mechanism ---
+
+    def _printer_type_became_valid(self, _):
+        """Printer type became valid,
+        set the condition and enable the fw check"""
+        self.item_updater.enable(self.firmware_version)
+        self._set_id_condition(CondState.OK)
+
+    def _firmware_version_became_valid(self, _):
+        """Firmware version became valid,
+        enable polling of the rest of the info"""
+        for item in self.printer_info:
+            self.item_updater.enable(item)
+        self._set_fw_condition(CondState.OK)
+
+    def _printer_info_became_valid(self, _):
+        """Printer info became valid, we can start looking at telemetry
+        and other stuff"""
+        self._send_info_if_changed()
+        for item in itertools.chain(self.telemetry, self.other_stuff):
+            self.item_updater.enable(item)
+
+    def _send_info_if_changed(self):
+        """Sends printer info if a value change marked it for sending"""
+        # This relies on update being called after became_valid_signal
+        if self.printer_info.valid and self.printer_info.to_send:
+            self.printer.event_cb(**self.printer.get_info())
+            self.printer_info.to_send = False
+
+    # --- end of startup mechanism ---
+
+    def _infer_estimate_accuracy(self):
+        """Looks at the current state of things and infers whether the
+        time estimates are accurate or not"""
+        if self.time_broken.value in {None, True}:
+            self.item_updater.set_value(self.inaccurate_estimates, True)
+        elif self.speed_multiplier.value != 100:
+            self.item_updater.set_value(self.inaccurate_estimates, True)
+        else:
+            self.item_updater.set_value(self.inaccurate_estimates, False)
+
     def ensure_job_id(self):
         """This is an oddball, I don't have anything able to ensure the job_id
         stays in sync, I cannot wait for it, that would block the read thread
@@ -432,11 +440,12 @@ class PrinterPolling:
         self.item_updater.schedule_invalidation(self.job_id, interval=1)
         self.job_id.became_valid_signal.connect(job_became_valid)
 
-    # -- Gather --
+    # -- Helpers --
     def should_wait(self):
         """Gather helper returning if the component is still running"""
         return self.item_updater.running
 
+    # pylint: disable=duplicate-code
     def do_matchable(self, gcode, regex, to_front=False):
         """Analog to the command one, as the getters do this
         over and over again"""
@@ -450,6 +459,7 @@ class PrinterPolling:
             raise RuntimeError("Printer responded with something unexpected")
         return match
 
+    # pylint: disable=duplicate-code
     def do_multimatch(self, gcode, regex, to_front=False):
         """Send an instruction with multiple lines as output"""
         instruction = enqueue_matchable(
@@ -461,157 +471,13 @@ class PrinterPolling:
                                f"That is weird.")
         return matches
 
-    def _get_network_info(self):
-        """Gets the mac and ip addresses and packages them into an object."""
-        network_info = NetworkInfo()
-        ip_data = self.model.ip_updater
-        if ip_data.local_ip is not None:
-            if ip_data.is_wireless:
-                log.debug("WIFI - mac: %s", ip_data.mac)
-                network_info.wifi_ipv4 = ip_data.local_ip
-                network_info.wifi_ipv6 = ip_data.local_ip6
-                network_info.wifi_mac = ip_data.mac
-                network_info.wifi_ssid = ip_data.ssid
-                network_info.lan_ipv4 = None
-                network_info.lan_ipv6 = None
-                network_info.lan_mac = None
-            else:
-                log.debug("LAN - mac: %s", ip_data.mac)
-                network_info.lan_ipv4 = ip_data.local_ip
-                network_info.lan_ipv6 = ip_data.local_ip6
-                network_info.lan_mac = ip_data.mac
-                network_info.wifi_ipv4 = None
-                network_info.wifi_ipv6 = None
-                network_info.wifi_mac = None
-                network_info.wifi_ssid = None
-
-            network_info.hostname = ip_data.hostname
-            network_info.username = ip_data.username
-            network_info.digest = ip_data.digest
-
-        return network_info.dict()
-
-    def _get_printer_type(self):
-        """Gets the printer code using the M862.2 Q gcode."""
-        match = self.do_matchable("M862.2 Q",
-                                  PRINTER_TYPE_REGEX,
-                                  to_front=True)
-        return int(match.group("code"))
-
-    def _get_firmware_version(self):
-        """Try to get firmware version from the printer."""
-        match = self.do_matchable("PRUSA Fir", FW_REGEX, to_front=True)
-        return match.group("version")
-
-    def _get_nozzle_diameter(self):
-        """Gets the printers nozzle diameter using M862.1 Q"""
-        match = self.do_matchable("M862.1 Q", NOZZLE_REGEX, to_front=True)
-        return float(match.group("size"))
-
-    def _get_serial_number(self):
-        """Returns the SN regex match"""
-        # If we're connected through USB and we know the SN, use that one
-        serial_port = self.model.serial_adapter.using_port
-        if serial_port is not None and serial_port.sn is not None:
-            return serial_port.sn
-        # Do not ask MK2.5 for its SN, it would break serial communications
-        if self.printer.type in MK25_PRINTERS | {None}:
-            return ""
-        match = self.do_matchable("PRUSA SN", SN_REGEX, to_front=True)
-        return match.group("sn")
-
-    def _get_sheet_settings(self) -> List[Sheet]:
-        """Gets all the sheet settings from the EEPROM"""
-        # TODO: How do we deal with default settings?
-        matches = self.do_multimatch(
-            get_d3_code(*EEPROMParams.SHEET_SETTINGS.value),
-            D3_OUTPUT_REGEX, to_front=True)
-
-        sheets: List[Sheet] = []
-        str_data = ""
-        for match in matches:
-            str_data += match.group("data").replace(" ", "")
-
-        data = bytes.fromhex(str_data)
-        for i in range(0, 8*11, 11):
-            sheet_data = data[i:i+11]
-
-            z_offset_u16 = struct.unpack("H", sheet_data[7:9])[0]
-            max_uint16 = 2**16-1
-            if z_offset_u16 in {0, max_uint16}:
-                z_offset_workaround = max_uint16
-            else:
-                z_offset_workaround = z_offset_u16 - 1
-            z_offset = (z_offset_workaround-max_uint16)/400
-
-            sheets.append(Sheet(
-                name=sheet_data[:7].decode("ascii"),
-                z_offset=z_offset,
-                bed_temp=struct.unpack("B", sheet_data[9:10])[0],
-                pinda_temp=struct.unpack("B", sheet_data[10:11])[0],
-            ))
-
-        return sheets
-
-    def get_active_sheet(self):
-        """Gets the active sheet from the EEPROM"""
-        matches = self.do_matchable(
-            get_d3_code(*EEPROMParams.ACTIVE_SHEET.value),
-            D3_OUTPUT_REGEX, to_front=True)
-
-        str_data = matches.group("data").replace(" ", "")
-        data = bytes.fromhex(str_data)
-        active_sheet = struct.unpack("B", data)[0]
-        return active_sheet
-
+    # --- Gatherers ---
     def _get_job_id(self):
         """Gets the current job_id from the printer"""
         match = self.do_matchable(
             get_d3_code(*EEPROMParams.JOB_ID.value),
             D3_OUTPUT_REGEX, to_front=True)
         return int(match.group("data").replace(" ", ""), base=16)
-
-    def _get_mbl(self):
-        """Gets the current MBL data"""
-        matches = self.do_multimatch("G81", MBL_REGEX, to_front=True)
-        groups = matches[0].groupdict()
-
-        data = {}
-        if groups["no_mbl"] is None:
-            num_x = int(groups["num_x"])
-            num_y = int(groups["num_y"])
-            data["shape"] = (num_x, num_y)
-            data["data"] = []
-            for i, match in enumerate(matches):
-                if i == 0:
-                    continue
-                line = match.group("mbl_row")
-                str_values = line.split()
-                values = [float(val) for val in str_values]
-                data["data"].extend(values)
-        return data
-
-    def _get_flash_air(self):
-        """Determines if the Flash Air functionality is on"""
-        match = self.do_matchable(
-            get_d3_code(*EEPROMParams.FLASH_AIR.value), D3_OUTPUT_REGEX)
-        return match.group("data") == "01"
-
-    def _get_print_mode(self):
-        """Gets the print mode from the printer"""
-        match = self.do_matchable(
-            get_d3_code(*EEPROMParams.PRINT_MODE.value),
-            D3_OUTPUT_REGEX, to_front=True)
-        index = int(match.group("data").replace(" ", ""), base=16)
-        return PRINT_MODE_ID_PAIRING[index]
-
-    def _get_speed_multiplier(self):
-        match = self.do_matchable("M220", PERCENT_REGEX)
-        return int(match.group("percent"))
-
-    def _get_flow_multiplier(self):
-        match = self.do_matchable("M221", PERCENT_REGEX)
-        return int(match.group("percent"))
 
     def _get_print_info(self):
         """Polls the print info, but instead of returning it, it uses
@@ -775,83 +641,7 @@ class PrinterPolling:
                   value, adjusted_value)
         return adjusted_value
 
-    def _eeprom_little_endian_uint32(self, dcode):
-        """Reads and decodes the D-Code specified little-endian uint32_t
-        eeprom variable"""
-        match = self.do_matchable(dcode,
-                                  D3_OUTPUT_REGEX,
-                                  to_front=True)
-        str_data = match.group("data").replace(" ", "")
-        data = bytes.fromhex(str_data)
-        return struct.unpack("<I", data)[0]
-
-    def _get_total_filament(self):
-        """Gets the total filament used from the eeprom"""
-        total_filament = self._eeprom_little_endian_uint32(
-            get_d3_code(*EEPROMParams.TOTAL_FILAMENT.value))
-        return total_filament * 1000
-
-    def _get_total_print_time(self):
-        """Gets the total print time from the eeprom"""
-        total_minutes = self._eeprom_little_endian_uint32(
-            get_d3_code(*EEPROMParams.TOTAL_PRINT_TIME.value))
-        return total_minutes * 60
-
-    # -- Validate --
-
-    def _validate_serial_number(self, value):
-        """Validates the serial number, throws error because a more
-        descriptive error message can be shown this way"""
-        if VALID_SN_REGEX.match(value) is None:
-            return False
-
-        if self.printer.sn is not None and value != self.printer.sn:
-            log.error("The new serial number is different from the old one!")
-            raise RuntimeError(f"Serial numbers differ. Original: "
-                               f"{self.printer.sn} new one: {value}.")
-        return True
-
-    def _validate_printer_type(self, value):
-        """Validates the printer type, throws error because a more
-        descriptive error message can be shown this way"""
-        if value not in PRINTER_TYPES:
-            raise ValueError(f"The printer with type {value} is not supported")
-
-        printer_type = PRINTER_TYPES[value]
-        if self.printer.type is not None and printer_type != self.printer.type:
-            log.error("The printer type changed while running.")
-            raise RuntimeError(f"Printer type cannot change! Original: "
-                               f"{self.printer.type} current: {value}.")
-
-        return True
-
-    @staticmethod
-    def _validate_fw_version(value):
-        """Validates that the printer fw version is up to date enough"""
-        without_buildnumber = value.split("-")[0]
-        if Version(without_buildnumber) < MINIMAL_FIRMWARE:
-            raise ValueError("The printer firmware is outdated")
-        return True
-
-    @staticmethod
-    def _validate_mbl(value):
-        """Validates the mesh bed leveling data"""
-        num_x, num_y = value["shape"]
-        number_of_points = num_x * num_y
-        data = value["data"]
-        if len(data) != number_of_points:
-            raise ValueError(f"The mbl data matrix was reported to have "
-                             f"{num_x} x {num_y} values, but "
-                             f"{len(data)} were observed.")
-        return True
-
-    @staticmethod
-    def _validate_percent(value):
-        """Validates the speed multiplier as well as the flow rate"""
-        if not 0 <= value <= 999:
-            raise ValueError("The speed multiplier or flow rate is not "
-                             "between 0 and 999")
-        return True
+    # -- Validators --
 
     @staticmethod
     def _validate_progress(value):
@@ -869,7 +659,7 @@ class PrinterPolling:
             raise ValueError("There cannot be negative time till something")
         return True
 
-    # -- Write --
+    # -- Setters --
     def _set_network_info(self, value):
         """Sets network info"""
         self.printer.network_info = value
@@ -990,40 +780,3 @@ class PrinterPolling:
     def _set_job_id_condition(state: CondState):
         """Needs to exist because we cannot assign in lambdas"""
         JOB_ID.state = state
-
-    def _printer_type_became_valid(self, _):
-        """Printer type became valid,
-        set the condition and enable the fw check"""
-        self.item_updater.enable(self.firmware_version)
-        self._set_id_condition(CondState.OK)
-
-    def _firmware_version_became_valid(self, _):
-        """Firmware version became valid,
-        enable polling of the rest of the info"""
-        for item in self.printer_info:
-            self.item_updater.enable(item)
-        self._set_fw_condition(CondState.OK)
-
-    def _printer_info_became_valid(self, _):
-        """Printer info became valid, we can start looking at telemetry
-        and other stuff"""
-        self._send_info_if_changed()
-        for item in itertools.chain(self.telemetry, self.other_stuff):
-            self.item_updater.enable(item)
-
-    def _send_info_if_changed(self):
-        """Sends printer info if a value change marked it for sending"""
-        # This relies on update being called after became_valid_signal
-        if self.printer_info.valid and self.printer_info.to_send:
-            self.printer.event_cb(**self.printer.get_info())
-            self.printer_info.to_send = False
-
-    def _infer_estimate_accuracy(self):
-        """Looks at the current state of things and infers whether the
-        time estimates are accurate or not"""
-        if self.time_broken.value in {None, True}:
-            self.item_updater.set_value(self.inaccurate_estimates, True)
-        elif self.speed_multiplier.value != 100:
-            self.item_updater.set_value(self.inaccurate_estimates, True)
-        else:
-            self.item_updater.set_value(self.inaccurate_estimates, False)

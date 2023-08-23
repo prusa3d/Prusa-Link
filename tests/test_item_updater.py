@@ -53,14 +53,14 @@ def test_basics(updater_instance: ItemUpdater):
     """
 
     gather = WaitingMock(return_value=42)
-    write = Mock()
+    write = Mock(spec={})
     # This empty spec makes it possible to pass this mock straight to a
     # blinker signal
     invalidated = EventSetMock(spec={})
     valid = EventSetMock(spec={})
     basic_item = WatchedItem("basic_item",
-                             gather_function=gather,
-                             write_function=write)
+                             gather_function=gather)
+    basic_item.refreshed_signal.connect(write)
     basic_item.became_valid_signal.connect(valid)
     basic_item.became_invalid_signal.connect(invalidated)
     updater_instance.add_item(basic_item)
@@ -101,12 +101,10 @@ def test_group(updater_instance: ItemUpdater):
     item_2_valid = EventSetMock(spec={})
     item_2_invalidated = EventSetMock(spec={})
     item_1 = WatchedItem("item_1",
-                         gather_function=gather_1,
-                         write_function=Mock())
+                         gather_function=gather_1)
     item_1.became_valid_signal.connect(item_1_valid)
     item_2 = WatchedItem("item_2",
-                         gather_function=gather_2,
-                         write_function=Mock())
+                         gather_function=gather_2)
     item_2.became_valid_signal.connect(item_2_valid)
     item_2.became_invalid_signal.connect(item_2_invalidated)
     watched_group = WatchedGroup([item_1, item_2])
@@ -169,8 +167,7 @@ def test_scheduled_invalidation(updater_instance: ItemUpdater):
     results = {}
 
     item_1 = WatchedItem("item_1",
-                         gather_function=Mock(),
-                         write_function=lambda value: None)
+                         gather_function=Mock())
     item_2 = WatchedItem("item_2", gather_function=Mock())
     item_2.became_invalid_signal.connect(
         lambda item: results.update({2: time() - time_of_start}), weak=False)
@@ -325,11 +322,11 @@ def test_gather_error(updater_instance: ItemUpdater):
     threshold = 0.05
 
     item_errored = EventSetMock(spec={})
-    write_mock = EventSetMock()
+    write_mock = EventSetMock(spec={})
     item = WatchedItem("item",
                        gather_function=Mock(side_effect=RuntimeError("Test")),
-                       write_function=write_mock,
                        on_fail_interval=fail_interval)
+    item.refreshed_signal.connect(write_mock)
     item.error_refreshing_signal.connect(item_errored)
 
     time_of_start = time()

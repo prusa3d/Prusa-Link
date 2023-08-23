@@ -145,3 +145,8 @@ class Sheet(BaseModel):
     # temps at the time of calibration
     bed_temp: int = 0
     pinda_temp: int = 0
+
+
+class PrinterData(BaseModel):
+    """Data of the SDK Printer"""
+    printer_type: Optional[int] = None
