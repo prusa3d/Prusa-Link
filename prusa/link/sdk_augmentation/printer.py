@@ -16,9 +16,8 @@ from prusa.connect.printer.files import File
 from .. import __version__
 from ..conditions import use_connect_errors
 from ..const import PRINTER_CONF_TYPES
-from ..printer_adapter.lcd_printer import LCDPrinter
-from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
+from ..printer_adapter.structures.module_data_classes import PrinterData
 from ..printer_adapter.updatable import Thread
 from ..util import file_is_on_sd, prctl_name
 from .command_handler import CommandHandler
@@ -33,19 +32,24 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
     """
 
     def __init__(self, *args, **kwargs):
+        self.model = kwargs["model"]
+        del kwargs["model"]
         super().__init__(*args, **kwargs)
-        self.lcd_printer = LCDPrinter.get_instance()
-        self.download_thread = Thread(target=self.download_loop,
-                                      name="download")
-        self.model = Model.get_instance()
+        self.model.printer = PrinterData()
+        self.data = self.model.printer
         self.nozzle_diameter = None
         self.command_handler = CommandHandler(self.command)
-        self.loop_thread = Thread(target=self.loop, name="loop")
         self.__inotify_running = False
+
+        self.loop_thread = Thread(target=self.loop, name="loop")
+        self.download_thread = Thread(target=self.download_loop,
+                                      name="download")
         self.inotify_thread = Thread(target=self.inotify_loop, name="inotify")
         self.snapshot_thread = Thread(target=self.snapshot_loop,
                                       name="snapshot_sender",
                                       daemon=True)
+        # A workaround - writes the type set in the constructor to model
+        self.type = self.type
 
     def parse_command(self, res):
         """Parse telemetry response.
@@ -191,3 +195,14 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         if self.type is not None:
             return PRINTER_CONF_TYPES.inverse[self.type]
         return None
+
+    @property
+    def type(self):
+        """Gets the printer type as a string (a passthrough to the SDK))"""
+        return SDKPrinter.type.fget(self)
+
+    @type.setter
+    def type(self, value):
+        """Sets the printer type from a string"""
+        self.data.printer_type = value
+        SDKPrinter.type.fset(self, value)
