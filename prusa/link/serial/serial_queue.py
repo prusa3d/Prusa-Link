@@ -16,7 +16,6 @@ from blinker import Signal  # type: ignore
 from prusa.connect.printer.conditions import CondState
 
 from ..conditions import RPI_ENABLED, SERIAL
-from ..config import Config
 from ..const import (
     HISTORY_LENGTH,
     MAX_INT,
@@ -60,7 +59,7 @@ class SerialQueue(metaclass=MCSingleton):
     def __init__(self,
                  serial_adapter: SerialAdapter,
                  serial_parser: ThreadedSerialParser,
-                 cfg: Config,
+                 threshold_path: str,
                  rx_size=RX_SIZE):
         self.serial_adapter = serial_adapter
         self.serial_parser = serial_parser
@@ -114,7 +113,7 @@ class SerialQueue(metaclass=MCSingleton):
                                        priority=float("inf"))
         self.serial_parser.add_handler(RESEND_REGEX, self._resend_handler)
 
-        self.is_planner_fed = IsPlannerFed(cfg)
+        self.is_planner_fed = IsPlannerFed(threshold_path)
 
         self.quit_evt = Event()
         self.send_event = Event()
@@ -582,9 +581,10 @@ class MonitoredSerialQueue(SerialQueue):
     def __init__(self,
                  serial_adapter: SerialAdapter,
                  serial_parser: ThreadedSerialParser,
-                 cfg: Config,
+                 threshold_path: str,
                  rx_size=128):
-        super().__init__(serial_adapter, serial_parser, cfg, rx_size)
+        super().__init__(serial_adapter, serial_parser,
+                         threshold_path, rx_size)
 
         self.stuck_counter = 0
 

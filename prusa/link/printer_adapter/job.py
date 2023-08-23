@@ -14,7 +14,6 @@ from ..const import (
     SD_STORAGE_NAME,
 )
 from ..serial.helpers import enqueue_instruction
-from ..serial.serial_parser import ThreadedSerialParser
 from ..serial.serial_queue import SerialQueue
 from .model import Model
 from .structures.mc_singleton import MCSingleton
@@ -28,12 +27,11 @@ class Job(metaclass=MCSingleton):
     """Keeps track of print jobs and their properties"""
 
     # pylint: disable=too-many-arguments
-    def __init__(self, serial_parser: ThreadedSerialParser,
+    def __init__(self,
                  serial_queue: SerialQueue,
                  model: Model, printer: Printer):
         # Sent every time the job id should disappear, appear or update
         self.printer = printer
-        self.serial_parser = serial_parser
         self.serial_queue = serial_queue
 
         # Unused
@@ -144,6 +142,7 @@ class Job(metaclass=MCSingleton):
 
     def write(self):
         """Writes_the job_id into the printer EEPROM"""
+        # TODO: prime candidate for refactoring, it's awful
         # Cannot block
         if self.data.job_id is None:
             return
