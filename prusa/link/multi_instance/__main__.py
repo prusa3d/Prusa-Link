@@ -223,7 +223,7 @@ def main():
     """The main function for the PrusaLink instance manager.
     Parses command-line arguments and runs the instance controller"""
     parser = argparse.ArgumentParser(
-        description="Multi instance suite for PrusaLink")
+        description="Multi-instance suite for PrusaLink")
 
     parser.add_argument("-i",
                         "--info",
@@ -255,7 +255,7 @@ def main():
 
     subparsers.add_parser(
         "clean",
-        help="Danger! cleans all PrusaLink multi instance configuration")
+        help="Danger! cleans all PrusaLink multi-instance configuration")
 
     # Create a subparser for the printer_connected command
     subparsers.add_parser(

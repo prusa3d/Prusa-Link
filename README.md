@@ -111,6 +111,10 @@ similar redirect on the loopback interface
 iptables -t nat -I OUTPUT -p tcp -o <loopback device name> -d localhost --dport 80 -j REDIRECT --to-ports 8080
 ```
 
+### Multi-instance
+If you want to connect multiple printers to a single pi, have a look at
+[MULTIINSTANCE.md](MULTIINSTANCE.md)
+
 ## Usage
 By default, the executable starts the daemon process and exits.
 The executable is called `prusalink` and can be used to control the daemon,
