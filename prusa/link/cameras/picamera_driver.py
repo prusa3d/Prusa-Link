@@ -56,7 +56,6 @@ PICAMERA_MODELS = {
     "ov9281_mono",
     "imx290",
     "imx477",
-    "meson.",
     "se327m12",
     "imx296",
     "imx477_noir",
