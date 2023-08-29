@@ -388,11 +388,11 @@ class PrinterPolling:
 
     def _change_interval(self, item: WatchedItem, interval):
         """Changes the item interval and schedules depending on the new one"""
+        item.interval = interval
         if interval is None:
             self.item_updater.cancel_scheduled_invalidation(item)
-        elif item.interval is not None:
+        else:
             self.item_updater.schedule_invalidation(item)
-        item.interval = interval
 
     def polling_not_ok(self):
         """Stops polling of some values"""
