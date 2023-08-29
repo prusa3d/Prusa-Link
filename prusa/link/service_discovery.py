@@ -11,7 +11,6 @@ from urllib.request import Request, urlopen
 import zeroconf
 from zeroconf import NonUniqueNameException, ServiceInfo, Zeroconf
 
-from .config import Config
 from .const import SELF_PING_RETRY_INTERVAL, SELF_PING_TIMEOUT, instance_id
 from .interesting_logger import InterestingLogRotator
 from .printer_adapter.updatable import Thread
@@ -26,13 +25,13 @@ class ServiceDiscovery:
     a network service to be discoverable by prusa-slicer and alike
     """
 
-    def __init__(self, config: Config):
+    def __init__(self, port):
         """Loads configuration and inits Zeroconf"""
         # Leave out service discovery logs from the interesting log
         # was sending too many messages
         InterestingLogRotator.get_instance().skip_logger(zeroconf._logger.log)
         self.zeroconf = Zeroconf()
-        self.port = config.http.port
+        self.port = port
         self.hostname = socket.gethostname()
         self.number = 0
 
