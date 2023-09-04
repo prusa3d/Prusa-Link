@@ -7,7 +7,12 @@ from os import statvfs
 from os.path import abspath, dirname, exists, join
 from time import sleep, time
 
-from gcode_metadata import FDMMetaData, estimated_to_seconds, get_metadata
+from gcode_metadata import (
+    FDMMetaData,
+    estimated_to_seconds,
+    get_metadata,
+    get_preview,
+)
 from poorwsgi.request import Headers, Request
 
 from prusa.connect.printer import Filesystem
@@ -67,12 +72,19 @@ def sdcard_simple_refs():
     }
 
 
-def local_refs(path: str):
+def local_refs(path: str, meta: FDMMetaData):
     """Make refs structure for print file on local storage."""
+    thumbnail = None
+
+    info = get_preview(meta.thumbnails)
+
+    if info is not None:
+        img_format = info.format.lower()
+        thumbnail = f"/api/thumbnails{path}.orig.{img_format}"
     return {
         'download': f"/api/files/local{path}/raw",
         'icon': None,
-        'thumbnail': f"/api/thumbnails{path}.orig.png",
+        'thumbnail': thumbnail,
     }
 
 
@@ -124,7 +136,11 @@ def fill_printfile_data(path: str, os_path: str, storage: str,
 
     # local
     if storage == "local":
-        result['refs'] = local_refs(path)
+        meta = FDMMetaData(os_path or path)
+
+        if os_path and meta.is_cache_fresh():
+            meta.load_cache()
+        result['refs'] = local_refs(path, meta)
         if simple:
             return result
         meta = FDMMetaData(os_path)
@@ -240,7 +256,7 @@ def file_to_api(node, origin: str = 'local', path: str = '/',
             os_path = get_os_path(path)
             if os_path and meta.is_cache_fresh():
                 meta.load_cache()
-            result['refs'] = local_refs(path)
+            result['refs'] = local_refs(path, meta)
             if not meta.thumbnails:
                 result['refs']['thumbnail'] = None
 

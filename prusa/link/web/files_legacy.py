@@ -16,7 +16,7 @@ from os.path import (
 from shutil import move, rmtree
 
 import validators  # type: ignore
-from gcode_metadata import FDMMetaData, get_metadata
+from gcode_metadata import FDMMetaData, get_metadata, get_preview
 from poorwsgi import state
 from poorwsgi.request import FieldStorage
 from poorwsgi.response import FileResponse, JSONResponse, Response
@@ -298,7 +298,7 @@ def api_file_info(req, storage, path):
             meta.load_from_path(path)
         else:
             meta = get_metadata(os_path)
-        result['refs'] = local_refs(path)
+        result['refs'] = local_refs(path, meta)
         if not meta.thumbnails:
             result['refs']['thumbnail'] = None
 
@@ -492,9 +492,9 @@ def api_download_abort(req):
     return Response(status_code=state.HTTP_NO_CONTENT)
 
 
-@app.route('/api/thumbnails/<path:re:.+>.orig.png')
+@app.route('/api/thumbnails/<path:re:.+>.orig.<wanted_format:re:.{1,5}>')
 @check_api_digest
-def api_thumbnails(req, path):
+def api_thumbnails(req, path, wanted_format):
     """Returns preview from cache file."""
     # pylint: disable=unused-argument
     headers = {'Cache-Control': 'private, max-age=604800'}
@@ -508,9 +508,11 @@ def api_thumbnails(req, path):
     if not meta.thumbnails:
         raise conditions.ThumbnailUnavailable()
 
-    biggest = b''
-    for data in meta.thumbnails.values():
-        if len(data) > len(biggest):
-            biggest = data
-    return Response(decodebytes(biggest), headers=headers,
-                    content_type="image/png")
+    info = get_preview(meta.thumbnails)
+    img_format = info.format.lower()
+    if wanted_format.lower() != img_format:
+        raise conditions.ThumbnailUnavailable()
+
+    data = meta.thumbnails[info.to_thumbnail_info()]
+    return Response(decodebytes(data), headers=headers,
+                    content_type=f"image/{img_format}")
