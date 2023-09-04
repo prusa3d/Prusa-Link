@@ -32,6 +32,9 @@ jobs:
         pip install pylint~=2.17.7
         pip install -U ruff pytest pytest-doctestplus pytest-pylint pytest-mypy mock
         pip install -U types-pkg_resources
+        pip install --force-reinstall git+https://github.com/prusa3d/prusa-connect-sdk-printer.git
+        pip install --force-reinstall git+https://github.com/prusa3d/gcode-metadata.git
+
     - name: Lint with ruff
       run: |
         ruff check .
