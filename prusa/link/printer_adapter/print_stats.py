@@ -98,4 +98,6 @@ class PrintStats:
 
     def get_time_printing(self):
         """Returns for how long was the print running"""
-        return self.data.print_time + (time() - self.data.segment_start)
+        return int(round(
+            self.data.print_time + (time() - self.data.segment_start),
+        ))

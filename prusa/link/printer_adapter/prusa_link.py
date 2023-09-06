@@ -28,7 +28,6 @@ from ..const import (
     MK25_PRINTERS,
     PATH_WAIT_TIMEOUT,
     PRINTER_CONF_TYPES,
-    PRINTER_TYPES,
     PRINTING_STATES,
     SD_STORAGE_NAME,
 )
@@ -43,7 +42,6 @@ from ..service_discovery import ServiceDiscovery
 from ..util import (
     get_print_stats_gcode,
     is_potato_cpu,
-    make_fingerprint,
     prctl_name,
 )
 from .auto_telemetry import AutoTelemetry
@@ -74,7 +72,6 @@ from .printer_polling import PrinterPolling
 from .special_commands import SpecialCommands
 from .state_manager import StateChange, StateManager
 from .structures.enums import JobState, PrintState
-from .structures.item_updater import WatchedItem
 from .structures.model_classes import Sheet, Telemetry
 from .structures.regular_expressions import (
     LCD_UPDATE_REGEX,
@@ -223,8 +220,10 @@ class PrusaLink:
             MBL_TRIGGER_REGEX,
             lambda sender, match: self.printer_polling.invalidate_mbl())
 
-        self.print_stat_doubler = PrintStatDoubler(self.serial_parser,
-                                                   self.printer_polling)
+        self.print_stat_doubler = PrintStatDoubler(self.serial_parser)
+        self.print_stat_doubler.print_stat_signal.connect(
+            self.printer_polling.m73.print_info_handler,
+        )
 
         # Bind signals
         self.serial_queue.serial_queue_failed.connect(self.serial_queue_failed)
@@ -261,16 +260,12 @@ class PrusaLink:
         self.state_manager.state_changed_signal.connect(self.state_changed)
         self.state_manager.pause_signal.connect(
             lambda match: self.file_printer.pause(), weak=False)
-        self.file_printer.time_printing_signal.connect(
-            self.time_printing_updated)
         self.file_printer.new_print_started_signal.connect(
             self.file_printer_started_printing)
         self.file_printer.print_stopped_signal.connect(
             self.file_printer_stopped_printing)
         self.file_printer.print_finished_signal.connect(
             self.file_printer_finished_printing)
-        self.file_printer.byte_position_signal.connect(
-            self.byte_position_changed)
         self.file_printer.layer_trigger_signal.connect(self.layer_trigger)
         self.storage_controller.folder_attached_signal.\
             connect(self.folder_attach)
@@ -278,25 +273,21 @@ class PrusaLink:
             connect(self.folder_detach)
         self.storage_controller.sd_attached_signal.connect(self.sd_attach)
         self.storage_controller.sd_detached_signal.connect(self.sd_detach)
-        self.printer_polling.printer_type.became_valid_signal.connect(
-            self.printer_type_changed)
-        self.printer_polling.print_state.became_valid_signal.connect(
-            self.print_state_changed)
-        self.printer_polling.byte_position.value_changed_signal.connect(
-            lambda value: self.byte_position_changed(self.printer_polling,
-                                                     value[0], value[1]))
-        self.printer_polling.mixed_path.value_changed_signal.connect(
-            self.mixed_path_changed)
-        self.printer_polling.progress_broken.value_changed_signal.connect(
-            self.progress_broken)
-        self.printer_polling.mbl.value_changed_signal.connect(
-            self.mbl_data_changed)
-        self.printer_polling.sheet_settings.value_changed_signal.connect(
-            self.sheet_settings_changed)
-        self.printer_polling.active_sheet.value_changed_signal.connect(
-            self.active_sheet_changed)
-        self.printer_polling.speed_multiplier.value_changed_signal.connect(
-            lambda val: self.lcd_printer.notify(), weak=False)
+        # depends on processed, we don't want this to activate after init ok
+        self.model.processed_printer.value_changed_connect(
+            "printer_type", self.printer_type_changed)
+        self.model.raw_printer.value_changed_connect(
+            "print_state", self.print_state_changed)
+        self.model.raw_printer.value_changed_connect(
+            "mixed_path", self.mixed_path_changed)
+        self.model.raw_printer.value_changed_connect(
+            "mbl", self.mbl_data_changed)
+        self.model.raw_printer.value_changed_connect(
+            "sheet_settings", self.sheet_settings_changed)
+        self.model.raw_printer.value_changed_connect(
+            "active_sheet", self.active_sheet_changed)
+        self.model.raw_printer.value_changed_connect(
+            "speed_percent", self.lcd_printer.notify)
 
         API.add_fixed_handler(self.connection_renewed)
 
@@ -571,16 +562,20 @@ class PrusaLink:
         """Passes the call to trigger to the camera controller"""
         self.printer.camera_controller.layer_trigger()
 
-    def mbl_data_changed(self, data) -> None:
+    def mbl_data_changed(self, mbl) -> None:
         """Sends the mesh bed leveling data to Connect"""
-        self.printer.mbl = data["data"]
+        if mbl is None:
+            return
+        self.printer.mbl = mbl.data
         self.printer.event_cb(event=EventType.MESH_BED_DATA,
                               source=Source.MARLIN,
-                              mbl=data["data"])
+                              mbl=mbl.data)
 
-    def sheet_settings_changed(self, printer_sheets: List[Sheet]) -> None:
+    def sheet_settings_changed(self,
+                               printer_sheets: Optional[List[Sheet]]) -> None:
         """Sends the new sheet settings"""
-        if not self.printer.is_initialised():
+        # TODO: retries if not initialised might be nice
+        if printer_sheets is None or not self.printer.is_initialised():
             return
         sdk_sheets: List[SDKSheet] = []
         sheet: Sheet
@@ -596,7 +591,7 @@ class PrusaLink:
 
     def active_sheet_changed(self, active_sheet) -> None:
         """Sends the new active sheet"""
-        if not self.printer.is_initialised():
+        if active_sheet is None or not self.printer.is_initialised():
             return
         self.printer.active_sheet = active_sheet
         self.printer.event_cb(event=EventType.INFO,
@@ -617,15 +612,15 @@ class PrusaLink:
     def job_id_updated(self, _, job_id: int) -> None:
         """Passes the job_id into the SDK"""
         self.printer.job_id = job_id
-        self.printer_polling.ensure_job_id()
+        self.printer_polling.invalidate_job_id()
 
-    def printer_type_changed(self, item: WatchedItem) -> None:
+    def printer_type_changed(self, value) -> None:
         """Watches for printer type mismatches"""
         if not self.settings.printer.type:
             return
 
         settings_type = PRINTER_CONF_TYPES[self.settings.printer.type]
-        detected_type = PRINTER_TYPES[item.value]
+        detected_type = value
         if not settings_type or settings_type == detected_type:
             UPGRADED.state = CondState.OK
             return
@@ -646,16 +641,18 @@ class PrusaLink:
 
             UPGRADED.state = CondState.OK
 
-    def print_state_changed(self, item: WatchedItem) -> None:
+    def print_state_changed(self, value) -> None:
         """Handles the newly observed print state"""
-        assert item.value is not None
+        # TODO: directly modifies the connect state. Not great imo
+        if value is None:
+            return
         state_to_handler = {
             PrintState.SD_PRINTING: self.observed_print,
             PrintState.NOT_SD_PRINTING: self.observed_no_print,
             PrintState.SD_PAUSED: self.observed_sd_pause,
             PrintState.SERIAL_PAUSED: self.observed_serial_pause,
         }
-        state_to_handler[item.value]()
+        state_to_handler[value]()
 
     def observed_print(self) -> None:
         """
@@ -698,19 +695,10 @@ class PrusaLink:
             self.state_manager.stopped_or_not_printing()
             self.state_manager.stop_expecting_change()
 
-    def progress_broken(self, progress_broken: bool) -> None:
-        """
-        Connects telemetry, which can see the progress returning garbage
-        values to the job component
-        """
-        self.job.progress_broken(progress_broken)
-
-    def byte_position_changed(self, _, current: int, total: int) -> None:
-        """Passes byte positions to the job component"""
-        self.job.file_position(current=current, total=total)
-
     def mixed_path_changed(self, path: str) -> None:
         """Connects telemetry observed file path to the job component"""
+        if path is None:
+            return
         self.job.process_mixed_path(path)
 
     def _reset_print_stats(self) -> None:
@@ -744,18 +732,6 @@ class PrusaLink:
         """Connects serial recovery with state manager"""
         self.state_manager.serial_error_resolved()
         self.printer_reconnected()
-
-    def set_sn(self, _, serial_number: str) -> None:
-        """Set serial number and fingerprint"""
-        # Only do it if the serial number is missing
-        # Setting it for a second time raises an error for some reason
-        if self.printer.sn is None:
-            self.printer.sn = serial_number
-            self.printer.fingerprint = make_fingerprint(serial_number)
-        elif self.printer.sn != serial_number:
-            log.error("The new serial number is different from the old one!")
-            raise RuntimeError(f"Serial numbers differ original: "
-                               f"{self.printer.sn} new one: {serial_number}.")
 
     def printer_registered(self, token: str) -> None:
         """Store settings with updated token when printer was registered."""
@@ -807,7 +783,7 @@ class PrusaLink:
         # file printer stop print needs to happen before this
         self.state_manager.reset()
         self.lcd_printer.reset_error_grace()
-        self.printer_polling.invalidate_printer_info()
+        self.printer_polling.reset_polling()
         # Don't wait for the instruction confirmation, we'd be blocking the
         # thread supposed to provide it
         self.ip_updater.send_ip_to_printer(timeout=0)

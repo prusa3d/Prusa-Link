@@ -43,7 +43,6 @@ class Job(metaclass=MCSingleton):
                                  job_start_cmd_id=None,
                                  path_incomplete=True,
                                  from_sd=None,
-                                 inbuilt_reporting=None,
                                  selected_file_path=None,
                                  selected_file_m_timestamp=None,
                                  selected_file_size=None,
@@ -93,11 +92,6 @@ class Job(metaclass=MCSingleton):
         else:
             self.data.job_id += 1
         self.data.job_start_cmd_id = command_id
-        # If we don't print from sd, we know this immediately
-        # If not, let's leave it None, it will get filled later
-        if not self.data.from_sd:
-            self.data.inbuilt_reporting = \
-                self.model.print_stats.has_inbuilt_stats
         self.change_state(JobState.IN_PROGRESS)
         self.write()
         log.debug("New job started, id = %s", self.data.job_id)
@@ -109,7 +103,6 @@ class Job(metaclass=MCSingleton):
         self.data.already_sent = False
         self.data.job_start_cmd_id = None
         self.data.path_incomplete = True
-        self.data.inbuilt_reporting = None
         self.change_state(JobState.IDLE)
         log.info("Job ended")
         self.job_id_updated_signal.send(self,
@@ -217,34 +210,6 @@ class Job(metaclass=MCSingleton):
             data["mbl"] = self.printer.mbl
 
         return data
-
-    def progress_broken(self, progress_broken):
-        """Uses the info about whether the progress percentage reported by
-        the printer is broken, to deduce, whether the gcode has inbuilt
-        percentage reporting for sd prints."""
-        if self.data.from_sd:
-            old_inbuilt_reporting = self.data.inbuilt_reporting
-            if self.data.inbuilt_reporting is None and progress_broken:
-                self.data.inbuilt_reporting = False
-            elif not progress_broken:
-                self.data.inbuilt_reporting = True
-
-            if old_inbuilt_reporting != self.data.inbuilt_reporting:
-                self.job_info_updated()
-
-    def file_position(self, current, total):
-        """Call to report a position in a file that's being printed
-        :param current: The byte number being printed
-        :param total: The file size"""
-        self.data.printing_file_byte = current
-        if self.data.selected_file_size is not None and \
-                self.data.selected_file_size != total:
-            log.warning("Reported file sizes differ %s vs %s",
-                        self.data.selected_file_size, total)
-        if self.data.selected_file_size is None:
-            # In the future, this should be pointless, now it may get used
-            self.data.selected_file_size = total
-            self.job_info_updated()
 
     def job_info_updated(self):
         """If a job is in progress, a signal about an update will be sent"""

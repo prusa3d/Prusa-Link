@@ -2,8 +2,9 @@
 import re
 from typing import List
 
+from blinker import Signal
+
 from ..serial.serial_parser import ThreadedSerialParser
-from .printer_polling import PrinterPolling
 from .structures.regular_expressions import (
     CONFIRMATION_REGEX,
     PRINT_INFO_REGEX,
@@ -19,17 +20,19 @@ class PrintStatDoubler:
     modifying the underlying serial communication layers
     """
 
-    def __init__(self, serial_parser: ThreadedSerialParser,
-                 printer_polling: PrinterPolling):
-        self.printer_polling = printer_polling
+    def __init__(self, serial_parser: ThreadedSerialParser):
         self.serial_parser = serial_parser
 
         self.matches: List[re.Match] = []
 
         self.serial_parser.add_decoupled_handler(
                 PRINT_INFO_REGEX, self.matched)
+        # TODO: Actually, reset on a timeout, but send whatever we got
         self.serial_parser.add_decoupled_handler(
                 CONFIRMATION_REGEX, self.reset)
+
+        # TODO: maybe don't unify these in the gatherer, seems weird
+        self.print_stat_signal = Signal()  # sender: matches = List[re.match]
 
     def reset(self, sender, match):
         """Resets the accumulated stat lines from the list"""
@@ -44,5 +47,5 @@ class PrintStatDoubler:
         self.matches.append(match)
 
         if len(self.matches) >= 2:
-            self.printer_polling.print_info_handler(self, self.matches)
+            self.print_stat_signal.send(self.matches)
             self.matches.clear()

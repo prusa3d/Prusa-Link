@@ -216,12 +216,6 @@ class TelemetryPasser(metaclass=MCSingleton):
 
         self._resend_telemetry_on_timer()
 
-    def reset_value(self, key):
-        """Resets the value for a key in local telemetry"""
-        with self.lock:
-            self._latest_full[key] = None
-            setattr(self.model.latest_telemetry, key, None)
-
     def _resend_telemetry_on_timer(self):
         """If sufficient time elapsed, mark all telemetry values to be sent"""
         if time() - self.full_refresh_at > TELEMETRY_REFRESH_INTERVAL:
