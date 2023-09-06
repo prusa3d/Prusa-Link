@@ -40,6 +40,7 @@ ACTIVATING_CHANGES = {
 NOT_PRINTING_IGNORED = {
     "time_printing",
     "time_remaining",
+    "filament_change_in",
     "progress",
     "inaccurate_estimates",
 }

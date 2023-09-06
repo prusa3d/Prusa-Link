@@ -22,7 +22,7 @@ from ..const import (
 )
 from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
-from ..printer_adapter.structures.module_data_classes import (
+from ..printer_adapter.structures.model_classes import (
     Port,
     SerialAdapterData,
 )

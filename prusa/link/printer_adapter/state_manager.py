@@ -4,7 +4,7 @@ import re
 from collections import deque
 from threading import Event, RLock, Thread, Timer
 from time import monotonic
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 from blinker import Signal  # type: ignore
 from prusa.connect.printer.conditions import Condition, CondState
@@ -16,7 +16,7 @@ from ..const import ERROR_REASON_TIMEOUT, STATE_HISTORY_SIZE, \
 from ..serial.serial_parser import ThreadedSerialParser
 from .model import Model
 from .structures.mc_singleton import MCSingleton
-from .structures.module_data_classes import StateManagerData
+from .structures.model_classes import StateManagerData
 from .structures.regular_expressions import (ATTENTION_REASON_REGEX,
                                              ATTENTION_REGEX, BUSY_REGEX,
                                              CANCEL_REGEX, ERROR_REASON_REGEX,
@@ -36,15 +36,15 @@ class StateChange:
     # pylint: disable=too-many-arguments
     def __init__(self,
                  command_id=None,
-                 to_states: Optional[Dict[State, Union[Source, None]]] = None,
-                 from_states: Optional[Dict[State, Union[Source, None]]] = None,
+                 to_states: Optional[Dict[State, Optional[Source]]] = None,
+                 from_states: Optional[Dict[State, Optional[Source]]] = None,
                  default_source: Optional[Source] = None,
                  reason: Optional[str] = None,
                  ready: bool = False):
 
         self.reason = reason
-        self.to_states: Dict[State, Union[Source, None]] = {}
-        self.from_states: Dict[State, Union[Source, None]] = {}
+        self.to_states: Dict[State, Optional[Source]] = {}
+        self.from_states: Dict[State, Optional[Source]] = {}
 
         if from_states is not None:
             self.from_states = from_states
@@ -137,7 +137,7 @@ class StateManager(metaclass=MCSingleton):
         # that's supposed to change the state and to which state that shall be
         # if we observe such a transition, we'll say the action
         # caused the state change
-        self.expected_state_change: Union[None, StateChange] = None
+        self.expected_state_change: Optional[StateChange] = None
 
         # The fan error doesn't fit into this mechanism
         # When this value isn't none, a fan error has been observed

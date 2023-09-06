@@ -16,7 +16,7 @@ from ..serial.helpers import enqueue_instruction, wait_for_instruction
 from ..serial.serial_queue import SerialQueue
 from ..util import get_local_ip, get_local_ip6
 from .model import Model
-from .structures.module_data_classes import IPUpdaterData
+from .structures.model_classes import IPUpdaterData
 from .updatable import ThreadedUpdatable
 
 log = logging.getLogger(__name__)

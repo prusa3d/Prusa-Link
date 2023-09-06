@@ -46,8 +46,8 @@ from ..serial.serial_queue import SerialQueue
 from ..util import prctl_name
 from .model import Model
 from .structures.carousel import Carousel, LCDLine, Screen
+from .structures.enums import JobState
 from .structures.mc_singleton import MCSingleton
-from .structures.model_classes import JobState
 from .updatable import Thread
 
 log = logging.getLogger(__name__)
@@ -342,7 +342,8 @@ class LCDPrinter(metaclass=MCSingleton):
         else:
             self._message_and_disable(self.wizard_screen, "Setup completed")
 
-    def _get_progress_graphic(self, progress, sync_type: TransferType):
+    @staticmethod
+    def _get_progress_graphic(progress, sync_type: TransferType):
         bar_length = 12
         # Have 12 characters for the load bar,
         # increased to 14 by the arrow visibility
@@ -550,7 +551,7 @@ class LCDPrinter(metaclass=MCSingleton):
         self.event_queue.put(handler)
         self.notify()
 
-    def notify(self):
+    def notify(self, *_):
         """Wakes up the LCD printer, so it checks its state"""
         self.notiff_event.set()
 

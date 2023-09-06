@@ -43,6 +43,7 @@ from .polling_items import (
     TotalFilamentItem,
     TotalPrintTimeItem,
 )
+from .structures.enums import EEPROMParams, PrintMode
 from .structures.item_updater import (
     ItemUpdater,
     SideEffectOnly,
@@ -50,8 +51,6 @@ from .structures.item_updater import (
     WatchedItem,
 )
 from .structures.model_classes import (
-    EEPROMParams,
-    PrintMode,
     Telemetry,
 )
 from .structures.regular_expressions import (
