@@ -20,7 +20,7 @@ from ...const import (
 )
 from ...util import ensure_directory, get_clean_path
 from ..model import Model
-from ..structures.module_data_classes import StorageData
+from ..structures.model_classes import StorageData
 from ..updatable import ThreadedUpdatable
 
 log = logging.getLogger(__name__)

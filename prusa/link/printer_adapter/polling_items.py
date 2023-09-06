@@ -19,14 +19,14 @@ from ..const import (
 )
 from ..serial.helpers import enqueue_matchable, wait_for_instruction
 from ..util import get_d3_code
+from .structures.enums import EEPROMParams
 from .structures.item_updater import (
     WatchedItem,
 )
 from .structures.model_classes import (
-    EEPROMParams,
     NetworkInfo,
+    Sheet,
 )
-from .structures.module_data_classes import Sheet
 from .structures.regular_expressions import (
     D3_OUTPUT_REGEX,
     FW_REGEX,

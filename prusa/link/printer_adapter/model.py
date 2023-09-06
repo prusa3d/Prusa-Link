@@ -1,8 +1,7 @@
 """Contains implementation of the Model class"""
 
 from .structures.mc_singleton import MCSingleton
-from .structures.model_classes import Telemetry
-from .structures.module_data_classes import (
+from .structures.model_classes import (
     FilePrinterData,
     IPUpdaterData,
     JobData,
@@ -12,6 +11,7 @@ from .structures.module_data_classes import (
     SerialAdapterData,
     StateManagerData,
     StorageData,
+    Telemetry,
 )
 
 

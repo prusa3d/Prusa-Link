@@ -66,16 +66,16 @@ from .file_printer import FilePrinter
 from .filesystem.sd_card import SDState
 from .filesystem.storage_controller import StorageController
 from .ip_updater import IPUpdater
-from .job import Job, JobState
+from .job import Job
 from .lcd_printer import LCDPrinter
 from .model import Model
 from .print_stat_doubler import PrintStatDoubler
 from .printer_polling import PrinterPolling
 from .special_commands import SpecialCommands
 from .state_manager import StateChange, StateManager
+from .structures.enums import JobState, PrintState
 from .structures.item_updater import WatchedItem
-from .structures.model_classes import PrintState, Telemetry
-from .structures.module_data_classes import Sheet
+from .structures.model_classes import Sheet, Telemetry
 from .structures.regular_expressions import (
     LCD_UPDATE_REGEX,
     MBL_TRIGGER_REGEX,
@@ -920,7 +920,8 @@ class PrusaLink:
         self.telemetry_passer.activity_observed()
         self.lcd_printer.notify()
 
-    def log_tm_error(self, _, match: re.Match) -> None:
+    @staticmethod
+    def log_tm_error(_, match: re.Match) -> None:
         """Logs the temperature model errors"""
         groups = match.groupdict()
         deviation = float(groups["deviation"])

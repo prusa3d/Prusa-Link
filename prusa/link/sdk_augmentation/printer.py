@@ -17,7 +17,7 @@ from .. import __version__
 from ..conditions import use_connect_errors
 from ..const import PRINTER_CONF_TYPES
 from ..printer_adapter.structures.mc_singleton import MCSingleton
-from ..printer_adapter.structures.module_data_classes import PrinterData
+from ..printer_adapter.structures.model_classes import PrinterData
 from ..printer_adapter.updatable import Thread
 from ..util import file_is_on_sd, prctl_name
 from .command_handler import CommandHandler

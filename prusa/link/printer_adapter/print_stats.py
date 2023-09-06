@@ -5,7 +5,7 @@ from time import time
 from ..const import TAIL_COMMANDS
 from ..util import get_gcode
 from .model import Model
-from .structures.module_data_classes import PrintStatsData
+from .structures.model_classes import PrintStatsData
 
 log = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ class PrintStats:
         """
         self.end_time_segment()
         self.start_time_segment()
-
+        # FIXME: Duplicated time remaining calculation
         time_per_command = self.data.print_time / gcode_number
         total_time = time_per_command * self.data.total_gcode_count
         sec_remaining = total_time - self.data.print_time

@@ -16,9 +16,9 @@ from ..const import (
 from ..serial.helpers import enqueue_instruction
 from ..serial.serial_queue import SerialQueue
 from .model import Model
+from .structures.enums import JobState
 from .structures.mc_singleton import MCSingleton
-from .structures.model_classes import JobState
-from .structures.module_data_classes import JobData
+from .structures.model_classes import JobData
 
 log = logging.getLogger(__name__)
 

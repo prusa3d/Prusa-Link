@@ -29,8 +29,8 @@ from ...serial.serial_parser import ThreadedSerialParser
 from ...serial.serial_queue import SerialQueue
 from ...util import fat_datetime_to_tuple
 from ..model import Model
-from ..structures.model_classes import SDState
-from ..structures.module_data_classes import SDCardData
+from ..structures.enums import SDState
+from ..structures.model_classes import SDCardData
 from ..structures.regular_expressions import (
     CONFIRMATION_REGEX,
     LFN_CAPTURE,

@@ -12,7 +12,7 @@ from packaging.version import Version
 
 from prusa.connect.printer.const import PrinterType, State
 
-from .printer_adapter.structures.model_classes import PrintMode, PrintState
+from .printer_adapter.structures.enums import PrintMode, PrintState
 
 instance_id = uuid.uuid4()
 
