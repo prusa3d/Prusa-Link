@@ -47,7 +47,6 @@ class FilePrinter(metaclass=MCSingleton):
         self.new_print_started_signal = Signal()
         self.print_stopped_signal = Signal()
         self.print_finished_signal = Signal()
-        self.time_printing_signal = Signal()
         self.byte_position_signal = Signal()  # kwargs: current: int
         #                                               total: int
         self.layer_trigger_signal = Signal()
@@ -200,7 +199,7 @@ class FilePrinter(metaclass=MCSingleton):
         divisible = self.data.gcode_number % STATS_EVERY == 0
         if divisible:
             time_printing = self.print_stats.get_time_printing()
-            self.time_printing_signal.send(self, time_printing=time_printing)
+            self.data.time_printing = time_printing
 
         if self.to_print_stats(self.data.gcode_number):
             self.send_print_stats()

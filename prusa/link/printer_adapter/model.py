@@ -7,6 +7,8 @@ from .structures.model_classes import (
     JobData,
     PrinterData,
     PrintStatsData,
+    ProcessedPrinterData,
+    RawPrinterData,
     SDCardData,
     SerialAdapterData,
     StateManagerData,
@@ -36,6 +38,8 @@ class Model(metaclass=MCSingleton):
     folder_storage: StorageData
     filesystem_storage: StorageData
     printer: PrinterData
+    raw_printer: RawPrinterData
+    processed_printer: ProcessedPrinterData
 
     def __init__(self) -> None:
         self.latest_telemetry: Telemetry = Telemetry()
