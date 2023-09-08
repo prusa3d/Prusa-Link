@@ -1,6 +1,6 @@
 # ChangeLog
 
-0.7.1rc2
+0.7.1 (2023-09-12)
     * Add an automatic PrusaLink image builder script
     * Add multi-instance documentation
 

@@ -5,8 +5,8 @@
 __application__ = "PrusaLink"
 __vendor__ = "Prusa Research"
 
-__version__ = "0.7.1rc1"
-__date__ = "10 Aug 2023"
+__version__ = "0.7.1"
+__date__ = "12 Sep 2023"
 __copyright__ = "(c) 2023 Prusa 3D"
 __author_name__ = "PrusaLink Developers"
 __author_email__ = "link@prusa3d.cz"
