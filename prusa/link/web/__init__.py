@@ -13,20 +13,23 @@ from .link_info import link_info
 
 log = logging.getLogger(__name__)
 
-__import__('errors', globals=globals(), level=1)
-__import__('main', globals=globals(), level=1)
-__import__('wizard', globals=globals(), level=1)
-__import__('files', globals=globals(), level=1)
-__import__('files_legacy', globals=globals(), level=1)
-__import__('connection', globals=globals(), level=1)
-__import__('settings', globals=globals(), level=1)
-__import__('controls', globals=globals(), level=1)
-__import__('cameras', globals=globals(), level=1)
-__import__('wifi_wizard', globals=globals(), level=1)
-
 
 def init_web_app(daemon):
     """Initializes the app object for the web server to use"""
+    __import__('wifi_wizard', globals=globals(), level=1)
+    __import__('cameras', globals=globals(), level=1)
+    __import__('settings', globals=globals(), level=1)
+    __import__('errors', globals=globals(), level=1)
+    __import__('main', globals=globals(), level=1)
+    if daemon.is_camera:
+        __import__('camera_wizard', globals=globals(), level=1)
+    else:
+        __import__('files', globals=globals(), level=1)
+        __import__('files_legacy', globals=globals(), level=1)
+        __import__('connection', globals=globals(), level=1)
+        __import__('controls', globals=globals(), level=1)
+        __import__('wizard', globals=globals(), level=1)
+
     app.cfg = daemon.cfg
     app.settings = daemon.settings
     app.debug = daemon.cfg.debug

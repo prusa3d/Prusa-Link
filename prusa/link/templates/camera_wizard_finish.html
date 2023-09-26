@@ -1,0 +1,97 @@
+{# vim:set softtabstop=2: -#}
+{% set title = 'Wizard' -%}
+{#% set refresh = 15 %#}
+{% include "_header.html" %}
+{% set active="finish" %}
+
+<div class="container">
+  <div class="row">
+    <div class="col-md-12">
+        <h1>Local Settings Summary</h1>
+        {% set printer = wizard.daemon.prusa_link.printer %}
+        {% set cfg = wizard.daemon.cfg %}
+    </div>
+  </div>
+
+    <!-- Local Settings Row -->
+    <div class="row">
+
+        <!-- Credentials -->
+        <div class="col">
+          <h3>Credentials</h3>
+          <ul>
+            <li>Username: <span class="white">{{ wizard.username }}</span></li>
+          </ul>
+        </div>
+        <!-- Credentials End -->
+
+        <!-- Network -->
+        {% if printer.network_info %}
+            <div class="col">
+              <h3>Network</h3>
+              <ul>
+                  <li>Hostname: <span class="white">{{ printer.network_info.hostname }}</span></li>
+
+                  {% if printer.network_info.wifi_ssid %}
+                    <li>WiFi SSID: <span class="white">{{ printer.network_info.wifi_ssid }}</span></li>
+                  {% endif %}
+
+                  {% if printer.network_info.wifi_ipv4 %}
+                    <li>WiFi IPv4: <span class="white">{{ printer.network_info.wifi_ipv4 }}</span></li>
+                  {% endif %}
+
+                  {% if printer.network_info.wifi_ipv6 %}
+                    <li>WiFi IPv6: <span class="white">{{ printer.network_info.wifi_ipv6 }}</span></li>
+                  {% endif %}
+
+                  {% if printer.network_info.wifi_mac %}
+                    <li>WiFi MAC: <span class="white">{{ printer.network_info.wifi_mac }}</span></li>
+                  {% endif %}
+
+                  {% if printer.network_info.lan_ipv4 %}
+                    <li>LAN IPv4: <span class="white">{{ printer.network_info.lan_ipv4 }}</span></li>
+                  {% endif %}
+
+                  {% if printer.network_info.lan_ipv6 %}
+                    <li>LAN IPv6: <span class="white">{{ printer.network_info.lan_ipv6 }}</span></li>
+                  {% endif %}
+
+                  {% if printer.network_info.lan_mac %}
+                    <li>LAN MAC: <span class="white">{{ printer.network_info.lan_mac }}</span></li>
+                  {% endif %}
+
+              </ul>
+            </div>
+        {% endif %}
+        <!-- Network End -->
+    </div>
+    <!-- Local Settings Row End -->
+      <div class="row">
+        <div class="col-md-12">
+            <form method="post" action="{{ "/wizard/finish-register-skip" | prefixed }}" id="skip"></form>
+            <form method="post" action="{{ "/wizard/finish-register" | prefixed }}" id="form" target="_blank">
+                <div class="container navigation">
+                  <div class="row">
+                      <div class="col">
+                        <a href={{ "/wizard/credentials" | prefixed }} class="btn btn-back btn-outline-light full-width"><img src="../img/arrow-left.svg" height="16" /> BACK | Credentials</a>
+                      </div>
+                      <div class="col-sm-auto">
+                        <button form="skip" onclick="document.getElementById('skip').submit();" type="submit" class="btn btn-outline-light full-width">Save | NEXT <img src="../img/arrow-right.svg" height="16" /></button>
+                      </div>
+                  </div>
+                </div>
+            </form>
+        </div>
+      </div>
+
+    </div>{# /container #}
+
+    <script>
+        function finish() {
+            setTimeout(() => {window.location.href = "{{ "/" | prefixed }}";}, 500);
+            document.getElementById('form').submit();
+        }
+    </script>
+
+    {% include "_wizard.html" %}
+    {% include "_footer.html" %}

@@ -112,7 +112,8 @@ def main():
         nargs='?',
         default="start",
         type=str,
-        help="daemon action (start|stop|restart|status) (default: start)")
+        help="daemon action (start|stop|restart|status|start_camera) "
+             "(default: start)")
     parser.add_argument("-f",
                         "--foreground",
                         action="store_true",
@@ -223,7 +224,8 @@ def main():
             parser.error("Unknown command %s")
             return 1
 
-        daemon = Daemon(config, argv)
+        daemon = Daemon(config, argv,
+                        is_camera=args.command == "start_camera")
         if args.foreground:
             log.info("Starting service on foreground.")
             return daemon.run(False)

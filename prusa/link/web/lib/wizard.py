@@ -186,11 +186,12 @@ class Wizard:
         settings.network.hostname = self.net_hostname
 
         # printer
-        printer_type = PRINTER_CONF_TYPES.inverse[
-            self.daemon.prusa_link.printer.type]
-        settings.printer.type = printer_type
-        settings.printer.name = self.printer_name
-        settings.printer.location = self.printer_location
+        if not self.daemon.is_camera:
+            printer_type = PRINTER_CONF_TYPES.inverse[
+                self.daemon.prusa_link.printer.type]
+            settings.printer.type = printer_type
+            settings.printer.name = self.printer_name
+            settings.printer.location = self.printer_location
 
         # connect
         if not self.connect_skip:

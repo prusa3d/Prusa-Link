@@ -8,6 +8,7 @@ import prctl  # type: ignore
 
 from .config import Settings
 from .printer_adapter import prusa_link
+from .printer_adapter.prusa_cam import PrusaCam
 from .printer_adapter.prusa_link import PrusaLink
 from .web import WebServer, init_web_app
 from .web.lib.core import app
@@ -20,13 +21,14 @@ class Daemon:
     instance = None
 
     # pylint: disable=too-few-public-methods
-    def __init__(self, config, argv: List):
+    def __init__(self, config, argv: List, is_camera=False):
         if Daemon.instance:
             raise RuntimeError("Daemon can be only one.")
 
         self.cfg = config
         self.argv = argv
         self.settings = None
+        self.is_camera = is_camera
 
         self.http = None
         self.prusa_link = None
@@ -48,7 +50,10 @@ class Daemon:
         # Log daemon stuff as printer_adapter
         adapter_logger = logging.getLogger(prusa_link.__name__)
         try:
-            self.prusa_link = PrusaLink(self.cfg, self.settings)
+            if self.is_camera:
+                self.prusa_link = PrusaCam(self.cfg, self.settings)
+            else:
+                self.prusa_link = PrusaLink(self.cfg, self.settings)
         except Exception:  # pylint: disable=broad-except
             adapter_logger.exception("Adapter was not start")
             self.http.stop()

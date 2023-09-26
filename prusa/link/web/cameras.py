@@ -323,3 +323,34 @@ def unregister_camera(_, camera_id):
 
     camera.set_token(None)
     return Response(status_code=state.HTTP_OK)
+
+
+@app.route("/api/v1/cameras/<camera_id>/token", method=state.METHOD_POST)
+@check_api_digest
+def set_camera_token(req, camera_id):
+    """Registers a camera to Connect"""
+    camera_controller = app.daemon.prusa_link.printer.camera_controller
+    if camera_id not in camera_controller:
+        return JSONResponse(status_code=state.HTTP_NOT_FOUND,
+                            message=f"Camera with id: {camera_id} was not "
+                                    f"found among the connected cameras")
+    camera = camera_controller.get_camera(camera_id)
+    if camera.is_registered:
+        return JSONResponse(status_code=state.HTTP_CONFLICT,
+                            message=f"Camera: {camera_id} is already "
+                                    "registered.")
+    token = req.json.get('token')
+    if token is None:
+        return JSONResponse(status_code=state.HTTP_BAD_REQUEST,
+                            message="Token is missing. "
+                                    "Cannot register a camera by ID alone.")
+
+    camera.set_token(token)
+    timeout_at = time() + CAMERA_REGISTER_TIMEOUT
+    while not camera.is_registered:
+        if time() > timeout_at:
+            return JSONResponse(status_code=state.HTTP_REQUEST_TIME_OUT,
+                                message="Timed out when registering "
+                                        f"camera: {camera_id}")
+        sleep(QUIT_INTERVAL)
+    return Response(status_code=state.HTTP_OK)
