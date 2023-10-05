@@ -68,21 +68,31 @@ class BuildStatic(Command):
             'target-cam-dir=',
             'c',
             "target cam build directory (default: './prusa/link/cam_static')",
+        ), (
+            'use-prusalator=',
+            'p',
+            "Use Prusalator? (default: 'True')",
         ),
     ]
     target_dir = None
     target_cam_dir = None
+    use_prusalator = "True"
 
     def initialize_options(self):
         self.target_dir = None
         self.target_cam_dir = None
+        self.use_prusalator = "True"
 
     def finalize_options(self):
+        cwd = os.path.abspath(os.curdir)
         if self.target_dir is None:
-            cwd = os.path.abspath(os.curdir)
             self.target_dir = os.path.join(cwd, 'prusa', 'link', 'static')
+        if self.target_cam_dir is None:
             self.target_cam_dir = os.path.join(
                 cwd, 'prusa', 'link', 'cam_static')
+        if self.use_prusalator is not None:
+            self.use_prusalator = (self.use_prusalator.lower()
+                                   in ['true', '1', 'yes'])
 
     def run(self):
         logging.info("building html documentation")
@@ -105,13 +115,14 @@ class BuildStatic(Command):
         copyfile(os.path.join(os.curdir, 'config.custom.js'),
                  os.path.join(cwd, 'config.custom.js'))
 
-        args = ('docker', 'run', '-t', '--rm', '-u',
-                f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd,
-                '-v', f"{cwd}:{cwd}",
-                'node:latest', 'sh', '-c',
-                'npm install && npm run words:extract')
-        if run(args, check=False).returncode:
-            raise IOError(1, 'docker failed')
+        if self.use_prusalator:
+            args = ('docker', 'run', '-t', '--rm', '-u',
+                    f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd,
+                    '-v', f"{cwd}:{cwd}",
+                    'node:latest', 'sh', '-c',
+                    'npm install && npm run words:extract')
+            if run(args, check=False).returncode:
+                raise IOError(1, 'docker failed')
 
         args = ('docker', 'run', '-t', '--rm', '-u',
                 f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd,
