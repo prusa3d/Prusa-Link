@@ -116,7 +116,6 @@ class PrusaCam:
         self.quit_evt.set()
         self.camera_governor.stop()
         self.command_queue.stop()
-        self.printer.stop_loop()
         self.printer.indicate_stop()
 
         log.debug("Stop signalled")

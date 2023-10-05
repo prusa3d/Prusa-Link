@@ -60,18 +60,29 @@ class BuildStatic(Command):
     """Build static html files, need docker."""
     description = __doc__
     user_options: ClassVar[list[str]] = [
-            ('target-dir=', 't',
-             "target build directory (default: './prusa/link/static')"),
-            ]
+        (
+            'target-dir=',
+            't',
+            "target build directory (default: './prusa/link/static')",
+        ), (
+            'target-cam-dir=',
+            'c',
+            "target cam build directory (default: './prusa/link/cam_static')",
+        ),
+    ]
     target_dir = None
+    target_cam_dir = None
 
     def initialize_options(self):
         self.target_dir = None
+        self.target_cam_dir = None
 
     def finalize_options(self):
         if self.target_dir is None:
             cwd = os.path.abspath(os.curdir)
             self.target_dir = os.path.join(cwd, 'prusa', 'link', 'static')
+            self.target_cam_dir = os.path.join(
+                cwd, 'prusa', 'link', 'cam_static')
 
     def run(self):
         logging.info("building html documentation")
@@ -115,6 +126,21 @@ class BuildStatic(Command):
         # (python 3.7)
         copytree(os.path.join(cwd, 'dist'),
                  os.path.join(self.target_dir),
+                 dirs_exist_ok=True)
+
+        args = ('docker', 'run', '-t', '--rm', '-u',
+                f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd,
+                '-v', f"{cwd}:{cwd}",
+                '-e', f'GIT_COMMIT_HASH={git_commit_hash}',
+                'node:latest', 'sh', '-c',
+                'npm run build:cameras')
+        if run(args, check=False).returncode:
+            raise IOError(1, 'docker failed')
+
+        # pylint: disable=unexpected-keyword-arg
+        # (python 3.7)
+        copytree(os.path.join(cwd, 'dist'),
+                 os.path.join(self.target_cam_dir),
                  dirs_exist_ok=True)
 
 

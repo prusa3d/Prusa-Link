@@ -7,7 +7,7 @@ from wsgiref.simple_server import make_server
 from ..util import prctl_name
 from .lib.auth import REALM
 from .lib.classes import RequestHandler, ThreadingServer
-from .lib.core import app
+from .lib.core import CAMERA_STATIC_DIR, STATIC_DIR, app
 from .lib.wizard import Wizard
 from .link_info import link_info
 
@@ -35,6 +35,10 @@ def init_web_app(daemon):
     app.debug = daemon.cfg.debug
 
     app.daemon = daemon
+    if daemon.is_camera:
+        app.document_root = CAMERA_STATIC_DIR
+    else:
+        app.document_root = STATIC_DIR
 
     service_local = app.settings.service_local
     if service_local.username and service_local.digest:
