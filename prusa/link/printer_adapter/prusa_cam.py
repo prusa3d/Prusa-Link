@@ -1,4 +1,6 @@
 """Implements the PrusaLink class"""
+# pylint: disable=duplicate-code
+
 import logging
 from threading import Event
 from threading import enumerate as enumerate_threads
@@ -13,7 +15,7 @@ from ..cameras.picamera_driver import PiCameraDriver
 from ..cameras.v4l2_driver import V4L2Driver
 from ..conditions import HW, use_connect_errors
 from ..config import Config, Settings
-from ..sdk_augmentation.printer import MyPrinter
+from ..sdk_augmentation.printer import CameraOnly
 from ..service_discovery import ServiceDiscovery
 from .command_queue import CommandQueue
 from .model import Model
@@ -46,7 +48,7 @@ class PrusaCam:
         # These start by themselves
         self.service_discovery = ServiceDiscovery(self.cfg.http.port)
 
-        self.printer = MyPrinter()
+        self.printer = CameraOnly()
 
         drivers: List[Type[CameraDriver]] = [V4L2Driver]
         if PiCameraDriver.supported:

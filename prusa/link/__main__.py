@@ -218,7 +218,7 @@ def main():
                 print("Restarting service with pid", pid)
                 stop(pid)
 
-        elif args.command == "start":
+        elif args.command in ("start", "start_camera"):
             pass
         elif not args.foreground:
             parser.error("Unknown command %s")

@@ -173,16 +173,20 @@ def api_info(req):
     printer = app.daemon.prusa_link.printer
 
     info = {
-        'name': printer_settings.name,
-        'location': printer_settings.location,
-        'farm_mode': printer_settings.farm_mode,
-        "network_error_chime": printer_settings.network_error_chime,
-        'nozzle_diameter': printer.nozzle_diameter,
-        'min_extrusion_temp': LimitsMK3S.min_temp_nozzle_e,
-        'serial': printer.sn,
         'hostname': service_connect.hostname,
         'port': service_connect.port,
     }
+
+    if not app.daemon.is_camera:
+        info.update({
+            'name': printer_settings.name,
+            'location': printer_settings.location,
+            'farm_mode': printer_settings.farm_mode,
+            "network_error_chime": printer_settings.network_error_chime,
+            'nozzle_diameter': printer.nozzle_diameter,
+            'min_extrusion_temp': LimitsMK3S.min_temp_nozzle_e,
+            'serial': printer.sn,
+        })
 
     return JSONResponse(**info)
 
@@ -195,10 +199,7 @@ def api_status(req):
     # pylint: disable=too-many-locals
     status = {}
     camera_configurator = app.daemon.prusa_link.camera_configurator
-
-    # --- Camera ---
-    status["camera"] = {"id": camera_configurator.order[0]} \
-        if camera_configurator.order else None
+    camera_controller = camera_configurator.camera_controller
 
     if not app.daemon.is_camera:
         job = app.daemon.prusa_link.model.job
@@ -273,6 +274,15 @@ def api_status(req):
                 "data_transferred": transfer.transferred,
             }
             status["transfer"] = status_transfer
+
+    # --- Camera ---
+    status["camera"] = {"id": camera_configurator.order[0]} \
+        if camera_configurator.order else None
+
+    status.setdefault("printer", {}).update({
+        "cameras": len(list(camera_controller.cameras_in_order)),
+        "state": State.IDLE.value,
+    })
 
     return JSONResponse(**filter_null(status))
 

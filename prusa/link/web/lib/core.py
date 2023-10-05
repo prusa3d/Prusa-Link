@@ -14,7 +14,7 @@ STATIC_DIR = abspath(
 
 CAMERA_STATIC_DIR = abspath(
     os.environ.get('PRUSA_LINK_STATIC', join(str(files('prusa.link')),
-                                             'cam_static')))
+                                             'static_cam')))
 
 
 class LinkWebApp(Application):

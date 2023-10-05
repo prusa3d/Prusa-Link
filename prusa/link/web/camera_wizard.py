@@ -1,4 +1,5 @@
 """This module houses a modified wizard path for camera only PrusaLink"""
+# pylint: disable=duplicate-code
 
 from functools import wraps
 

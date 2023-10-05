@@ -67,7 +67,7 @@ class BuildStatic(Command):
         ), (
             'target-cam-dir=',
             'c',
-            "target cam build directory (default: './prusa/link/cam_static')",
+            "target cam build directory (default: './prusa/link/static_cam')",
         ), (
             'use-prusalator=',
             'p',
@@ -89,7 +89,7 @@ class BuildStatic(Command):
             self.target_dir = os.path.join(cwd, 'prusa', 'link', 'static')
         if self.target_cam_dir is None:
             self.target_cam_dir = os.path.join(
-                cwd, 'prusa', 'link', 'cam_static')
+                cwd, 'prusa', 'link', 'static_cam')
         if self.use_prusalator is not None:
             self.use_prusalator = (self.use_prusalator.lower()
                                    in ['true', '1', 'yes'])
