@@ -1,0 +1,143 @@
+body,
+html {
+    font-size: 18px;
+    color: #7a7a7a;
+    background-color: hsl(0, 0%, 4%);
+    height: 100%;
+    font-family: Helvetica, sans-serif;
+}
+
+a {
+    color: #fff !important;
+}
+
+a.active {
+    text-decoration: underline !important;
+}
+
+h1,
+h2,
+h3,
+h4 {
+    color: #f5f5f5;
+    margin-top: 2em;
+    margin-bottom: 2em;
+}
+
+h1 {
+    font-size: 28px;
+}
+
+h2 {
+    font-size: 22px;
+}
+
+h3 {
+    font-size: 18px;
+}
+
+pre {
+    color: #7a7a7a;
+}
+
+p>b {
+    color: #f5f5f5;
+}
+
+.jumbotron {
+    background-color: hsl(0, 0%, 10%);
+}
+
+.nav-link {
+    color: #f5f5f5 !important;
+    font-size: 18px;
+    border-bottom: .1rem solid transparent;
+}
+
+.navbar-logo {
+    background: white url("/img/prusa-link-logo.svg") no-repeat 50%;
+    background-size: cover;
+    width: 288px;
+    height: 69px;
+    bottom: 3px;
+    display: flex;
+}
+
+.white {
+    color: #f5f5f5;
+}
+
+.orange {
+    color: #f9c129
+}
+
+.progress {
+    margin-bottom: 3em;
+}
+
+.progress,
+.progress-bar {
+    overflow: visible;
+}
+
+.progress-bar a {
+    position: relative;
+    top: 2em;
+    text-decoration: underline;
+    text-decoration-color: #6c757d;
+}
+
+.progress-bar a:hover {
+    text-decoration: none;
+}
+
+.align-center {
+    text-align: center;
+}
+
+.text-muted {
+    font-size: 0.75em;
+}
+
+.img-center {
+    text-align: center;
+}
+.navigation {
+    margin-top: 2em;
+}
+
+code {
+    color: white;
+}
+
+.api-key {
+    font-size: 22px;
+    cursor: copy;
+}
+
+.api-key img {
+    margin-left: 0.5em;
+}
+
+.condensed {
+     margin-bottom: 1em;
+}
+
+#ports_section {display: none;}
+
+#ports_section_show{
+        color: #ffffff;
+        cursor:pointer;
+}
+#ports_section_show:hover{
+       color: #f2f2f2;
+}
+
+@media(max-width: 768px) {
+    input.full-width,
+    button.full-width,
+    a.full-width {
+        width: 100%;
+        margin-bottom: 0.5em;
+    }
+}
