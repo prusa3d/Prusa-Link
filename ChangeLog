@@ -1,8 +1,10 @@
 # ChangeLog
 
-0.7.1rc2
+0.7.1 (2023-10-10)
     * Add an automatic PrusaLink image builder script
     * Add multi-instance documentation
+    * Telemetry improvement
+    * Attempt to turn the RPi wifi power management off in the images
 
 0.7.1rc1 (2023-08-10)
     * Fixed HTTP response status on HEAD request for non-existing files
