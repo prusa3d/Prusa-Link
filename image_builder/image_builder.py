@@ -18,7 +18,7 @@ KERNEL_URL_REGEX = re.compile(
 
 
 KERNEL_URL = ("http://security.debian.org/debian-security/pool/updates/main/"
-              "l/linux/linux-image-6.1.0-10-armmp-lpae_6.1.38-2_armhf.deb")
+              "l/linux/linux-image-6.1.0-12-armmp-lpae_6.1.52-1_armhf.deb")
 match = KERNEL_URL_REGEX.match(KERNEL_URL)
 
 if match is None:
@@ -262,6 +262,10 @@ def build_image():
                         action="store_true",
                         help="Build the multi-instance image")
 
+    parser.add_argument("-b", "--branch-or-hash",
+                        help="Specify a commit branch name or a hash of "
+                             "PrusaLink to get")
+
     args = parser.parse_args()
 
     try:
@@ -408,16 +412,17 @@ def build_image():
                  "libmagic1 libturbojpeg0 libatlas-base-dev")
 
     print("Installing PrusaLink")
-    if args.dev:
+    if args.dev or args.branch_or_hash is not None:
+        hash_part = ""
+        if args.branch_or_hash is not None:
+            hash_part = f"@{args.branch_or_hash}"
         run_over_ssh("pip install git+https://github.com/prusa3d/"
                      "gcode-metadata.git")
         run_over_ssh("pip install git+https://github.com/prusa3d/"
                      "Prusa-Connect-SDK-Printer.git")
         run_over_ssh("pip install git+https://github.com/prusa3d/"
-                     "Prusa-Link.git")
+                     f"Prusa-Link.git{hash_part}")
     else:
-        run_over_ssh("pip install git+https://github.com/prusa3d/"
-                     "gcode-metadata.git")
         run_over_ssh("pip install prusalink")
 
     output = subprocess.run(
