@@ -27,8 +27,6 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install git+https://github.com/prusa3d/gcode-metadata.git@master#egg=gcode_metadata
-        pip install git+https://github.com/prusa3d/Prusa-Connect-SDK-Printer.git@master#egg=prusa.connect.sdk.printer
         pip install -U -r requirements.txt
         pip install pylint~=2.17.7
         pip install -U ruff pytest pytest-doctestplus pytest-pylint pytest-mypy mock

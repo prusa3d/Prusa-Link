@@ -1,5 +1,7 @@
 include *.py
 include MANIFEST.in
+include requirements.txt
+include requirements-pi.txt
 graft prusa/link/data
 graft prusa/link/templates
 graft prusa/link/static
