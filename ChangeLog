@@ -1,6 +1,6 @@
 # ChangeLog
 
-0.7.1 (2023-10-10)
+0.7.2 (2023-10-11)
     * Add an automatic PrusaLink image builder script
     * Add multi-instance documentation
     * Telemetry improvement
