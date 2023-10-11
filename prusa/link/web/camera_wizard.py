@@ -71,6 +71,15 @@ def wizard_credentials(req):
                          wizard=app.wizard)
 
 
+@app.route('/wizard/no-auth')
+@check_ready
+def wizard_no_auth(req):
+    """Credentials configuration."""
+    app.wizard.auth = False
+    app.wizard.write_settings(app.settings)
+    redirect_with_proxy(req, '/')
+
+
 @app.route('/wizard/credentials', method=state.METHOD_POST)
 @check_ready
 def wizard_credentials_post(req):

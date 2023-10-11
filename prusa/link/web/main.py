@@ -14,7 +14,6 @@ from typing import BinaryIO, cast
 from gcode_metadata import get_metadata
 from pkg_resources import working_set  # type: ignore
 from poorwsgi import state
-from poorwsgi.digest import check_digest
 from poorwsgi.response import (
     EmptyResponse,
     FileResponse,
@@ -40,7 +39,7 @@ from ..printer_adapter.command_handlers import (
     update_prusalink,
 )
 from ..printer_adapter.job import Job, JobState
-from .lib.auth import REALM, check_api_digest, check_config
+from .lib.auth import check_api_digest, check_config, optional_auth
 from .lib.core import app
 from .lib.files import fill_printfile_data, gcode_analysis, get_os_path
 from .lib.view import package_to_api
@@ -79,7 +78,7 @@ def instance(req):
 
 @app.route('/', method=state.METHOD_GET)
 @check_config
-@check_digest(REALM)
+@optional_auth
 def index(req):
     """Return status page"""
     # pylint: disable=unused-argument

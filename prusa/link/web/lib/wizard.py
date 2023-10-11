@@ -85,6 +85,7 @@ class Wizard:
         self.serial = None
 
         # auth
+        self.auth = True
         self.username = _app.settings.service_local.username
         self.digest = None
         self.restored_digest = False
@@ -178,9 +179,11 @@ class Wizard:
 
     def write_settings(self, settings):
         """Write settings configuration."""
-        # auth
-        settings.service_local.digest = self.digest
-        settings.service_local.username = self.username
+        settings.service_local.auth = self.auth
+        if self.auth:
+            # auth
+            settings.service_local.digest = self.digest
+            settings.service_local.username = self.username
 
         # network
         settings.network.hostname = self.net_hostname
