@@ -90,7 +90,7 @@ class SerialParser(metaclass=MCSingleton):
     def add_handler(self,
                     regexp: re.Pattern,
                     handler: Callable[[Any, re.Match], None],
-                    priority: Union[float, int] = 0) -> None:
+                    priority: float = 0) -> None:
         """
         Add an entry to output handlers.
         :param regexp: if this matches, your handler will get called
@@ -172,7 +172,7 @@ class ThreadedSerialParser(SerialParser):
     def add_decoupled_handler(self,
                               regexp: re.Pattern,
                               handler: Callable[[Any, re.Match], None],
-                              priority: Union[float, int] = 0) -> None:
+                              priority: float = 0) -> None:
         """Converts given handler, so it does not block the caller"""
         self.add_handler(regexp, self.decoupled(handler), priority)
 

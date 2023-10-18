@@ -10,7 +10,6 @@ from ..serial.serial_parser import ThreadedSerialParser
 from .command import CommandFailed
 from .command_handlers import SetReady
 from .command_queue import CommandQueue
-from .lcd_printer import LCDPrinter
 from .structures.regular_expressions import (
     OPEN_RESULT_REGEX,
     PRINT_DONE_REGEX,
@@ -27,9 +26,8 @@ class SpecialCommands:
     related ones"""
 
     def __init__(self, serial_parser: ThreadedSerialParser,
-                 command_queue: CommandQueue, lcd_printer: LCDPrinter):
+                 command_queue: CommandQueue):
         self.command_queue = command_queue
-        self.lcd_printer = lcd_printer
 
         self.commands = {"setready.g": self.set_ready}
         self.detected_at = 0

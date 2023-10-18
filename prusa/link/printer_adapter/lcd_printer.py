@@ -34,7 +34,7 @@ from ..conditions import (
     SN,
     UPGRADED,
 )
-from ..config import Config, Settings
+from ..config import Settings
 from ..const import (
     FW_MESSAGE_TIMEOUT,
     PRINTING_STATES,
@@ -42,14 +42,12 @@ from ..const import (
     SLEEP_SCREEN_TIMEOUT,
 )
 from ..serial.helpers import enqueue_instruction, wait_for_instruction
-from ..serial.serial_parser import ThreadedSerialParser
 from ..serial.serial_queue import SerialQueue
 from ..util import prctl_name
 from .model import Model
 from .structures.carousel import Carousel, LCDLine, Screen
 from .structures.mc_singleton import MCSingleton
 from .structures.model_classes import JobState
-from .structures.regular_expressions import LCD_UPDATE_REGEX
 from .updatable import Thread
 
 log = logging.getLogger(__name__)
@@ -117,17 +115,15 @@ class LCDPrinter(metaclass=MCSingleton):
     # pylint: disable=too-many-arguments
     def __init__(self,
                  serial_queue: SerialQueue,
-                 serial_parser: ThreadedSerialParser,
                  model: Model,
                  settings: Settings,
                  printer: Printer,
-                 config: Config):
+                 printer_number):
         self.serial_queue: SerialQueue = serial_queue
-        self.serial_parser: ThreadedSerialParser = serial_parser
         self.model: Model = model
         self.settings: Settings = settings
         self.printer: Printer = printer
-        self.config: Config = config
+        self.printer_number = printer_number
 
         self.event_queue: Queue[Callable[[], None]] = Queue()
 
@@ -190,8 +186,6 @@ class LCDPrinter(metaclass=MCSingleton):
         self.idle_from = time()
         # Used for ignoring LCD status updated that we generate
         self.ignore = 0
-        self.serial_parser.add_decoupled_handler(LCD_UPDATE_REGEX,
-                                                 self.lcd_updated)
 
         self.current_line = None
 
@@ -335,10 +329,9 @@ class LCDPrinter(metaclass=MCSingleton):
             }
             if self.wizard_screen.conditions != conditions:
                 self.wizard_screen.conditions = conditions
-                printer_number = self.config.daemon.printer_number
                 local_ip = self.model.ip_updater.local_ip
-                if printer_number is not None:
-                    text = f"{local_ip}/{printer_number}"
+                if self.printer_number is not None:
+                    text = f"{local_ip}/{self.printer_number}"
                 else:
                     # Can't have a capital G because old FW doesn't understand
                     # What's a print command and what's not. It differentiated
@@ -436,9 +429,8 @@ class LCDPrinter(metaclass=MCSingleton):
         if time() - self.idle_from > SLEEP_SCREEN_TIMEOUT and LAN:
             self.carousel.enable(self.idle_screen)
             local_ip = self.model.ip_updater.local_ip
-            printer_number = self.config.daemon.printer_number
-            if printer_number is not None:
-                ip_text = f"{local_ip}/{printer_number}"
+            if self.printer_number is not None:
+                ip_text = f"{local_ip}/{self.printer_number}"
             else:
                 ip_text = f"{local_ip}"
             speed = self.model.latest_telemetry.speed

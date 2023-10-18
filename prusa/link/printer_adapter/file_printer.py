@@ -38,10 +38,10 @@ class FilePrinter(metaclass=MCSingleton):
     # pylint: disable=too-many-arguments
     def __init__(self, serial_queue: SerialQueue,
                  serial_parser: ThreadedSerialParser, model: Model,
-                 cfg: Config, print_stats: PrintStats) -> None:
+                 cfg: Config) -> None:
+        self.print_stats = PrintStats(model)
         self.serial_queue = serial_queue
         self.serial_parser = serial_parser
-        self.print_stats = print_stats
         self.model = model
 
         self.new_print_started_signal = Signal()
@@ -304,6 +304,7 @@ class FilePrinter(metaclass=MCSingleton):
         If paused, resumes the print by flipping a flag,
         resumes print timer
         """
+        # TODO: wrong, needs to be in line with the rest of commands
         if not self.data.printing:
             return
         if not self.data.paused:
@@ -314,6 +315,7 @@ class FilePrinter(metaclass=MCSingleton):
     def stop_print(self):
         """If printing, stops the print and indicates by a flag, that the
         print has been stopped and did not finish on its own"""
+        # TODO: wrong, needs to be in line with the rest of commands
         if self.data.printing:
             self.data.stopped_forcefully = True
             self.data.printing = False

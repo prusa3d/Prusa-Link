@@ -1,15 +1,14 @@
-prusa.connect.sdk.printer>=0.7.1dev0
-gcode-metadata
+prusa.connect.sdk.printer>=0.7.1
+py-gcode-metadata
 pip>=22.2.0
 bidict~=0.22.1
 blinker~=1.5
 extendparser~=0.3.1
-ipcqueue~=0.9.7
 jinja2-template-info~=0.2.4
 lockfile~=0.12.2
 packaging~=23.0
 PoorWSGI~=2.5.0
-pydantic~=1.10.7
+pydantic==1.10.12 # to be kept pinned until https://github.com/pydantic/pydantic/issues/7689 is resolved
 pyric~=0.1.6.3
 python-daemon~=3.0.1
 python-magic~=0.4.27

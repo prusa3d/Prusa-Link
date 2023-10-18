@@ -15,7 +15,6 @@ from prusa.connect.printer import Printer
 from prusa.connect.printer.conditions import CondState
 
 from ..conditions import FW, ID, JOB_ID, SN
-from ..config import Settings
 from ..const import (
     FAST_POLL_INTERVAL,
     MINIMAL_FIRMWARE,
@@ -78,6 +77,10 @@ class InfoGroup(WatchedGroup):
         self.to_send = True
 
 
+# TODO: Don't like how parsing and result signal handling are mixed
+# instead, i would put the signal handling elsewhere
+# Also, having the external validators and whatnot seems unnecessarily complex
+# subclass WatchedItems and move them inside
 class PrinterPolling:
     """Sets up the tracked values for info_updater"""
 
@@ -88,7 +91,7 @@ class PrinterPolling:
                  serial_parser: ThreadedSerialParser,
                  printer: Printer, model: Model,
                  telemetry_passer: TelemetryPasser,
-                 job: Job, sd_card: SDCard, settings: Settings) -> None:
+                 job: Job, sd_card: SDCard) -> None:
         super().__init__()
         self.item_updater = ItemUpdater()
         self.serial_queue = serial_queue
@@ -98,7 +101,6 @@ class PrinterPolling:
         self.telemetry_passer = telemetry_passer
         self.job = job
         self.sd_card = sd_card
-        self.settings = settings
 
         # Printer info (for init and SEND_INFO)
         self.network_info = WatchedItem("network_info",
@@ -388,11 +390,11 @@ class PrinterPolling:
 
     def _change_interval(self, item: WatchedItem, interval):
         """Changes the item interval and schedules depending on the new one"""
+        item.interval = interval
         if interval is None:
             self.item_updater.cancel_scheduled_invalidation(item)
-        elif item.interval is not None:
+        else:
             self.item_updater.schedule_invalidation(item)
-        item.interval = interval
 
     def polling_not_ok(self):
         """Stops polling of some values"""

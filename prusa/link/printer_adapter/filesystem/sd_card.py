@@ -29,7 +29,6 @@ from ...serial.serial_parser import ThreadedSerialParser
 from ...serial.serial_queue import SerialQueue
 from ...util import fat_datetime_to_tuple
 from ..model import Model
-from ..state_manager import StateManager
 from ..structures.model_classes import SDState
 from ..structures.module_data_classes import SDCardData
 from ..structures.regular_expressions import (
@@ -218,8 +217,7 @@ class SDCard(ThreadedUpdatable):
     update_interval = SD_INTERVAL
 
     def __init__(self, serial_queue: SerialQueue,
-                 serial_parser: ThreadedSerialParser,
-                 state_manager: StateManager, model: Model):
+                 serial_parser: ThreadedSerialParser, model: Model):
 
         self.tree_updated_signal = Signal()  # kwargs: tree: FileTree
         self.state_changed_signal = Signal()  # kwargs: sd_state: SDState
@@ -233,7 +231,6 @@ class SDCard(ThreadedUpdatable):
         self.serial_parser.add_decoupled_handler(SD_EJECTED_REGEX,
                                                  self.sd_ejected)
         self.serial_queue: SerialQueue = serial_queue
-        self.state_manager = state_manager
         self.model = model
 
         self.model.sd_card = SDCardData(expecting_insertion=False,
@@ -279,7 +276,7 @@ class SDCard(ThreadedUpdatable):
           enough from the previous update
         """
         # Update only if IDLE
-        if self.state_manager.get_state() != State.IDLE:
+        if self.model.state_manager.current_state != State.IDLE:
             return
 
         # since_last_update = time() - self.data.last_updated

@@ -8,7 +8,6 @@ from collections import deque
 from enum import Enum
 from typing import Deque, Optional
 
-from ..config import Config
 from ..const import (
     DEFAULT_THRESHOLD,
     HEAP_RATIO,
@@ -64,10 +63,10 @@ class IsPlannerFed:
     one until the values accumulate.
     """
 
-    def __init__(self, cfg: Config):
+    def __init__(self, threshold_path):
         self.times_queue: Deque[TimeValue] = deque(maxlen=QUEUE_SIZE)
 
-        self.threshold_path = get_clean_path(cfg.daemon.threshold_file)
+        self.threshold_path = get_clean_path(threshold_path)
         ensure_directory(os.path.dirname(self.threshold_path))
 
         if not USE_DYNAMIC_THRESHOLD:

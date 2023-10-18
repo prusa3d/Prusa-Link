@@ -13,6 +13,15 @@ PrusaLink also provides a local web interface:
 To use PrusaLink please follow our
 [Setup Guide](https://help.prusa3d.com/guide/prusalink-and-prusa-connect-mk3-s-_221744)
 
+### Login
+If you wish to log into the console environment and haven't changed the
+credentials, you'll need these default ones:
+
+```
+username: jo
+password: raspberry
+```
+
 ## Dev Setup
 If using the Raspberry Pi pins, follow the guide above for the hardware
 preparation. Pins can be used even on regular (non-Zero) Pis
@@ -55,8 +64,8 @@ sudo apt install -y python3-picamera2 --no-install-recommends
 pip install PrusaLink
 
 # Or install straight from GitHub
-pip install git+https://github.com/prusa3d/Prusa-Connect-SDK-Printer.git
 pip install git+https://github.com/prusa3d/gcode-metadata.git
+pip install git+https://github.com/prusa3d/Prusa-Connect-SDK-Printer.git
 pip install git+https://github.com/prusa3d/Prusa-Link.git
 ```
 
@@ -110,6 +119,10 @@ similar redirect on the loopback interface
 ```bash
 iptables -t nat -I OUTPUT -p tcp -o <loopback device name> -d localhost --dport 80 -j REDIRECT --to-ports 8080
 ```
+
+### Multi-instance
+If you want to connect multiple printers to a single pi, have a look at
+[MULTIINSTANCE.md](MULTIINSTANCE.md)
 
 ## Usage
 By default, the executable starts the daemon process and exits.

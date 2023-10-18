@@ -1,5 +1,4 @@
 """Contains implementation of a camera driver utilizing the V4L2 API"""
-import collections
 import ctypes
 import errno
 import fcntl
@@ -11,7 +10,7 @@ import re
 import select
 from glob import glob
 from types import MappingProxyType
-from typing import Any
+from typing import Any, NamedTuple
 
 from prusa.connect.printer.camera import Resolution
 from prusa.connect.printer.camera_driver import CameraDriver
@@ -38,23 +37,40 @@ log = logging.getLogger(__name__)
 
 # --- code taken from v4l2py, unused features cut
 
-Info = collections.namedtuple(
-    "Info",
-    "driver card bus_info version physical_capabilities capabilities "
-    "formats frame_sizes, focus_info",
-)
+class Info(NamedTuple):
+    """Contains information about the device"""
+    driver: Any
+    card: Any
+    bus_info: Any
+    version: Any
+    physical_capabilities: Any
+    capabilities: Any
+    formats: Any
+    frame_sizes: Any
+    focus_info: Any
 
-ImageFormat = collections.namedtuple(
-    "ImageFormat", "type description flags pixel_format",
-)
 
-FrameType = collections.namedtuple(
-    "FrameType", "pixel_format width height",
-)
+class ImageFormat(NamedTuple):
+    """Contains information about a specific image format"""
+    type: Any
+    description: Any
+    flags: Any
+    pixel_format: Any
 
-FocusInfo = collections.namedtuple(
-    "FocusInfo", "available min max step",
-)
+
+class FrameType(NamedTuple):
+    """Contains information about a specific frame type"""
+    pixel_format: Any
+    width: Any
+    height: Any
+
+
+class FocusInfo(NamedTuple):
+    """Contains information about the focus capabilities of the device"""
+    available: Any
+    min: Any
+    max: Any
+    step: Any
 
 
 STREAM_TYPE = v4l2.V4L2_BUF_TYPE_VIDEO_CAPTURE

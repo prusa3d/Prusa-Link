@@ -1,6 +1,12 @@
 # ChangeLog
 
-0.7.1dev0
+0.7.2 (2023-10-11)
+    * Add an automatic PrusaLink image builder script
+    * Add multi-instance documentation
+    * Telemetry improvement
+    * Attempt to turn the RPi wifi power management off in the images
+
+0.7.1rc1 (2023-08-10)
     * Fixed HTTP response status on HEAD request for non-existing files
     * Attribute ro renamed to read_only
     * Fix printer returning to READY instead of IDLE
@@ -22,8 +28,11 @@
         - Fix undefined printer states displaying
         - Hide zero temperatures in telemetry
         - Add support to be running behind the proxy
+        - Fix folder deletion button
+        - Fix prusa connect port handling in URL builder
     * Hold the STOPPED and FINISHED state for at least 11s
     * Fix MK2(.5)S SN being broken on multi-instance images
+    * Implemented UPGRADE high lvl Connect command
 
 0.7.0 (2023-05-19)
     * Fixed printer sends info about api key change to Connect after change
@@ -148,13 +157,9 @@
        - Project preview is now not dependent on `/api/job` endpoint
        - Confirm dialog after uploade via drag zone
        - Nozzle diameter
-<<<<<<< Updated upstream
        - Offline mode
        - Connect Like icons
        - Translaction fallbacks
-
-=======
->>>>>>> Stashed changes
      * Differentiate between FW and ID errors in the wizard, update texts
      * Fixed download ref, added total storage space info
      * Added storage space info to api/printer
