@@ -409,9 +409,13 @@ def build_image():
 
     print("Installing dependencies")
     run_over_ssh("sudo apt-get install -y git python3-pip pigpio libcap-dev "
-                 "libmagic1 libturbojpeg0 libatlas-base-dev")
+                 "libmagic1 libturbojpeg0 libatlas-base-dev libffi-dev")
 
     print("Installing PrusaLink")
+    # Caution: not tied to requirements-pi.txt
+    run_over_ssh("pip install wiringpi")
+    if args.multi_instance:
+        run_over_ssh("pip install ipcqueue")
     if args.dev or args.branch_or_hash is not None:
         hash_part = ""
         if args.branch_or_hash is not None:
