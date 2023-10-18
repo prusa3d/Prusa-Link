@@ -13,6 +13,15 @@ PrusaLink also provides a local web interface:
 To use PrusaLink please follow our
 [Setup Guide](https://help.prusa3d.com/guide/prusalink-and-prusa-connect-mk3-s-_221744)
 
+### Login
+If you wish to log into the console environment and haven't changed the
+credentials, you'll need these default ones:
+
+```
+username: jo
+password: raspberry
+```
+
 ## Dev Setup
 If using the Raspberry Pi pins, follow the guide above for the hardware
 preparation. Pins can be used even on regular (non-Zero) Pis
