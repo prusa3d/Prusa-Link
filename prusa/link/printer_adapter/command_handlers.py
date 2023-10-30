@@ -27,6 +27,7 @@ from ..const import (
 from ..serial.helpers import enqueue_instruction, enqueue_list_from_str
 from ..util import file_is_on_sd, round_to_five
 from .command import Command, CommandFailed, FileNotFound, NotStateToPrint
+from .model import Model
 from .state_manager import StateChange
 from .structures.model_classes import JobState
 from .structures.regular_expressions import (
@@ -555,3 +556,27 @@ class CancelReady(Command):
                         default_source=self.source))
         self.state_manager.idle()
         self.state_manager.stop_expecting_change()
+
+
+class RePrint(StartPrint):
+    """Class for starting the last job again"""
+    command_name = "re-print"
+
+    def __init__(self, **kwargs):
+        # Need to get the model sooner than it's available in self
+        model = Model.get_instance()
+        path = model.job.last_job_path
+        if path is None:
+            path = ""
+        super().__init__(path=path, **kwargs)
+
+    def _run_command(self):
+        """Re-prints the last job, makes a noise and sends an LCD message
+        if that fails"""
+        try:
+            super()._run_command()
+        except CommandFailed as exception:
+            # Not an ideal way to do this, but less time-consuming
+            enqueue_instruction(self.serial_queue, "M300 P200 S600")
+            enqueue_instruction(self.serial_queue, "M117 \x7ECannot re-print")
+            raise exception
