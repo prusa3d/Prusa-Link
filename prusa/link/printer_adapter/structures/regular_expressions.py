@@ -67,6 +67,8 @@ PAUSED_REGEX = re.compile(r"^// action:paused$")
 RESUME_PRINT_REGEX = re.compile("^// action:resume$")
 RESUMED_REGEX = re.compile("^// action:resumed$")
 CANCEL_REGEX = re.compile("^// action:cancel$")
+READY_REGEX = re.compile("^// action:ready$")
+NOT_READY_REGEX = re.compile("^// action:not_ready$")
 # This girthy regexp tries to capture all error messages requiring printer
 # reset using M999 or manual button, with connect, only manual reset shall
 # be accepted
