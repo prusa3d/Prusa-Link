@@ -16,6 +16,7 @@ from prusa.connect.printer.files import File
 from .. import __version__
 from ..conditions import use_connect_errors
 from ..const import PRINTER_CONF_TYPES
+from ..printer_adapter.keepalive import Keepalive
 from ..printer_adapter.lcd_printer import LCDPrinter
 from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
@@ -35,6 +36,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.lcd_printer = LCDPrinter.get_instance()
+        self.keepalive = Keepalive.get_instance()
         self.download_thread = Thread(target=self.download_loop,
                                       name="download")
         self.model = Model.get_instance()
@@ -81,7 +83,9 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         token = settings.service_connect.token
 
         self.set_connection(server, token)
-        use_connect_errors(settings.use_connect())
+        use_connect = settings.use_connect()
+        self.keepalive.set_use_connect(use_connect)
+        use_connect_errors(use_connect)
 
     def get_file_info(self, caller: Command) -> Dict[str, Any]:
         """Return file info for a given file

@@ -67,6 +67,7 @@ from .filesystem.sd_card import SDState
 from .filesystem.storage_controller import StorageController
 from .ip_updater import IPUpdater
 from .job import Job, JobState
+from .keepalive import Keepalive
 from .lcd_printer import LCDPrinter
 from .model import Model
 from .print_stat_doubler import PrintStatDoubler
@@ -140,6 +141,9 @@ class PrusaLink:
             serial_parser=self.serial_parser,
             threshold_path=self.cfg.daemon.threshold_file)
         # -----
+
+        self.keepalive = Keepalive(self.serial_queue)
+        self.keepalive.set_use_connect(self.settings.use_connect())
 
         self.printer = MyPrinter()
 
@@ -321,6 +325,7 @@ class PrusaLink:
                                             self.telemetry_passer)
         self.auto_telemetry.start()
 
+        self.keepalive.start()
         self.printer_polling.start()
         self.storage_controller.start()
         self.ip_updater.start()
@@ -395,6 +400,7 @@ class PrusaLink:
         self.printer.indicate_stop()
         self.printer_polling.stop()
         self.storage_controller.stop()
+        self.keepalive.stop()
         self.lcd_printer.stop(fast)
         # This is for pylint to stop complaining, I'd like stop(fast) more
         if fast:
@@ -423,6 +429,7 @@ class PrusaLink:
             self.printer.wait_stopped()
             self.printer_polling.wait_stopped()
             self.storage_controller.wait_stopped()
+            self.keepalive.wait_stopped()
             self.lcd_printer.wait_stopped()
             self.ip_updater.wait_stopped()
             self.camera_governor.wait_stopped()
@@ -772,7 +779,9 @@ class PrusaLink:
         self.settings.printer.type = printer_type_string
         self.settings.service_connect.token = token
         self.settings.update_sections()
-        use_connect_errors(self.settings.use_connect())
+        use_connect = self.settings.use_connect()
+        use_connect_errors(use_connect)
+        self.keepalive.set_use_connect(use_connect)
         with open(self.cfg.printer.settings, 'w', encoding='utf-8') as ini:
             self.settings.write(ini)
 
