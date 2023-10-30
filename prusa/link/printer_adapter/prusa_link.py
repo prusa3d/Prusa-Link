@@ -83,8 +83,10 @@ from .structures.module_data_classes import Sheet
 from .structures.regular_expressions import (
     LCD_UPDATE_REGEX,
     MBL_TRIGGER_REGEX,
+    NOT_READY_REGEX,
     PAUSE_PRINT_REGEX,
     PRINTER_BOOT_REGEX,
+    READY_REGEX,
     RESUME_PRINT_REGEX,
     TM_CAL_END_REGEX,
     TM_CAL_START_REGEX,
@@ -190,6 +192,10 @@ class PrusaLink:
             PAUSE_PRINT_REGEX, lambda sender, match: self.fw_pause_print())
         self.serial_parser.add_decoupled_handler(
             RESUME_PRINT_REGEX, lambda sender, match: self.fw_resume_print())
+        self.serial_parser.add_decoupled_handler(
+            READY_REGEX, lambda sender, match: self.fw_set_ready())
+        self.serial_parser.add_decoupled_handler(
+            NOT_READY_REGEX, lambda sender, match: self.fw_cancel_ready())
 
         # Init components first, so they all exist for signal binding stuff
         # TODO: does not need printer, the transfer object should be
@@ -582,6 +588,18 @@ class PrusaLink:
         command = ResumePrint(source=Source.USER)
         self.command_queue.enqueue_command(command)
 
+    def fw_set_ready(self) -> None:
+        """Set printer ready from the printer LCD menu"""
+        prctl_name()
+        command = SetReady(source=Source.USER)
+        self.command_queue.enqueue_command(command)
+
+    def fw_cancel_ready(self) -> None:
+        """Cancel printer ready from the printer LCD menu"""
+        prctl_name()
+        command = CancelReady(source=Source.USER)
+        self.command_queue.enqueue_command(command)
+
     # --- Signal handlers ---
     def layer_trigger(self, _):
         """Passes the call to trigger to the camera controller"""
@@ -829,6 +847,7 @@ class PrusaLink:
         self.file_printer.stop_print()
         self.file_printer.wait_stopped()
         self.serial_queue.printer_reconnected(was_printing)
+        self.command_queue.enqueue_command(CancelReady(source=Source.SERIAL))
 
         # file printer stop print needs to happen before this
         self.state_manager.reset()
