@@ -573,7 +573,7 @@ class PrinterPolling:
 
     def _get_mbl(self):
         """Gets the current MBL data"""
-        matches = self.do_multimatch("G81", MBL_REGEX, to_front=True)
+        matches = self.do_multimatch("M420", MBL_REGEX, to_front=True)
         groups = matches[0].groupdict()
 
         data = {}
