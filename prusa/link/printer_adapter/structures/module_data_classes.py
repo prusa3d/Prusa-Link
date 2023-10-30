@@ -82,6 +82,8 @@ class JobData(BaseModel):
     from_sd: Optional[bool]
     inbuilt_reporting: Optional[bool]
 
+    last_job_path: Optional[str]
+
     job_state: JobState
 
     def get_job_id_for_api(self):

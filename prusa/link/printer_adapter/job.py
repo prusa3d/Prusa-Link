@@ -50,7 +50,8 @@ class Job(metaclass=MCSingleton):
                                  printing_file_byte=None,
                                  job_state=JobState.IDLE,
                                  job_id=None,
-                                 job_id_offset=0)
+                                 job_id_offset=0,
+                                 last_job_path=None)
         self.data = self.model.job
 
         self.job_id_updated_signal.send(self,
@@ -100,6 +101,7 @@ class Job(metaclass=MCSingleton):
                 self.model.print_stats.has_inbuilt_stats
         self.change_state(JobState.IN_PROGRESS)
         self.write()
+        self.update_last_job_path()
         log.debug("New job started, id = %s", self.data.job_id)
         self.job_id_updated_signal.send(self,
                                         job_id=self.data.get_job_id_for_api())
@@ -192,7 +194,14 @@ class Job(metaclass=MCSingleton):
                     self.data.selected_file_size = file_obj.attrs["size"]
         self.model.job.from_sd = path.startswith(
             os.path.join("/", SD_STORAGE_NAME))
+        self.update_last_job_path()
         self.job_info_updated()
+
+    def update_last_job_path(self):
+        """Updates the last job path to be used for the re-print menu item"""
+        if self.data.job_state != JobState.IN_PROGRESS:
+            return
+        self.data.last_job_path = self.data.selected_file_path
 
     def get_job_info_data(self, for_connect=False):
         """Compiles the job info data into a dict"""

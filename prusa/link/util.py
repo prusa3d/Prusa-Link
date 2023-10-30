@@ -137,6 +137,8 @@ def get_gcode(line):
 
 def file_is_on_sd(path_parts):
     """Checks if the file path starts wit the sd cards' storage name"""
+    if len(path_parts) < 2:
+        return False
     return path_parts[1] == SD_STORAGE_NAME
 
 
