@@ -30,9 +30,9 @@ KERNEL_FILE_NAME = match.group("file_name")
 INITRD_NAME = f"initrd.img-{KERNEL_VERSION_NAME}"
 VMLINUZ_NAME = f"vmlinuz-{KERNEL_VERSION_NAME}"
 
-IMAGE_URL = "https://downloads.raspberrypi.org/raspios_lite_armhf/images/" \
-            "raspios_lite_armhf-2023-05-03/2023-05-03-raspios-bullseye-armhf" \
-            "-lite.img.xz"
+IMAGE_URL = ("https://downloads.raspberrypi.org/raspios_lite_armhf/images/"
+             "raspios_lite_armhf-2023-10-10/2023-10-10-raspios-bookworm-armhf"
+             "-lite.img.xz")
 
 DATA_FILE = "data.json"
 COMPRESSED_IMAGE_NAME = "source_image.img.xz"
@@ -277,7 +277,6 @@ def build_image():
         run_command("chmod +x pishrink.sh")
 
     # --- Get source image ---
-
     if not os.path.exists(SOURCE_IMAGE_NAME) or args.refresh:
         print("Cleaning up old image files")
         run_command(f"rm {COMPRESSED_IMAGE_NAME}", check=False)
@@ -346,8 +345,8 @@ def build_image():
         print("Copying the generated vmlinuz and initrd")
         initrd_loop = mount_image(SACRIFICIAL_IMAGE_NAME, expand=False)
 
-        run_command(f"cp {BOOTFS_MOUNT}/{VMLINUZ_NAME} .")
-        run_command(f"cp {BOOTFS_MOUNT}/{INITRD_NAME} .")
+        run_command(f"cp {ROOTFS_MOUNT}/boot/{VMLINUZ_NAME} .")
+        run_command(f"cp {ROOTFS_MOUNT}/boot/{INITRD_NAME} .")
         run_command(f"cp -r {ROOTFS_MOUNT}/lib/modules/"
                     f"{KERNEL_VERSION_NAME} .")
 
@@ -409,25 +408,26 @@ def build_image():
 
     print("Installing dependencies")
     run_over_ssh("sudo apt-get install -y git python3-pip pigpio libcap-dev "
-                 "libmagic1 libturbojpeg0 libatlas-base-dev libffi-dev")
+                 "libmagic1 libturbojpeg0 libatlas-base-dev libffi-dev "
+                 "cmake iptables")
 
     print("Installing PrusaLink")
     # Caution: not tied to requirements-pi.txt
-    run_over_ssh("pip install wiringpi")
+    run_over_ssh("pip install --break-system-packages wiringpi")
     if args.multi_instance:
-        run_over_ssh("pip install ipcqueue")
+        run_over_ssh("pip install --break-system-packages ipcqueue")
     if args.dev or args.branch_or_hash is not None:
         hash_part = ""
         if args.branch_or_hash is not None:
             hash_part = f"@{args.branch_or_hash}"
-        run_over_ssh("pip install git+https://github.com/prusa3d/"
-                     "gcode-metadata.git")
-        run_over_ssh("pip install git+https://github.com/prusa3d/"
-                     "Prusa-Connect-SDK-Printer.git")
-        run_over_ssh("pip install git+https://github.com/prusa3d/"
-                     f"Prusa-Link.git{hash_part}")
+        run_over_ssh("pip install --break-system-packages git+https://"
+                     "github.com/prusa3d/gcode-metadata.git")
+        run_over_ssh("pip install --break-system-packages git+https://"
+                     "github.com/prusa3d/Prusa-Connect-SDK-Printer.git")
+        run_over_ssh("pip install --break-system-packages git+https://"
+                     f"github.com/prusa3d/Prusa-Link.git{hash_part}")
     else:
-        run_over_ssh("pip install prusalink")
+        run_over_ssh("pip install --break-system-packages prusalink")
 
     output = subprocess.run(
         shlex.split(SSH_COMMAND + ".local/bin/prusalink --version"),
