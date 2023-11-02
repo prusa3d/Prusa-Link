@@ -22,7 +22,7 @@ class Slot(BaseModel):
     https://connect.prusa3d.com/docs/mmu (Internal doc)"""
 
     active: Optional[int] = None
-    state: Optional[str] = None
+    state: Optional[int] = None
     progress: Optional[int] = None
     command: Optional[str] = None
     slots: Optional[Dict[str, IndividualSlot]] = None

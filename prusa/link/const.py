@@ -31,6 +31,8 @@ PRINTER_TYPES = {
     30302: PrinterType.I3MK3S,
 }
 
+MMU3_TYPE_CODE = 30302
+
 PRINTER_CONF_TYPES = bidict({
     "MK2.5": PrinterType.I3MK25,
     "MK2.5S": PrinterType.I3MK25S,
@@ -245,3 +247,111 @@ SUPPORTED_PRINTERS = {
 }
 
 MMU_SLOTS = 5
+
+MMU_PROGRESS_MAP = {
+    "OK": 0,
+
+    "Engaging idler": 1,
+    "Disengaging idler": 2,
+    "Unloading to FINDA": 3,
+    "Unloading to pulley": 4,
+    "Feeding to FINDA": 5,
+    "Feeding to extruder": 6,
+    "Feeding to nozzle": 7,
+    "Avoiding grind": 8,
+    "ERR Disengaging idler": 10,
+    "ERR Engaging idler": 11,
+    "ERR Wait for User": 12,
+    "ERR Internal": 13,
+    "ERR Help filament": 14,
+    "ERR TMC failed": 15,
+    "Selecting fil. slot": 18,
+    "Preparing blade": 19,
+    "Pushing filament": 20,
+    "Performing cut": 21,
+    "Returning selector": 22,
+    "Ejecting filament": 24,
+    "Parking selector": 23,
+    "Retract from FINDA": 25,
+    "Homing": 26,
+    "Moving selector": 27,
+    "Feeding to FSensor": 28,
+}
+
+MMU_ERROR_MAP = {
+    0x8001: 101,  # FINDA didn't switch on -> FINDA didn't trigger
+    0x8002: 102,  # FINDA didn't switch off -> FINDA filament stuck
+    0x8003: 103,  # Filament sensor didn't switch on -> FSENSOR didn't trigger
+    0x8004: 104,  # Filament sensor didn't switch off -> FSENSOR filament stuck
+    0x800b: 105,  # MOVE_PULLEY_FAILED -> MECHANICAL pulley cannot move
+    0x8009: 106,  # FSensor triggered too early -> MECHANICAL FSENSOR too early
+    0x800a: 107,  # FINDA flickers -> MECHANICAL inspect FINDA
+    0x802a: 108,  # LOAD_TO_EXTRUDER_FAILED -> Loading to extruder failed.
+    #               Inspect the filament tip shape. Refine the sensor
+    #               calibration, if needed
+
+    0x8007 | 0x0080: 115,  # Selector homing failed
+    0x800b | 0x0080: 116,  # Selector move failed
+    0x8007 | 0x0100: 125,  # Idler homing failed
+    0x800b | 0x0100: 126,  # Idler move failed
+
+    0xA000: 201,  # TMC_OVER_TEMPERATURE_WARN -> Temperature warning TMC pulley
+    #               too hot
+    0xC000: 202,  # TMC_OVER_TEMPERATURE_ERROR -> Temperature TMC pulley
+    #               overheat error
+
+    # Temperature errors for the selector driver
+    0xA000 | 0x0080: 211,  # Temperature warning TMC selector too hot
+    0xC000 | 0x0080: 212,  # Temperature TMC selector overheat error
+
+    # Temperature errors for the idler driver
+    0xA000 | 0x0100: 221,  # Temperature warning TMC idler too hot
+    0xC000 | 0x0100: 222,  # Temperature TMC idler overheat error
+
+    # Electrical errors
+    0x8200: 301,  # TMC_IOIN_MISMATCH -> Electrical TMC pulley driver error
+    0x8400: 302,  # TMC_RESET -> Electrical TMC pulley driver reset
+    0x8800: 303,  # TMC_UNDERVOLTAGE_ON_CHARGE_PUMP -> Electrical TMC
+    #               pulley undervoltage error
+    0x9000: 304,  # TMC_SHORT_TO_GROUND -> Electrical TMC pulley driver shorted
+    0xC200: 305,  # ERR_ELECTRICAL_MMU_PULLEY_SELFTEST_FAILED -> Electrical
+    #               TMC pulley selftest failed
+
+    # Electrical errors for the selector driver
+    0x8200 | 0x0080: 311,  # Electrical TMC selector driver error
+    0x8400 | 0x0080: 312,  # Electrical TMC selector driver reset
+    0x8800 | 0x0080: 313,  # Electrical TMC selector undervoltage error
+    0x9000 | 0x0080: 314,  # Electrical TMC selector driver shorted
+    0xC200 | 0x0080: 315,  # Electrical TMC selector selftest failed
+
+    # Electrical errors for the idler driver
+    0x8200 | 0x0100: 321,  # Electrical TMC idler driver error
+    0x8400 | 0x0100: 322,  # Electrical TMC idler driver reset
+    0x8800 | 0x0100: 323,  # Electrical TMC idler undervoltage error
+    0x9000 | 0x0100: 324,  # Electrical TMC idler driver shorted
+    0xC200 | 0x0100: 325,  # Electrical TMC idler selftest failed
+
+    0x0800d: 306,  # MMU MCU detected a 5V undervoltage. There might be an
+    #                issue with the electronics. Check the wiring and
+    #                connectors
+
+    # Connectivity errors
+    0x802e: 401,  # MMU not responding -> CONNECT MMU not responding
+    0x802d: 402,  # MMU not responding correctly. Check the wiring and
+                  # connectors
+
+    # System errors
+    0x8005: 501,  # Filament already loaded -> SYSTEM filament already loaded
+    0x8006: 502,  # Invalid tool -> SYSTEM invalid tool
+    0x802b: 503,  # QUEUE_FULL -> MMU Firmware internal error, please reset
+    #               the MMU
+    0x802c: 504,  # VERSION_MISMATCH -> The MMU firmware version is
+    #               incompatible with the printer's FW. Update to compatible
+    #               version
+    0x802f: 505,  # PROTOCOL_ERROR -> Internal runtime error. Try resetting
+    #               the MMU or updating the firmware
+    0x8008: 506,  # FINDA_VS_EEPROM_DISCREPANCY -> Unload manually
+    0x800c: 507,  # Filament was ejected -> SYSTEM filament ejected
+    0x8029: 508,  # FILAMENT_CHANGE -> SYSTEM filament change
+
+}

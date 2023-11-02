@@ -414,6 +414,25 @@ class StateManager(metaclass=MCSingleton):
         if state not in {State.PRINTING, State.ERROR}:
             self.attention()
 
+    def mmu_error_changed(self):
+        """
+        If the MMU error has changed, enter attention if the error is not None,
+        attempt to leave attention otherwise
+        """
+        current_error_code = self.model.mmu_observer.current_error_code
+        if current_error_code is None:
+            self.expect_change(
+                StateChange(to_states={State.ATTENTION: Source.SLOT},
+                            reason=current_error_code))
+            self._clear_attention()
+        else:
+            self.expect_change(
+                StateChange(to_states={State.ATTENTION: Source.SLOT},
+                            reason=current_error_code))
+            self.attention()
+        self.stop_expecting_change()
+
+
     def fan_error_resolver(self, sender, match):
         """
         If the fan speeds are indicative of a fan error being resolved
@@ -729,11 +748,16 @@ class StateManager(metaclass=MCSingleton):
 
     def _clear_attention(self):
         """Clears the ATTENTION state, if the conditions are right"""
-        if (self.data.override_state == State.ATTENTION
-                and self.fan_error_name is None):
-            log.debug("Clearing ATTENTION")
-            self.data.override_state = None
-            self.stop_attention_timer()
+        if self.data.override_state != State.ATTENTION:
+            return
+        if self.fan_error_name is not None:
+            return
+        if self.model.mmu_observer.current_error_code is not None:
+            return
+
+        log.debug("Clearing ATTENTION")
+        self.data.override_state = None
+        self.stop_attention_timer()
 
     @state_influencer(StateChange(from_states={State.ATTENTION: Source.USER}))
     def clear_attention(self):
