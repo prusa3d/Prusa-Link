@@ -43,6 +43,7 @@ class Modifier(Enum):
     """The modifiers for telemetry"""
     FILTER_IDLE = "FILTER_IDLE"  # Filtered when idle
     FILTER_PRINTING = "FILTER_PRINTING"  # Filtered when printing
+    FILTER_MMU_OFF = "FILTER_MMU_OFF"  # Filtered when MMU is disconnected
     JITTER_TEMP = "JITTER_TEMP"  # Temperature jitter filtr preset
     ACTIVATE_IDLE = "ACTIVATE_IDLE"  # Wakes up fast telemetry when idle
     ACTIVATE_PRINTING = "ACTIVATE_PRINTING"  # Same but when printing
@@ -64,6 +65,7 @@ MODIFIERS: dict[tuple[str, ...], set[Modifier]] = {
     ("time_remaining",): {Modifier.FILTER_IDLE},
     ("progress",): {Modifier.FILTER_IDLE},
     ("inaccurate_estimates",): {Modifier.FILTER_IDLE},
+    ("slot",): {Modifier.FILTER_MMU_OFF},
     # ("a", "b") - applies to a key b in a subtree a
     # ("a") - applies to "a", so if it's filtered, its children are too
 }
@@ -375,11 +377,20 @@ class TelemetryPasser(metaclass=MCSingleton):
         with self.lock:
             # Update the active filters
             state = self.model.state_manager.current_state
-            self._active_filters.clear()
             if state not in PRINTING_STATES:
                 self._active_filters.add(Modifier.FILTER_IDLE)
-            elif state == State.PRINTING:
+            elif Modifier.FILTER_IDLE in self._active_filters:
+                self._active_filters.remove(Modifier.FILTER_IDLE)
+
+            if state == State.PRINTING:
                 self._active_filters.add(Modifier.FILTER_PRINTING)
+            elif Modifier.FILTER_PRINTING in self._active_filters:
+                self._active_filters.remove(Modifier.FILTER_PRINTING)
+
+            if not self.printer.mmu_enabled:
+                self._active_filters.add(Modifier.FILTER_MMU_OFF)
+            elif Modifier.FILTER_MMU_OFF in self._active_filters:
+                self._active_filters.remove(Modifier.FILTER_MMU_OFF)
 
             # Update the telemetry to reflect new filters
             self.set_telemetry(self._latest_full)

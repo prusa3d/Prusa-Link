@@ -16,8 +16,9 @@ import prctl  # type: ignore
 import pyudev  # type: ignore
 import unidecode
 
-from .const import SD_STORAGE_NAME, SUPPORTED_PRINTERS
+from .const import MMU_SLOTS, SD_STORAGE_NAME, SUPPORTED_PRINTERS
 from .multi_instance.const import VALID_SN_REGEX
+from .printer_adapter.structures.model_classes import IndividualSlot, Slot
 
 log = logging.getLogger(__name__)
 
@@ -287,3 +288,22 @@ def walk_dict(data: dict, key_path=None):
             yield from walk_dict(value, key_path + [key])
         else:
             yield key_path + [key], value
+
+
+def slots_with_param(model, key, default, value):
+    """Fills out the slot information with defaults, only the active one gets
+    the real value"""
+    slot: Slot = model.latest_telemetry.slot
+    if slot is None:
+        return None
+    active_slot = slot.active
+
+    slots = {}
+    for slot in range(1, MMU_SLOTS + 1):
+        slot_name = str(slot)
+        slots[slot_name] = IndividualSlot()
+        if slot == active_slot:
+            setattr(slots[slot_name], key, value)
+        else:
+            setattr(slots[slot_name], key, default)
+    return slots

@@ -1,7 +1,7 @@
 """Contains helper functions, for instruction enqueuing"""
 import re
 from threading import Event
-from typing import Callable, List
+from typing import Callable, List, Union
 
 from ..const import QUIT_INTERVAL
 from ..serial.instruction import (
@@ -48,11 +48,15 @@ def enqueue_instruction(queue: SerialQueue,
     return instruction
 
 
+# pylint: disable=too-many-arguments
 def enqueue_matchable(queue: SerialQueue,
                       message: str,
                       regexp: re.Pattern,
                       to_front=False,
-                      to_checksum=False) -> MandatoryMatchableInstruction:
+                      to_checksum=False,
+                      has_to_match=True) -> Union[
+                                                MandatoryMatchableInstruction,
+                                                MatchableInstruction]:
     """
     Creates a matchable instruction, which it enqueues right away
     :param queue: the queue to enqueue into
@@ -64,9 +68,15 @@ def enqueue_matchable(queue: SerialQueue,
     only for print instructions!)
     :return the enqueued instruction
     """
-    instruction = MandatoryMatchableInstruction(message,
-                                                capture_matching=regexp,
-                                                to_checksum=to_checksum)
+    instruction: Union[MandatoryMatchableInstruction, MatchableInstruction]
+    if has_to_match:
+        instruction = MandatoryMatchableInstruction(message,
+                                                    capture_matching=regexp,
+                                                    to_checksum=to_checksum)
+    else:
+        instruction = MatchableInstruction(message,
+                                           capture_matching=regexp,
+                                           to_checksum=to_checksum)
     queue.enqueue_one(instruction, to_front=to_front)
     return instruction
 

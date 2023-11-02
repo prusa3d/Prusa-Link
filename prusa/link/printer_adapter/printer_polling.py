@@ -19,6 +19,7 @@ from ..const import (
     FAST_POLL_INTERVAL,
     MINIMAL_FIRMWARE,
     MK25_PRINTERS,
+    MMU3_TYPE_CODE,
     PRINT_MODE_ID_PAIRING,
     PRINT_STATE_PAIRING,
     PRINTER_TYPES,
@@ -51,6 +52,10 @@ from .structures.regular_expressions import (
     FW_REGEX,
     M27_OUTPUT_REGEX,
     MBL_REGEX,
+    MMU_BUILD_REGEX,
+    MMU_MAJOR_REGEX,
+    MMU_MINOR_REGEX,
+    MMU_REVISION_REGEX,
     NOZZLE_REGEX,
     PERCENT_REGEX,
     PRINT_INFO_REGEX,
@@ -111,7 +116,9 @@ class PrinterPolling:
             "printer_type",
             gather_function=self._get_printer_type,
             write_function=self._set_printer_type,
-            validation_function=self._validate_printer_type)
+            validation_function=self._validate_printer_type,
+            interval=VERY_SLOW_POLL_INTERVAL,
+            on_fail_interval=SLOW_POLL_INTERVAL)
         self.printer_type.became_valid_signal.connect(
             self._printer_type_became_valid)
         self.printer_type.val_err_timeout_signal.connect(
@@ -154,14 +161,29 @@ class PrinterPolling:
             gather_function=self.get_active_sheet,
         )
 
+        self.mmu_connected = WatchedItem(
+            "mmu_connected",
+        )
+        self.mmu_connected.became_valid_signal.connect(
+            self._mmu_connected_became_valid)
+
+        self.mmu_version = WatchedItem(
+            "mmu_version",
+            gather_function=self._get_mmu_version,
+        )
+        self.mmu_version.became_valid_signal.connect(
+            self._printer_info_became_valid)
+
         self.printer_info = InfoGroup([
             self.network_info, self.printer_type, self.firmware_version,
             self.nozzle_diameter, self.serial_number, self.sheet_settings,
-            self.active_sheet,
+            self.active_sheet, self.mmu_connected,
         ])
 
         for item in self.printer_info:
             self.item_updater.add_item(item, start_tracking=False)
+
+        self.item_updater.add_item(self.mmu_version, start_tracking=False)
 
         # TODO: Put this outside
         for item in self.printer_info:
@@ -364,6 +386,7 @@ class PrinterPolling:
         for item in itertools.chain(self.telemetry, self.other_stuff,
                                     self.printer_info):
             self.item_updater.disable(item)
+        self.item_updater.disable(self.mmu_version)
 
         self.item_updater.enable(self.printer_type)
 
@@ -406,6 +429,7 @@ class PrinterPolling:
         self._change_interval(self.sheet_settings, None)
         self._change_interval(self.active_sheet, None)
         self._change_interval(self.flash_air, None)
+        self._change_interval(self.printer_type, None)
 
     def polling_ok(self):
         """Re-starts polling of some values"""
@@ -416,6 +440,7 @@ class PrinterPolling:
         self._change_interval(self.sheet_settings, VERY_SLOW_POLL_INTERVAL)
         self._change_interval(self.active_sheet, SLOW_POLL_INTERVAL)
         self._change_interval(self.flash_air, VERY_SLOW_POLL_INTERVAL)
+        self._change_interval(self.printer_type, VERY_SLOW_POLL_INTERVAL)
 
     def ensure_job_id(self):
         """This is an oddball, I don't have anything able to ensure the job_id
@@ -438,13 +463,14 @@ class PrinterPolling:
         """Gather helper returning if the component is still running"""
         return self.item_updater.running
 
-    def do_matchable(self, gcode, regex, to_front=False):
+    def do_matchable(self, gcode, regex, to_front=False, has_to_match=True):
         """Analog to the command one, as the getters do this
         over and over again"""
         instruction = enqueue_matchable(self.serial_queue,
                                         gcode,
                                         regex,
-                                        to_front=to_front)
+                                        to_front=to_front,
+                                        has_to_match=has_to_match)
         wait_for_instruction(instruction, self.should_wait)
         match = instruction.match()
         if match is None:
@@ -497,7 +523,10 @@ class PrinterPolling:
         match = self.do_matchable("M862.2 Q",
                                   PRINTER_TYPE_REGEX,
                                   to_front=True)
-        return int(match.group("code"))
+        code = int(match.group("code"))
+        mmu_connected = code == MMU3_TYPE_CODE
+        self.item_updater.set_value(self.mmu_connected, mmu_connected)
+        return code
 
     def _get_firmware_version(self):
         """Try to get firmware version from the printer."""
@@ -564,6 +593,21 @@ class PrinterPolling:
         data = bytes.fromhex(str_data)
         active_sheet = struct.unpack("B", data)[0]
         return active_sheet
+
+    def _get_mmu_version(self):
+        """Gets the mmu_version"""
+        major_match = self.do_matchable(
+            "M707 A0x00", MMU_MAJOR_REGEX, has_to_match=False)
+        minor_match = self.do_matchable(
+            "M707 A0x01", MMU_MINOR_REGEX, has_to_match=False)
+        revision_match = self.do_matchable(
+            "M707 A0x02", MMU_REVISION_REGEX, has_to_match=False)
+        build_match = self.do_matchable(
+            "M707 A0x03", MMU_BUILD_REGEX, has_to_match=False)
+        matches = [major_match, minor_match, revision_match, build_match]
+        numbers = list(map(lambda match: str(int(match.group("number"), 16)),
+                           matches))
+        return ".".join(numbers[:-1]) + "+" + numbers[-1]
 
     def _get_job_id(self):
         """Gets the current job_id from the printer"""
@@ -1005,9 +1049,27 @@ class PrinterPolling:
             self.item_updater.enable(item)
         self._set_fw_condition(CondState.OK)
 
+    def _mmu_connected_became_valid(self, _):
+        """MMU connected became valid, enable polling of its version"""
+        if self.mmu_connected.value:
+            self.item_updater.enable(self.mmu_version)
+        else:
+            self.item_updater.set_value(self.mmu_version, None)
+            self.item_updater.disable(self.mmu_version)
+
     def _printer_info_became_valid(self, _):
         """Printer info became valid, we can start looking at telemetry
-        and other stuff"""
+        and other stuff
+
+        Also activated when the mmu version becomes valid
+        This only works because the mmu_version cannot become valide unless
+        the printer_info is valid already
+        """
+
+        if self.mmu_connected.value:
+            if not self.mmu_version.valid:
+                return  # We'll get here again when it becomes valid
+
         self._send_info_if_changed()
         for item in itertools.chain(self.telemetry, self.other_stuff):
             self.item_updater.enable(item)

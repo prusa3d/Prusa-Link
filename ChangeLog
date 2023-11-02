@@ -1,10 +1,6 @@
 # ChangeLog
 
-0.7.2 (2023-10-11)
-    * Add an automatic PrusaLink image builder script
-    * Add multi-instance documentation
-    * Telemetry improvement
-    * Attempt to turn the RPi wifi power management off in the images
+0.7.3dev
     * Stop showing the tune menu after connecting to the printer
     * Use the 2023-10-10 Raspberry Pi OS base image for the image builder
     * Decrease the severity of web server access log messages
@@ -16,6 +12,13 @@
     * Support the set ready and cancel ready LCD menu toggle
     * Add gcodes that flag the state of a usb print for the printer statistics to get saved
     * Handle the new re-print LCD menu item
+    * Add the initial support for the MMU
+
+0.7.2 (2023-10-11)
+    * Add an automatic PrusaLink image builder script
+    * Add multi-instance documentation
+    * Telemetry improvement
+    * Attempt to turn the RPi wifi power management off in the images
 
 0.7.1rc1 (2023-08-10)
     * Fixed HTTP response status on HEAD request for non-existing files

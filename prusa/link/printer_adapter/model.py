@@ -6,6 +6,7 @@ from .structures.module_data_classes import (
     FilePrinterData,
     IPUpdaterData,
     JobData,
+    MMUObserverData,
     PrintStatsData,
     SDCardData,
     SerialAdapterData,
@@ -34,6 +35,7 @@ class Model(metaclass=MCSingleton):
     sd_card: SDCardData
     folder_storage: StorageData
     filesystem_storage: StorageData
+    mmu_observer: MMUObserverData
 
     def __init__(self) -> None:
         self.latest_telemetry: Telemetry = Telemetry()

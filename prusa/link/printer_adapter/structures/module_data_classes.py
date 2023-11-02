@@ -131,6 +131,11 @@ class StorageData(BaseModel):
     attached_set: Set[str]
 
 
+class MMUObserverData(BaseModel):
+    """Data of the MMUObserver"""
+    current_error_code: Optional[str]
+
+
 class PrintStatsData(BaseModel):
     """Data of the PrintStats class"""
     print_time: float

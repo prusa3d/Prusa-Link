@@ -12,9 +12,9 @@ from prusa.connect.printer import DownloadMgr
 from prusa.connect.printer.camera_configurator import CameraConfigurator
 from prusa.connect.printer.camera_driver import CameraDriver
 from prusa.connect.printer.conditions import API, CondState
+from prusa.connect.printer.const import MMU_SLOT_COUNTS, MMUType, Source, State
 from prusa.connect.printer.const import Command as CommandType
 from prusa.connect.printer.const import Event as EventType
-from prusa.connect.printer.const import Source, State
 from prusa.connect.printer.files import File
 from prusa.connect.printer.models import Sheet as SDKSheet
 
@@ -70,6 +70,7 @@ from .ip_updater import IPUpdater
 from .job import Job, JobState
 from .keepalive import Keepalive
 from .lcd_printer import LCDPrinter
+from .mmu_observer import MMUObserver
 from .model import Model
 from .print_stat_doubler import PrintStatDoubler
 from .printer_polling import PrinterPolling
@@ -98,6 +99,8 @@ from .telemetry_passer import TelemetryPasser
 from .updatable import Thread
 
 log = logging.getLogger(__name__)
+
+# pylint: disable=too-many-lines
 
 
 class TransferCallbackState(Enum):
@@ -318,6 +321,10 @@ class PrusaLink:
             self.sheet_settings_changed)
         self.printer_polling.active_sheet.value_changed_signal.connect(
             self.active_sheet_changed)
+        self.printer_polling.mmu_connected.value_changed_signal.connect(
+            self.mmu_connection_changed)
+        self.printer_polling.mmu_version.value_changed_signal.connect(
+            self.mmu_info_changed)
         self.printer_polling.speed_multiplier.value_changed_signal.connect(
             lambda val: self.lcd_printer.notify(), weak=False)
 
@@ -334,6 +341,12 @@ class PrusaLink:
                                             self.serial_queue, self.model,
                                             self.telemetry_passer)
         self.auto_telemetry.start()
+
+        self.mmu_observer = MMUObserver(self.serial_parser,
+                                        self.model, self.printer,
+                                        self.telemetry_passer)
+
+        self.mmu_observer.error_changed_signal.connect(self.mmu_error_changed)
 
         self.keepalive.start()
         self.printer_polling.start()
@@ -626,8 +639,6 @@ class PrusaLink:
 
     def sheet_settings_changed(self, printer_sheets: List[Sheet]) -> None:
         """Sends the new sheet settings"""
-        if not self.printer.is_initialised():
-            return
         sdk_sheets: List[SDKSheet] = []
         sheet: Sheet
         for sheet in printer_sheets:
@@ -636,18 +647,63 @@ class PrusaLink:
                 "z_offset": sheet.z_offset,
             })
         self.printer.sheet_settings = sdk_sheets
+
+        if not self.printer.is_initialised():
+            return
         self.printer.event_cb(event=EventType.INFO,
                               source=Source.USER,
                               sheet_settings=sdk_sheets)
 
     def active_sheet_changed(self, active_sheet) -> None:
         """Sends the new active sheet"""
+        self.printer.active_sheet = active_sheet
+
         if not self.printer.is_initialised():
             return
-        self.printer.active_sheet = active_sheet
         self.printer.event_cb(event=EventType.INFO,
                               source=Source.USER,
                               active_sheet=active_sheet)
+
+    def mmu_connection_changed(self, _) -> None:
+        """Notifies the telemetry passer about the new state
+        of the mmu connection ans continues ba calling the info sending method
+        """
+        self.telemetry_passer.state_changed()
+        self.mmu_info_changed(_)
+
+    def mmu_info_changed(self, _) -> None:
+        """Sends the mmu connection status"""
+        mmu_connected = self.printer_polling.mmu_connected.value
+        mmu_version = self.printer_polling.mmu_version.value
+        if not mmu_connected:
+            mmu_version = None
+
+        self.printer.mmu_enabled = mmu_connected
+        # Hardcoded MMU3, sorry
+        self.printer.mmu_type = MMUType.MMU3 if mmu_connected else None
+
+        if not self.printer_polling.mmu_version.valid:
+            return
+
+        self.printer.mmu_fw = mmu_version
+
+        if not self.printer.is_initialised():
+            return
+
+        kwargs: Dict[str, Any] = {}
+        mmu = {"enabled": mmu_connected}
+        if mmu_connected and self.printer.mmu_type is not None:
+            mmu["version"] = mmu_version
+            kwargs["slots"] = MMU_SLOT_COUNTS[self.printer.mmu_type]
+        kwargs["mmu"] = mmu
+
+        self.printer.event_cb(event=EventType.INFO,
+                              source=Source.FIRMWARE,
+                              **kwargs)
+
+    def mmu_error_changed(self, _) -> None:
+        """Connect the mmu error code changing to the state manager"""
+        self.state_manager.mmu_error_changed()
 
     def job_info_updated(self, _) -> None:
         """On job info update, sends the updated job info to the Connect"""
