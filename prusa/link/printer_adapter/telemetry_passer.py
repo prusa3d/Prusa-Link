@@ -4,9 +4,14 @@ lot of factore. This module takes care of monitoring, how often to
 send telemetry and what actual telemetry to send
 """
 import logging
+from copy import deepcopy
+from enum import Enum
 from threading import Event, RLock, Thread
 from time import time
 from typing import Any
+
+from pydantic import BaseModel
+from pydantic.utils import deep_update
 
 from prusa.connect.printer import Printer
 from prusa.connect.printer.const import State
@@ -14,6 +19,7 @@ from prusa.connect.printer.const import State
 from ..config import Settings
 from ..const import (
     JITTER_THRESHOLD,
+    MMU_SLOTS,
     PRINTING_STATES,
     TELEMETRY_IDLE_INTERVAL,
     TELEMETRY_PRINTING_INTERVAL,
@@ -21,7 +27,7 @@ from ..const import (
     TELEMETRY_SLEEP_AFTER,
     TELEMETRY_SLEEPING_INTERVAL,
 )
-from ..util import loop_until
+from ..util import loop_until, walk_dict
 from .model import Model
 from .structures.mc_singleton import MCSingleton
 from .structures.model_classes import Telemetry
@@ -32,18 +38,45 @@ log = logging.getLogger(__name__)
 # we'll stop sending telemetry
 QUEUE_LENGTH_LIMIT = 4
 
-JITTERY_TEMPERATURES = {"temp_nozzle", "temp_bed"}
-ACTIVATING_CHANGES = {
-    "target_nozzle", "target_bed", "axis_x", "axis_y", "axis_z",
-    "target_fan_print", "speed",
+
+class Modifier(Enum):
+    """The modifiers for telemetry"""
+    FILTER_IDLE = "FILTER_IDLE"  # Filtered when idle
+    FILTER_PRINTING = "FILTER_PRINTING"  # Filtered when printing
+    JITTER_TEMP = "JITTER_TEMP"  # Temperature jitter filtr preset
+    ACTIVATE_IDLE = "ACTIVATE_IDLE"  # Wakes up fast telemetry when idle
+    ACTIVATE_PRINTING = "ACTIVATE_PRINTING"  # Same but when printing
+
+
+# Important - all filter paths are in the dict format
+# model is different in structure, the paths are mapped using a mapping below
+MODIFIERS: dict[tuple[str, ...], set[Modifier]] = {
+    ("target_nozzle",): {Modifier.ACTIVATE_IDLE},
+    ("target_bed",): {Modifier.ACTIVATE_IDLE},
+    ("axis_x",): {Modifier.ACTIVATE_IDLE, Modifier.FILTER_PRINTING},
+    ("axis_y",): {Modifier.ACTIVATE_IDLE, Modifier.FILTER_PRINTING},
+    ("axis_z",): {Modifier.ACTIVATE_IDLE},
+    ("target_fan_print",): {Modifier.ACTIVATE_IDLE},
+    ("speed",): {Modifier.ACTIVATE_IDLE, Modifier.ACTIVATE_PRINTING},
+    ("temp_nozzle",): {Modifier.JITTER_TEMP},
+    ("temp_bed",): {Modifier.JITTER_TEMP},
+    ("time_printing",): {Modifier.FILTER_IDLE},
+    ("time_remaining",): {Modifier.FILTER_IDLE},
+    ("progress",): {Modifier.FILTER_IDLE},
+    ("inaccurate_estimates",): {Modifier.FILTER_IDLE},
+    # ("a", "b") - applies to a key b in a subtree a
+    # ("a") - applies to "a", so if it's filtered, its children are too
 }
-NOT_PRINTING_IGNORED = {
-    "time_printing",
-    "time_remaining",
-    "progress",
-    "inaccurate_estimates",
+
+MAPPING = {  # type: ignore
+    "slot": {},
 }
-PRINTING_IGNORED = {"axis_x", "axis_y"}
+
+for i_ in range(1, MMU_SLOTS+1):
+    # Map slots from orm to the dict representation
+    MAPPING["slot"][str(i_)] = ("slot", "slots", str(i_))
+    # Add jitter temps to every slot temp value
+    MODIFIERS[("slot", str(i_), "temp")] = {Modifier.JITTER_TEMP}
 
 
 class TelemetryPasser(metaclass=MCSingleton):
@@ -62,11 +95,11 @@ class TelemetryPasser(metaclass=MCSingleton):
                              name="telemetry_passer")
         self.full_refresh_at = 0
 
-        self._filtered_keys = self._get_filtered_keys()
+        self._active_filters: set[Any] = set()
 
         self._last_sent: dict[str, Any] = {}
         self._to_send: dict[str, Any] = {}
-        self._latest_full: dict[str, Any] = {}
+        self._latest_full = Telemetry()
         self.model.latest_telemetry = Telemetry()
 
         self.last_activity_at = time()
@@ -110,19 +143,6 @@ class TelemetryPasser(metaclass=MCSingleton):
 
         self.pass_telemetry()
 
-    def _get_and_reset_telemetry(self):
-        """Telemetry to send gets reset each send.
-
-        last_sent contains the values that connect should know about"""
-        with self.lock:
-
-            # Update what we sent last time
-            self._last_sent.update(self._to_send)
-
-            to_return = self._to_send
-            self._to_send = {}
-            return to_return
-
     def pass_telemetry(self):
         """Passes the telemetry to the SDK
         and pushes the newer telemetry into the sent telemetry"""
@@ -144,54 +164,66 @@ class TelemetryPasser(metaclass=MCSingleton):
 
         with self.lock:
             # Update what we sent last time
-            self._last_sent.update(self._to_send)
+
+            self._last_sent = deep_update(self._last_sent, self._to_send)
 
             telemetry = self._to_send
             self._to_send = {}
 
         self.printer.telemetry(**telemetry)
 
-    def _is_appropriate_for_state(self, key):
-        """Return True, if the telemetry key is appropriate to send
-        in the state we're currently in"""
-        state = self.model.state_manager.current_state
-        if state not in PRINTING_STATES and key in NOT_PRINTING_IGNORED:
-            return False
-        if state == State.PRINTING and key in PRINTING_IGNORED:
-            return False
-        return True
-
-    def _get_filtered_keys(self):
+    def _get_filtered_paths(self):
         state = self.model.state_manager.current_state
         if state not in PRINTING_STATES:
-            return NOT_PRINTING_IGNORED
-        if state == State.PRINTING:
-            return PRINTING_IGNORED
-        return set()
+            looking_for = Modifier.FILTER_IDLE
+        elif state == State.PRINTING:
+            looking_for = Modifier.FILTER_PRINTING
+        else:
+            return set()
+
+        filtered = set()
+        for key_path, filters in MODIFIERS.items():
+            if looking_for in filters:
+                filtered.add(key_path)
+
+        return filtered
+
+    def _get_modifiers(self, key_path):
+        modifiers = set()
+        for i in range(len(key_path)):
+            modifiers.update(MODIFIERS.get(key_path[:i+1], set()))
+        return modifiers
 
     def set_telemetry(self, new_telemetry: Telemetry):
         """Filters jitter, state inappropriate or unchanged data
         Updates the telemetries with new data"""
         with self.lock:
             new_telemetry_dict = new_telemetry.dict(exclude_none=True)
-            for key, value in new_telemetry_dict.items():
-                if value is None:
-                    continue
+            for key_path, value in walk_dict(new_telemetry_dict):
+                key_path = tuple(key_path)
 
-                self._latest_full[key] = value
+                if value is None or value == {}:
+                    continue  # ignore nones and empty dicts
 
-                if key in self._filtered_keys:
+                modifiers = self._get_modifiers(key_path)
+
+                self._update_by_path(
+                    self._latest_full, new_telemetry, key_path)
+
+                if modifiers & self._active_filters:
                     # Internally we need to check against none
-                    setattr(self.model.latest_telemetry, key, None)
+                    self._reset_by_path(
+                        self.model.latest_telemetry, key_path)
                     continue
 
-                setattr(self.model.latest_telemetry, key, value)
+                self._update_by_path(
+                    self.model.latest_telemetry, new_telemetry, key_path)
 
                 to_update = False
-                if key not in self._last_sent:
+                if self._get_by_path(self._last_sent, key_path) is None:
                     to_update = True
-                elif key in JITTERY_TEMPERATURES:
-                    old = self._last_sent[key]
+                elif Modifier.JITTER_TEMP in modifiers:
+                    old = self._get_by_path(self._last_sent, key_path)
                     new = value
                     assert new is not None
                     if old is None:
@@ -201,25 +233,134 @@ class TelemetryPasser(metaclass=MCSingleton):
                         assert isinstance(old, float)
                         if abs(old - new) > JITTER_THRESHOLD:
                             to_update = True
-                elif value != self._last_sent[key]:
+                elif value != self._get_by_path(self._last_sent, key_path):
                     to_update = True
 
                 # Wake up from sleep, when specific values change
-                if to_update and key in ACTIVATING_CHANGES:
-                    state = self.model.state_manager.current_state
-                    if state not in PRINTING_STATES or key == "speed":
-                        self.activity_observed()
-
                 if to_update:
-                    self._to_send[key] = value
+                    if self._should_wake_up(modifiers):
+                        self.activity_observed()
+                    self._update_by_path(
+                        self._to_send, new_telemetry_dict, key_path)
 
         self._resend_telemetry_on_timer()
 
-    def reset_value(self, key):
-        """Resets the value for a key in local telemetry"""
+    def _should_wake_up(self, modifiers):
+        """Returns true if the telemetry passer should wake up from sleep
+        based on the current state and the modifiers present"""
+        state = self.model.state_manager.current_state
+        if state in PRINTING_STATES:
+            if Modifier.ACTIVATE_PRINTING not in modifiers:
+                return False
+            if Modifier.FILTER_PRINTING in modifiers:
+                return True
+        if Modifier.ACTIVATE_IDLE in modifiers:
+            return True
+        return False
+
+    def reset_value(self, key_path):
+        """Resets the value for filament_change_in and nothing else"""
         with self.lock:
-            self._latest_full[key] = None
-            setattr(self.model.latest_telemetry, key, None)
+            self._reset_by_path(self._latest_full, key_path)
+            self._reset_by_path(self.model.latest_telemetry, key_path)
+
+    def _set_multi(self, structure, key, value):
+        """Sets a value from a dictionary or a model"""
+        if isinstance(structure, dict):
+            structure[key] = value
+        elif issubclass(type(structure), BaseModel):
+            setattr(structure, key, value)
+        else:
+            raise TypeError("Unsupported type for traversing")
+
+    def _get_multi(self, structure, key):
+        """Gets a value from a dictionary or a model"""
+        if isinstance(structure, dict):
+            return structure.get(key)
+        if issubclass(type(structure), BaseModel):
+            return getattr(structure, key)
+        raise TypeError("Unsupported type for traversing")
+
+    def _get_correct_path(self, structure, key_path):
+        """Gets the correct path depending on the structure type"""
+        if isinstance(structure, dict):
+            return key_path
+        if issubclass(type(structure), BaseModel):
+            return self._path_to_model(key_path)
+        raise TypeError("Unsupported type for traversing")
+
+    def _update_by_path(self, target, source, key_path,
+                        set_none=False):
+        """Sets a value in the model,
+        allow setting none, or pushing more data
+        key path is auto mapped, provide the dict equivalent one
+
+        Some assumptions not to be broken as this is fragile AF
+        Always supply the full path, do not let it end on a sub dict
+        or sub model, full paths only
+        Supply only models or dicts
+        """
+        if not isinstance(target, type(source)):
+            raise TypeError("Source and target must be of the same type")
+        model_path = self._get_correct_path(target, key_path)
+
+        for key in model_path[:-1]:
+            if not isinstance(target, type(source)):
+                raise TypeError("Source and target differ in structure")
+            next_source = self._get_multi(source, key)
+            next_target = self._get_multi(target, key)
+            if next_source is None:
+                # Source has less depth than target
+                if set_none:
+                    self._set_multi(target, key, None)
+                return
+            if next_target is None:
+                self._set_multi(target, key, deepcopy(next_source))
+                return  # We have set a subtree, we're done
+            source = next_source
+            target = next_target
+        value = self._get_multi(source, model_path[-1])
+        if value is None and not set_none:
+            return  # We don't want to set None, only add more data
+        self._set_multi(target, model_path[-1], value)
+
+    def _reset_by_path(self, target, key_path):
+        """Resets a value in the model, does so only for the node at the end
+        of the supplied path"""
+        model_path = self._get_correct_path(target, key_path)
+
+        for key in model_path[:-1]:
+            target = self._get_multi(target, key)
+            if target is None:
+                return
+        self._set_multi(target, model_path[-1], None)
+
+    def _get_by_path(self, source, key_path):
+        """Gets a value from model or dict"""
+        model_path = self._get_correct_path(source, key_path)
+
+        for key in model_path:
+            source = self._get_multi(source, key)
+            if source is None:
+                return None
+        return source
+
+    def _path_to_model(self, key_path) -> tuple[Any, ...]:
+        """As the ORM is now different from the dict structure,
+        this maps the key path to the model"""
+        sub_mapping = MAPPING
+        iterable_path = iter(key_path)
+        for key in iterable_path:
+            result = sub_mapping.get(key)
+            if result is None:
+                return key_path
+            if isinstance(result, tuple):
+                break
+            sub_mapping = result
+        else:  # no break or return encountered
+            raise ValueError("Mapping seems to be invalid")
+
+        return result + tuple(iterable_path)
 
     def _resend_telemetry_on_timer(self):
         """If sufficient time elapsed, mark all telemetry values to be sent"""
@@ -232,14 +373,16 @@ class TelemetryPasser(metaclass=MCSingleton):
         Call the setters on any keys for which the filtered status
         changes, to update them"""
         with self.lock:
-            new_filtered = self._get_filtered_keys()
-            differing = new_filtered ^ self._filtered_keys
-            self._filtered_keys = new_filtered
+            # Update the active filters
+            state = self.model.state_manager.current_state
+            self._active_filters.clear()
+            if state not in PRINTING_STATES:
+                self._active_filters.add(Modifier.FILTER_IDLE)
+            elif state == State.PRINTING:
+                self._active_filters.add(Modifier.FILTER_PRINTING)
 
-            change_telemetry = Telemetry()
-            for key in differing:
-                setattr(change_telemetry, key, self._latest_full.get(key))
-            self.set_telemetry(change_telemetry)
+            # Update the telemetry to reflect new filters
+            self.set_telemetry(self._latest_full)
 
     def activity_observed(self):
         """Call if any activity that constitutes waking up from sleep occurs"""

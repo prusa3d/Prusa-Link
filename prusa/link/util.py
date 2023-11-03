@@ -274,3 +274,14 @@ def get_usb_printers():
         )
         devices.append(device)
     return devices
+
+
+def walk_dict(data: dict, key_path=None):
+    """Walks a dict, yielding the path to each bottom-most value"""
+    if key_path is None:
+        key_path = []
+    for key, value in data.items():
+        if isinstance(value, dict):
+            yield from walk_dict(value, key_path + [key])
+        else:
+            yield key_path + [key], value

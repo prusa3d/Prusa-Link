@@ -267,7 +267,8 @@ class PrinterPolling:
         )
 
         self.filament_change_in.validation_error_signal.connect(
-            lambda _: self.telemetry_passer.reset_value("filament_change_in"),
+            lambda _: self.telemetry_passer.reset_value(
+                ("filament_change_in",)),
             weak=False)
 
         self.inaccurate_estimates = WatchedItem("inaccurate_estimates")
