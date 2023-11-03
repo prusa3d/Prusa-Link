@@ -74,7 +74,10 @@ from .printer_polling import PrinterPolling
 from .special_commands import SpecialCommands
 from .state_manager import StateChange, StateManager
 from .structures.item_updater import WatchedItem
-from .structures.model_classes import PrintState, Telemetry
+from .structures.model_classes import (
+    PrintState,
+    Telemetry,
+)
 from .structures.module_data_classes import Sheet
 from .structures.regular_expressions import (
     LCD_UPDATE_REGEX,

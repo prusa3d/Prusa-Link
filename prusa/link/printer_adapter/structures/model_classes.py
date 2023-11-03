@@ -4,9 +4,36 @@ Pydantic makes a great tool for cleanly serializing simple python objects,
 while enforcing their type
 """
 from enum import Enum
-from typing import Optional
+from typing import Dict, Optional
 
 from pydantic import BaseModel
+
+
+class IndividualSlot(BaseModel):
+    """Support the slot number specific telemetry structure"""
+    material: Optional[str] = None
+    temp: Optional[float] = None
+    fan_hotend: Optional[int] = None
+    fan_print: Optional[int] = None
+
+
+class Slot(BaseModel):
+    """Support the telemetry item described here:
+    https://connect.prusa3d.com/docs/mmu (Internal doc)"""
+
+    active: Optional[int] = None
+    state: Optional[str] = None
+    progress: Optional[int] = None
+    command: Optional[str] = None
+    slots: Optional[Dict[str, IndividualSlot]] = None
+
+    def dict(self, **kwargs) -> Dict:
+        """Override the dict method to respect the Connect telemetry API"""
+        data = super().dict(**kwargs)
+        if "slots" in data and data["slots"] is not None:
+            slots = data.pop("slots")
+            data.update(slots)
+        return data
 
 
 class Telemetry(BaseModel):
@@ -42,6 +69,13 @@ class Telemetry(BaseModel):
     total_print_time: Optional[int] = None
     filament_change_in: Optional[int] = None
     inaccurate_estimates: Optional[bool] = None
+    slot: Optional[Slot] = None
+
+    def dict(self, **kwargs) -> Dict:
+        data = super().dict(**kwargs)
+        if self.slot is not None:
+            data['slot'] = self.slot.dict(**kwargs)
+        return data
 
 
 class NetworkInfo(BaseModel):
