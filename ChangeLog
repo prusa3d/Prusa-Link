@@ -14,6 +14,7 @@
     * Don't send over serial when temperature calibration is running
     * Periodically send a keepalive gcode to keep the printer in PrusaLink mode
     * Support the set ready and cancel ready LCD menu toggle
+    * Add gcodes that flag the state of a usb print for the printer statistics to get saved
 
 0.7.1rc1 (2023-08-10)
     * Fixed HTTP response status on HEAD request for non-existing files

@@ -128,6 +128,8 @@ class FilePrinter(metaclass=MCSingleton):
             self.data.gcode_number = 0
             self.data.enqueued.clear()
             line_index = 0
+
+            self.do_instruction("M75")  # start printer's print timer
             while True:
                 line = file.readline()
 
@@ -148,12 +150,14 @@ class FilePrinter(metaclass=MCSingleton):
 
                 if self.data.paused:
                     log.debug("Pausing USB print")
+                    self.do_instruction("M76")  # pause printer's print timer
                     self.wait_for_unpause()
 
                     if not self.data.printing:
                         break
 
                     log.debug("Resuming USB print")
+                    self.do_instruction("M75")  # resume printer's print timer
 
                 # Trigger cameras on layer change
                 if ";LAYER_CHANGE" in line:
@@ -171,6 +175,7 @@ class FilePrinter(metaclass=MCSingleton):
                 if not self.data.printing:
                     break
 
+            self.do_instruction("M77")  # stop printer's print timer
             log.debug("Print ended")
 
             if self.pp_exists:
@@ -191,6 +196,15 @@ class FilePrinter(metaclass=MCSingleton):
 
             self.print_stats.reset_stats()
 
+    def do_instruction(self, message):
+        """Shorthand for enqueueing and waiting for an instruction
+        Enqueues everything to front as commands have a higher priority"""
+        instruction = enqueue_instruction(self.serial_queue,
+                                          message,
+                                          to_front=True)
+        wait_for_instruction(instruction, lambda: self.data.printing)
+        return instruction
+
     def print_gcode(self, gcode):
         """Sends a gcode to print, keeps a small buffer of gcodes
          and inlines print stats for files without them
@@ -199,7 +213,7 @@ class FilePrinter(metaclass=MCSingleton):
 
         divisible = self.data.gcode_number % STATS_EVERY == 0
         if divisible:
-            time_printing = self.print_stats.get_time_printing()
+            time_printing = int(self.print_stats.get_time_printing())
             self.time_printing_signal.send(self, time_printing=time_printing)
 
         if self.to_print_stats(self.data.gcode_number):
