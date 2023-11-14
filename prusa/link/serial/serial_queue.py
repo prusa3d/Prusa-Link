@@ -108,6 +108,9 @@ class SerialQueue(metaclass=MCSingleton):
         self.m110_workaround_slot = None
         self.worked_around_m110 = False
 
+        # Allows to temporarily block sending to the serial queue
+        self._block_sending = False
+
         self.serial_parser.add_handler(CONFIRMATION_REGEX,
                                        self._confirmation_handler,
                                        priority=float("inf"))
@@ -131,6 +134,8 @@ class SerialQueue(metaclass=MCSingleton):
             if self.quit_evt.is_set():
                 break
             self.send_event.clear()
+            if self._block_sending:
+                continue
             with self.write_lock:
                 if not self.can_write():
                     continue
@@ -140,6 +145,16 @@ class SerialQueue(metaclass=MCSingleton):
                     log.info("A serial write has failed, expecting serial "
                              "reader to fix the problem. In the meantime "
                              "waiting for a nudge to send again.")
+
+    def block_sending(self):
+        """Block sending of instructions until we unblock again"""
+        self._block_sending = True
+
+    def unblock_sending(self):
+        """Unblock sending of instructions"""
+        if self._block_sending:
+            self._block_sending = False
+            self._try_writing()
 
     def _try_writing(self):
         """
@@ -550,6 +565,7 @@ class SerialQueue(metaclass=MCSingleton):
         prctl_name()
         with self.write_lock:
             self._flush_queues()
+            self._block_sending = False
 
             final_instruction = None
 
