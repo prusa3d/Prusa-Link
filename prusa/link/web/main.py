@@ -1,10 +1,15 @@
 """Main pages and core API"""
+import datetime
 import logging
+import shlex
+import subprocess
+import time
 from os import listdir
 from os.path import basename, getmtime, getsize, join
 from socket import gethostname
 from subprocess import CalledProcessError
 from sys import version
+from typing import BinaryIO, cast
 
 from gcode_metadata import get_metadata
 from pkg_resources import working_set  # type: ignore
@@ -13,6 +18,7 @@ from poorwsgi.digest import check_digest
 from poorwsgi.response import (
     EmptyResponse,
     FileResponse,
+    GeneratorResponse,
     JSONResponse,
     Response,
 )
@@ -104,6 +110,20 @@ def api_logs(req):
             })
     logs_list = sorted(logs_list, key=lambda key: key['name'])
 
+    if not logs_list:
+        try:
+            subprocess.run(shlex.split("which journalctl"),
+                           check=True,
+                           stdout=subprocess.DEVNULL)
+        except CalledProcessError:
+            log.warning("journalctl not found")
+        else:
+            logs_list.append({
+                'name': 'journal',
+                'size': None,
+                'date': int(time.time()),
+            })
+
     return JSONResponse(files=logs_list)
 
 
@@ -112,6 +132,27 @@ def api_logs(req):
 def api_log(req, filename):
     """Returns content of intended log file"""
     # pylint: disable=unused-argument
+    if filename == "journal":
+        today = datetime.date.today()
+        week_ago = today - datetime.timedelta(days=7)
+        logs_from = week_ago.isoformat()
+        # pylint: disable=consider-using-with
+        # We cannot close the process when returning the response
+        # It needs to stay open until the response quits
+        # Then it will hopefully get garbage collected
+        result = subprocess.Popen(
+            shlex.split(f"journalctl -S {logs_from} --no-pager"),
+            stdout=subprocess.PIPE, bufsize=32768,
+        )
+        journal_output = result.stdout
+        if journal_output is None:
+            raise ValueError("No stdout from journalctl")
+        slightly_different_journal_output = cast(BinaryIO, journal_output)
+        # Abusing a generator response because the file object one is broken
+        # Do not use an attribute if you didn't declare said attribute. EZ
+        return GeneratorResponse(
+            slightly_different_journal_output, content_type="text/plain")
+
     if not filename.startswith(LOGS_FILES):
         return Response(status_code=state.HTTP_NOT_FOUND)
 
