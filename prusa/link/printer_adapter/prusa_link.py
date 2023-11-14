@@ -85,6 +85,8 @@ from .structures.regular_expressions import (
     PAUSE_PRINT_REGEX,
     PRINTER_BOOT_REGEX,
     RESUME_PRINT_REGEX,
+    TM_CAL_END_REGEX,
+    TM_CAL_START_REGEX,
     TM_ERROR_LOG_REGEX,
 )
 from .telemetry_passer import TelemetryPasser
@@ -225,6 +227,10 @@ class PrusaLink:
         self.serial_parser.add_decoupled_handler(
             MBL_TRIGGER_REGEX,
             lambda sender, match: self.printer_polling.invalidate_mbl())
+        self.serial_parser.add_decoupled_handler(
+            TM_CAL_START_REGEX, self.block_serial_queue)
+        self.serial_parser.add_decoupled_handler(
+            TM_CAL_END_REGEX, self.unblock_serial_queue)
 
         self.print_stat_doubler = PrintStatDoubler(self.serial_parser,
                                                    self.printer_polling)
@@ -795,6 +801,14 @@ class PrusaLink:
         Connects instruction confirmation from serial queue to state manager
         """
         self.state_manager.instruction_confirmed()
+
+    def block_serial_queue(self, *_, **__) -> None:
+        """Blocks the serial queue"""
+        self.serial_queue.block_sending()
+
+    def unblock_serial_queue(self, *_, **__) -> None:
+        """Unblocks the serial queue"""
+        self.serial_queue.unblock_sending()
 
     def printer_reconnected(self, *_, **__) -> None:
         """
