@@ -42,7 +42,7 @@ class RequestHandler(WSGIRequestHandler):
     # pylint: disable=redefined-builtin
     def log_message(self, format, *args):
         """Log a message, which is typical content of access.log"""
-        log.info("%s - %s", self.address_string(), format % args)
+        log.debug("%s - %s", self.address_string(), format % args)
 
     def log_error(self, *args):
         """Log an error."""
