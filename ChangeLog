@@ -9,6 +9,7 @@
     * Use the 2023-10-10 Raspberry Pi OS base image for the image builder
     * Decrease the severity of web server access log messages
     * Add a way to download logs even on systemd journal based systems
+    * Bump the API version so it is the same as the xBuddy reported one
 
 0.7.1rc1 (2023-08-10)
     * Fixed HTTP response status on HEAD request for non-existing files
