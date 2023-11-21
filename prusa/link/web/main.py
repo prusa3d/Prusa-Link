@@ -283,7 +283,7 @@ def api_version(req):
     type_name = f"PrusaLink {prusa_link.printer.type.name}" \
         if prusa_link.printer.type else 'Unknown printer type'
     retval = {
-        'api': "0.9.0-legacy",
+        'api': "2.0.0",
         'server': __version__,
         'original': type_name,
         'text': f"PrusaLink {__version__}",
