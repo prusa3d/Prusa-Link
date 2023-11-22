@@ -145,3 +145,7 @@ TM_ERROR_LOG_REGEX = re.compile(r"TM: error \|(?P<deviation>-?\d+\.?\d*)\|"
 TM_ERROR_CLEARED = re.compile(r"^TM: error cleared$")
 
 URLS_FOR_WIZARD = re.compile(r"/(\d{1,3})?/?")
+
+TM_CAL_START_REGEX = re.compile(r"^TM: calibration start$")
+TM_CAL_END_REGEX = re.compile(r"^(TM: calibr\. failed!)|"
+                              r"(Thermal Model settings:)$")
