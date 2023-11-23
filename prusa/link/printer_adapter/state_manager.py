@@ -22,7 +22,8 @@ from .structures.regular_expressions import (ATTENTION_REASON_REGEX,
                                              CANCEL_REGEX, ERROR_REASON_REGEX,
                                              ERROR_REGEX, FAN_ERROR_REGEX,
                                              FAN_REGEX, PAUSED_REGEX,
-                                             RESUMED_REGEX, TM_ERROR_CLEARED)
+                                             RESUMED_REGEX, TM_ERROR_CLEARED,
+                                             POWER_PANIC_REGEX)
 
 log = logging.getLogger(__name__)
 
@@ -181,6 +182,11 @@ class StateManager(metaclass=MCSingleton):
         # for Connect to take and save the last print photo
         self.print_ended_at = None
 
+        # Flag to keep track of power panic.
+        # If the printer re-sets because of power panic, we don't want to
+        # send an M603, the flag has to be re-set manually
+        self.in_power_panic = False
+
         regex_handlers = {
             BUSY_REGEX: lambda sender, match: self.busy(),
             ATTENTION_REGEX: lambda sender, match: self.attention(),
@@ -191,7 +197,8 @@ class StateManager(metaclass=MCSingleton):
             ERROR_REASON_REGEX: self.error_reason_handler,
             ATTENTION_REASON_REGEX: self.attention_reason_handler,
             FAN_ERROR_REGEX: self.fan_error,
-            TM_ERROR_CLEARED: self.clear_tm_error
+            TM_ERROR_CLEARED: self.clear_tm_error,
+            POWER_PANIC_REGEX: self.power_panic_observed,
         }
 
         for regex, handler in regex_handlers.items():
@@ -539,6 +546,15 @@ class StateManager(metaclass=MCSingleton):
         """Clear the TM error flag"""
         assert match is not None
         self.tm_ignore_pause = False
+
+    def power_panic_observed(self, _, match: re.Match):
+        """Set the power panic flag"""
+        assert match is not None
+        self.in_power_panic = True
+
+    def reset_power_panic(self):
+        """Reset the power panic flag"""
+        self.in_power_panic = False
 
     @staticmethod
     def parse_error_reason(groups):
