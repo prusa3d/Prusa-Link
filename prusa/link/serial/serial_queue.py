@@ -546,14 +546,14 @@ class SerialQueue(metaclass=MCSingleton):
         RPI_ENABLED.state = CondState.NOK
         self.serial_queue_failed.send(self)
 
-    def printer_reconnected(self, was_printing):
+    def printer_reconnected(self, was_printing, was_power_panic):
         """The printer reset, starts a thread to recover the serial queue
         from such a state"""
         Thread(target=self._printer_reconnected,
-               args=(was_printing, ),
+               args=(was_printing, was_power_panic),
                name="serial_queue_reset_thread").start()
 
-    def _printer_reconnected(self, was_printing):
+    def _printer_reconnected(self, was_printing, was_power_panic):
         """
         Printer resets for two reasons, it has been stopped by the user,
         or the serial communication failed.
@@ -578,7 +578,7 @@ class SerialQueue(metaclass=MCSingleton):
                 self._enqueue(message_instruction, to_front=True)
                 final_instruction = message_instruction
                 self.has_failed = False
-            elif was_printing:
+            elif was_printing and not was_power_panic:
                 stop_instruction = Instruction("M603")
                 self._enqueue(stop_instruction, to_front=True)
                 final_instruction = stop_instruction

@@ -912,9 +912,10 @@ class PrusaLink:
         tries to send its info again.
         """
         was_printing = self.state_manager.get_state() in PRINTING_STATES
+        was_power_panic = self.state_manager.in_power_panic
         self.file_printer.stop_print()
         self.file_printer.wait_stopped()
-        self.serial_queue.printer_reconnected(was_printing)
+        self.serial_queue.printer_reconnected(was_printing, was_power_panic)
         self.command_queue.enqueue_command(CancelReady(source=Source.SERIAL))
 
         # file printer stop print needs to happen before this
@@ -925,6 +926,9 @@ class PrusaLink:
         # thread supposed to provide it
         self.ip_updater.send_ip_to_printer(timeout=0)
         self.telemetry_passer.wipe_telemetry()
+
+        # Re-set the power panic flag once we-re done
+        self.state_manager.reset_power_panic()
 
     @property
     def sd_ready(self) -> bool:
