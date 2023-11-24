@@ -2,6 +2,7 @@
 import abc
 import logging
 import re
+from threading import Event
 from typing import Any, Dict
 
 from prusa.connect.printer.const import Source
@@ -58,11 +59,11 @@ class Command:
         self.command_id = command_id
         self.source = source
 
-        self.running = True
+        self.quit_evt = Event()
 
     def wait_while_running(self, instruction):
         """Wait until the instruction is done, or we quit"""
-        wait_for_instruction(instruction, lambda: self.running)
+        wait_for_instruction(instruction, should_wait_evt=self.quit_evt)
 
     def do_instruction(self, message):
         """Shorthand for enqueueing and waiting for an instruction
@@ -105,4 +106,4 @@ class Command:
 
     def stop(self):
         """Stops the command"""
-        self.running = False
+        self.quit_evt.set()

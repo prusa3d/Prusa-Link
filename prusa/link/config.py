@@ -170,6 +170,14 @@ class Config(Get):
                 (
                     ("port", str, "auto"),
                     ("baudrate", int, 115200),
+
+                    # Dangerous, it writes to the EEPROM on the little 32u2/8u2
+                    # This wears it out. Enabling this, you get PowerPanic
+                    # for the SD prints with RPi over USB, but you get
+                    # Around 40000 guaranteed working SD prints. After that
+                    # Your 32u2 EEPROM might wear out and the enable/disable
+                    # would get stuck in one or the other state
+                    ("reset_disabling", bool, False),
                     ("settings", str, "./prusa_printer_settings.ini"),
                     # Support for monitoring mountpoints temporarily off
                     # ("storage", tuple, [], ':'),

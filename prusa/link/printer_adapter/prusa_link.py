@@ -49,6 +49,8 @@ from ..util import (
 from .auto_telemetry import AutoTelemetry
 from .command_handlers import (
     CancelReady,
+    DisableResets,
+    EnableResets,
     ExecuteGcode,
     JobInfo,
     LoadFilament,
@@ -138,10 +140,12 @@ class PrusaLink:
 
         self.serial_parser = ThreadedSerialParser()
 
-        self.serial = SerialAdapter(self.serial_parser,
-                                    self.model,
-                                    configured_port=cfg.printer.port,
-                                    baudrate=cfg.printer.baudrate)
+        self.serial = SerialAdapter(
+            self.serial_parser,
+            self.model,
+            configured_port=cfg.printer.port,
+            baudrate=cfg.printer.baudrate,
+            reset_disabling=cfg.printer.reset_disabling)
 
         self.serial_queue = MonitoredSerialQueue(
             serial_adapter=self.serial,
@@ -411,10 +415,12 @@ class PrusaLink:
         out all threads which are still running and sets an event to signalize
         that PrusaLink has stopped.
         """
-
+        # pylint: disable=too-many-statements
         log.debug("Stop start%s", ' fast' if fast else '')
 
         was_printing = self.model.file_printer.printing
+        was_sd_printing = (self.printer_polling.print_state
+                           == PrintState.SD_PRINTING)
 
         self.quit_evt.set()
         self.camera_governor.stop()
@@ -434,6 +440,9 @@ class PrusaLink:
         else:
             self.ip_updater.proper_stop()
             self.auto_telemetry.proper_stop()
+
+        if was_sd_printing:
+            self.serial.enable_dtr_resets()
 
         self.serial_queue.stop()
         self.serial_parser.stop()
@@ -764,6 +773,7 @@ class PrusaLink:
         The telemetry can observe some states, this method connects
         it observing a print in progress to the state manager
         """
+        self.command_queue.enqueue_command(DisableResets())
         self.state_manager.expect_change(
             StateChange(to_states={State.PRINTING: Source.FIRMWARE}))
         self.state_manager.printing()
@@ -792,6 +802,7 @@ class PrusaLink:
         Useful only when not serial printing. Connects telemetry
         observing there's no print in progress to the state_manager
         """
+        self.command_queue.enqueue_command(EnableResets())
         # When serial printing, the printer reports not printing
         # Let's ignore it in that case
         if not self.model.file_printer.printing:

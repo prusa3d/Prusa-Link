@@ -38,6 +38,8 @@ class SerialAdapterData(BaseModel):
     """Data of the SerialAdapter class"""
     ports: List[Port] = []
     using_port: Optional[Port]
+    reset_disabling: bool = True
+    resets_enabled: Optional[bool] = None
 
 
 class FilePrinterData(BaseModel):
