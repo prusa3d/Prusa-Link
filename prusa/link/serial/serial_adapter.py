@@ -81,11 +81,13 @@ class SerialAdapter(metaclass=MCSingleton):
                  model: Model,
                  configured_port="auto",
                  baudrate: int = 115200,
-                 timeout: int = 2) -> None:
+                 timeout: int = 2,
+                 reset_disabling: bool = True) -> None:
 
         # pylint: disable=too-many-arguments
         self.model: Model = model
-        self.model.serial_adapter = SerialAdapterData(using_port=None)
+        self.model.serial_adapter = SerialAdapterData(
+            using_port=None, reset_disabling=reset_disabling)
         self.data: SerialAdapterData = model.serial_adapter
         self.configured_port = configured_port
         self.baudrate = baudrate
@@ -277,6 +279,7 @@ class SerialAdapter(metaclass=MCSingleton):
 
         if self.running and not SERIAL:
             SERIAL.state = CondState.OK
+            self.data.resets_enabled = None
             self.renewed_signal.send(self)
 
     def _read_continually(self):
@@ -337,6 +340,22 @@ class SerialAdapter(metaclass=MCSingleton):
                         "Serial error when sending") from error
                 sent = True
                 log.debug("Sent to printer: %s", message)
+
+    def disable_dtr_resets(self):
+        """Disables DTR resets - should be used by a command handler"""
+        if not self.data.reset_disabling:
+            return
+        if self.data.resets_enabled is False:
+            return
+        self.write(b"\n;C32u2_RMD\n")
+
+    def enable_dtr_resets(self):
+        """Enables DTR resets - should be used by a command handler"""
+        if not self.data.reset_disabling:
+            return
+        if self.data.resets_enabled is True:
+            return
+        self.write(b"\n;C32u2_RME\n")
 
     def _reset_pi(self):
         """Resets the connected raspberry pi"""

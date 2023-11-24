@@ -177,3 +177,6 @@ MMU_PROGRESS_REGEX = re.compile(
     + r"|".join(map(re.escape, MMU_PROGRESS_MAP.keys()))
     + r")"
 )
+
+RESET_ACTIVATED_REGEX = re.compile(r"^Reset mode activated$")
+RESET_DEACTIVATED_REGEX = re.compile(r"^Reset mode deactivated$")
