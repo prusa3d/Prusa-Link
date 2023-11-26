@@ -636,7 +636,7 @@ class StateManager(metaclass=MCSingleton):
         if self.data.base_state == State.IDLE:
             self.data.base_state = State.READY
 
-    @state_influencer(StateChange(to_states={State.READY: Source.USER}))
+    @state_influencer(StateChange(to_states={State.IDLE: Source.USER}))
     def idle(self):
         """If we were READY, sets te base state to IDLE"""
         if self.data.base_state == State.READY:
