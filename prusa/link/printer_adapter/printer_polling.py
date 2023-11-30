@@ -30,7 +30,7 @@ from ..const import (
 from ..serial.helpers import enqueue_matchable, wait_for_instruction
 from ..serial.serial_parser import ThreadedSerialParser
 from ..serial.serial_queue import SerialQueue
-from ..util import get_d3_code, make_fingerprint
+from ..util import _parse_little_endian_uint32, get_d3_code, make_fingerprint
 from .filesystem.sd_card import SDCard
 from .job import Job
 from .model import Model
@@ -826,9 +826,7 @@ class PrinterPolling:
         match = self.do_matchable(dcode,
                                   D3_OUTPUT_REGEX,
                                   to_front=True)
-        str_data = match.group("data").replace(" ", "")
-        data = bytes.fromhex(str_data)
-        return struct.unpack("<I", data)[0]
+        return _parse_little_endian_uint32(match)
 
     def _get_total_filament(self):
         """Gets the total filament used from the eeprom"""

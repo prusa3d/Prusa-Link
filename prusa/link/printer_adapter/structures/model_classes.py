@@ -139,3 +139,12 @@ class EEPROMParams(Enum):
     ACTIVE_SHEET = 0x0DA1, 1
     TOTAL_FILAMENT = 0x0FF1, 4
     TOTAL_PRINT_TIME = 0x0FED, 4
+    EEPROM_FILE_POSITION = 0x0F91, 4
+
+
+class PPData(BaseModel):
+    """Not things like length or diameter,
+    just path and the command number -> gcode command number"""
+    file_path: str
+    message_number: int  # N number on the printer
+    gcode_number: int  # From file printer

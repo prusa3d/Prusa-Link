@@ -180,3 +180,4 @@ MMU_PROGRESS_REGEX = re.compile(
 
 RESET_ACTIVATED_REGEX = re.compile(r"^Reset mode activated$")
 RESET_DEACTIVATED_REGEX = re.compile(r"^Reset mode deactivated$")
+PP_RECOVER_REGEX = re.compile(r"^// action:uvlo_recovery_ready$")

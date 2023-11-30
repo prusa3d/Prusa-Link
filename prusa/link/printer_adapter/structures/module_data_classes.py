@@ -47,9 +47,11 @@ class FilePrinterData(BaseModel):
     file_path: str
     pp_file_path: str
     printing: bool
+    recovering: bool
     paused: bool
-    stopped_forcefully: bool
-    line_number: int
+    was_stopped: bool
+    power_panic: bool
+    recovery_ready: bool
 
     # In reality Deque[Instruction] but that cannot be validated by pydantic
     enqueued: Deque[Any]

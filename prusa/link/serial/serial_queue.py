@@ -68,6 +68,7 @@ class SerialQueue(metaclass=MCSingleton):
         # printer, let's signal this to other modules
         self.serial_queue_failed = Signal()
         self.instruction_confirmed_signal = Signal()
+        self.message_number_changed = Signal()
 
         # A queue of instructions for the printer
         self.queue: Deque[Instruction] = deque()
@@ -329,7 +330,17 @@ class SerialQueue(metaclass=MCSingleton):
 
         self._hookup_output_capture()
         self.current_instruction.sent()
+
+        # Send the message number only after the instruction is sent
+        if m110_match:
+            self.message_number_changed.send(self.message_number)
+
         self.serial_adapter.write(self.current_instruction.data)
+
+    def set_message_number(self, number):
+        """Sets the message number to the given value"""
+        with self.write_lock:
+            self.message_number = number
 
     def _enqueue(self, instruction: Instruction, to_front=False):
         """Internal method for enqueuing when already locked"""

@@ -13,6 +13,7 @@
     * Add gcodes that flag the state of a usb print for the printer statistics to get saved
     * Handle the new re-print LCD menu item
     * Add the initial support for the MMU
+    * Add Power Panic support
 
 0.7.2 (2023-10-11)
     * Add an automatic PrusaLink image builder script
