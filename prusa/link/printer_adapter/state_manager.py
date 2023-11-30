@@ -22,8 +22,7 @@ from .structures.regular_expressions import (ATTENTION_REASON_REGEX,
                                              CANCEL_REGEX, ERROR_REASON_REGEX,
                                              ERROR_REGEX, FAN_ERROR_REGEX,
                                              FAN_REGEX, PAUSED_REGEX,
-                                             RESUMED_REGEX, TM_ERROR_CLEARED,
-                                             POWER_PANIC_REGEX)
+                                             RESUMED_REGEX, TM_ERROR_CLEARED)
 
 log = logging.getLogger(__name__)
 
@@ -198,7 +197,6 @@ class StateManager(metaclass=MCSingleton):
             ATTENTION_REASON_REGEX: self.attention_reason_handler,
             FAN_ERROR_REGEX: self.fan_error,
             TM_ERROR_CLEARED: self.clear_tm_error,
-            POWER_PANIC_REGEX: self.power_panic_observed,
         }
 
         for regex, handler in regex_handlers.items():
@@ -547,9 +545,8 @@ class StateManager(metaclass=MCSingleton):
         assert match is not None
         self.tm_ignore_pause = False
 
-    def power_panic_observed(self, _, match: re.Match):
+    def power_panic_observed(self):
         """Set the power panic flag"""
-        assert match is not None
         self.in_power_panic = True
 
     def reset_power_panic(self):

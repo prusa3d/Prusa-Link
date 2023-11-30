@@ -1,7 +1,9 @@
 """Contains implementation of the FilePrinter class"""
+import json
 import logging
 import os
 from collections import deque
+from threading import RLock
 from time import sleep
 from typing import Optional
 
@@ -17,10 +19,10 @@ from ..util import get_clean_path, get_gcode, get_print_stats_gcode, prctl_name
 from .model import Model
 from .print_stats import PrintStats
 from .structures.mc_singleton import MCSingleton
+from .structures.model_classes import PPData
 from .structures.module_data_classes import FilePrinterData
 from .structures.regular_expressions import (
     CANCEL_REGEX,
-    POWER_PANIC_REGEX,
     RESUMED_REGEX,
 )
 from .updatable import Thread
@@ -52,19 +54,21 @@ class FilePrinter(metaclass=MCSingleton):
         #                                               total: int
         self.layer_trigger_signal = Signal()
 
+        self.lock = RLock()
+
         self.model.file_printer = FilePrinterData(
             printing=False,
             paused=False,
-            stopped_forcefully=False,
+            recovering=False,
+            was_stopped=False,
+            power_panic=False,
+            recovery_ready=False,
             file_path="",
             pp_file_path=get_clean_path(cfg.daemon.power_panic_file),
             enqueued=deque(),
-            line_number=0,
             gcode_number=0)
         self.data = self.model.file_printer
 
-        self.serial_parser.add_decoupled_handler(
-            POWER_PANIC_REGEX, lambda sender, match: self.power_panic())
         self.serial_parser.add_decoupled_handler(
             CANCEL_REGEX, lambda sender, match: self.stop_print())
         self.serial_parser.add_decoupled_handler(
@@ -91,51 +95,76 @@ class FilePrinter(metaclass=MCSingleton):
         """Checks whether a file created on power panic exists"""
         return os.path.exists(self.data.pp_file_path)
 
-    def check_failed_print(self) -> None:
-        """Not implemented, would try to resume after power panic or error"""
-        # log.warning("There was a loss of power, let's try to recover")
-        if self.pp_exists:
-            os.remove(self.data.pp_file_path)
-
-    def print(self, os_path: str) -> None:
+    def print(self, os_path: str, from_gcode_number=None) -> None:
         """Starts a file print for the supplied path"""
         if self.data.printing:
             raise RuntimeError("Cannot print two things at once")
 
+        if from_gcode_number is None and self.pp_exists:
+            os.remove(self.data.pp_file_path)
+
         self.data.file_path = os_path
         self.thread = Thread(target=self._print,
                              name="file_print",
+                             args=(from_gcode_number,),
                              daemon=True)
         self.data.printing = True
-        self.data.stopped_forcefully = False
+        self.data.recovering = from_gcode_number is not None
+        self.data.was_stopped = False
+        self.data.power_panic = False
+        self.data.paused = False
+        self.data.enqueued.clear()
         self.print_stats.start_time_segment()
         self.new_print_started_signal.send(self)
         self.print_stats.track_new_print(self.data.file_path)
         self.thread.start()
 
-    def _print(self, from_line=0):
+    def power_panic(self) -> None:
+        """Handle the printer sending us a power panic  signal
+        This means halt the serial print, do not send any more instructions
+        Do not delete the power panic file"""
+        self.data.power_panic = True
+        self.data.printing = False
+        log.warning("Power panic!")
+
+    def _print(self, from_gcode_number=None):
         """
         Parses and sends the gcode commands from the file to serial.
         Supports pausing, resuming and stopping.
-        """
 
+        param from_gcode_number:
+            the gcode number to start from. Implies power panic recovery -
+            goes into pause when the correct gcode number is reached
+        """
         prctl_name()
         total_size = os.path.getsize(self.data.file_path)
         with open(self.data.file_path, "r", encoding='utf-8') as file:
-            # Reset the line counter, printing a new file
-            self.serial_queue.reset_message_number()
-
             self.data.gcode_number = 0
             self.data.enqueued.clear()
-            line_index = 0
 
-            self.do_instruction("M75")  # start printer's print timer
+            if not self.data.recovering:
+                # Reset the line counter, printing a new file
+                self.serial_queue.reset_message_number()
+                self.do_instruction("M75")  # start printer's print timer
+
             while True:
                 line = file.readline()
 
                 # Recognise the end of the file
-                if line == "":
+                if line == "" or not self.data.printing:
                     break
+
+                gcode = get_gcode(line)
+                # Skip to the part we need to recover from
+                if (self.data.recovering
+                        and from_gcode_number > self.data.gcode_number):
+                    if gcode:
+                        self.data.gcode_number += 1
+                    continue
+
+                # Skip finished, pause here, remove the recovering flag
+                if self.data.recovering:
+                    self.pause()
 
                 # This will make it PRINT_QUEUE_SIZE lines in front of what
                 # is being sent to the printer, which is another as much as
@@ -145,56 +174,60 @@ class FilePrinter(metaclass=MCSingleton):
                                                current=current_byte,
                                                total=total_size)
 
-                if line_index < from_line:
-                    continue
-
                 if self.data.paused:
-                    log.debug("Pausing USB print")
-                    self.do_instruction("M76")  # pause printer's print timer
-                    self.wait_for_unpause()
-
+                    self._print_pause()
                     if not self.data.printing:
                         break
-
-                    log.debug("Resuming USB print")
-                    self.do_instruction("M75")  # resume printer's print timer
 
                 # Trigger cameras on layer change
                 if ";LAYER_CHANGE" in line:
                     self.layer_trigger_signal.send()
 
-                self.data.line_number = line_index + 1
-                gcode = get_gcode(line)
                 if gcode:
                     self.print_gcode(gcode)
                     self.wait_for_queue()
                     self.react_to_gcode(gcode)
 
-                line_index += 1
+            # Print ended
+            self._print_end()
 
-                if not self.data.printing:
-                    break
+    def _print_pause(self):
+        """Handles the specific of a paused flie print"""
+        log.debug("Pausing USB print")
+        if self.data.recovering:
+            self.data.recovery_ready = True
+        else:
+            # pause printer's print timer
+            self.do_instruction("M76")
+        self.wait_for_unpause()
 
-            self.do_instruction("M77")  # stop printer's print timer
-            log.debug("Print ended")
+        self.data.recovering = False
 
-            if self.pp_exists:
-                os.remove(self.data.pp_file_path)
-            self.data.printing = False
-            self.data.enqueued.clear()
+        # If we ended the pause by a print stop, do not unpause the timer
+        if self.data.printing:
+            log.debug("Resuming USB print")
+            self.do_instruction("M75")  # resume printer's print timer
 
-            if self.data.stopped_forcefully:
-                self.serial_queue.flush_print_queue()
-                self.data.enqueued.clear()  # Ensure this gets cleared
-                # This results in double stop on 3.10 hopefully will get
-                # changed
-                # Prevents the print head from stopping in the print
-                enqueue_instruction(self.serial_queue, "M603", to_front=True)
-                self.print_stopped_signal.send(self)
-            else:
-                self.print_finished_signal.send(self)
+    def _print_end(self):
+        """Handles the end of a file print"""
+        self.data.enqueued.clear()
+        self.print_stats.reset_stats()
+        log.debug("Print ended")
 
-            self.print_stats.reset_stats()
+        if self.data.power_panic:
+            return
+
+        self.do_instruction("M77")  # stop printer's print timer
+
+        self.data.printing = False
+
+        if self.data.was_stopped:
+            self.serial_queue.flush_print_queue()
+            # Prevents the print head from stopping in the print
+            enqueue_instruction(self.serial_queue, "M603", to_front=True)
+            self.print_stopped_signal.send(self)
+        else:
+            self.print_finished_signal.send(self)
 
     def do_instruction(self, message):
         """Shorthand for enqueueing and waiting for an instruction
@@ -209,22 +242,24 @@ class FilePrinter(metaclass=MCSingleton):
         """Sends a gcode to print, keeps a small buffer of gcodes
          and inlines print stats for files without them
         (estimated time left and progress)"""
-        self.data.gcode_number += 1
+        with self.lock:
+            self.data.gcode_number += 1
 
-        divisible = self.data.gcode_number % STATS_EVERY == 0
-        if divisible:
-            time_printing = int(self.print_stats.get_time_printing())
-            self.time_printing_signal.send(self, time_printing=time_printing)
+            divisible = self.data.gcode_number % STATS_EVERY == 0
+            if divisible:
+                time_printing = int(self.print_stats.get_time_printing())
+                self.time_printing_signal.send(
+                    self, time_printing=time_printing)
 
-        if self.to_print_stats(self.data.gcode_number):
-            self.send_print_stats()
+            if self.to_print_stats(self.data.gcode_number):
+                self.send_print_stats()
 
-        log.debug("USB enqueuing gcode: %s", gcode)
-        instruction = enqueue_instruction(self.serial_queue,
-                                          gcode,
-                                          to_front=True,
-                                          to_checksum=True)
-        self.data.enqueued.append(instruction)
+            log.debug("USB enqueuing gcode: %s", gcode)
+            instruction = enqueue_instruction(self.serial_queue,
+                                              gcode,
+                                              to_front=True,
+                                              to_checksum=True)
+            self.data.enqueued.append(instruction)
 
     def wait_for_queue(self) -> None:
         """Gets rid of already confirmed messages and waits for any
@@ -255,19 +290,6 @@ class FilePrinter(metaclass=MCSingleton):
         """
         if gcode.startswith("M601") or gcode.startswith("M25"):
             self.pause()
-
-    def power_panic(self):
-        """Not used/working"""
-        # when doing this again don't forget to write print time
-        if self.data.printing:
-            self.pause()
-            self.serial_queue.closed = True
-            log.warning("POWER PANIC!")
-            with open(self.data.pp_file_path, "w",
-                      encoding='utf-8') as pp_file:
-                pp_file.write(f"{self.data.line_number}")
-                pp_file.flush()
-                os.fsync(pp_file.fileno())
 
     def send_print_stats(self):
         """Sends a gcode to the printer, which tells it the progress
@@ -331,6 +353,60 @@ class FilePrinter(metaclass=MCSingleton):
         print has been stopped and did not finish on its own"""
         # TODO: wrong, needs to be in line with the rest of commands
         if self.data.printing:
-            self.data.stopped_forcefully = True
+            self.data.was_stopped = True
             self.data.printing = False
             self.data.paused = False
+
+    def write_file_stats(self, file_path, message_number, gcode_number):
+        """Writes the data needed for power panic recovery"""
+        data = PPData(
+            file_path=file_path,
+            message_number=message_number,
+            gcode_number=gcode_number,
+        )
+        with open(self.data.pp_file_path, "w", encoding="UTF-8") as pp_file:
+            pp_file.write(json.dumps(data.dict()))
+
+    def serial_message_number_changed(self, message_number):
+        """Updates the pairing of the FW message number to gcode line number
+
+        If all the instructions in the buffer are sent
+        The message number belongs to the next instruction
+        that will be sent
+
+        Here's an illustration of the situation
+        _________________________________________
+        |enqueued   |gcode_number|message_number|
+        |           | current=25 | current=100  |
+        |___________|____________|______________|
+        |next instr.|     26     |     102      |
+        | I0        |    *25*    |     101      |
+        | I1        |     24     |    *100*     |
+        | I2 (sent) |     23     |     99       |
+        | I3 (sent) |     22     |     98       |
+        |___________|____________|______________|
+        """
+
+        with self.lock:
+            instruction_gcode_number = self.data.gcode_number + 1
+            for instruction in self.data.enqueued:
+                if instruction.is_sent():
+                    break
+                instruction_gcode_number -= 1
+            self.write_file_stats(self.data.file_path, message_number,
+                                  instruction_gcode_number)
+
+    def recover_from_pp(self, message_number):
+        """Gets the file path and the gcode number to start from
+        calls the start print with the correct arguments to recover"""
+        if not self.pp_exists:
+            log.warning("Cannot recover from power panic, no pp state found")
+            raise RuntimeError("Cannot recover from power panic, "
+                               "no pp state found")
+
+        with open(self.data.pp_file_path, "r", encoding="UTF-8") as pp_file:
+            pp_data = PPData(**json.load(pp_file))
+
+            gcode_number = (pp_data.gcode_number
+                            + (message_number - pp_data.message_number))
+            self.print(pp_data.file_path, gcode_number)

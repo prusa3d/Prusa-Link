@@ -5,6 +5,7 @@ import multiprocessing
 import os
 import pwd
 import socket
+import struct
 import typing
 from hashlib import sha256
 from pathlib import Path
@@ -307,3 +308,10 @@ def slots_with_param(model, key, default, value):
         else:
             setattr(slots[slot_name], key, default)
     return slots
+
+
+def _parse_little_endian_uint32(match):
+    """Decodes the D-Code specified little-endian uint32_t eeprom variable"""
+    str_data = match.group("data").replace(" ", "")
+    data = bytes.fromhex(str_data)
+    return struct.unpack("<I", data)[0]

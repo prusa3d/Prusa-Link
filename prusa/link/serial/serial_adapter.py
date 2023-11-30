@@ -5,7 +5,7 @@ import os
 import re
 from importlib import util
 from pathlib import Path
-from threading import RLock
+from threading import Event, RLock
 from time import sleep, time
 from typing import List, Optional
 
@@ -17,6 +17,7 @@ from ..conditions import SERIAL
 from ..const import (
     PRINTER_BOOT_WAIT,
     PRINTER_TYPES,
+    QUIT_INTERVAL,
     RESET_PIN,
     SERIAL_REOPEN_TIMEOUT,
 )
@@ -102,6 +103,8 @@ class SerialAdapter(metaclass=MCSingleton):
         self.renewed_signal = Signal()
 
         self.running = True
+        self._work_around_power_panic = Event()
+        self._work_around_power_panic.set()
 
         self.read_thread = Thread(target=self._read_continually,
                                   name="serial_read_thread",
@@ -256,8 +259,16 @@ class SerialAdapter(metaclass=MCSingleton):
         Informs the rest of the app about failed serial connection,
         After which it keeps trying to re-open the serial port
 
-        If it succeeds, generates a signal to remove the rest of the app
+        If it succeeds, generates a signal to inform the rest of the app
         """
+        # Wait for power panic timeout
+        if not self._work_around_power_panic.is_set():
+            self.failed_signal.send(self)
+            SERIAL.state = CondState.NOK
+
+        while self.running:
+            if self._work_around_power_panic.wait(QUIT_INTERVAL):
+                break
 
         if self.is_open(self.serial):
             raise RuntimeError("Don't reconnect what is not disconnected")
@@ -267,6 +278,7 @@ class SerialAdapter(metaclass=MCSingleton):
                 starting = False
             else:
                 self.failed_signal.send(self)
+                SERIAL.state = CondState.NOK
 
             if not self._reopen():
                 SERIAL.state = CondState.NOK
@@ -291,6 +303,9 @@ class SerialAdapter(metaclass=MCSingleton):
             raw_line = "[No data] - This is a fallback value, " \
                        "so stuff doesn't break"
             try:
+                if not self._work_around_power_panic.is_set():
+                    raise SerialException(
+                        "Need to re-connect serial after power panic")
                 raw_line = self.serial.readline()
                 line = decode_line(raw_line)
             except (SerialException, OSError):
@@ -401,3 +416,11 @@ class SerialAdapter(metaclass=MCSingleton):
     def wait_stopped(self):
         """Waits for the serial to be stopped"""
         self.read_thread.join()
+
+    def power_panic_observed(self):
+        """Called when a power panic is observed"""
+        self._work_around_power_panic.clear()
+
+    def power_panic_unblock(self):
+        """Re-sets the power panic flag that holds the serial disconnected"""
+        self._work_around_power_panic.set()

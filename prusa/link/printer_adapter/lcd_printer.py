@@ -86,6 +86,7 @@ TO_TRANSFER_TYPES = {TransferType.TO_CONNECT, TransferType.TO_CLIENT}
 
 ERROR_GRACE = 15
 
+RECOVERY_PRIORITY = 60
 PRINT_PRIORITY = 50
 WIZARD_PRIORITY = 40
 ERROR_PRIORITY = 30
@@ -141,11 +142,12 @@ class LCDPrinter(metaclass=MCSingleton):
         self.wait_screen = Screen(resets_idle=False)
         self.ready_screen = Screen(resets_idle=False)
         self.idle_screen = Screen(resets_idle=False)
+        self.recovery_screen = Screen(resets_idle=False)
 
         self.carousel = Carousel([
             self.print_screen, self.wizard_screen, self.wait_screen,
             self.error_screen, self.upload_screen, self.ready_screen,
-            self.idle_screen,
+            self.idle_screen, self.recovery_screen,
         ])
 
         self.carousel.set_priority(self.print_screen, PRINT_PRIORITY)
@@ -154,6 +156,7 @@ class LCDPrinter(metaclass=MCSingleton):
         self.carousel.set_priority(self.upload_screen, UPLOAD_PRIORITY)
         self.carousel.set_priority(self.ready_screen, READY_PRIORITY)
         self.carousel.set_priority(self.idle_screen, IDLE_PRIORITY)
+        self.carousel.set_priority(self.recovery_screen, RECOVERY_PRIORITY)
 
         wait_zip = zip(["Please wait"] * 7, ["." * i for i in range(1, 8)])
         wait_text = "".join(("".join(i).ljust(19) for i in wait_zip))
@@ -166,6 +169,12 @@ class LCDPrinter(metaclass=MCSingleton):
 
         self.carousel.set_text(self.ready_screen,
                                "Ready to print",
+                               scroll_delay=5,
+                               first_line_extra=0,
+                               last_line_extra=0)
+
+        self.carousel.set_text(self.recovery_screen,
+                               "Ready to recover",
                                scroll_delay=5,
                                first_line_extra=0,
                                last_line_extra=0)
@@ -226,6 +235,7 @@ class LCDPrinter(metaclass=MCSingleton):
         self._check_upload()
         self._check_ready()
         self._check_idle()
+        self._check_recovery()
 
     def _check_printing(self):
         """Should a printing display be activated? And what should it say?"""
@@ -421,6 +431,13 @@ class LCDPrinter(metaclass=MCSingleton):
                                        scroll_amount=19,
                                        scroll_delay=4,
                                        last_line_extra=5)
+        else:
+            self.carousel.disable(self.ready_screen)
+
+    def _check_recovery(self):
+        """Should the ready screen be shown?"""
+        if self.model.file_printer.recovery_ready:
+            self.carousel.enable(self.recovery_screen)
         else:
             self.carousel.disable(self.ready_screen)
 

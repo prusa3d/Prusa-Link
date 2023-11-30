@@ -5,6 +5,7 @@ import re
 from enum import Enum
 from threading import Event
 from threading import enumerate as enumerate_threads
+from time import sleep
 from typing import Any, Dict, List, Optional, Type
 
 from prusa.connect.printer import Command as SDKCommand
@@ -55,6 +56,7 @@ from .command_handlers import (
     JobInfo,
     LoadFilament,
     PausePrint,
+    PPRecovery,
     RePrint,
     ResetPrinter,
     ResumePrint,
@@ -89,6 +91,8 @@ from .structures.regular_expressions import (
     MBL_TRIGGER_REGEX,
     NOT_READY_REGEX,
     PAUSE_PRINT_REGEX,
+    POWER_PANIC_REGEX,
+    PP_RECOVER_REGEX,
     PRINTER_BOOT_REGEX,
     READY_REGEX,
     REPRINT_REGEX,
@@ -104,6 +108,8 @@ log = logging.getLogger(__name__)
 
 # pylint: disable=too-many-lines
 
+
+# pylint: disable=too-many-lines
 
 class TransferCallbackState(Enum):
     """Return values form download_finished_cb."""
@@ -252,6 +258,10 @@ class PrusaLink:
             TM_CAL_START_REGEX, self.block_serial_queue)
         self.serial_parser.add_decoupled_handler(
             TM_CAL_END_REGEX, self.unblock_serial_queue)
+        self.serial_parser.add_decoupled_handler(
+            POWER_PANIC_REGEX, self.power_panic_observed)
+        self.serial_parser.add_decoupled_handler(
+            PP_RECOVER_REGEX, self.recover_from_pp)
 
         self.print_stat_doubler = PrintStatDoubler(self.serial_parser,
                                                    self.printer_polling)
@@ -263,6 +273,8 @@ class PrusaLink:
         self.serial.renewed_signal.connect(self.serial_renewed)
         self.serial_queue.instruction_confirmed_signal.connect(
             self.instruction_confirmed)
+        self.serial_queue.message_number_changed.connect(
+            self.serial_message_number_changed)
         self.serial_parser.add_decoupled_handler(PRINTER_BOOT_REGEX,
                                                  self.printer_reconnected)
         self.serial_parser.add_decoupled_handler(TM_ERROR_LOG_REGEX,
@@ -360,8 +372,6 @@ class PrusaLink:
         self.command_queue.start()
         self.telemetry_passer.start()
         self.printer.start()
-        # Start this last, as it might start printing right away
-        self.file_printer.start()
 
         log.debug("Initialization done")
 
@@ -793,8 +803,16 @@ class PrusaLink:
         If the printer says the serial print is paused, but we're not serial
         printing at all, we'll resolve it by stopping whatever was going on
         before.
+        If the serial print is recovering, we tell that to connnect
         """
-        if not self.model.file_printer.printing:
+        if self.model.file_printer.recovering:
+            self.state_manager.expect_change(
+                StateChange(to_states={State.PAUSED: Source.FIRMWARE},
+                            reason="Waiting for the user to recover the print "
+                                   "after a power failure."))
+            self.state_manager.paused()
+            self.state_manager.stop_expecting_change()
+        elif not self.model.file_printer.printing:
             self.command_queue.enqueue_command(StopPrint())
 
     def observed_no_print(self) -> None:
@@ -852,6 +870,7 @@ class PrusaLink:
     def serial_failed(self, _) -> None:
         """Connects serial errors with state manager"""
         self.state_manager.serial_error()
+        self.file_printer.stop_print()
 
     def serial_renewed(self, _) -> None:
         """Connects serial recovery with state manager"""
@@ -908,6 +927,11 @@ class PrusaLink:
         """
         self.state_manager.instruction_confirmed()
 
+    def serial_message_number_changed(self, message_number):
+        """Connects serial message number change to file printer
+        for power panic to work"""
+        self.file_printer.serial_message_number_changed(message_number)
+
     def block_serial_queue(self, *_, **__) -> None:
         """Blocks the serial queue"""
         self.serial_queue.block_sending()
@@ -915,6 +939,21 @@ class PrusaLink:
     def unblock_serial_queue(self, *_, **__) -> None:
         """Unblocks the serial queue"""
         self.serial_queue.unblock_sending()
+
+    def power_panic_observed(self, *_, **__):
+        """Routes a power panic message to components"""
+        self.file_printer.power_panic()
+        self.state_manager.power_panic_observed()
+        self.serial.power_panic_observed()
+        self.state_manager.paused()
+        # This is normally a bad idea in a serial handler
+        # But as we are holding the serial disconnected anyways, it's OK
+        sleep(10)
+        self.serial.power_panic_unblock()
+
+    def recover_from_pp(self, *_, **__) -> None:
+        """Recover from power panic"""
+        self.command_queue.enqueue_command(PPRecovery())
 
     def printer_reconnected(self, *_, **__) -> None:
         """

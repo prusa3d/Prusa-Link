@@ -25,12 +25,18 @@ from ..const import (
     STATE_CHANGE_TIMEOUT,
 )
 from ..serial.helpers import enqueue_instruction, enqueue_list_from_str
-from ..util import file_is_on_sd, round_to_five
+from ..util import (
+    _parse_little_endian_uint32,
+    file_is_on_sd,
+    get_d3_code,
+    round_to_five,
+)
 from .command import Command, CommandFailed, FileNotFound, NotStateToPrint
 from .model import Model
 from .state_manager import StateChange
-from .structures.model_classes import JobState
+from .structures.model_classes import EEPROMParams, JobState
 from .structures.regular_expressions import (
+    D3_OUTPUT_REGEX,
     OPEN_RESULT_REGEX,
     PRINTER_BOOT_REGEX,
     REJECTION_REGEX,
@@ -663,3 +669,29 @@ class EnableResets(Command):
         """Enables resets"""
         change_reset_mode(self.model, self.serial_adapter, self.serial_parser,
                           self.quit_evt, timeout=self.timeout, enable=True)
+
+
+class PPRecovery(Command):
+    """Class for recovering from the host power panic"""
+    command_name = "pp_recovery"
+
+    def _run_command(self):
+        """Recovers from host power panic"""
+        if self.model.file_printer.recovering:
+            return
+        try:
+            if not self.file_printer.pp_exists:
+                raise CommandFailed("No PP file exists, cannot recover.")
+        except CommandFailed as exception:
+            enqueue_instruction(self.serial_queue, "M117 \x7ERecovery failed",
+                                to_front=True)
+            enqueue_instruction(self.serial_queue, "M603", to_front=True)
+            raise exception
+
+        d_code = get_d3_code(*EEPROMParams.EEPROM_FILE_POSITION.value)
+        match = self.do_matchable(d_code, D3_OUTPUT_REGEX).match()
+        if match is None:
+            raise CommandFailed("Failed to get file position")
+        line_number = _parse_little_endian_uint32(match)
+        self.serial_queue.set_message_number(line_number)
+        self.file_printer.recover_from_pp(line_number)
