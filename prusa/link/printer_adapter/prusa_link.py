@@ -812,8 +812,6 @@ class PrusaLink:
                                    "after a power failure."))
             self.state_manager.paused()
             self.state_manager.stop_expecting_change()
-        elif not self.model.file_printer.printing:
-            self.command_queue.enqueue_command(StopPrint())
 
     def observed_no_print(self) -> None:
         """
