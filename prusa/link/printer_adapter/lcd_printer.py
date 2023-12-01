@@ -439,7 +439,7 @@ class LCDPrinter(metaclass=MCSingleton):
         if self.model.file_printer.recovery_ready:
             self.carousel.enable(self.recovery_screen)
         else:
-            self.carousel.disable(self.ready_screen)
+            self.carousel.disable(self.recovery_screen)
 
     def _check_idle(self):
         """Should the idle screen be shown? And what should it say?"""

@@ -202,6 +202,7 @@ class FilePrinter(metaclass=MCSingleton):
         self.wait_for_unpause()
 
         self.data.recovering = False
+        self.data.recovery_ready = False
 
         # If we ended the pause by a print stop, do not unpause the timer
         if self.data.printing:
