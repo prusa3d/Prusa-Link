@@ -89,10 +89,12 @@ class Job(metaclass=MCSingleton):
         Also writes the new job_id to a file, so there aren't two jobs with
         the same id"""
         self.data.already_sent = False
-        if self.data.job_id is None:
-            self.data.job_id_offset += 1
-        else:
-            self.data.job_id += 1
+        # Try to not increment the job id on PP recovery
+        if not self.model.file_printer.recovering:
+            if self.data.job_id is None:
+                self.data.job_id_offset += 1
+            else:
+                self.data.job_id += 1
         self.data.job_start_cmd_id = command_id
         # If we don't print from sd, we know this immediately
         # If not, let's leave it None, it will get filled later
