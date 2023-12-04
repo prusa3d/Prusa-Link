@@ -53,6 +53,7 @@ class FilePrinter(metaclass=MCSingleton):
         self.byte_position_signal = Signal()  # kwargs: current: int
         #                                               total: int
         self.layer_trigger_signal = Signal()
+        self.recovery_done_signal = Signal()
 
         self.lock = RLock()
 
@@ -199,10 +200,13 @@ class FilePrinter(metaclass=MCSingleton):
         else:
             # pause printer's print timer
             self.do_instruction("M76")
-        self.wait_for_unpause()
+        while self.data.paused:
+            sleep(QUIT_INTERVAL)
 
-        self.data.recovering = False
-        self.data.recovery_ready = False
+        if self.data.recovering:
+            self.data.recovering = False
+            self.data.recovery_ready = False
+            self.recovery_done_signal.send()
 
         # If we ended the pause by a print stop, do not unpause the timer
         if self.data.printing:
@@ -320,14 +324,6 @@ class FilePrinter(metaclass=MCSingleton):
             gcode_number == self.model.print_stats.total_gcode_count -
             TAIL_COMMANDS)
         return do_stats and (divisible or print_ending)
-
-    def wait_for_unpause(self):
-        """
-        Loops until some other thread flips a flag back, to resume the
-        print
-        """
-        while self.data.paused:
-            sleep(QUIT_INTERVAL)
 
     def pause(self):
         """Pauses the print by flipping a flag, pauses print timer"""
