@@ -314,6 +314,8 @@ class PrusaLink:
         self.file_printer.byte_position_signal.connect(
             self.byte_position_changed)
         self.file_printer.layer_trigger_signal.connect(self.layer_trigger)
+        self.file_printer.recovery_done_signal.connect(
+            lambda _: self.lcd_printer.notify(), weak=False)
         self.storage_controller.folder_attached_signal.\
             connect(self.folder_attach)
         self.storage_controller.folder_detached_signal.\
