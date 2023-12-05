@@ -358,6 +358,7 @@ class FilePrinter(metaclass=MCSingleton):
         """Writes the data needed for power panic recovery"""
         data = PPData(
             file_path=file_path,
+            connect_path=self.model.job.selected_file_path,
             message_number=message_number,
             gcode_number=gcode_number,
         )
@@ -392,18 +393,3 @@ class FilePrinter(metaclass=MCSingleton):
                 instruction_gcode_number -= 1
             self.write_file_stats(self.data.file_path, message_number,
                                   instruction_gcode_number)
-
-    def recover_from_pp(self, message_number):
-        """Gets the file path and the gcode number to start from
-        calls the start print with the correct arguments to recover"""
-        if not self.pp_exists:
-            log.warning("Cannot recover from power panic, no pp state found")
-            raise RuntimeError("Cannot recover from power panic, "
-                               "no pp state found")
-
-        with open(self.data.pp_file_path, "r", encoding="UTF-8") as pp_file:
-            pp_data = PPData(**json.load(pp_file))
-
-            gcode_number = (pp_data.gcode_number
-                            + (message_number - pp_data.message_number))
-            self.print(pp_data.file_path, gcode_number)
