@@ -305,8 +305,11 @@ class FilePrinter(metaclass=MCSingleton):
 
         # Idk what to do here, idk what would have happened if we used
         # the other mode, so let's report both modes the same
-        stat_command = get_print_stats_gcode(percent_done, time_remaining,
-                                             percent_done, time_remaining)
+        stat_command = get_print_stats_gcode(
+            normal_percent=percent_done,
+            normal_left=time_remaining,
+            quiet_percent=percent_done,
+            quiet_left=time_remaining)
         instruction = enqueue_instruction(self.serial_queue,
                                           stat_command,
                                           to_front=True)
