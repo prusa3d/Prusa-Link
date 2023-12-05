@@ -5,7 +5,9 @@ gcodes, resetting the printer and sending the job info
 """
 
 import abc
+import json
 import logging
+import os
 from pathlib import Path
 from re import Match
 from subprocess import STDOUT, CalledProcessError, check_call, check_output
@@ -34,7 +36,7 @@ from ..util import (
 from .command import Command, CommandFailed, FileNotFound, NotStateToPrint
 from .model import Model
 from .state_manager import StateChange
-from .structures.model_classes import EEPROMParams, JobState
+from .structures.model_classes import EEPROMParams, JobState, PPData
 from .structures.regular_expressions import (
     D3_OUTPUT_REGEX,
     OPEN_RESULT_REGEX,
@@ -682,16 +684,41 @@ class PPRecovery(Command):
         try:
             if not self.file_printer.pp_exists:
                 raise CommandFailed("No PP file exists, cannot recover.")
+
+            d_code = get_d3_code(*EEPROMParams.EEPROM_FILE_POSITION.value)
+            match = self.do_matchable(d_code, D3_OUTPUT_REGEX).match()
+            if match is None:
+                raise CommandFailed("Failed to get file position")
+            line_number = _parse_little_endian_uint32(match)
+            self.serial_queue.set_message_number(line_number)
+            if not self.file_printer.pp_exists:
+                log.warning("Cannot recover from power panic, "
+                            "no pp state found")
+                raise RuntimeError("Cannot recover from power panic, "
+                                   "no pp state found")
+
+            with open(self.model.file_printer.pp_file_path, "r",
+                      encoding="UTF-8") as pp_file:
+                pp_data = PPData(**json.load(pp_file))
+
+                gcode_number = (pp_data.gcode_number
+                                + (line_number - pp_data.message_number))
+                path = pp_data.file_path
+                connect_path = pp_data.connect_path
+
+            if not os.path.isfile(path):
+                raise CommandFailed(
+                    "The file we were previously printing from has "
+                    "disappeared.")
+
         except CommandFailed as exception:
-            enqueue_instruction(self.serial_queue, "M117 \x7ERecovery failed",
-                                to_front=True)
-            enqueue_instruction(self.serial_queue, "M603", to_front=True)
+            enqueue_instruction(
+                self.serial_queue, "M117 \x7ERecovery failed", to_front=True)
+            enqueue_instruction(
+                self.serial_queue, "M603", to_front=True)
             raise exception
 
-        d_code = get_d3_code(*EEPROMParams.EEPROM_FILE_POSITION.value)
-        match = self.do_matchable(d_code, D3_OUTPUT_REGEX).match()
-        if match is None:
-            raise CommandFailed("Failed to get file position")
-        line_number = _parse_little_endian_uint32(match)
-        self.serial_queue.set_message_number(line_number)
-        self.file_printer.recover_from_pp(line_number)
+        self.file_printer.print(path, gcode_number)
+        self.job.set_file_path(str(connect_path),
+                               path_incomplete=False,
+                               prepend_sd_storage=False)
