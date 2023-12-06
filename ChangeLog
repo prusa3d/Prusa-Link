@@ -16,6 +16,7 @@
     * Add Power Panic support
     * Make ->Ready to recover dissapear sooner from the LCD
     * The minimum firmwre version has been increased to 3.14.0
+    * Fix the multi-instance proxy
 
 0.7.2 (2023-10-11)
     * Add an automatic PrusaLink image builder script

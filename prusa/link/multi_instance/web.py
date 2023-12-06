@@ -135,28 +135,6 @@ def list_printers(req):
     return JSONResponse(printer_list=response)
 
 
-def get_content_length(headers):
-    """Get content length from headers - 0 if not present"""
-    raw_content_length = headers.get('Content-Length')
-    if not raw_content_length:
-        raw_content_length = 0
-    return int(raw_content_length)
-
-
-def file_data_generator(file_like, length):
-    """Pass an object with a read method and its length and get a generator
-    that yields chunks of the file's data."""
-    transferred = 0
-    while True:
-        chunk_size = min(CHUNK_SIZE, length - transferred)
-        if chunk_size == 0:
-            break
-        data = file_like.read(chunk_size)
-        log.debug("Chunk-size: %s, Data: %s", chunk_size, data)
-        yield data
-        transferred += chunk_size
-
-
 @app.route(r'/<printer_number:re:\d+>/<path:re:.*>', method=METHOD_ALL)
 def proxy(req, printer_number, path, use_proxy_headers=True):
     """A reverse proxy to pass requests to IP/number to IP:printer_port
@@ -180,15 +158,13 @@ def proxy(req, printer_number, path, use_proxy_headers=True):
             url=f"http://localhost:{printer.port}/{path}?{req.query}",
             headers=proxied_headers,
             preload_content=False,
-            body=file_data_generator(req, get_content_length(req.headers)),
+            body=req,
             redirect=False,
         )
 
         log.debug("Response for path %s: %s", path, response.status)
-        generator = file_data_generator(response,
-                                        get_content_length(response.headers))
         return GeneratorResponse(
-            generator=generator,
+            generator=response,
             content_type=response.headers.get(
                 'Content-Type', "text/html; charset=utf-8"),
             status_code=response.status,
