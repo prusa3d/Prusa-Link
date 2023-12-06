@@ -146,5 +146,6 @@ class PPData(BaseModel):
     """Not things like length or diameter,
     just path and the command number -> gcode command number"""
     file_path: str
+    connect_path: str
     message_number: int  # N number on the printer
     gcode_number: int  # From file printer
