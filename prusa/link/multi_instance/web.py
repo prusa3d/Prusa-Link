@@ -135,6 +135,28 @@ def list_printers(req):
     return JSONResponse(printer_list=response)
 
 
+def get_content_length(headers):
+    """Get content length from headers - 0 if not present"""
+    raw_content_length = headers.get('Content-Length')
+    if not raw_content_length:
+        return None
+    return int(raw_content_length)
+
+
+def file_data_generator(file_like, length):
+    """Pass an object with a read method and its length and get a generator
+    that yields chunks of the file's data."""
+    transferred = 0
+    while True:
+        chunk_size = min(CHUNK_SIZE, length - transferred)
+        if chunk_size == 0:
+            break
+        data = file_like.read(chunk_size)
+        log.debug("Chunk-size: %s, Data: %s", chunk_size, data)
+        yield data
+        transferred += chunk_size
+
+
 @app.route(r'/<printer_number:re:\d+>/<path:re:.*>', method=METHOD_ALL)
 def proxy(req, printer_number, path, use_proxy_headers=True):
     """A reverse proxy to pass requests to IP/number to IP:printer_port
@@ -153,18 +175,27 @@ def proxy(req, printer_number, path, use_proxy_headers=True):
             proxied_headers["X-Forwarded-Prefix"] = f"/{printer_number}"
 
         log.debug("Passing request for path %s", path)
+        request_to_pass = req
+        if (length := get_content_length(req.headers)) is not None:
+            request_to_pass = file_data_generator(req, length)
+
         response = pool_manager.request(
             method=req.method,
             url=f"http://localhost:{printer.port}/{path}?{req.query}",
             headers=proxied_headers,
             preload_content=False,
-            body=req,
+            body=request_to_pass,
             redirect=False,
         )
 
         log.debug("Response for path %s: %s", path, response.status)
+
+        response_to_pass = response
+        if (length := get_content_length(response.headers)) is not None:
+            response_to_pass = file_data_generator(response, length)
+
         return GeneratorResponse(
-            generator=response,
+            generator=response_to_pass,
             content_type=response.headers.get(
                 'Content-Type', "text/html; charset=utf-8"),
             status_code=response.status,

@@ -3,6 +3,7 @@
 0.8.0alpha2
     * Fix active tool not re-setting to None when told to
     * Use printer mid-movement power panic recovery trick
+    * Fix the multi-instance proxy. Again
 
 0.8.0alpha1
     * Stop showing the tune menu after connecting to the printer
