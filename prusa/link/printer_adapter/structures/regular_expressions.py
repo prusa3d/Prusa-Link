@@ -164,7 +164,7 @@ MMU_REVISION_REGEX = re.compile(
 MMU_BUILD_REGEX = re.compile(
     r"^echo:MMU[23]:<R3 A(?P<number>[0-9a-fA-F]+)\*..\.$")
 MMU_SLOT_REGEX = re.compile(
-    r"^echo:MMU2:MMU2tool=(?P<slot>\d)$")
+    r"^echo:MMU2:MMU2tool=(?P<slot>\d{1,2})$")
 # This can report an error or a command in progress,
 # we don't know before parsing
 MMU_Q0_RESPONSE_REGEX = re.compile(
