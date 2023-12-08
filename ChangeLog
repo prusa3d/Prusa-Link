@@ -1,5 +1,8 @@
 # ChangeLog
 
+0.8.0alpha2
+    * Fix active tool not re-setting to None when told to
+
 0.8.0alpha1
     * Stop showing the tune menu after connecting to the printer
     * Use the 2023-10-10 Raspberry Pi OS base image for the image builder

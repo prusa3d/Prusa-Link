@@ -75,7 +75,7 @@ class MMUObserver:
         )
 
     def _handle_active_slot(self, _, match: Match):
-        raw_active_slot = int(match.group("slot"), 16)
+        raw_active_slot = int(match.group("slot"))
         if raw_active_slot == 99:
             active_slot = 0
         else:
