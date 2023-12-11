@@ -407,6 +407,8 @@ def build_image():
     run_over_ssh("sudo apt-get upgrade -y")
 
     print("Installing dependencies")
+    # I guess we need this for the wi-fi setting to get applied normally
+    run_over_ssh("sudo apt-get install -y uuid")
     run_over_ssh("sudo apt-get install -y git python3-pip pigpio libcap-dev "
                  "libmagic1 libturbojpeg0 libatlas-base-dev libffi-dev "
                  "cmake iptables")
