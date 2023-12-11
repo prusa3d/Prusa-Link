@@ -718,7 +718,7 @@ class PPRecovery(Command):
                 self.serial_queue, "M603", to_front=True)
             raise exception
 
-        self.file_printer.print(path, gcode_number)
+        self.file_printer.print(path, gcode_number - 1)
         self.job.set_file_path(str(connect_path),
                                path_incomplete=False,
                                prepend_sd_storage=False)
