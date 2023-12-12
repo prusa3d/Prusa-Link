@@ -147,6 +147,7 @@ class PrintStatsData(BaseModel):
     has_inbuilt_stats: bool
     total_gcode_count: int  # is not computed for files containg reporting
     #                         to speed stuff up
+    start_gcode_number: int = 0
 
 
 class Sheet(BaseModel):

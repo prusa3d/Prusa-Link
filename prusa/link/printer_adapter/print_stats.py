@@ -27,14 +27,17 @@ class PrintStats:
         )
         self.data = self.model.print_stats
 
-    def track_new_print(self, file_path):
+    def track_new_print(self, file_path, from_gcode_number=None):
         """
         Analyzes the file, to determine whether it contains progress and time
         reporting
         :param file_path: path of the file to analyze
+        :param from_gcode_number: the number of gcode already printed
+                                  to account for pp recoveries
         """
         self.reset_stats()
-
+        if from_gcode_number is not None:
+            self.data.start_gcode_number = from_gcode_number
         with open(file_path, encoding='utf-8') as gcode_file:
             for line in gcode_file:
                 gcode = get_gcode(line)
@@ -81,7 +84,8 @@ class PrintStats:
         self.end_time_segment()
         self.start_time_segment()
 
-        time_per_command = self.data.print_time / gcode_number
+        gcode_number_after_pp = gcode_number - self.data.start_gcode_number
+        time_per_command = self.data.print_time / gcode_number_after_pp
         total_time = time_per_command * self.data.total_gcode_count
         sec_remaining = total_time - self.data.print_time
         min_remaining = round(sec_remaining / 60)
