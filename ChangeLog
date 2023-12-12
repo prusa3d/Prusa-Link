@@ -1,5 +1,8 @@
 # ChangeLog
 
+0.8.0alpha3
+    * Improve message shown when preparing a power panic recovery
+
 0.8.0alpha2
     * Fix active tool not re-setting to None when told to
     * Use printer mid-movement power panic recovery trick
