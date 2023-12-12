@@ -368,6 +368,7 @@ class FilePrinter(metaclass=MCSingleton):
         )
         with open(self.data.pp_file_path, "w", encoding="UTF-8") as pp_file:
             pp_file.write(json.dumps(data.dict()))
+            os.fsync(pp_file)  # make sure this gets written to storage
 
     def serial_message_number_changed(self, message_number):
         """Updates the pairing of the FW message number to gcode line number
