@@ -117,7 +117,8 @@ class FilePrinter(metaclass=MCSingleton):
         self.data.enqueued.clear()
         self.print_stats.start_time_segment()
         self.new_print_started_signal.send(self)
-        self.print_stats.track_new_print(self.data.file_path)
+        self.print_stats.track_new_print(self.data.file_path,
+                                         from_gcode_number)
         self.thread.start()
 
     def power_panic(self) -> None:
