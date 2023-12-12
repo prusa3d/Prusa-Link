@@ -247,10 +247,15 @@ class LCDPrinter(metaclass=MCSingleton):
             filename = Path(self.model.job.selected_file_path).name
             # MK3 cannot print semicolons, replace them with an approximation
             safe_filename = filename.replace(";", ",:")
-            conditions = {"filename": safe_filename}
+            rewinding = self.model.file_printer.recovering
+            conditions = {"filename": safe_filename, "rewinding": rewinding}
             if self.print_screen.conditions != conditions:
                 self.print_screen.conditions = conditions
-                self.carousel.set_text(self.print_screen, safe_filename)
+                if rewinding:
+                    self.carousel.set_text(
+                        self.print_screen, "Preparing recovery")
+                else:
+                    self.carousel.set_text(self.print_screen, safe_filename)
         else:
             self.carousel.disable(self.print_screen)
 
