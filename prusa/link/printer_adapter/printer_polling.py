@@ -543,7 +543,11 @@ class PrinterPolling:
         # If we're connected through USB and we know the SN, use that one
         serial_port = self.model.serial_adapter.using_port
         if serial_port is not None and serial_port.sn is not None:
-            return serial_port.sn
+            try:
+                if self._validate_serial_number(serial_port.sn):
+                    return serial_port.sn
+            except RuntimeError:
+                pass
         # Do not ask MK2.5 for its SN, it would break serial communications
         if self.printer.type in MK25_PRINTERS | {None}:
             return ""
