@@ -351,7 +351,7 @@ class LCDPrinter(metaclass=MCSingleton):
                     # Can't have a capital G because old FW doesn't understand
                     # What's a print command and what's not. It differentiated
                     # between them using `"G" in command` condition
-                    text = f"go: {local_ip}"
+                    text = f"Go: {local_ip}"
                 self.carousel.set_text(
                     self.wizard_screen, text, last_line_extra=10)
         else:
