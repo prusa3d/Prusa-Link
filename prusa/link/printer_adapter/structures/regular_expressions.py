@@ -64,14 +64,14 @@ REJECTION_REGEX = re.compile(
 
 BUSY_REGEX = re.compile("^echo:busy: processing$")
 ATTENTION_REGEX = re.compile("^echo:busy: paused for user$")
-PAUSE_PRINT_REGEX = re.compile(r"^// action:pause$")
-PAUSED_REGEX = re.compile(r"^// action:paused$")
-RESUME_PRINT_REGEX = re.compile("^// action:resume$")
-RESUMED_REGEX = re.compile("^// action:resumed$")
-CANCEL_REGEX = re.compile("^// action:cancel$")
-READY_REGEX = re.compile("^// action:ready$")
-NOT_READY_REGEX = re.compile("^// action:not_ready$")
-REPRINT_REGEX = re.compile("^// action:start$")
+PAUSE_PRINT_REGEX = re.compile(r"^//.?action:pause$")
+PAUSED_REGEX = re.compile(r"^//.?action:paused$")
+RESUME_PRINT_REGEX = re.compile("^//.?action:resume$")
+RESUMED_REGEX = re.compile("^//.?action:resumed$")
+CANCEL_REGEX = re.compile("^//.?action:cancel$")
+READY_REGEX = re.compile("^//.?action:ready$")
+NOT_READY_REGEX = re.compile("^//.?action:not_ready$")
+REPRINT_REGEX = re.compile("^//.?action:start$")
 # This girthy regexp tries to capture all error messages requiring printer
 # reset using M999 or manual button, with connect, only manual reset shall
 # be accepted
@@ -180,4 +180,4 @@ MMU_PROGRESS_REGEX = re.compile(
 
 RESET_ACTIVATED_REGEX = re.compile(r"^Reset mode activated$")
 RESET_DEACTIVATED_REGEX = re.compile(r"^Reset mode deactivated$")
-PP_RECOVER_REGEX = re.compile(r"^// action:uvlo_recovery_ready$")
+PP_RECOVER_REGEX = re.compile(r"^//.?action:uvlo_recovery_ready$")
