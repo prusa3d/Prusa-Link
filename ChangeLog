@@ -1,5 +1,8 @@
 # ChangeLog
 
+0.8.0alpha4
+    * Support newer "//action" without the space
+
 0.8.0alpha3
     * Improve message shown when preparing a power panic recovery
     * Fix print stats not ignoring the skipped part of gcode after PP
