@@ -2,6 +2,7 @@
 
 0.8.0alpha4
     * Support newer "//action" without the space
+    * Fix the new image missing the libcamera dependency
 
 0.8.0alpha3
     * Improve message shown when preparing a power panic recovery
