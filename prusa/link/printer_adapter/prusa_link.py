@@ -92,6 +92,7 @@ from .structures.regular_expressions import (
     NOT_READY_REGEX,
     PAUSE_PRINT_REGEX,
     POWER_PANIC_REGEX,
+    PP_AUTO_RECOVER_REGEX,
     PP_RECOVER_REGEX,
     PRINTER_BOOT_REGEX,
     READY_REGEX,
@@ -262,6 +263,8 @@ class PrusaLink:
             POWER_PANIC_REGEX, self.power_panic_observed)
         self.serial_parser.add_decoupled_handler(
             PP_RECOVER_REGEX, self.recover_from_pp)
+        self.serial_parser.add_decoupled_handler(
+            PP_AUTO_RECOVER_REGEX, self.recover_from_pp)
 
         self.print_stat_doubler = PrintStatDoubler(self.serial_parser,
                                                    self.printer_polling)
