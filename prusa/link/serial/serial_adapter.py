@@ -324,7 +324,7 @@ class SerialAdapter(metaclass=MCSingleton):
                     log.debug("Printer has most likely sent something, "
                               "which is not human readable")
                 else:
-                    log.debug("Printer says: '%s'", line)
+                    log.debug("Recv: %s", line)
                 self.serial_parser.decide(line)
 
     def write(self, message: bytes):
@@ -354,7 +354,7 @@ class SerialAdapter(metaclass=MCSingleton):
                     raise SerialException(
                         "Serial error when sending") from error
                 sent = True
-                log.debug("Sent to printer: %s", message)
+                log.debug("Send: %s", message)
 
     def disable_dtr_resets(self):
         """Disables DTR resets - should be used by a command handler"""
