@@ -15,6 +15,7 @@ from ..cameras.picamera_driver import PiCameraDriver
 from ..cameras.v4l2_driver import V4L2Driver
 from ..conditions import HW, use_connect_errors
 from ..config import Config, Settings
+from ..network_manager import NetworkComponent
 from ..sdk_augmentation.printer import CameraOnly
 from ..service_discovery import ServiceDiscovery
 from .command_queue import CommandQueue
@@ -37,6 +38,7 @@ class PrusaCam:
         self.cfg: Config = cfg
         log.info('Starting adapter for port %s', self.cfg.printer.port)
         self.settings: Settings = settings
+        self.network_component = NetworkComponent()
 
         use_connect_errors(self.settings.use_connect())
 
@@ -119,6 +121,7 @@ class PrusaCam:
         self.camera_governor.stop()
         self.command_queue.stop()
         self.printer.indicate_stop()
+        self.network_component.stop()
 
         log.debug("Stop signalled")
 
@@ -126,6 +129,7 @@ class PrusaCam:
             self.service_discovery.unregister()
             self.printer.wait_stopped()
             self.camera_governor.wait_stopped()
+            self.network_component.wait_stooped()
 
             log.debug("Remaining threads, that might prevent stopping:")
             for thread in enumerate_threads():

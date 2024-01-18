@@ -3,6 +3,7 @@ py-gcode-metadata
 pip>=22.2.0
 bidict~=0.22.1
 blinker~=1.5
+dasbus~=1.7
 extendparser~=0.3.1
 jinja2-template-info~=0.2.4
 lockfile~=0.12.2

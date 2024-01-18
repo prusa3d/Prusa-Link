@@ -38,8 +38,9 @@
                         <div class="container navigation">
                             <div class="row">
                                 <div class="col">
-                                    <a id="restore_btn" href={{ "/wizard/restore" | prefixed }} class="btn btn-outline-light full-width" onmouseover="changeIconImage('img/reset-icon-black.svg')" onmouseout="changeIconImage('img/reset-icon-white.svg')">Restore settings <img id="restore_icon" height="25" src="img/reset-icon-white.svg"></a>
+                                    <a id="restore_btn" href={{ "/wizard/restore" | prefixed }} class="btn btn-outline-light full-width" onmouseover="changeIconImage(this, 'img/reset-icon-black.svg')" onmouseout="changeIconImage(this, 'img/reset-icon-white.svg')">Restore settings <img id="restore_icon" height="25" src="img/reset-icon-white.svg"></a>
                                 </div>
+                                <div class="col-sm-auto"><a id="wifi_btn" href={{ "/wifi" | prefixed }} class="btn btn-outline-light full-width" onmouseover="changeIconImage(this, 'img/wifi-icon-dark.svg')" onmouseout="changeIconImage(this, 'img/wifi-icon-white.svg')">Setup wifi <img id="wifi_icon" height="25" src="img/wifi-icon-white.svg"></a></div>
                             <div class="col-sm-auto"><a href={{ "/wizard/no-auth" | prefixed }} class="btn btn-outline-light full-width">No authentication [DANGER] <img src="img/arrow-right.svg" height="16" /></a></div>
                             <div class="col-sm-auto"><a href={{ "/wizard/credentials" | prefixed }} class="btn btn-outline-light full-width">Setup credentials | NEXT <img src="img/arrow-right.svg" height="16" /></a></div>
                         </div>
@@ -51,8 +52,8 @@
 </div>{# /container #}
 
 <script>
-     function changeIconImage(img) {
-    document.getElementById('restore_icon').style.content = `url(${img})`;
+  function changeIconImage(element, img) {
+    element.querySelectorAll('img')[0].style.content = `url(${img})`;
   }
 </script>
 

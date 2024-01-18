@@ -411,7 +411,7 @@ def build_image():
     run_over_ssh("sudo apt-get install -y uuid")
     run_over_ssh("sudo apt-get install -y git python3-pip pigpio libcap-dev "
                  "libmagic1 libturbojpeg0 libatlas-base-dev libffi-dev "
-                 "cmake iptables python3-libcamera")
+                 "cmake iptables python3-libcamera python3-gi")
 
     print("Installing PrusaLink")
     # Caution: not tied to requirements-pi.txt

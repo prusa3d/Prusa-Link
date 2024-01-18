@@ -591,6 +591,80 @@ function create_bidirectional_transition(node, fn, params, intro) {
 function ensure_array_like(array_like_or_iterator) {
   return (array_like_or_iterator == null ? void 0 : array_like_or_iterator.length) !== void 0 ? array_like_or_iterator : Array.from(array_like_or_iterator);
 }
+function outro_and_destroy_block(block, lookup) {
+  transition_out(block, 1, 1, () => {
+    lookup.delete(block.key);
+  });
+}
+function update_keyed_each(old_blocks, dirty, get_key, dynamic, ctx, list, lookup, node, destroy, create_each_block2, next, get_context) {
+  let o = old_blocks.length;
+  let n = list.length;
+  let i = o;
+  const old_indexes = {};
+  while (i--)
+    old_indexes[old_blocks[i].key] = i;
+  const new_blocks = [];
+  const new_lookup = /* @__PURE__ */ new Map();
+  const deltas = /* @__PURE__ */ new Map();
+  const updates = [];
+  i = n;
+  while (i--) {
+    const child_ctx = get_context(ctx, list, i);
+    const key = get_key(child_ctx);
+    let block = lookup.get(key);
+    if (!block) {
+      block = create_each_block2(key, child_ctx);
+      block.c();
+    } else if (dynamic) {
+      updates.push(() => block.p(child_ctx, dirty));
+    }
+    new_lookup.set(key, new_blocks[i] = block);
+    if (key in old_indexes)
+      deltas.set(key, Math.abs(i - old_indexes[key]));
+  }
+  const will_move = /* @__PURE__ */ new Set();
+  const did_move = /* @__PURE__ */ new Set();
+  function insert2(block) {
+    transition_in(block, 1);
+    block.m(node, next);
+    lookup.set(block.key, block);
+    next = block.first;
+    n--;
+  }
+  while (o && n) {
+    const new_block = new_blocks[n - 1];
+    const old_block = old_blocks[o - 1];
+    const new_key = new_block.key;
+    const old_key = old_block.key;
+    if (new_block === old_block) {
+      next = new_block.first;
+      o--;
+      n--;
+    } else if (!new_lookup.has(old_key)) {
+      destroy(old_block, lookup);
+      o--;
+    } else if (!lookup.has(new_key) || will_move.has(new_key)) {
+      insert2(new_block);
+    } else if (did_move.has(old_key)) {
+      o--;
+    } else if (deltas.get(new_key) > deltas.get(old_key)) {
+      did_move.add(new_key);
+      insert2(new_block);
+    } else {
+      will_move.add(old_key);
+      o--;
+    }
+  }
+  while (o--) {
+    const old_block = old_blocks[o];
+    if (!new_lookup.has(old_block.key))
+      destroy(old_block, lookup);
+  }
+  while (n)
+    insert2(new_blocks[n - 1]);
+  run_all(updates);
+  return new_blocks;
+}
 function bind(component, name, callback) {
   const index = component.$$.props[name];
   if (index !== void 0) {
@@ -1360,12 +1434,12 @@ class Modal extends SvelteComponent {
 }
 function get_each_context(ctx, list, i) {
   const child_ctx = ctx.slice();
-  child_ctx[26] = list[i];
+  child_ctx[25] = list[i];
   return child_ctx;
 }
 function get_each_context_1(ctx, list, i) {
   const child_ctx = ctx.slice();
-  child_ctx[29] = list[i];
+  child_ctx[28] = list[i];
   const constants_0 = (
     /*probeDetails*/
     child_ctx[6].find(function func(...args) {
@@ -1373,13 +1447,13 @@ function get_each_context_1(ctx, list, i) {
         /*func*/
         ctx[10](
           /*connectionDetail*/
-          child_ctx[29],
+          child_ctx[28],
           ...args
         )
       );
     })
   );
-  child_ctx[30] = constants_0;
+  child_ctx[29] = constants_0;
   return child_ctx;
 }
 function create_else_block_3(ctx) {
@@ -1479,7 +1553,7 @@ function create_if_block_8(ctx) {
 function create_if_block_12(ctx) {
   let t_value = (
     /*connectionDetail*/
-    ctx[29].ssid + ""
+    ctx[28].ssid + ""
   );
   let t;
   return {
@@ -1492,7 +1566,7 @@ function create_if_block_12(ctx) {
     p(ctx2, dirty) {
       if (dirty[0] & /*connectionDetails*/
       2 && t_value !== (t_value = /*connectionDetail*/
-      ctx2[29].ssid + ""))
+      ctx2[28].ssid + ""))
         set_data(t, t_value);
     },
     d(detaching) {
@@ -1549,7 +1623,7 @@ function create_if_block_10(ctx) {
       /*click_handler*/
       ctx[9](
         /*probeDetail*/
-        ctx[30]
+        ctx[29]
       )
     );
   }
@@ -1602,14 +1676,14 @@ function create_each_block_1(ctx) {
   let div0;
   let t0_value = (
     /*connectionDetail*/
-    ctx[29].interface + ""
+    ctx[28].interface + ""
   );
   let t0;
   let t1;
   let div1;
   let t2_value = (
     /*connectionDetail*/
-    ctx[29].ip + ""
+    ctx[28].ip + ""
   );
   let t2;
   let t3;
@@ -1619,22 +1693,22 @@ function create_each_block_1(ctx) {
   let t5;
   let if_block0 = (
     /*connectionDetail*/
-    ctx[29].ssid && create_if_block_12(ctx)
+    ctx[28].ssid && create_if_block_12(ctx)
   );
   function select_block_type_1(ctx2, dirty) {
     if (
       /*probeDetail*/
-      ctx2[30].sameAsHost
+      ctx2[29].sameAsHost
     )
       return create_if_block_9;
     if (
       /*probeDetail*/
-      ctx2[30].reachable == true
+      ctx2[29].reachable == true
     )
       return create_if_block_10;
     if (
       /*probeDetail*/
-      ctx2[30].reachable == void 0
+      ctx2[29].reachable == void 0
     )
       return create_if_block_11;
     return create_else_block_2;
@@ -1685,15 +1759,15 @@ function create_each_block_1(ctx) {
     p(ctx2, dirty) {
       if (dirty[0] & /*connectionDetails*/
       2 && t0_value !== (t0_value = /*connectionDetail*/
-      ctx2[29].interface + ""))
+      ctx2[28].interface + ""))
         set_data(t0, t0_value);
       if (dirty[0] & /*connectionDetails*/
       2 && t2_value !== (t2_value = /*connectionDetail*/
-      ctx2[29].ip + ""))
+      ctx2[28].ip + ""))
         set_data(t2, t2_value);
       if (
         /*connectionDetail*/
-        ctx2[29].ssid
+        ctx2[28].ssid
       ) {
         if (if_block0) {
           if_block0.p(ctx2, dirty);
@@ -1749,17 +1823,17 @@ function create_if_block_3(ctx) {
   function select_block_type_3(ctx2, dirty) {
     if (
       /*ap*/
-      ctx2[26].state == 1
+      ctx2[25].state == 1
     )
       return create_if_block_4;
     if (
       /*ap*/
-      ctx2[26].state == 2
+      ctx2[25].state == 2
     )
       return create_if_block_5;
     if (
       /*ap*/
-      ctx2[26].state == 3
+      ctx2[25].state == 3
     )
       return create_if_block_6;
   }
@@ -1860,7 +1934,7 @@ function create_if_block(ctx) {
   function select_block_type_4(ctx2, dirty) {
     if (
       /*ap*/
-      ctx2[26].saved
+      ctx2[25].saved
     )
       return 0;
     return 1;
@@ -2004,8 +2078,8 @@ function create_if_block_1(ctx) {
   function select_block_type_5(ctx2, dirty) {
     if (
       /*ap*/
-      ctx2[26].state >= 1 && /*ap*/
-      ctx2[26].state <= 3
+      ctx2[25].state >= 1 && /*ap*/
+      ctx2[25].state <= 3
     )
       return create_if_block_2;
     return create_else_block;
@@ -2025,7 +2099,7 @@ function create_if_block_1(ctx) {
       attr(input0, "type", "hidden");
       attr(input0, "name", "ssid");
       input0.value = input0_value_value = /*ap*/
-      ctx[26].ssid;
+      ctx[25].ssid;
       attr(input1, "class", "btn btn-outline-light");
       attr(input1, "type", "submit");
       input1.value = "Forget";
@@ -2062,7 +2136,7 @@ function create_if_block_1(ctx) {
       }
       if (dirty[0] & /*aps*/
       1 && input0_value_value !== (input0_value_value = /*ap*/
-      ctx2[26].ssid)) {
+      ctx2[25].ssid)) {
         input0.value = input0_value_value;
       }
     },
@@ -2095,7 +2169,7 @@ function create_else_block(ctx) {
       attr(input0, "type", "hidden");
       attr(input0, "name", "ssid");
       input0.value = input0_value_value = /*ap*/
-      ctx[26].ssid;
+      ctx[25].ssid;
       attr(input1, "class", "btn btn-outline-light");
       attr(input1, "type", "submit");
       input1.value = "Connect";
@@ -2116,7 +2190,7 @@ function create_else_block(ctx) {
     p(ctx2, dirty) {
       if (dirty[0] & /*aps*/
       1 && input0_value_value !== (input0_value_value = /*ap*/
-      ctx2[26].ssid)) {
+      ctx2[25].ssid)) {
         input0.value = input0_value_value;
       }
     },
@@ -2146,7 +2220,7 @@ function create_if_block_2(ctx) {
       attr(input0, "type", "hidden");
       attr(input0, "name", "ssid");
       input0.value = input0_value_value = /*ap*/
-      ctx[26].ssid;
+      ctx[25].ssid;
       attr(input1, "class", "btn btn-outline-light");
       attr(input1, "type", "submit");
       input1.value = "Disconnect";
@@ -2167,7 +2241,7 @@ function create_if_block_2(ctx) {
     p(ctx2, dirty) {
       if (dirty[0] & /*aps*/
       1 && input0_value_value !== (input0_value_value = /*ap*/
-      ctx2[26].ssid)) {
+      ctx2[25].ssid)) {
         input0.value = input0_value_value;
       }
     },
@@ -2180,7 +2254,7 @@ function create_if_block_2(ctx) {
     }
   };
 }
-function create_each_block(ctx) {
+function create_each_block(key_1, ctx) {
   let div6;
   let div0;
   let img;
@@ -2190,9 +2264,9 @@ function create_each_block(ctx) {
   let span0;
   let t1_value = (
     /*ap*/
-    (ctx[26].ssid ? (
+    (ctx[25].ssid ? (
       /*ap*/
-      ctx[26].ssid
+      ctx[25].ssid
     ) : "[hidden]") + ""
   );
   let t1;
@@ -2205,7 +2279,7 @@ function create_each_block(ctx) {
   let span2;
   let t4_value = (
     /*ap*/
-    ctx[26].frequency + ""
+    ctx[25].frequency + ""
   );
   let t4;
   let t5;
@@ -2224,7 +2298,7 @@ function create_each_block(ctx) {
       /*click_handler_1*/
       ctx[11](
         /*ap*/
-        ctx[26]
+        ctx[25]
       )
     );
   }
@@ -2233,20 +2307,20 @@ function create_each_block(ctx) {
       /*click_handler_2*/
       ctx[12](
         /*ap*/
-        ctx[26]
+        ctx[25]
       )
     );
   }
   function select_block_type_2(ctx2, dirty) {
     if (
       /*ap*/
-      ctx2[26].state >= 1 && /*ap*/
-      ctx2[26].state <= 3
+      ctx2[25].state >= 1 && /*ap*/
+      ctx2[25].state <= 3
     )
       return create_if_block_3;
     if (
       /*ap*/
-      ctx2[26].saved
+      ctx2[25].saved
     )
       return create_if_block_7;
   }
@@ -2257,7 +2331,7 @@ function create_each_block(ctx) {
       /*click_handler_3*/
       ctx[13](
         /*ap*/
-        ctx[26]
+        ctx[25]
       )
     );
   }
@@ -2266,7 +2340,7 @@ function create_each_block(ctx) {
       /*click_handler_4*/
       ctx[14](
         /*ap*/
-        ctx[26]
+        ctx[25]
       )
     );
   }
@@ -2275,17 +2349,19 @@ function create_each_block(ctx) {
       /*click_handler_5*/
       ctx[15](
         /*ap*/
-        ctx[26]
+        ctx[25]
       )
     );
   }
   let if_block1 = (
     /*isApSelected*/
     ctx[2] && /*ap*/
-    ctx[26].ssid == /*selectedAp*/
+    ctx[25].ssid == /*selectedAp*/
     ctx[3].ssid && create_if_block(ctx)
   );
   return {
+    key: key_1,
+    first: null,
     c() {
       div6 = element("div");
       div0 = element("div");
@@ -2315,13 +2391,13 @@ function create_each_block(ctx) {
       t9 = space();
       attr(img, "height", "25");
       if (!src_url_equal(img.src, img_src_value = "img/" + /*ap*/
-      ctx[26].strength_icon))
+      ctx[25].strength_icon))
         attr(img, "src", img_src_value);
       attr(div0, "class", "col-auto");
       set_style(div0, "width", "60px");
       attr(div1, "class", "col text-break");
       attr(div2, "class", div2_class_value = "col-auto " + /*ap*/
-      (ctx[26].state == 2 ? "text-white" : ""));
+      (ctx[25].state == 2 ? "text-white" : ""));
       set_style(div2, "width", "150px");
       attr(div3, "class", "col-auto");
       set_style(div3, "width", "125px");
@@ -2330,6 +2406,7 @@ function create_each_block(ctx) {
       set_style(div4, "width", "150px");
       attr(div5, "class", "w-100");
       attr(div6, "class", "row border border-white border-top-0 pt-2 pb-2");
+      this.first = div6;
     },
     m(target, anchor) {
       insert(target, div6, anchor);
@@ -2373,14 +2450,14 @@ function create_each_block(ctx) {
       ctx = new_ctx;
       if (!current || dirty[0] & /*aps*/
       1 && !src_url_equal(img.src, img_src_value = "img/" + /*ap*/
-      ctx[26].strength_icon)) {
+      ctx[25].strength_icon)) {
         attr(img, "src", img_src_value);
       }
       if ((!current || dirty[0] & /*aps*/
       1) && t1_value !== (t1_value = /*ap*/
-      (ctx[26].ssid ? (
+      (ctx[25].ssid ? (
         /*ap*/
-        ctx[26].ssid
+        ctx[25].ssid
       ) : "[hidden]") + ""))
         set_data(t1, t1_value);
       if (current_block_type === (current_block_type = select_block_type_2(ctx)) && if_block0) {
@@ -2396,17 +2473,17 @@ function create_each_block(ctx) {
       }
       if (!current || dirty[0] & /*aps*/
       1 && div2_class_value !== (div2_class_value = "col-auto " + /*ap*/
-      (ctx[26].state == 2 ? "text-white" : ""))) {
+      (ctx[25].state == 2 ? "text-white" : ""))) {
         attr(div2, "class", div2_class_value);
       }
       if ((!current || dirty[0] & /*aps*/
       1) && t4_value !== (t4_value = /*ap*/
-      ctx[26].frequency + ""))
+      ctx[25].frequency + ""))
         set_data(t4, t4_value);
       if (
         /*isApSelected*/
         ctx[2] && /*ap*/
-        ctx[26].ssid == /*selectedAp*/
+        ctx[25].ssid == /*selectedAp*/
         ctx[3].ssid
       ) {
         if (if_block1) {
@@ -2495,7 +2572,8 @@ function create_content_slot(ctx) {
     c() {
       div = element("div");
       div.innerHTML = `To continue please connect to your local network<br/>
-    It&#39;s possible this will happen automatically`;
+    It&#39;s possible this will happen automatically<br/>
+    Once connected, this should close on its own`;
       attr(div, "class", "col");
       attr(div, "slot", "content");
     },
@@ -2510,45 +2588,6 @@ function create_content_slot(ctx) {
     }
   };
 }
-function create_navigation_slot(ctx) {
-  let div;
-  let button;
-  let mounted;
-  let dispose;
-  return {
-    c() {
-      div = element("div");
-      button = element("button");
-      button.textContent = "close modal";
-      attr(button, "class", "btn btn-outline-light");
-      button.autofocus = true;
-      attr(div, "class", "col");
-      attr(div, "slot", "navigation");
-    },
-    m(target, anchor) {
-      insert(target, div, anchor);
-      append(div, button);
-      button.focus();
-      if (!mounted) {
-        dispose = listen(
-          button,
-          "click",
-          /*click_handler_6*/
-          ctx[16]
-        );
-        mounted = true;
-      }
-    },
-    p: noop,
-    d(detaching) {
-      if (detaching) {
-        detach(div);
-      }
-      mounted = false;
-      dispose();
-    }
-  };
-}
 function create_fragment(ctx) {
   let h1;
   let t1;
@@ -2558,6 +2597,8 @@ function create_fragment(ctx) {
   let div7;
   let div6;
   let t13;
+  let each_blocks = [];
+  let each_1_lookup = /* @__PURE__ */ new Map();
   let t14;
   let h21;
   let t16;
@@ -2594,23 +2635,24 @@ function create_fragment(ctx) {
     /*aps*/
     ctx[0]
   );
-  let each_blocks = [];
+  const get_key = (ctx2) => (
+    /*ap*/
+    ctx2[25].ssid
+  );
   for (let i = 0; i < each_value.length; i += 1) {
-    each_blocks[i] = create_each_block(get_each_context(ctx, each_value, i));
+    let child_ctx = get_each_context(ctx, each_value, i);
+    let key = get_key(child_ctx);
+    each_1_lookup.set(key, each_blocks[i] = create_each_block(key, child_ctx));
   }
-  const out = (i) => transition_out(each_blocks[i], 1, 1, () => {
-    each_blocks[i] = null;
-  });
   connectform = new ConnectForm({ props: { ap: {} } });
   function modal_showModal_binding(value) {
-    ctx[17](value);
+    ctx[16](value);
   }
   function modal_dialog_binding(value) {
-    ctx[18](value);
+    ctx[17](value);
   }
   let modal_props = {
     $$slots: {
-      navigation: [create_navigation_slot],
       content: [create_content_slot],
       header: [create_header_slot]
     },
@@ -2742,29 +2784,13 @@ function create_fragment(ctx) {
           /*aps*/
           ctx2[0]
         );
-        let i;
-        for (i = 0; i < each_value.length; i += 1) {
-          const child_ctx = get_each_context(ctx2, each_value, i);
-          if (each_blocks[i]) {
-            each_blocks[i].p(child_ctx, dirty);
-            transition_in(each_blocks[i], 1);
-          } else {
-            each_blocks[i] = create_each_block(child_ctx);
-            each_blocks[i].c();
-            transition_in(each_blocks[i], 1);
-            each_blocks[i].m(div7, null);
-          }
-        }
         group_outros();
-        for (i = each_value.length; i < each_blocks.length; i += 1) {
-          out(i);
-        }
+        each_blocks = update_keyed_each(each_blocks, dirty, get_key, 1, ctx2, each_value, each_1_lookup, div7, outro_and_destroy_block, create_each_block, null, get_each_context);
         check_outros();
       }
       const modal_changes = {};
-      if (dirty[0] & /*redirectDialog*/
-      32 | dirty[1] & /*$$scope*/
-      4) {
+      if (dirty[1] & /*$$scope*/
+      2) {
         modal_changes.$$scope = { dirty, ctx: ctx2 };
       }
       if (!updating_showModal && dirty[0] & /*showRedirectModal*/
@@ -2803,7 +2829,6 @@ function create_fragment(ctx) {
       current = true;
     },
     o(local) {
-      each_blocks = each_blocks.filter(Boolean);
       for (let i = 0; i < each_blocks.length; i += 1) {
         transition_out(each_blocks[i]);
       }
@@ -2833,7 +2858,9 @@ function create_fragment(ctx) {
         detach(t20);
       }
       if_block.d(detaching);
-      destroy_each(each_blocks, detaching);
+      for (let i = 0; i < each_blocks.length; i += 1) {
+        each_blocks[i].d();
+      }
       destroy_component(connectform);
       if (detaching && div11_transition)
         div11_transition.end();
@@ -2867,7 +2894,7 @@ function instance($$self, $$props, $$invalidate) {
   let isApSelected = false;
   let selectedAp = {};
   let autoRedirect = new AutoRedirect(changeHost);
-  let showRedirectModal = true;
+  let showRedirectModal = false;
   let redirectDialog;
   function processAps(receivedAps) {
     if (isApSelected) {
@@ -2901,6 +2928,7 @@ function instance($$self, $$props, $$invalidate) {
     }
     if (autoRedirect.active && info["hotspot_on"] == false) {
       autoRedirect.disable();
+      $$invalidate(4, showRedirectModal = false);
     }
     updateProbeDetails(newIps);
     $$invalidate(1, connectionDetails = newConnectionDetails);
@@ -2988,7 +3016,6 @@ function instance($$self, $$props, $$invalidate) {
   const click_handler_5 = (ap) => {
     selectAp(ap);
   };
-  const click_handler_6 = () => redirectDialog.close();
   function modal_showModal_binding(value) {
     showRedirectModal = value;
     $$invalidate(4, showRedirectModal);
@@ -3014,7 +3041,6 @@ function instance($$self, $$props, $$invalidate) {
     click_handler_3,
     click_handler_4,
     click_handler_5,
-    click_handler_6,
     modal_showModal_binding,
     modal_dialog_binding
   ];
