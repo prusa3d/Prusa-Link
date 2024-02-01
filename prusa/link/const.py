@@ -99,6 +99,28 @@ CAMERA_REGISTER_TIMEOUT = 5
 TIME_FOR_SNAPSHOT = 1
 PRINT_END_TIMEOUT = 11
 KEEPALIVE_INTERVAL = 12
+# we don't know how long will the bed take to heat up :/
+PP_DEFAULT_EXTRA_WAIT = 360
+PP_MOVES_DELAY = 30
+PP_SAFETY_FACTOR = 1.5
+PP_DEFAULT_DEGREES = 80  # Value to use, if we don't know the bed temp
+
+
+TEMP_TO_HEAT_UP_TIME = {
+    0: 0,
+    10: 0,
+    20: 15,
+    30: 45,
+    40: 75,
+    50: 105,
+    60: 135,
+    70: 165,
+    80: 225,
+    90: 285,
+    100: 375,
+    110: 540,
+    120: 780,
+}
 
 # --- Lcd queue ---
 LCD_QUEUE_SIZE = 30
