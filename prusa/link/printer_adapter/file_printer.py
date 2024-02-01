@@ -223,6 +223,7 @@ class FilePrinter(metaclass=MCSingleton):
         if self.data.power_panic:
             return
 
+        os.remove(self.data.pp_file_path)
         self.do_instruction("M77")  # stop printer's print timer
 
         self.data.printing = False
@@ -365,6 +366,7 @@ class FilePrinter(metaclass=MCSingleton):
             connect_path=self.model.job.selected_file_path,
             message_number=message_number,
             gcode_number=gcode_number,
+            using_rip_port=self.model.serial_adapter.using_port.is_rpi_port,
         )
         with open(self.data.pp_file_path, "w", encoding="UTF-8") as pp_file:
             pp_file.write(json.dumps(data.dict()))

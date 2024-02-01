@@ -1,5 +1,6 @@
 """Contains functions that might be useful outside of their modules"""
 import datetime
+import json
 import logging
 import multiprocessing
 import os
@@ -10,16 +11,25 @@ import typing
 from hashlib import sha256
 from pathlib import Path
 from threading import Event, current_thread
-from time import time
+from time import sleep, time
 from typing import Callable
 
 import prctl  # type: ignore
 import pyudev  # type: ignore
 import unidecode
 
-from .const import MMU_SLOTS, SD_STORAGE_NAME, SUPPORTED_PRINTERS
+from .const import (
+    MMU_SLOTS,
+    PP_MOVES_DELAY,
+    SD_STORAGE_NAME,
+    SUPPORTED_PRINTERS,
+)
 from .multi_instance.const import VALID_SN_REGEX
-from .printer_adapter.structures.model_classes import IndividualSlot, Slot
+from .printer_adapter.structures.model_classes import (
+    IndividualSlot,
+    PPData,
+    Slot,
+)
 
 log = logging.getLogger(__name__)
 
@@ -315,3 +325,20 @@ def _parse_little_endian_uint32(match):
     str_data = match.group("data").replace(" ", "")
     data = bytes.fromhex(str_data)
     return struct.unpack("<I", data)[0]
+
+
+def power_panic_delay(cfg):
+    """Adds a dynamic delay depending on power panic details.
+    This is needed so the printer reaches a stable state before we reset it."""
+    pp_file_path = cfg.daemon.power_panic_file
+    if not os.path.exists(pp_file_path):
+        return
+
+    with open(pp_file_path, "r", encoding="UTF-8") as pp_file:
+        pp_data = PPData(**json.load(pp_file))
+        if pp_data.using_rip_port:
+            return
+
+        log.info("Waiting an extra %ss for printer to heat up "
+                 "and finish its moves", PP_MOVES_DELAY)
+        sleep(PP_MOVES_DELAY)

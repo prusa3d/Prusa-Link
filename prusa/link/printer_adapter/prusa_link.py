@@ -45,6 +45,7 @@ from ..util import (
     get_print_stats_gcode,
     is_potato_cpu,
     make_fingerprint,
+    power_panic_delay,
     prctl_name,
 )
 from .auto_telemetry import AutoTelemetry
@@ -120,7 +121,6 @@ class TransferCallbackState(Enum):
     PRINTER_IN_ATTENTION = 3
 
 
-# TODO: Can i somehow make subcontrollers to isolate some of the components?
 class PrusaLink:
     """
     This class is the controller for PrusaLink, more specifically the part
@@ -146,6 +146,9 @@ class PrusaLink:
         self.service_discovery = ServiceDiscovery(self.cfg.http.port)
 
         self.serial_parser = ThreadedSerialParser()
+
+        # Wait for power panic recovery to reach a stable state
+        power_panic_delay(cfg)
 
         self.serial = SerialAdapter(
             self.serial_parser,
