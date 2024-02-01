@@ -149,3 +149,4 @@ class PPData(BaseModel):
     connect_path: str
     message_number: int  # N number on the printer
     gcode_number: int  # From file printer
+    using_rip_port: bool = False
