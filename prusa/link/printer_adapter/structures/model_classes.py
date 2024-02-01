@@ -149,3 +149,5 @@ class PPData(BaseModel):
     connect_path: str
     message_number: int  # N number on the printer
     gcode_number: int  # From file printer
+    using_pins: bool = False
+    bed_temperature: Optional[int] = None

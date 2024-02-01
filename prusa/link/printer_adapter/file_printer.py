@@ -7,7 +7,9 @@ from threading import RLock
 from time import sleep
 from typing import Optional
 
+import gcode_metadata
 from blinker import Signal  # type: ignore
+from gcode_metadata import FDMMetaData
 
 from ..config import Config
 from ..const import PRINT_QUEUE_SIZE, QUIT_INTERVAL, STATS_EVERY, TAIL_COMMANDS
@@ -223,6 +225,7 @@ class FilePrinter(metaclass=MCSingleton):
         if self.data.power_panic:
             return
 
+        os.remove(self.data.pp_file_path)
         self.do_instruction("M77")  # stop printer's print timer
 
         self.data.printing = False
@@ -358,13 +361,31 @@ class FilePrinter(metaclass=MCSingleton):
             self.data.printing = False
             self.data.paused = False
 
+    def get_bed_temperture(self, file_path):
+        """Returns the bed temperature"""
+        metadata: FDMMetaData = gcode_metadata.get_metadata(file_path)
+        if metadata is None:
+            return None
+        if metadata.data.get("bed_temperature") is None:
+            if metadata.data.get("bed_temperature per tool") is None:
+                return None
+            bed_temperatures = metadata.data["bed_temperature per tool"]
+            bed_temperature = max(bed_temperatures)
+        else:
+            bed_temperature = metadata.data["bed_temperature"]
+        return bed_temperature
+
     def write_file_stats(self, file_path, message_number, gcode_number):
         """Writes the data needed for power panic recovery"""
+        bed_temperature = self.get_bed_temperture(file_path)
+
         data = PPData(
             file_path=file_path,
             connect_path=self.model.job.selected_file_path,
             message_number=message_number,
             gcode_number=gcode_number,
+            using_pins=self.model.serial_adapter.using_port.is_rpi_port,
+            bed_temperature=bed_temperature,
         )
         with open(self.data.pp_file_path, "w", encoding="UTF-8") as pp_file:
             pp_file.write(json.dumps(data.dict()))
