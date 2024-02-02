@@ -12,6 +12,10 @@ STATIC_DIR = abspath(
     os.environ.get('PRUSA_LINK_STATIC', join(str(files('prusa.link')),
                                              'static')))
 
+CAMERA_STATIC_DIR = abspath(
+    os.environ.get('PRUSA_LINK_STATIC', join(str(files('prusa.link')),
+                                             'static_cam')))
+
 
 class LinkWebApp(Application):
     """Extended Application object."""
@@ -25,7 +29,6 @@ class LinkWebApp(Application):
 app = application = LinkWebApp(__package__)
 app.keep_blank_values = 1
 app.auto_form = False  # only POST /api/files/<target> endpoints get HTML form
-app.document_root = STATIC_DIR
 
 app.secret_key = sha256(str(time()).encode()).hexdigest()
 app.auth_type = 'Digest'

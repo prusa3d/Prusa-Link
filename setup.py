@@ -60,18 +60,39 @@ class BuildStatic(Command):
     """Build static html files, need docker."""
     description = __doc__
     user_options: ClassVar[list[str]] = [
-            ('target-dir=', 't',
-             "target build directory (default: './prusa/link/static')"),
-            ]
+        (
+            'target-dir=',
+            't',
+            "target build directory (default: './prusa/link/static')",
+        ), (
+            'target-cam-dir=',
+            'c',
+            "target cam build directory (default: './prusa/link/static_cam')",
+        ), (
+            'use-prusalator=',
+            'p',
+            "Use Prusalator? (default: 'True')",
+        ),
+    ]
     target_dir = None
+    target_cam_dir = None
+    use_prusalator = "True"
 
     def initialize_options(self):
         self.target_dir = None
+        self.target_cam_dir = None
+        self.use_prusalator = "True"
 
     def finalize_options(self):
+        cwd = os.path.abspath(os.curdir)
         if self.target_dir is None:
-            cwd = os.path.abspath(os.curdir)
             self.target_dir = os.path.join(cwd, 'prusa', 'link', 'static')
+        if self.target_cam_dir is None:
+            self.target_cam_dir = os.path.join(
+                cwd, 'prusa', 'link', 'static_cam')
+        if self.use_prusalator is not None:
+            self.use_prusalator = (self.use_prusalator.lower()
+                                   in ['true', '1', 'yes'])
 
     def run(self):
         logging.info("building html documentation")
@@ -94,13 +115,14 @@ class BuildStatic(Command):
         copyfile(os.path.join(os.curdir, 'config.custom.js'),
                  os.path.join(cwd, 'config.custom.js'))
 
-        args = ('docker', 'run', '-t', '--rm', '-u',
-                f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd,
-                '-v', f"{cwd}:{cwd}",
-                'node:latest', 'sh', '-c',
-                'npm install && npm run words:extract')
-        if run(args, check=False).returncode:
-            raise IOError(1, 'docker failed')
+        if self.use_prusalator:
+            args = ('docker', 'run', '-t', '--rm', '-u',
+                    f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd,
+                    '-v', f"{cwd}:{cwd}",
+                    'node:latest', 'sh', '-c',
+                    'npm install && npm run words:extract')
+            if run(args, check=False).returncode:
+                raise IOError(1, 'docker failed')
 
         args = ('docker', 'run', '-t', '--rm', '-u',
                 f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd,
@@ -115,6 +137,21 @@ class BuildStatic(Command):
         # (python 3.7)
         copytree(os.path.join(cwd, 'dist'),
                  os.path.join(self.target_dir),
+                 dirs_exist_ok=True)
+
+        args = ('docker', 'run', '-t', '--rm', '-u',
+                f"{os.getuid()}:{getgrnam('docker').gr_gid}", '-w', cwd,
+                '-v', f"{cwd}:{cwd}",
+                '-e', f'GIT_COMMIT_HASH={git_commit_hash}',
+                'node:latest', 'sh', '-c',
+                'npm run build:cameras')
+        if run(args, check=False).returncode:
+            raise IOError(1, 'docker failed')
+
+        # pylint: disable=unexpected-keyword-arg
+        # (python 3.7)
+        copytree(os.path.join(cwd, 'dist'),
+                 os.path.join(self.target_cam_dir),
                  dirs_exist_ok=True)
 
 
@@ -136,7 +173,7 @@ setup(
     long_description=doc(),
     long_description_content_type="text/markdown",
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Natural Language :: English",
         "License :: Freeware",
         "Operating System :: POSIX :: Linux",

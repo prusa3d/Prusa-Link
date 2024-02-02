@@ -5,6 +5,7 @@ include requirements-pi.txt
 graft prusa/link/data
 graft prusa/link/templates
 graft prusa/link/static
+graft prusa/link/static_cam
 graft image_builder
 global-exclude *~
 global-exclude *.swp

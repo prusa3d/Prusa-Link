@@ -1,6 +1,7 @@
 """Contains implementation of the augmented Printer class from the SDK"""
 from logging import getLogger
 from pathlib import Path
+from threading import Event
 from time import sleep
 from typing import Any, Dict
 
@@ -27,7 +28,89 @@ from .command_handler import CommandHandler
 log = getLogger("connect-printer")
 
 
-class MyPrinter(SDKPrinter, metaclass=MCSingleton):
+class Base(SDKPrinter):
+    """An SDK Printer class, but only the base that sends snapshots to connect
+    This is further forked to a fully fledged Printer, or just a camera
+    triggering class"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.command_handler = CommandHandler(self.command)
+        self.snapshot_thread = Thread(target=self.snapshot_loop,
+                                      name="snapshot_sender",
+                                      daemon=True)
+
+    def start(self):
+        """Start SDK related threads.
+
+        * loop
+        """
+        self.snapshot_thread.start()
+
+    def indicate_stop(self):
+        """Passes the stop request to all SDK related threads.
+
+        * command handler
+        * loop
+        """
+        self.command_handler.stop()
+        self.camera_controller.stop()
+
+    def wait_stopped(self):
+        """Waits for the SDK threads to join
+
+        * loop
+        * snapshot_loop
+        """
+        self.snapshot_thread.join()
+
+    def connection_from_settings(self, settings):
+        """Loads connection details from the Settings class."""
+        self.api_key = settings.service_local.api_key
+        server = SDKPrinter.connect_url(settings.service_connect.hostname,
+                                        settings.service_connect.tls,
+                                        settings.service_connect.port)
+        token = settings.service_connect.token
+
+        self.set_connection(server, token)
+        use_connect_errors(settings.use_connect())
+
+    def snapshot_loop(self):
+        """Gives snapshot loop a consistent name with the rest of the app"""
+        prctl_name()
+        self.camera_controller.snapshot_loop()
+
+
+class CameraOnly(Base):
+    """An SDK Printer class but only for cameras, will probably need renaming
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._quit_evt = Event()
+        self.trigger_thread = Thread(target=self.trigger_loop, daemon=True)
+
+    def start(self):
+        """Start SDK related threads.
+        """
+        super().start()
+        self.trigger_thread.start()
+
+    def trigger_loop(self):
+        """Gives trigger loop a consistent name with the rest of the app"""
+        while not self._quit_evt.is_set():
+            self.camera_controller.tick()
+            self._quit_evt.wait(0.2)
+
+    def wait_stopped(self):
+        """Waits for the SDK threads to join
+        Waits for the additional trigger thread
+        """
+        super().wait_stopped()
+        self.trigger_thread.join()
+
+
+class MyPrinter(Base, metaclass=MCSingleton):
     """
     Overrides some methods of the SDK Printer to provide better support for
     PrusaLink
@@ -37,17 +120,13 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         super().__init__(*args, **kwargs)
         self.lcd_printer = LCDPrinter.get_instance()
         self.keepalive = Keepalive.get_instance()
+        self.loop_thread = Thread(target=self.loop, name="loop")
         self.download_thread = Thread(target=self.download_loop,
                                       name="download")
         self.model = Model.get_instance()
         self.nozzle_diameter = None
-        self.command_handler = CommandHandler(self.command)
-        self.loop_thread = Thread(target=self.loop, name="loop")
         self.__inotify_running = False
         self.inotify_thread = Thread(target=self.inotify_loop, name="inotify")
-        self.snapshot_thread = Thread(target=self.snapshot_loop,
-                                      name="snapshot_sender",
-                                      daemon=True)
 
     def parse_command(self, res):
         """Parse telemetry response.
@@ -73,19 +152,6 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         info["prusa_link"] = __version__  # TODO: remove later
         info["prusalink"] = __version__
         return info
-
-    def connection_from_settings(self, settings):
-        """Loads connection details from the Settings class."""
-        self.api_key = settings.service_local.api_key
-        server = SDKPrinter.connect_url(settings.service_connect.hostname,
-                                        settings.service_connect.tls,
-                                        settings.service_connect.port)
-        token = settings.service_connect.token
-
-        self.set_connection(server, token)
-        use_connect = settings.use_connect()
-        self.keepalive.set_use_connect(use_connect)
-        use_connect_errors(use_connect)
 
     def get_file_info(self, caller: Command) -> Dict[str, Any]:
         """Return file info for a given file
@@ -133,10 +199,10 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         * inotify
         """
         self.__inotify_running = True
+        super().start()
         self.loop_thread.start()
         self.inotify_thread.start()
         self.download_thread.start()
-        self.snapshot_thread.start()
 
     def indicate_stop(self):
         """Passes the stop request to all SDK related threads.
@@ -144,13 +210,13 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         * command handler
         * loop
         * inotify
+        * snapshot_loop
         """
         self.__inotify_running = False
-        self.download_mgr.stop_loop()
+        super().indicate_stop()
         self.stop_loop()
         self.queue.put(None)  # Trick the SDK into quitting fast
-        self.command_handler.stop()
-        self.camera_controller.stop()
+        self.download_mgr.stop_loop()
 
     def wait_stopped(self):
         """Waits for the SDK threads to join
@@ -158,11 +224,12 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         * command handler
         * loop
         * inotify
+        * snapshot_loop
         """
-        self.inotify_thread.join()
+        super().wait_stopped()
         self.loop_thread.join()
+        self.inotify_thread.join()
         self.download_thread.join()
-        self.snapshot_thread.join()
 
     def loop(self):
         """SDKPrinter.loop with thread name."""
@@ -183,11 +250,6 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         """Handler for download loop"""
         prctl_name()
         self.download_mgr.loop()
-
-    def snapshot_loop(self):
-        """Gives snapshot loop a consistent name with the rest of the app"""
-        prctl_name()
-        self.camera_controller.snapshot_loop()
 
     @property
     def type_string(self):

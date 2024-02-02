@@ -1,0 +1,61 @@
+{# vim:set softtabstop=2: -#}
+{% set title = 'Wizard' -%}
+{#% set refresh = 15 %#}
+{% include "_header.html" %}
+{% set active="welcome" %}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="align-center">Welcome to Prusa Camera Link configuration Wizard</h1>
+
+            {% if not wizard.daemon.prusa_link or not wizard.daemon.prusa_link.printer %}
+
+                <h2 class="align-center">PrusaLink is starting...</h2>
+
+                <a href={{ "/wizard" | prefixed }} class="btn btn-outline-light align-center" style="width: 200px;margin: 2em auto;display: block;">Refresh</a>
+
+            {% else %}
+
+                {% set printer = wizard.daemon.prusa_link.printer %}
+
+                <div class="img-center">
+                    <img src="img/camera.svg" height="200" width="200" />
+                </div>
+
+                <h2 class="align-center">
+                    Prusa Camera Link
+                </h2>
+
+                <div class="container navigation">
+                    <div class="row">
+                        <div class="col">
+                            <b>Great!</b> You can continue to set up your credentials, <b>or</b> you can restore settings from the <i>prusa_printer_settings.ini</i> file
+                        </div>
+                        <br/>
+                        <div class="col-xs-auto"></div>
+
+                        <div class="container navigation">
+                            <div class="row">
+                                <div class="col">
+                                    <a id="restore_btn" href={{ "/wizard/restore" | prefixed }} class="btn btn-outline-light full-width" onmouseover="changeIconImage(this, 'img/reset-icon-black.svg')" onmouseout="changeIconImage(this, 'img/reset-icon-white.svg')">Restore settings <img id="restore_icon" height="25" src="img/reset-icon-white.svg"></a>
+                                </div>
+                                <div class="col-sm-auto"><a id="wifi_btn" href={{ "/wifi" | prefixed }} class="btn btn-outline-light full-width" onmouseover="changeIconImage(this, 'img/wifi-icon-dark.svg')" onmouseout="changeIconImage(this, 'img/wifi-icon-white.svg')">Setup wifi <img id="wifi_icon" height="25" src="img/wifi-icon-white.svg"></a></div>
+                            <div class="col-sm-auto"><a href={{ "/wizard/no-auth" | prefixed }} class="btn btn-outline-light full-width">No authentication [DANGER] <img src="img/arrow-right.svg" height="16" /></a></div>
+                            <div class="col-sm-auto"><a href={{ "/wizard/credentials" | prefixed }} class="btn btn-outline-light full-width">Setup credentials | NEXT <img src="img/arrow-right.svg" height="16" /></a></div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>{# /col-md-12 so end of content #}
+    </div>{# /row #}
+</div>{# /container #}
+
+<script>
+  function changeIconImage(element, img) {
+    element.querySelectorAll('img')[0].style.content = `url(${img})`;
+  }
+</script>
+
+{% include "_wizard.html" %}
+{% include "_footer.html" %}

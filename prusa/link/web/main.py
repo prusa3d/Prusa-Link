@@ -14,7 +14,6 @@ from typing import BinaryIO, cast
 from gcode_metadata import get_metadata
 from pkg_resources import working_set  # type: ignore
 from poorwsgi import state
-from poorwsgi.digest import check_digest
 from poorwsgi.response import (
     EmptyResponse,
     FileResponse,
@@ -40,7 +39,7 @@ from ..printer_adapter.command_handlers import (
     update_prusalink,
 )
 from ..printer_adapter.job import Job, JobState
-from .lib.auth import REALM, check_api_digest, check_config
+from .lib.auth import check_api_digest, check_config, optional_auth
 from .lib.core import app
 from .lib.files import fill_printfile_data, gcode_analysis, get_os_path
 from .lib.view import package_to_api
@@ -79,7 +78,7 @@ def instance(req):
 
 @app.route('/', method=state.METHOD_GET)
 @check_config
-@check_digest(REALM)
+@optional_auth
 def index(req):
     """Return status page"""
     # pylint: disable=unused-argument
@@ -173,16 +172,20 @@ def api_info(req):
     printer = app.daemon.prusa_link.printer
 
     info = {
-        'name': printer_settings.name,
-        'location': printer_settings.location,
-        'farm_mode': printer_settings.farm_mode,
-        "network_error_chime": printer_settings.network_error_chime,
-        'nozzle_diameter': printer.nozzle_diameter,
-        'min_extrusion_temp': LimitsMK3S.min_temp_nozzle_e,
-        'serial': printer.sn,
         'hostname': service_connect.hostname,
         'port': service_connect.port,
     }
+
+    if not app.daemon.is_camera:
+        info.update({
+            'name': printer_settings.name,
+            'location': printer_settings.location,
+            'farm_mode': printer_settings.farm_mode,
+            "network_error_chime": printer_settings.network_error_chime,
+            'nozzle_diameter': printer.nozzle_diameter,
+            'min_extrusion_temp': LimitsMK3S.min_temp_nozzle_e,
+            'serial': printer.sn,
+        })
 
     return JSONResponse(**info)
 
@@ -193,84 +196,92 @@ def api_status(req):
     """Returns telemetric data about printer, job and transfer"""
     # pylint: disable=unused-argument
     # pylint: disable=too-many-locals
-    job = app.daemon.prusa_link.model.job
-    tel = app.daemon.prusa_link.model.latest_telemetry
-    transfer = app.daemon.prusa_link.printer.transfer
-    printer = app.daemon.prusa_link.printer
-    camera_configurator = app.daemon.prusa_link.camera_configurator
-    storage_dict = app.daemon.prusa_link.printer.fs.storage_dict
     status = {}
+    camera_configurator = app.daemon.prusa_link.camera_configurator
+    camera_controller = camera_configurator.camera_controller
 
-    # --- Storage ---
-    storage_list = [
-        {
-            "path": "/local",
-            "read_only": False,
-        },
-        {
-            "path": "/sdcard",
-            "read_only": True,
-        }]
+    if not app.daemon.is_camera:
+        job = app.daemon.prusa_link.model.job
+        tel = app.daemon.prusa_link.model.latest_telemetry
+        transfer = app.daemon.prusa_link.printer.transfer
+        printer = app.daemon.prusa_link.printer
+        storage_dict = app.daemon.prusa_link.printer.fs.storage_dict
 
-    for storage in storage_dict.values():
-        free_space = storage.get_space_info().get("free_space")
-        if storage.path_storage:
-            storage_ = storage_list[0]
-            storage_["free_space"] = free_space
-        else:
-            storage_ = storage_list[1]
-        storage_["name"] = storage.storage
-    status["storage"] = storage_list
+        # --- Storage ---
+        storage_list = [
+            {
+                "path": "/local",
+                "read_only": False,
+            },
+            {
+                "path": "/sdcard",
+                "read_only": True,
+            }]
 
-    # --- Printer ---
-    status_printer = {
-        "state": printer.state.value,
-        "temp_nozzle": tel.temp_nozzle,
-        "temp_bed": tel.temp_bed,
-        "axis_z": tel.axis_z,
-        "flow": tel.flow,
-        "speed": tel.speed,
-        "fan_hotend": tel.fan_hotend,
-        "fan_print": tel.fan_print,
-        "status_connect": conditions.connect_status(),
-        "status_printer": conditions.printer_status(),
-        "target_nozzle": tel.target_nozzle,
-        "target_bed": tel.target_bed,
-    }
+        for storage in storage_dict.values():
+            free_space = storage.get_space_info().get("free_space")
+            if storage.path_storage:
+                storage_ = storage_list[0]
+                storage_["free_space"] = free_space
+            else:
+                storage_ = storage_list[1]
+            storage_["name"] = storage.storage
+        status["storage"] = storage_list
 
-    # X and Y axes data are available only when the axes are not moving
-    if printer.state not in (State.PRINTING, State.BUSY):
-        status_printer["axis_x"] = tel.axis_x
-        status_printer["axis_y"] = tel.axis_y
-    status["printer"] = status_printer
+        # --- Printer ---
+        status_printer = {
+            "state": printer.state.value,
+            "temp_nozzle": tel.temp_nozzle,
+            "temp_bed": tel.temp_bed,
+            "axis_z": tel.axis_z,
+            "flow": tel.flow,
+            "speed": tel.speed,
+            "fan_hotend": tel.fan_hotend,
+            "fan_print": tel.fan_print,
+            "status_connect": conditions.connect_status(),
+            "status_printer": conditions.printer_status(),
+            "target_nozzle": tel.target_nozzle,
+            "target_bed": tel.target_bed,
+        }
+
+        # X and Y axes data are available only when the axes are not moving
+        if printer.state not in (State.PRINTING, State.BUSY):
+            status_printer["axis_x"] = tel.axis_x
+            status_printer["axis_y"] = tel.axis_y
+        status["printer"] = status_printer
+
+        # --- Job ---
+        if job.job_state is not JobState.IDLE:
+            progress = float(tel.progress or 0)
+            time_remaining = tel.time_remaining
+            time_printing = tel.time_printing
+
+            status_job = {
+                "id": job.job_id,
+                "progress": progress,
+                "time_remaining": time_remaining,
+                "time_printing": int(time_printing) if time_printing else None,
+            }
+            status["job"] = status_job
+
+        # --- Transfer ---
+        if transfer.in_progress:
+            status_transfer = {
+                "id": transfer.transfer_id,
+                "time_transferring": transfer.time_transferring(),
+                "progress": round(transfer.progress, 2),
+                "data_transferred": transfer.transferred,
+            }
+            status["transfer"] = status_transfer
 
     # --- Camera ---
     status["camera"] = {"id": camera_configurator.order[0]} \
         if camera_configurator.order else None
 
-    # --- Job ---
-    if job.job_state is not JobState.IDLE:
-        progress = float(tel.progress or 0)
-        time_remaining = tel.time_remaining
-        time_printing = tel.time_printing
-
-        status_job = {
-            "id": job.job_id,
-            "progress": progress,
-            "time_remaining": time_remaining,
-            "time_printing": int(time_printing) if time_printing else None,
-        }
-        status["job"] = status_job
-
-    # --- Transfer ---
-    if transfer.in_progress:
-        status_transfer = {
-            "id": transfer.transfer_id,
-            "time_transferring": transfer.time_transferring(),
-            "progress": round(transfer.progress, 2),
-            "data_transferred": transfer.transferred,
-        }
-        status["transfer"] = status_transfer
+    status.setdefault("printer", {}).update({
+        "cameras": len(list(camera_controller.cameras_in_order)),
+        "state": State.IDLE.value,
+    })
 
     return JSONResponse(**filter_null(status))
 

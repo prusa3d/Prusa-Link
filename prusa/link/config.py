@@ -309,7 +309,8 @@ class Settings(Get):
         self.service_local = Model(
             self.get_section('service::local',
                              (('enable', int, 1), ('username', str, ''),
-                              ('digest', str, ''), ('api_key', str, ''))))
+                              ('digest', str, ''), ('api_key', str, ''),
+                              ('auth', bool, True))))
 
         Settings.instance = self
 
@@ -333,14 +334,19 @@ class Settings(Get):
             self.set_section('service::connect', self.service_connect)
         self.set_section('service::local', self.service_local)
 
-    def is_wizard_needed(self):
+    def is_wizard_needed(self, camera_mode=False):
         """
         Is there a reason for the wizard to be shown?
         """
-        interested_in = [
-            self.printer["type"], self.service_local["username"],
-            self.service_local["digest"],
-        ]
+        interested_in = []
+
+        if self.service_local["auth"]:
+            interested_in.extend([
+                self.service_local["username"],
+                self.service_local["digest"],
+            ])
+        if not camera_mode:
+            interested_in.append(self.printer["type"])
         return not all(interested_in)
 
     def use_connect(self):

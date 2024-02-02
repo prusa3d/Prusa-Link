@@ -7,30 +7,38 @@ from wsgiref.simple_server import make_server
 from ..util import prctl_name
 from .lib.auth import REALM
 from .lib.classes import RequestHandler, ThreadingServer
-from .lib.core import app
+from .lib.core import CAMERA_STATIC_DIR, STATIC_DIR, app
 from .lib.wizard import Wizard
 from .link_info import link_info
 
 log = logging.getLogger(__name__)
 
-__import__('errors', globals=globals(), level=1)
-__import__('main', globals=globals(), level=1)
-__import__('wizard', globals=globals(), level=1)
-__import__('files', globals=globals(), level=1)
-__import__('files_legacy', globals=globals(), level=1)
-__import__('connection', globals=globals(), level=1)
-__import__('settings', globals=globals(), level=1)
-__import__('controls', globals=globals(), level=1)
-__import__('cameras', globals=globals(), level=1)
-
 
 def init_web_app(daemon):
     """Initializes the app object for the web server to use"""
+    __import__('wifi_wizard', globals=globals(), level=1)
+    __import__('cameras', globals=globals(), level=1)
+    __import__('settings', globals=globals(), level=1)
+    __import__('errors', globals=globals(), level=1)
+    __import__('main', globals=globals(), level=1)
+    if daemon.is_camera:
+        __import__('camera_wizard', globals=globals(), level=1)
+    else:
+        __import__('files', globals=globals(), level=1)
+        __import__('files_legacy', globals=globals(), level=1)
+        __import__('connection', globals=globals(), level=1)
+        __import__('controls', globals=globals(), level=1)
+        __import__('wizard', globals=globals(), level=1)
+
     app.cfg = daemon.cfg
     app.settings = daemon.settings
     app.debug = daemon.cfg.debug
 
     app.daemon = daemon
+    if daemon.is_camera:
+        app.document_root = CAMERA_STATIC_DIR
+    else:
+        app.document_root = STATIC_DIR
 
     service_local = app.settings.service_local
     if service_local.username and service_local.digest:

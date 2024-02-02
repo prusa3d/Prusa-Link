@@ -85,6 +85,7 @@ class Wizard:
         self.serial = None
 
         # auth
+        self.auth = True
         self.username = _app.settings.service_local.username
         self.digest = None
         self.restored_digest = False
@@ -178,19 +179,22 @@ class Wizard:
 
     def write_settings(self, settings):
         """Write settings configuration."""
-        # auth
-        settings.service_local.digest = self.digest
-        settings.service_local.username = self.username
+        settings.service_local.auth = self.auth
+        if self.auth:
+            # auth
+            settings.service_local.digest = self.digest
+            settings.service_local.username = self.username
 
         # network
         settings.network.hostname = self.net_hostname
 
         # printer
-        printer_type = PRINTER_CONF_TYPES.inverse[
-            self.daemon.prusa_link.printer.type]
-        settings.printer.type = printer_type
-        settings.printer.name = self.printer_name
-        settings.printer.location = self.printer_location
+        if not self.daemon.is_camera:
+            printer_type = PRINTER_CONF_TYPES.inverse[
+                self.daemon.prusa_link.printer.type]
+            settings.printer.type = printer_type
+            settings.printer.name = self.printer_name
+            settings.printer.location = self.printer_location
 
         # connect
         if not self.connect_skip:

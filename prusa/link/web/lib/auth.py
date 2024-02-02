@@ -2,6 +2,7 @@
 import logging
 from functools import wraps
 
+import poorwsgi
 from poorwsgi import state
 from poorwsgi.digest import check_credentials, hexdigest
 from poorwsgi.response import HTTPException, Response
@@ -26,6 +27,18 @@ PASSWORD_SPACES = \
 REPASSWORD = "New passwords are not same"
 OLD_DIGEST = "Password is not correct"
 SAME_DIGEST = "Nothing to change. All credentials are same as old ones"
+
+
+def optional_auth(func):
+    """Used for optional authentication of index page"""
+
+    @wraps(func)
+    def handler(req, *args, **kwargs):
+        if app.settings is None or app.settings.service_local["auth"]:
+            return poorwsgi.digest.check_digest(REALM)(func)(
+                req, *args, **kwargs)
+        return func(req, *args, **kwargs)
+    return handler
 
 
 def check_digest(req):
@@ -56,6 +69,9 @@ def check_api_digest(func):
 
     @wraps(func)
     def handler(req, *args, **kwargs):
+        if not app.settings.service_local["auth"]:
+            return func(req, *args, **kwargs)
+
         prusa_link = app.daemon.prusa_link
         if not prusa_link or not prusa_link.printer:
             raise HTTPException(state.HTTP_SERVICE_UNAVAILABLE)
