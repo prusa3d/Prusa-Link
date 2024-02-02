@@ -158,7 +158,8 @@ def file_data_generator(file_like, length):
 
 
 @app.route(r'/<printer_number:re:\d+>/<path:re:.*>', method=METHOD_ALL)
-def proxy(req, printer_number, path, use_proxy_headers=True):
+@app.route(r'/<printer_number:re:\d+>', method=METHOD_ALL)
+def proxy(req, printer_number, path="/", use_proxy_headers=True):
     """A reverse proxy to pass requests to IP/number to IP:printer_port
 
     @param use_proxy_headers: When re-directing to a single instance,
