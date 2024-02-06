@@ -52,14 +52,14 @@ Git and Pip are needed for installation, while pigpio is only needed if the
 RPi GPIO pins are to be used.
 
 ```bash
-sudo apt install git python3-pip pigpio libcap-dev libmagic1 libturbojpeg0 libatlas-base-dev python3-numpy libffi-dev
+sudo apt install git python3-pip pigpio libcap-dev libmagic1 libturbojpeg0 libatlas-base-dev python3-numpy libffi-dev libopenblas0
 
 # If you are using different distro (e.g. Ubuntu), use libturbojpeg library
 # instead of libturbojpeg0
 
 # for the Raspberry Pi camera module support
 # pre-installed on the newer Raspberry Pi OS images post September 2022
-sudo apt install -y python3-picamera2 --no-install-recommends
+sudo apt install -y python3-libcamera --no-install-recommends
 
 pip install PrusaLink
 
