@@ -16,7 +16,7 @@ wifi_nic_name=$(find /sys/class/net -follow -maxdepth 2 -name wireless 2> /dev/n
 if [ $? -eq 0 ] && [ -n "$wifi_nic_name" ]; then
     /sbin/iwconfig "$wifi_nic_name" power off
     if [ $? -eq 0 ]; then
-        printf "Turned off power management for $wifi_nic_name\n" > "$1"
+        printf "Turned off power management for $wifi_nic_name\n"
     fi
 fi
 

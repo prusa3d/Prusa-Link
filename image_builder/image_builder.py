@@ -17,8 +17,8 @@ KERNEL_URL_REGEX = re.compile(
     r"\d+\.\d+\.\d+-\d+)-armmp-lpae)_\d+\.\d+\.\d+-\d+_armhf.deb)")
 
 
-KERNEL_URL = ("http://security.debian.org/debian-security/pool/updates/main/"
-              "l/linux/linux-image-6.1.0-12-armmp-lpae_6.1.52-1_armhf.deb")
+KERNEL_URL = ("http://security.debian.org/debian-security/pool/updates/main/l/"
+              "linux/linux-image-6.1.0-17-armmp-lpae_6.1.69-1_armhf.deb")
 match = KERNEL_URL_REGEX.match(KERNEL_URL)
 
 if match is None:
@@ -31,8 +31,8 @@ INITRD_NAME = f"initrd.img-{KERNEL_VERSION_NAME}"
 VMLINUZ_NAME = f"vmlinuz-{KERNEL_VERSION_NAME}"
 
 IMAGE_URL = ("https://downloads.raspberrypi.org/raspios_lite_armhf/images/"
-             "raspios_lite_armhf-2023-10-10/2023-10-10-raspios-bookworm-armhf"
-             "-lite.img.xz")
+             "raspios_lite_armhf-2023-12-11/"
+             "2023-12-11-raspios-bookworm-armhf-lite.img.xz")
 
 DATA_FILE = "data.json"
 COMPRESSED_IMAGE_NAME = "source_image.img.xz"
@@ -394,7 +394,8 @@ def build_image():
     run_over_ssh("sudo systemctl disable hciuart.service")
 
     print("Disabling console over serial")
-    run_over_ssh("sudo raspi-config nonint do_serial 2")
+    run_over_ssh("sudo raspi-config nonint do_serial_hw 0")
+    run_over_ssh("sudo raspi-config nonint do_serial_cons 1")
 
     print("Changing hostname to prusalink")
     run_over_ssh("sudo raspi-config nonint do_hostname prusalink")
@@ -410,7 +411,7 @@ def build_image():
     # I guess we need this for the wi-fi setting to get applied normally
     run_over_ssh("sudo apt-get install -y uuid")
     run_over_ssh("sudo apt-get install -y git python3-pip pigpio libcap-dev "
-                 "libmagic1 libturbojpeg0 libatlas-base-dev libffi-dev "
+                 "libmagic1 libturbojpeg0 libffi-dev python3-numpy "
                  "cmake iptables python3-libcamera")
 
     print("Installing PrusaLink")
