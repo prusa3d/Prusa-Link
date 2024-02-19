@@ -575,7 +575,7 @@ def job_info(req):
     path = job.selected_file_path
     file_system = app.daemon.prusa_link.printer.fs
 
-    if path:
+    if path and job.job_state is not JobState.IDLE:
         file = file_system.get(path)
         storage = "sdcard" if job.from_sd else "local"
         os_path = file_system.get_os_path(path)
