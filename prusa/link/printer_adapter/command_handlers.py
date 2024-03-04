@@ -59,8 +59,8 @@ def check_update_prusalink():
 def update_prusalink():
     """Run the bash script to update PrusaLink and return output"""
     return check_output(
-        [executable, '-m', 'pip', 'install', '-U',
-         '--upgrade-strategy', 'only-if-needed', 'prusalink'],
+        [executable, '-m', 'pip', 'install', '-U', '--upgrade-strategy',
+         'only-if-needed', '--break-system-packages', 'prusalink'],
         stderr=STDOUT).decode()
 
 
