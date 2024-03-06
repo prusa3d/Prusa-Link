@@ -374,6 +374,17 @@ def build_image():
     run_command(f"cp -r {KERNEL_VERSION_NAME} "
                 f"{ROOTFS_MOUNT}/lib/modules/{KERNEL_VERSION_NAME}")
 
+    print("Write polkit override, so Link can modify wifi settings")
+    nm_rule_path = join(BUILDER_DATA_PATH, "01-prusalink-nm.rules")
+    polkit_rules = join(ROOTFS_MOUNT, "etc/polkit-1/rules.d/")
+    run_command(f"cp {nm_rule_path} {polkit_rules}")
+
+    print("Write dnsmasq ap0 settings")
+    nm_dnsmasq_path = join(BUILDER_DATA_PATH, "ap0-dnsmasq.conf")
+    dnsmasq_shared_path = join(ROOTFS_MOUNT,
+                               "etc/NetworkManager/dnsmasq-shared.d/")
+    run_command(f"cp {nm_dnsmasq_path} {dnsmasq_shared_path}")
+
     config_txt_path = join(BOOTFS_MOUNT, "config.txt")
     with open(config_txt_path, "a", encoding="utf-8") as config_txt:
         config_txt.write("dtoverlay=disable-bt\n")
