@@ -103,16 +103,15 @@ def api_connection_set(req):
     port = connect.get('port')
     tls = bool(connect.get('tls'))
 
-    connect_url = Printer.connect_url(hostname, tls, port)
-
     try:
         gethostbyname(hostname)
     except Exception as exc:  # pylint: disable=broad-except
         raise conditions.CantResolveHostname() from exc
-    url = printer.connect_url(hostname, tls, port)
+
+    connect_url = Printer.connect_url(hostname, tls, port)
 
     try:
-        with urlopen(f'{url}/info'):
+        with urlopen(f'{connect_url}/info'):
             pass
     except Exception as exc:  # pylint: disable=broad-except
         raise conditions.CantConnect() from exc
