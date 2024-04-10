@@ -1,4 +1,4 @@
-select = [
+lint.select = [
     "F",    # pyflakes
     "E",    # pycodestyle
     "W",    # pycodestyle
@@ -29,7 +29,7 @@ select = [
     "T20",  # flake8-print
     "PYI",  # flake8-pyi
     "PT",   # flake8-pytest-style
-    "Q",    # flake8-quotes
+    # "Q",    # flake8-quotes - error in version 0.3.5 https://github.com/astral-sh/ruff/issues/10724
     "RSE",  # flake8-raise
     "RET",  # flake8-return
     "SLF",  # flake8-self
@@ -48,7 +48,7 @@ select = [
     "NPY",  # NumPy-specific rules
     "RUF",  # Ruff-specific rules
 ]
-ignore = [
+lint.ignore = [
     "S101",     # Use of `assert` detected
     "S105",     # Possible hardcoded password assigned to: "TOKEN"
     "Q000",     # Single quotes found but double quotes preferred
