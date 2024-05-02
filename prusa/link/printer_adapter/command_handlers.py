@@ -686,10 +686,13 @@ class PPRecovery(Command):
                 raise CommandFailed("No PP file exists, cannot recover.")
 
             d_code = get_d3_code(*EEPROMParams.EEPROM_FILE_POSITION.value)
+            log.info("dcode EEPROM_FILE_POSITION value %s", d_code)
             match = self.do_matchable(d_code, D3_OUTPUT_REGEX).match()
+            log.info("Match %s", match)
             if match is None:
                 raise CommandFailed("Failed to get file position")
             line_number = _parse_little_endian_uint32(match)
+            log.info("line_number %s", line_number)
             self.serial_queue.set_message_number(line_number)
             if not self.file_printer.pp_exists:
                 log.warning("Cannot recover from power panic, "
@@ -700,11 +703,18 @@ class PPRecovery(Command):
             with open(self.model.file_printer.pp_file_path, "r",
                       encoding="UTF-8") as pp_file:
                 pp_data = PPData(**json.load(pp_file))
+                log.info("pp_data %s", pp_data)
 
                 gcode_number = (pp_data.gcode_number
                                 + (line_number - pp_data.message_number))
+                log.info("pp_data.gcode_number %s +(line_number %s - "
+                         "pp_data.message_number %s)",
+                         pp_data.gcode_number, line_number,
+                         pp_data.message_number)
                 path = pp_data.file_path
+                log.info("pp_data.file_path %s", pp_data.file_path)
                 connect_path = pp_data.connect_path
+                log.info("pp_data.connect_path %s", pp_data.connect_path)
 
             if not os.path.isfile(path):
                 raise CommandFailed(
