@@ -233,37 +233,6 @@ class SerialQueue(metaclass=MCSingleton):
 
     # --- Actual methods ---
 
-    def get_data(self, instruction):
-        """
-        Puts together binary data to send as for the given instruction.
-        The specific data might contain a message number and a checksum.
-        Also a newline gets appended at the end
-        :param instruction: Instruction to get data for
-        :return: binary data to send
-        """
-        data = instruction.message.encode("ASCII")
-        if instruction.to_checksum:
-            number_part = f"N{self.message_number} ".encode("ASCII")
-            to_checksum = number_part + data + b" "
-            checksum = self.get_checksum(to_checksum)
-            checksum_data = f"*{checksum}".encode("ASCII")
-            data = to_checksum + checksum_data
-        data += b"\n"
-        return data
-
-    @staticmethod
-    def get_checksum(data: bytes):
-        """
-        Goes over the given bytes and returns a checksum, which is
-        constructed by XORing each byte of data to a zero
-        :param data: data to make a checksum out of
-        :return: the checksum which is a number
-        """
-        checksum = 0
-        for byte in data:
-            checksum ^= byte
-        return checksum
-
     def _hookup_output_capture(self):
         """
         Instructions can capture output, this will register the
@@ -306,7 +275,7 @@ class SerialQueue(metaclass=MCSingleton):
                 if self.message_number == MAX_INT:
                     self._reset_message_number()
 
-            instruction.data = self.get_data(instruction)
+            instruction.fill_data(self.message_number)
 
         # If the instruction is M110 read the value it'll set and save it
         m110_match = M110_REGEX.match(instruction.message)
@@ -338,9 +307,20 @@ class SerialQueue(metaclass=MCSingleton):
         self.serial_adapter.write(self.current_instruction.data)
 
     def set_message_number(self, number):
-        """Sets the message number to the given value"""
+        """Sets the message number to the given value
+        Only for power panic recovery"""
         with self.write_lock:
             self.message_number = number
+
+    def replenish_history(self, messages: List[str]):
+        """Expects that the message number is set to the current instruction
+        ought to be sent next"""
+        from_number = self.message_number - (len(messages) - 1)
+        self.send_history.clear()
+        for i, message in enumerate(messages):
+            instruction = Instruction(message, to_checksum=True)
+            instruction.fill_data(from_number + i)
+            self.send_history.append(instruction)
 
     def _enqueue(self, instruction: Instruction, to_front=False):
         """Internal method for enqueuing when already locked"""
@@ -433,7 +413,8 @@ class SerialQueue(metaclass=MCSingleton):
                     instruction = Instruction(
                         instruction_from_history.message,
                         to_checksum=True,
-                        data=instruction_from_history.data)
+                        data=instruction_from_history.data,
+                        number=instruction_from_history.number)
                     self.recovery_list.append(instruction)
 
     def _confirmed(self, force=False):
