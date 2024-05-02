@@ -10,7 +10,13 @@ from typing import Optional
 from blinker import Signal  # type: ignore
 
 from ..config import Config
-from ..const import PRINT_QUEUE_SIZE, QUIT_INTERVAL, STATS_EVERY, TAIL_COMMANDS
+from ..const import (
+    HISTORY_LENGTH,
+    PRINT_QUEUE_SIZE,
+    QUIT_INTERVAL,
+    STATS_EVERY,
+    TAIL_COMMANDS,
+)
 from ..serial.helpers import enqueue_instruction, wait_for_instruction
 from ..serial.instruction import Instruction
 from ..serial.serial_parser import ThreadedSerialParser
@@ -138,6 +144,8 @@ class FilePrinter(metaclass=MCSingleton):
             the gcode number to start from. Implies power panic recovery -
             goes into pause when the correct gcode number is reached
         """
+        history_accumulator = []
+
         prctl_name()
         total_size = os.path.getsize(self.data.file_path)
         with open(self.data.file_path, "r", encoding='utf-8') as file:
@@ -161,11 +169,16 @@ class FilePrinter(metaclass=MCSingleton):
                 if (self.data.recovering
                         and from_gcode_number > self.data.gcode_number):
                     if gcode:
+                        history_from = from_gcode_number - HISTORY_LENGTH
+                        if self.data.gcode_number >= history_from:
+                            history_accumulator.append(gcode)
                         self.data.gcode_number += 1
                     continue
 
                 # Skip finished, pause here, remove the recovering flag
                 if self.data.recovering:
+                    history_accumulator.append(gcode)
+                    self.serial_queue.replenish_history(history_accumulator)
                     self.pause()
 
                 # This will make it PRINT_QUEUE_SIZE lines in front of what
