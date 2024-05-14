@@ -19,6 +19,7 @@ from prusa.connect.printer.const import Event as EventType
 from prusa.connect.printer.files import File
 from prusa.connect.printer.models import Sheet as SDKSheet
 
+from .. import __version__
 from ..camera_governor import CameraGovernor
 from ..cameras.picamera_driver import PiCameraDriver
 from ..cameras.v4l2_driver import V4L2Driver
@@ -167,6 +168,7 @@ class PrusaLink:
         self.keepalive.set_use_connect(self.settings.use_connect())
 
         self.printer = MyPrinter()
+        self.printer.software = __version__
 
         drivers: List[Type[CameraDriver]] = [V4L2Driver]
         if PiCameraDriver.supported:
