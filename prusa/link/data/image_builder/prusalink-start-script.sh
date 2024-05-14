@@ -5,11 +5,11 @@ iptables -t nat -I OUTPUT -p tcp -o lo -d localhost --dport 80 -j REDIRECT --to-
 
 set_up_port () {
    # Sets the baudrate and cancels the hangup at the end of a connection
-   stty -F "$1" 115200 -hupcl;
+   stty -F "$1" 115200 -hupcl || true
 }
 
 message() {
-   printf "M117 $2\n" > "$1"
+   printf "M117 $2\n" > "$1" || true
 }
 
 wifi_nic_name=$(find /sys/class/net -follow -maxdepth 2 -name wireless 2> /dev/null | cut -d / -f 5)
