@@ -1,5 +1,10 @@
 # ChangeLog
 
+0.8.0alpha5
+    * Fix power panic stuck at Resend
+    * Fix startup issues on RPi 5
+    * Wait a bit for printer to finish moves after waking up from power panic
+
 0.8.0alpha4
     * Support newer "//action" without the space
     * Fix the new image missing the libcamera dependency
