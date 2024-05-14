@@ -18,7 +18,7 @@ KERNEL_URL_REGEX = re.compile(
 
 
 KERNEL_URL = ("http://security.debian.org/debian-security/pool/updates/main/l/"
-              "linux/linux-image-6.1.0-17-armmp-lpae_6.1.69-1_armhf.deb")
+              "linux/linux-image-6.1.0-21-armmp-lpae_6.1.90-1_armhf.deb")
 match = KERNEL_URL_REGEX.match(KERNEL_URL)
 
 if match is None:
@@ -31,8 +31,8 @@ INITRD_NAME = f"initrd.img-{KERNEL_VERSION_NAME}"
 VMLINUZ_NAME = f"vmlinuz-{KERNEL_VERSION_NAME}"
 
 IMAGE_URL = ("https://downloads.raspberrypi.org/raspios_lite_armhf/images/"
-             "raspios_lite_armhf-2023-12-11/"
-             "2023-12-11-raspios-bookworm-armhf-lite.img.xz")
+             "raspios_lite_armhf-2024-03-15/"
+             "2024-03-15-raspios-bookworm-armhf-lite.img.xz")
 
 DATA_FILE = "data.json"
 COMPRESSED_IMAGE_NAME = "source_image.img.xz"
