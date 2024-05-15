@@ -1,10 +1,10 @@
 set_up_port () {
    # Sets the baudrate and cancels the hangup at the end of a connection
-   stty -F "$1" 115200 -hupcl;
+   stty -F "$1" 115200 -hupcl || true
 }
 
 message() {
-   printf "M117 $2\n" > "$1"
+   printf "M117 $2\n" > "$1" || true
 }
 
 set_up_port "/dev/ttyAMA0"
