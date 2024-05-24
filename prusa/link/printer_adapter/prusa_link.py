@@ -105,7 +105,7 @@ from .structures.regular_expressions import (
     TM_ERROR_LOG_REGEX,
 )
 from .telemetry_passer import TelemetryPasser
-from .updatable import Thread
+from .updatable import DeadManSwitch, Thread
 
 log = logging.getLogger(__name__)
 
@@ -248,6 +248,7 @@ class PrusaLink:
         self.command_queue = CommandQueue()
         self.special_commands = SpecialCommands(self.serial_parser,
                                                 self.command_queue)
+        self.file_syncer = DeadManSwitch(timeout=3, callable=os.sync)
 
         # Set Transfer callbacks
         self.printer.transfer.started_cb = self.transfer_activity_observed
@@ -382,6 +383,7 @@ class PrusaLink:
         self.command_queue.start()
         self.telemetry_passer.start()
         self.printer.start()
+        self.file_syncer.start()
 
         log.debug("Initialization done")
 
@@ -453,6 +455,7 @@ class PrusaLink:
         self.storage_controller.stop()
         self.keepalive.stop()
         self.lcd_printer.stop(fast)
+        self.file_syncer.stop()
         # This is for pylint to stop complaining, I'd like stop(fast) more
         if fast:
             self.ip_updater.stop()
@@ -485,6 +488,7 @@ class PrusaLink:
             self.storage_controller.wait_stopped()
             self.keepalive.wait_stopped()
             self.lcd_printer.wait_stopped()
+            self.file_syncer.wait_stopped()
             self.ip_updater.wait_stopped()
             self.camera_governor.wait_stopped()
             self.auto_telemetry.wait_stopped()
@@ -1092,6 +1096,7 @@ class PrusaLink:
 
     def transfer_activity_observed(self, *_) -> None:
         """Notifies PrusaLink components about a transfer happening"""
+        self.file_syncer.touch()
         self.telemetry_passer.activity_observed()
         self.lcd_printer.notify()
 
