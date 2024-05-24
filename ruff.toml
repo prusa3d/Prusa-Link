@@ -134,3 +134,5 @@ lint.ignore = [
     "RUF015",   # Prefer `next(iter(screen.lines()))` over single element slice
     "S104",     # Possible binding to all interfaces¸
 ]
+
+line-length = 79

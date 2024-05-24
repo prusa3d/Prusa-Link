@@ -1,6 +1,6 @@
 """/api/v1/files endpoint handlers"""
 import logging
-from os import listdir, replace, rmdir, unlink
+from os import fsync, listdir, replace, rmdir, unlink
 from os.path import basename, exists, isdir, join, split
 from pathlib import Path
 from shutil import rmtree
@@ -151,8 +151,11 @@ def file_info(req, storage, path=None):
             if child_type is not FileType.FOLDER.value:
                 # Fill specific data for print files within children list
                 if child_type is FileType.PRINT_FILE.value:
-                    child.update(fill_printfile_data(child_path, child_os_path,
-                                                     storage, simple=True))
+                    child.update(
+                        fill_printfile_data(child_path,
+                                            child_os_path,
+                                            storage,
+                                            simple=True))
 
                 # Fill specific data for firmware files within children list
                 elif child_type is FileType.FIRMWARE.value:
@@ -230,7 +233,8 @@ def file_upload(req, storage, path):
         part_path = partfilepath(filename)
 
         transfer = app.daemon.prusa_link.printer.transfer
-        transfer.start(TransferType.FROM_CLIENT, filename,
+        transfer.start(TransferType.FROM_CLIENT,
+                       filename,
                        to_print=print_after_upload)
         transfer.size = req.content_length
         transfer.start_ts = monotonic()
@@ -249,6 +253,8 @@ def file_upload(req, storage, path):
                     data = req.read(block)
                 else:
                     data = b''
+            temp.flush()
+            fsync(temp.fileno())
 
         transfer.type = TransferType.NO_TRANSFER
 
