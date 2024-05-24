@@ -3,7 +3,7 @@ from datetime import datetime
 from functools import wraps
 from hashlib import md5
 from io import FileIO
-from os import statvfs
+from os import fsync, statvfs
 from os.path import abspath, dirname, exists, join
 from time import sleep, time
 
@@ -433,6 +433,8 @@ class GCodeFile(FileIO):
         return size
 
     def close(self):
+        self.flush()
+        fsync(self.fileno())
         super().close()
         event_cb = app.daemon.prusa_link.printer.event_cb
         event_cb(Event.TRANSFER_FINISHED,
