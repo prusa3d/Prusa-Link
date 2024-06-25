@@ -1,5 +1,8 @@
 # ChangeLog
 
+0.8.0
+    * Rpi5 first boot fix
+
 0.8.0alpha5
     * Fix power panic stuck at Resend
     * Fix startup issues on RPi 5
