@@ -1,26 +1,19 @@
 # ChangeLog
 
-0.8.0alpha5
+0.8.0 (2024-06-27)
+    * Rpi5 first boot fix
     * Fix power panic stuck at Resend
     * Fix startup issues on RPi 5
     * Wait a bit for printer to finish moves after waking up from power panic
     * Sync files upon Upload finish
-
-0.8.0alpha4
     * Support newer "//action" without the space
     * Fix the new image missing the libcamera dependency
-
-0.8.0alpha3
     * Improve message shown when preparing a power panic recovery
     * Fix print stats not ignoring the skipped part of gcode after PP
     * Ensure power panic info is written to persistent storage
-
-0.8.0alpha2
     * Fix active tool not re-setting to None when told to
     * Use printer mid-movement power panic recovery trick
     * Fix the multi-instance proxy. Again
-
-0.8.0alpha1
     * Stop showing the tune menu after connecting to the printer
     * Use the 2023-10-10 Raspberry Pi OS base image for the image builder
     * Decrease the severity of web server access log messages
