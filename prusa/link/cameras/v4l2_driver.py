@@ -110,82 +110,83 @@ def read_capabilities(file_descriptor):
 
 def read_info(filename):
     """Reads device specific info needed for device initialization"""
-    file_descriptor = fopen(filename)
-    caps = read_capabilities(file_descriptor)
-    version_tuple = (
-        (caps.version & 0xFF0000) >> 16,
-        (caps.version & 0x00FF00) >> 8,
-        (caps.version & 0x0000FF),
-    )
-    version_str = ".".join(map(str, version_tuple))
-    device_capabilities = caps.capabilities
+    with fopen(filename) as file_descriptor:
+        caps = read_capabilities(file_descriptor)
+        version_tuple = (
+            (caps.version & 0xFF0000) >> 16,
+            (caps.version & 0x00FF00) >> 8,
+            (caps.version & 0x0000FF),
+        )
+        version_str = ".".join(map(str, version_tuple))
+        device_capabilities = caps.capabilities
 
-    formats = []
-    pixel_formats = set()
+        formats = []
+        pixel_formats = set()
 
-    fmt = v4l2.v4l2_fmtdesc()
-    fmt.type = STREAM_TYPE
-    for index in range(128):
-        fmt.index = index
+        fmt = v4l2.v4l2_fmtdesc()
+        fmt.type = STREAM_TYPE
+        for index in range(128):
+            fmt.index = index
+            try:
+                fcntl.ioctl(file_descriptor, v4l2.VIDIOC_ENUM_FMT, fmt)
+            except OSError as error:
+                if error.errno == errno.EINVAL:
+                    break
+                raise
+            try:
+                pixel_format = fmt.pixelformat
+            except ValueError:
+                continue
+            formats.append(
+                ImageFormat(
+                    type=STREAM_TYPE,
+                    flags=fmt.flags,
+                    description=fmt.description.decode(),
+                    pixel_format=pixel_format,
+                ),
+            )
+            pixel_formats.add(pixel_format)
+
+        focus_info = None
+
+        focus_auto = v4l2_queryctrl()
+        focus_auto.id = V4L2_CID_FOCUS_AUTO
+
+        focus_absolute = v4l2_queryctrl()
+        focus_absolute.id = V4L2_CID_FOCUS_ABSOLUTE
+
         try:
-            fcntl.ioctl(file_descriptor, v4l2.VIDIOC_ENUM_FMT, fmt)
-        except OSError as error:
-            if error.errno == errno.EINVAL:
-                break
-            raise
-        try:
-            pixel_format = fmt.pixelformat
-        except ValueError:
-            continue
-        formats.append(
-            ImageFormat(
-                type=STREAM_TYPE,
-                flags=fmt.flags,
-                description=fmt.description.decode(),
-                pixel_format=pixel_format,
-            ),
+            if fcntl.ioctl(file_descriptor, VIDIOC_QUERYCTRL, focus_auto) != 0:
+                raise RuntimeError("Unable to get focus auto")
+            if fcntl.ioctl(
+                    file_descriptor, VIDIOC_QUERYCTRL, focus_absolute) != 0:
+                raise RuntimeError("Unable to get focus absolute")
+        except (OSError, RuntimeError):
+            focus_info = FocusInfo(
+                available=False,
+                min=None,
+                max=None,
+                step=None,
+            )
+        else:
+            focus_info = FocusInfo(
+                available=True,
+                min=focus_absolute.minimum,
+                max=focus_absolute.maximum,
+                step=focus_absolute.step,
+            )
+
+        return Info(
+            driver=caps.driver.decode(),
+            card=caps.card.decode(),
+            bus_info=caps.bus_info.decode(),
+            version=version_str,
+            physical_capabilities=caps.capabilities,
+            capabilities=device_capabilities,
+            formats=formats,
+            frame_sizes=frame_sizes(file_descriptor, pixel_formats),
+            focus_info=focus_info,
         )
-        pixel_formats.add(pixel_format)
-
-    focus_info = None
-
-    focus_auto = v4l2_queryctrl()
-    focus_auto.id = V4L2_CID_FOCUS_AUTO
-
-    focus_absolute = v4l2_queryctrl()
-    focus_absolute.id = V4L2_CID_FOCUS_ABSOLUTE
-
-    try:
-        if fcntl.ioctl(file_descriptor, VIDIOC_QUERYCTRL, focus_auto) != 0:
-            raise RuntimeError("Unable to get focus auto")
-        if fcntl.ioctl(file_descriptor, VIDIOC_QUERYCTRL, focus_absolute) != 0:
-            raise RuntimeError("Unable to get focus absolute")
-    except (OSError, RuntimeError):
-        focus_info = FocusInfo(
-            available=False,
-            min=None,
-            max=None,
-            step=None,
-        )
-    else:
-        focus_info = FocusInfo(
-            available=True,
-            min=focus_absolute.minimum,
-            max=focus_absolute.maximum,
-            step=focus_absolute.step,
-        )
-
-    return Info(
-        driver=caps.driver.decode(),
-        card=caps.card.decode(),
-        bus_info=caps.bus_info.decode(),
-        version=version_str,
-        physical_capabilities=caps.capabilities,
-        capabilities=device_capabilities,
-        formats=formats,
-        frame_sizes=frame_sizes(file_descriptor, pixel_formats),
-        focus_info=focus_info,
-    )
 
 
 def fopen(path, write=False):
@@ -485,6 +486,9 @@ class V4L2Driver(CameraDriver):
         for device in devices:
             # Ignore picameras as they are handled by their own driver
             if IGNORED_BUS_INFO_REGEX.match(device.info.bus_info) is not None:
+                continue
+
+            if not device.info.formats:
                 continue
 
             media_device_path = get_media_device_path(device)
