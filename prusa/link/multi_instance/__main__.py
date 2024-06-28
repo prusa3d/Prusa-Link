@@ -45,6 +45,7 @@ def main_thread_exception(exc_type, exc_value, exc_traceback):
 
 def thread_exception(_):
     """Re-raise unhandled exceptions in threads to call sys.excepthook"""
+    # ruff: noqa: PLE0704
     raise  # pylint: disable=misplaced-bare-raise
 
 

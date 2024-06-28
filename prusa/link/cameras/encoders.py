@@ -149,10 +149,8 @@ class MJPEGEncoder(Encoder):
             ingest_format = v4l2.v4l2_format()
             ingest_format.type = v4l2.V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE
             ingest_format.fmt.pix_mp.pixelformat = v4l2.V4L2_PIX_FMT_YUYV
-            if fcntl.ioctl(file_descriptor, v4l2.VIDIOC_S_FMT, ingest_format):
-                return False
-
-            return True
+            return not fcntl.ioctl(file_descriptor, v4l2.VIDIOC_S_FMT,
+                                   ingest_format)
 
     def __init__(self):
         """Initialise V4L2 encoder"""
@@ -194,8 +192,7 @@ class MJPEGEncoder(Encoder):
         # This is a definition of a ctype array
         plane_proto = v4l2.v4l2_plane * 1
         buffer = v4l2.v4l2_buffer()
-        ctypes.memset(
-            ctypes.byref(buffer), 0, ctypes.sizeof(buffer))
+        ctypes.memset(ctypes.byref(buffer), 0, ctypes.sizeof(buffer))
         buffer.type = buffer_type
         buffer.memory = memory
         buffer.index = 0
@@ -216,8 +213,8 @@ class MJPEGEncoder(Encoder):
         reference_complexity = 1920 * 1080
         actual_complexity = self.width * self.height
         reference_bitrate = self.BITRATE_TABLE[self.quality] * 1000000
-        self._bitrate = int(reference_bitrate * sqrt(
-            actual_complexity / reference_complexity))
+        self._bitrate = int(reference_bitrate *
+                            sqrt(actual_complexity / reference_complexity))
 
         # pylint: disable=consider-using-with
         self.file_object = open(self.DEVICE_PATH, 'rb+', buffering=0)
@@ -333,27 +330,21 @@ class MJPEGEncoder(Encoder):
 
         fcntl.ioctl(self.file_object, v4l2.VIDIOC_QBUF, self.ingest_buffer)
 
-        select.select((self.file_object,), (), ())
+        select.select((self.file_object, ), (), ())
 
-        if fcntl.ioctl(self.file_object,
-                       v4l2.VIDIOC_DQBUF,
+        if fcntl.ioctl(self.file_object, v4l2.VIDIOC_DQBUF,
                        self.ingest_buffer):
             raise RuntimeError(
                 "Encoding failed - dequeueing the ingest buffer")
 
-        if fcntl.ioctl(self.file_object,
-                       v4l2.VIDIOC_DQBUF,
-                       self.coded_buffer):
+        if fcntl.ioctl(self.file_object, v4l2.VIDIOC_DQBUF, self.coded_buffer):
             raise RuntimeError(
                 "Encoding failed - de-queueing the coded buffer")
 
-        output = self.coded_mmap.read(
-            self.coded_buffer.m.planes[0].bytesused)
+        output = self.coded_mmap.read(self.coded_buffer.m.planes[0].bytesused)
         self.coded_mmap.seek(0)
 
-        if fcntl.ioctl(self.file_object,
-                       v4l2.VIDIOC_QBUF,
-                       self.coded_buffer):
+        if fcntl.ioctl(self.file_object, v4l2.VIDIOC_QBUF, self.coded_buffer):
             raise RuntimeError(
                 "Encoding failed - re-queueing the coded buffer")
 
@@ -384,11 +375,13 @@ class JPEGEncoder(Encoder):
         array_data = np.array(self.source_details.mmap, dtype=np.uint8)
 
         size = bytes_used
-        yuv_array = np.empty((size,), dtype=np.uint8)
+        yuv_array = np.empty((size, ), dtype=np.uint8)
         yuv_array[:size // 2] = array_data[0::2]
-        yuv_array[size // 2: size // 4 * 3] = array_data[1::4]
+        yuv_array[size // 2:size // 4 * 3] = array_data[1::4]
         yuv_array[size // 4 * 3:] = array_data[3::4]
-        return jpeg.encode_from_yuv(yuv_array, self.height, self.width,
+        return jpeg.encode_from_yuv(yuv_array,
+                                    self.height,
+                                    self.width,
                                     quality=self.quality_percent,
                                     jpeg_subsample=TJSAMP_422)
 
