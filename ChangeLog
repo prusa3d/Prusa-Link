@@ -1,5 +1,8 @@
 # ChangeLog
 
+0.8.1 (2024-06-28)
+    * Add a v4l2 workaround so broken camera handles are disqualified from scan
+
 0.8.0 (2024-06-27)
     * Rpi5 first boot fix
     * Fix power panic stuck at Resend
