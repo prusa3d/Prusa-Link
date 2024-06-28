@@ -51,6 +51,7 @@ def excepthook(exception_arguments, args, argv):
     # excepthook has the global exception set, besides even if we failed
     # here, it will literally affect nothing
     # pylint: disable=misplaced-bare-raise
+    # ruff: noqa: PLE0704
     raise
 
 

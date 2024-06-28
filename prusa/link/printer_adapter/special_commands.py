@@ -68,9 +68,7 @@ class SpecialCommands:
             return False
         if parts[-2] != self.menu_folder_sfn:
             return False
-        if parts[-1] not in self.commands:
-            return False
-        return True
+        return parts[-1] in self.commands
 
     def handle_file(self, _, match):
         """A file has been opened, should we pass along that info,
