@@ -256,9 +256,7 @@ class TelemetryPasser(metaclass=MCSingleton):
                 return False
             if Modifier.FILTER_PRINTING in modifiers:
                 return True
-        if Modifier.ACTIVATE_IDLE in modifiers:
-            return True
-        return False
+        return Modifier.ACTIVATE_IDLE in modifiers
 
     def reset_value(self, key_path):
         """Resets the value for filament_change_in and nothing else"""
