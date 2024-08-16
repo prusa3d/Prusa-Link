@@ -194,6 +194,11 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         prctl_name()
         self.camera_controller.snapshot_loop()
 
+    def timelapse_shot_loop(self):
+        """Gives timelapse loop a consistent name with the rest of the app"""
+        prctl_name()
+        self.camera_controller.timelapse_shot_loop()
+
     @property
     def type_string(self):
         """Gets the string version of the printer type"""
