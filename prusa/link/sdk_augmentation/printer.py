@@ -48,6 +48,9 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.snapshot_thread = Thread(target=self.snapshot_loop,
                                       name="snapshot_sender",
                                       daemon=True)
+        self.timelapse_thread = Thread(target=self.timelapse_shot_loop,
+                                       name="timelapse_shot_saver",
+                                       daemon=True)
 
     def parse_command(self, res):
         """Parse telemetry response.
@@ -137,6 +140,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.inotify_thread.start()
         self.download_thread.start()
         self.snapshot_thread.start()
+        self.timelapse_thread.start()
 
     def indicate_stop(self):
         """Passes the stop request to all SDK related threads.
@@ -163,6 +167,7 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.loop_thread.join()
         self.download_thread.join()
         self.snapshot_thread.join()
+        self.timelapse_thread.join()
 
     def loop(self):
         """SDKPrinter.loop with thread name."""
