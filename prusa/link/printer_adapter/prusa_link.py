@@ -627,8 +627,7 @@ class PrusaLink:
         """
         prctl_name()
         log.info("Triggering photo from command")
-        # TODO: Change for the timelapse trigger
-        self.layer_trigger("")
+        self.printer.camera_controller.timestamp_shot_trigger()
 
     def fw_pause_print(self) -> None:
         """
