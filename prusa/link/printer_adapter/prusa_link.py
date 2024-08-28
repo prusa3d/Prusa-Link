@@ -622,7 +622,7 @@ class PrusaLink:
 
     def fw_take_photo(self) -> None:
         """
-        Triggers aphoto from the camera and stores it through
+        Triggers a photo from the camera and stores it through
         another command so later a timelapse can be created
         """
         prctl_name()
