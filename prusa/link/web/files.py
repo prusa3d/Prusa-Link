@@ -11,6 +11,7 @@ from magic import Magic
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, Response
 from prusa.connect.printer.const import (
+    Event,
     FileType,
     Source,
     StorageType,
@@ -255,6 +256,12 @@ def file_upload(req, storage, path):
                     data = b''
             temp.flush()
             fsync(temp.fileno())
+
+        event_cb = app.daemon.prusa_link.printer.event_cb
+        event_cb(Event.TRANSFER_FINISHED,
+                 Source.WUI,
+                 destination=transfer.path,
+                 transfer_id=transfer.transfer_id)
 
         transfer.type = TransferType.NO_TRANSFER
 
