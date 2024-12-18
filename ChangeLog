@@ -1,5 +1,8 @@
 # ChangeLog
 
+0.8.2 (2024-12-18)
+    * Fix crc issue
+
 0.8.1 (2024-06-28)
     * Add a v4l2 workaround so broken camera handles are disqualified from scan
 
