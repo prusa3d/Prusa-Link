@@ -156,21 +156,21 @@ TM_CAL_END_REGEX = re.compile(r"^(TM: calibr\. failed!)|"
                               r"(Thermal Model settings:)$")
 
 MMU_MAJOR_REGEX = re.compile(
-    r"^echo:MMU[23]:<R0 A(?P<number>[0-9a-fA-F]+)\*..\.$")
+    r"^echo:MMU[23]:<R0 A(?P<number>[0-9a-fA-F]+)\*[0-9a-f]{1,2}\.$")
 MMU_MINOR_REGEX = re.compile(
-    r"^echo:MMU[23]:<R1 A(?P<number>[0-9a-fA-F]+)\*..\.$")
+    r"^echo:MMU[23]:<R1 A(?P<number>[0-9a-fA-F]+)\*[0-9a-f]{1,2}\.$")
 MMU_REVISION_REGEX = re.compile(
-    r"^echo:MMU[23]:<R2 A(?P<number>[0-9a-fA-F]+)\*..\.$")
+    r"^echo:MMU[23]:<R2 A(?P<number>[0-9a-fA-F]+)\*[0-9a-f]{1,2}\.$")
 MMU_BUILD_REGEX = re.compile(
-    r"^echo:MMU[23]:<R3 A(?P<number>[0-9a-fA-F]+)\*..\.$")
+    r"^echo:MMU[23]:<R3 A(?P<number>[0-9a-fA-F]+)\*[0-9a-f]{1,2}\.$")
 MMU_SLOT_REGEX = re.compile(
     r"^echo:MMU2:MMU2tool=(?P<slot>\d{1,2})$")
 # This can report an error or a command in progress,
 # we don't know before parsing
 MMU_Q0_RESPONSE_REGEX = re.compile(
     r"^echo:MMU[23]:<(?P<command>[A-Z][0-9a-fA-F]+) "
-    r"(?P<progress>[EFP]([0-9a-fA-F]{0,4}))\*..\.$")
-MMU_Q0_REGEX = re.compile(r"^echo:MMU[23]:>Q0\*..\.$")
+    r"(?P<progress>[EFP]([0-9a-fA-F]{0,4}))\*[0-9a-f]{1,2}\.$")
+MMU_Q0_REGEX = re.compile(r"^echo:MMU[23]:>Q0\*[0-9a-f]{1,2}\.$")
 
 MMU_PROGRESS_REGEX = re.compile(
     r"echo:MMU2:(?P<message>"
