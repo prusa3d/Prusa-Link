@@ -58,7 +58,10 @@ class IPCConsumer:
         """Stops the consumer"""
         self.running = False
         self.ipc_queue_thread.join()
-        self.ipc_queue.unlink()
+        try:
+            self.ipc_queue.unlink()
+        except posixmq.QueueError:
+            pass
 
     def _setup_queue(self):
         """Creates the pipe and sets the correct permissions"""
