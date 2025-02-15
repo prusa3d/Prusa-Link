@@ -1,4 +1,4 @@
-# Forward the port 80 to 8080 even on the loopback, so we van ping ourselves
+# Forward the port 80 to 8080 even on the loopback, so we can ping ourselves
 iptables -t nat -A PREROUTING -i wlan0 -p tcp --dport 80 -j REDIRECT --to-port 8080
 iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 80 -j REDIRECT --to-port 8080
 iptables -t nat -I OUTPUT -p tcp -o lo -d localhost --dport 80 -j REDIRECT --to-ports 8080
