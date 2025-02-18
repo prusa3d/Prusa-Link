@@ -22,6 +22,7 @@ __import__('connection', globals=globals(), level=1)
 __import__('settings', globals=globals(), level=1)
 __import__('controls', globals=globals(), level=1)
 __import__('cameras', globals=globals(), level=1)
+__import__('wifi_wizard', globals=globals(), level=1)
 
 
 def init_web_app(daemon):
