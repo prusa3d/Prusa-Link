@@ -34,6 +34,10 @@ IMAGE_URL = ("https://downloads.raspberrypi.org/raspios_lite_armhf/images/"
              "raspios_lite_armhf-2024-03-15/"
              "2024-03-15-raspios-bookworm-armhf-lite.img.xz")
 
+# to update pishrink.sh, grab the latest rev from here:
+#   https://github.com/Drewsif/PiShrink/commits/master/
+PISHRINK_REV = "3f3ba6a0b2208aafc774e8d1d30d9d25e3c7c4ff"
+
 DATA_FILE = "data.json"
 COMPRESSED_IMAGE_NAME = "source_image.img.xz"
 SOURCE_IMAGE_NAME = "source_image.img"
@@ -52,11 +56,11 @@ BUILDER_DATA_PATH = str(files("prusa.link") / "data" / "image_builder")
 
 RPI_EMULATOR_COMMAND = (
     "qemu-system-aarch64 "
+    "-nographic "
     "-machine raspi3b "
     "-cpu cortex-a72 "
     "-m 1G "
     "-smp 4 "
-    "-serial stdio "
     f"-dtb {DTB_NAME} "
     f"-kernel {KERNEL_NAME} "
     "-drive file=./{image_name},format=raw,if=sd "
@@ -107,10 +111,15 @@ def run_emulator(command):
     print("Waiting for the emulator to boot")
 
     success = False
-    for _ in range(EMULATOR_CONNECT_RETRIES):
+    for i in range(EMULATOR_CONNECT_RETRIES):
+        print("attempting to connect to emulator  (%d/%d)" % (i+1,EMULATOR_CONNECT_RETRIES))
+        if not emulator_thread.is_alive():
+            raise RuntimeError("The emulator thread has died")
+
         try:
             run_over_ssh("echo Connected to the emulator")
         except subprocess.CalledProcessError:
+            print("could not connect to emulator (yet), sleeping 1s") # note: this might take over a minute
             sleep(1)
             continue
         else:
@@ -195,7 +204,7 @@ def mount_image(image_name, expand=False):
     if expand:
         print(f"Resizing {image_name}")
         run_command(f"parted {loop_device} resizepart 2 100%")
-        run_command(f"e2fsck -f {loop_device}p2")
+        run_command(f"e2fsck -y -f {loop_device}p2")
         run_command(f"resize2fs {loop_device}p2")
 
     ensure_directory(BOOTFS_MOUNT)
@@ -272,8 +281,7 @@ def build_image():
         check_binary("pishrink.sh")
     except Exception:  # pylint: disable=broad-except
         print("pishrink is not installed, downloading")
-        run_command("wget https://raw.githubusercontent.com/"
-                    "Drewsif/PiShrink/master/pishrink.sh")
+        run_command("curl -SLO https://raw.githubusercontent.com/Drewsif/PiShrink/%s/pishrink.sh" % PISHRINK_REV)
         run_command("chmod +x pishrink.sh")
 
     # --- Get source image ---
@@ -336,7 +344,7 @@ def build_image():
 
         print("Run the initrd generating emulator")
         emulator_thread = run_emulator(emulator_command)
-        print("Generating vmlinuz and initrd")
+        print("Generating vmlinuz and initrd, this may take a few minutes")
         run_over_ssh(f"sudo dpkg -i /{KERNEL_FILE_NAME}")
         run_over_ssh("sudo poweroff", check=False)
         print("Waiting for the initrd generating emulator to shut down")
@@ -452,7 +460,8 @@ def build_image():
     emulator_thread.join(timeout=EMULATOR_SHUTDOWN_TIMEOUT)
 
     print("Shrinking image")
-    run_command(f"pishrink.sh -p {IMAGE_NAME} {SHRUNK_IMAGE_NAME} ")
+    # -n: don't check for new pishrink updates
+    run_command(f"./pishrink.sh -n {IMAGE_NAME} {SHRUNK_IMAGE_NAME} ")
 
     shrunk_loop = mount_image(SHRUNK_IMAGE_NAME)
 
