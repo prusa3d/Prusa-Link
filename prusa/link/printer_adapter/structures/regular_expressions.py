@@ -98,10 +98,15 @@ ATTENTION_REASON_REGEX = re.compile(
     r"(?P<tm_error>TM: error triggered!)")
 
 TEMPERATURE_REGEX = re.compile(
-    r"^T:(?P<ntemp>-?\d+\.\d+) /(?P<set_ntemp>-?\d+\.\d+) "
-    r"B:(?P<btemp>-?\d+\.\d+) /(?P<set_btemp>-?\d+\.\d+) "
-    r"T0:(-?\d+\.\d+) /(-?\d+\.\d+) @:(?P<tpwm>-?\d+) B@:(?P<bpwm>-?\d+) "
-    r"P:(?P<ptemp>-?\d+\.\d+)( A:(?P<atemp>-?\d+\.\d+))?$")
+    r"^T:(?P<ntemp>-?\d+\.\d+) /(?P<set_ntemp>-?\d+\.\d+)\s+"
+    r"B:(?P<btemp>-?\d+\.\d+) /(?P<set_btemp>-?\d+\.\d+)\s+"
+    r"T0:(-?\d+\.\d+) /(-?\d+\.\d+)\s+"
+    r"@:(?P<tpwm>-?\d+)\s+"
+    r"B@:(?P<bpwm>-?\d+)"
+    r"( P:(?P<ptemp>-?\d+\.\d+))?"
+    r"( A:(?P<atemp>-?\d+\.\d+))?"
+    r"$")
+
 POSITION_REGEX = re.compile(
     r"^X:(?P<x>-?\d+\.\d+) Y:(?P<y>-?\d+\.\d+) Z:(?P<z>-?\d+\.\d+) "
     r"E:(?P<e>-?\d+\.\d+) Count X: (?P<count_x>-?\d+\.\d+) "
