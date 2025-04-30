@@ -103,6 +103,7 @@ TEMPERATURE_REGEX = re.compile(
     r"T0:(-?\d+\.\d+) /(-?\d+\.\d+)\s+"
     r"@:(?P<tpwm>-?\d+)\s+"
     r"B@:(?P<bpwm>-?\d+)"
+    # 'ptemp' is optional due to legacy probe configurations where this value may not be reported.
     r"( P:(?P<ptemp>-?\d+\.\d+))?"
     r"( A:(?P<atemp>-?\d+\.\d+))?"
     r"$")
