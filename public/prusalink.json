@@ -1,0 +1,46 @@
+{
+    "os_list": [
+        {
+            "name": "PrusaLink",
+            "description": "Connect your Prusa 3D printer to your network",
+            "icon": "https://prusa3d.github.io/Prusa-Link/favicon.png/favicon.png",
+            "url": "https://github.com/prusa3d/Prusa-Link/releases/download/0.8.1/prusalink-0.8.1.img.xz",
+            "extract_size": 3448222208,
+            "extract_sha256": "cb1ce29d3f9c0363512a699fc414087419b187f917186a91d15fdd9a2720517d",
+            "image_download_size": 785930128,
+            "release_date": "2024-06-28",
+            "init_format": "systemd",
+            "devices": [
+                "pi1-32bit",
+                "pi2-32bit",
+                "pi3-32bit",
+                "pi3-64bit",
+                "pi4-32bit",
+                "pi4-64bit",
+                "pi5-32bit",
+                "pi5-64bit"
+            ]
+        },
+        {
+            "name": "PrusaLink Multi-Instance",
+            "description": "Connect multiple Prusa 3D printers to your network using a single machine",
+            "icon": "https://prusa3d.github.io/Prusa-Link/favicon.png/favicon.png",
+            "url": "https://github.com/prusa3d/Prusa-Link/releases/download/0.8.1/prusalink-multi-instance-0.8.1.img.xz",
+            "extract_size": 3452211712,
+            "extract_sha256": "085d5e5f4f57e3878cf6b1b67ab34a782c195243e88169044cae481a8d8db621",
+            "image_download_size": 789348620,
+            "release_date": "2024-06-28",
+            "init_format": "systemd",
+            "devices": [
+                "pi1-32bit",
+                "pi2-32bit",
+                "pi3-32bit",
+                "pi3-64bit",
+                "pi4-32bit",
+                "pi4-64bit",
+                "pi5-32bit",
+                "pi5-64bit"
+            ]
+        }
+    ]
+}
