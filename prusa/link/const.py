@@ -2,6 +2,7 @@
 Contains almost every constant for the printer communication part of
 PrusaLink
 """
+
 import uuid
 from importlib.resources import files  # type: ignore
 from os import path
@@ -9,7 +10,6 @@ from typing import List
 
 from bidict import bidict
 from packaging.version import Version
-
 from prusa.connect.printer.const import PrinterType, State
 
 from .printer_adapter.structures.model_classes import PrintMode, PrintState

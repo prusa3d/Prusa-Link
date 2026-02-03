@@ -1,4 +1,5 @@
 """/api/v1/files endpoint handlers"""
+
 import logging
 from os import fsync, listdir, replace, rmdir, unlink
 from os.path import basename, exists, isdir, join, split
@@ -9,7 +10,6 @@ from time import monotonic, sleep
 from magic import Magic
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, Response
-
 from prusa.connect.printer.const import (
     FileType,
     Source,

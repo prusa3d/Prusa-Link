@@ -1,5 +1,6 @@
 """Contains implementation of the class for keeping track of the sd status
 and its files"""
+
 import calendar
 import logging
 import re
@@ -10,7 +11,6 @@ from time import time
 from typing import Optional
 
 from blinker import Signal  # type: ignore
-
 from prusa.connect.printer.const import State
 
 from ...const import (

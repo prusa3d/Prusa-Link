@@ -3,11 +3,11 @@ Contains implementation of the  controller for interfacing with the storage
 "subsystem", which included the linux filesystem and sd card file management,
 now only sd card and storage tracking remain
 """
+
 import logging
 from typing import Optional
 
 from blinker import Signal  # type: ignore
-
 from prusa.connect.printer.files import File
 
 from ...printer_adapter.model import Model

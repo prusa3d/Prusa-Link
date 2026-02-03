@@ -16,4 +16,5 @@ disable=
     unsubscriptable-object,
     too-few-public-methods,
     too-many-instance-attributes,
-    too-many-public-methods
+    too-many-public-methods,
+    wrong-import-order

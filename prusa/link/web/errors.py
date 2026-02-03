@@ -32,7 +32,7 @@ def response_error(req, error: conditions.LinkError):
 @app.route('/error/internal-server-error')
 def internal_server_error(req):
     """Error handler 500 Internal Server Error."""
-    type_, exception, traceback = exc_info()  # pylint: disable=unused-variable
+    _, exception, traceback = exc_info()
     if req.path != '/error/internal-server-error':
         traceback = format_tb(traceback)
         log.error('\n%s%s', ''.join(traceback), repr(exception))
@@ -282,7 +282,7 @@ def gone(req):
 @app.route('/error/printer-unavailable')
 def service_unavailable(req):
     """Error handler for 503 Service Unavailable."""
-    type_, error, traceback = exc_info()  # pylint: disable=unused-variable
+    _, error, traceback = exc_info()
     traceback = format_tb(traceback)
     log.error('\n%s%s', ''.join(traceback), repr(error))
 

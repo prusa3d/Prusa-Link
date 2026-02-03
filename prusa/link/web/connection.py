@@ -5,7 +5,6 @@ from urllib.request import urlopen
 
 from poorwsgi import state
 from poorwsgi.response import JSONResponse
-
 from prusa.connect.printer import Printer
 from prusa.connect.printer.const import RegistrationStatus
 

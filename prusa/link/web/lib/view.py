@@ -1,4 +1,5 @@
 """Response generate module."""
+
 from importlib.resources import files
 from os.path import join
 
@@ -6,7 +7,6 @@ from jinja2 import Environment, FileSystemLoader, pass_context
 from jinja2.runtime import Context
 from jinja2_template_info import TemplateInfoExtension
 from poorwsgi import redirect
-
 from prusa.connect.printer.const import PrinterType
 
 from .core import app

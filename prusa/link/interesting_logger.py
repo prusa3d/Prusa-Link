@@ -38,6 +38,9 @@ class DecoySrcfile:
     def __eq__(self, other):
         return other in {__file__, self.original_logging_srcfile}
 
+    def __hash__(self):
+        return hash(self.original_logging_srcfile)
+
 
 # pylint: disable=protected-access
 logging._srcfile = DecoySrcfile()  # type: ignore

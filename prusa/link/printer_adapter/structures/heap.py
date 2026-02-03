@@ -38,6 +38,9 @@ class HeapItem:
             return self.heap_value == other.heap_value
         raise TypeError("HeapItems can be compared only with each other")
 
+    def __hash__(self):
+        return hash(self.heap_value)
+
 
 class MinHeap:
     """Min heap implementation with element adding and removing"""

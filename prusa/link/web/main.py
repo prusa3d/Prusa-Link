@@ -1,4 +1,5 @@
 """Main pages and core API"""
+
 import datetime
 import logging
 import shlex
@@ -22,7 +23,6 @@ from poorwsgi.response import (
     JSONResponse,
     Response,
 )
-
 from prusa.connect.printer import __version__ as sdk_version
 from prusa.connect.printer.const import Source, State
 from prusa.connect.printer.models import filter_null
@@ -306,6 +306,7 @@ def api_version(req):
         try:
             # pylint: disable=import-outside-toplevel
             # default in Rasbian OS
+            # ruff: noqa: PLC0415
             import lsb_release  # type: ignore
             lsb = lsb_release.get_distro_information()
             retval['system'].update(lsb)
@@ -615,7 +616,7 @@ def job_stop(req, job_id):
     if job.job_id != job_id:
         raise conditions.NotCurrentJob()
 
-    if printer_state == State.PRINTING or printer_state == State.PAUSED \
+    if printer_state in (State.PRINTING, State.PAUSED) \
             and job_data.job_state == JobState.IN_PROGRESS:
         command_queue.enqueue_command(StopPrint(source=Source.WUI))
     else:

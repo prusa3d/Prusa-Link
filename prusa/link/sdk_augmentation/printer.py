@@ -1,11 +1,11 @@
 """Contains implementation of the augmented Printer class from the SDK"""
+
 from logging import getLogger
 from pathlib import Path
 from time import sleep
 from typing import Any, Dict
 
 from gcode_metadata import FDMMetaData
-
 from prusa.connect.printer import Printer as SDKPrinter
 from prusa.connect.printer import const
 from prusa.connect.printer.command import Command

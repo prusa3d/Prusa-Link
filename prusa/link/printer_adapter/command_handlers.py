@@ -147,7 +147,7 @@ class TryUntilState(Command):
                 self.right_state.set()
 
         if self.state_manager.get_state() not in desired_states:
-            to_states = {desired: self.source for desired in desired_states}
+            to_states = dict.fromkeys(desired_states, self.source)
             self.state_manager.expect_change(
                 StateChange(command_id=self.command_id, to_states=to_states))
         state_list = list(map(lambda item: item.name, desired_states))

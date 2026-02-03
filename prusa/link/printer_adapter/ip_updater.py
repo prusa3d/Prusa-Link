@@ -1,14 +1,14 @@
 """Contains implementation of the IPUpdater class"""
+
 import logging
 import socket
 from time import time
 
 import pyric  # type: ignore
 from blinker import Signal  # type: ignore
+from prusa.connect.printer.conditions import CondState
 from pyric import pyw  # type: ignore
 from pyric.pyw import Card  # type: ignore
-
-from prusa.connect.printer.conditions import CondState
 
 from ..conditions import LAN
 from ..const import IP_UPDATE_INTERVAL, IP_WRITE_TIMEOUT

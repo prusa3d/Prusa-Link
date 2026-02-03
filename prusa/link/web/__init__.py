@@ -111,4 +111,4 @@ class WebServer:
         log.info('Server stopped')
 
 
-__all__ = ['init_web_app', 'WebServer']
+__all__ = ['WebServer', 'init_web_app']

@@ -4,6 +4,7 @@ Contains implementation of the SerialQueue and the MonitoredSerialQueue
 The idea was to separate the monitoring functionality to not clutter the queue
 and instruction management
 """
+
 import logging
 import re
 from collections import deque
@@ -12,7 +13,6 @@ from time import time
 from typing import Deque, List, Optional
 
 from blinker import Signal  # type: ignore
-
 from prusa.connect.printer.conditions import CondState
 
 from ..conditions import RPI_ENABLED, SERIAL
