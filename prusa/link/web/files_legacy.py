@@ -1,5 +1,6 @@
 """/api/files legacy endpoint handlers
 This is a deprecated legacy code"""
+
 import logging
 from base64 import decodebytes
 from os import makedirs, replace, unlink
@@ -21,7 +22,6 @@ from poorwsgi import state
 from poorwsgi.request import FieldStorage
 from poorwsgi.response import FileResponse, JSONResponse, Response
 from poorwsgi.results import hbytes
-
 from prusa.connect.printer import const
 from prusa.connect.printer.const import Source
 from prusa.connect.printer.download import forbidden_characters

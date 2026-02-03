@@ -3,6 +3,7 @@ The frequency at which we send telemetry is being determined by quite a
 lot of factore. This module takes care of monitoring, how often to
 send telemetry and what actual telemetry to send
 """
+
 import logging
 from copy import deepcopy
 from enum import Enum
@@ -10,11 +11,10 @@ from threading import Event, RLock, Thread
 from time import time
 from typing import Any
 
-from pydantic import BaseModel
-from pydantic.utils import deep_update
-
 from prusa.connect.printer import Printer
 from prusa.connect.printer.const import State
+from pydantic import BaseModel
+from pydantic.utils import deep_update
 
 from ..config import Settings
 from ..const import (

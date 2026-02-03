@@ -3,7 +3,6 @@
 from re import Match
 
 from blinker import Signal
-
 from prusa.connect.printer.const import Event, Source
 
 from ..const import MMU_ERROR_MAP, MMU_PROGRESS_MAP

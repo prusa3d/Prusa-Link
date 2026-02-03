@@ -4,7 +4,6 @@ from time import sleep, time
 
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, Response
-
 from prusa.connect.printer.camera import Camera
 from prusa.connect.printer.const import (
     TRIGGER_SCHEME_TO_SECONDS,

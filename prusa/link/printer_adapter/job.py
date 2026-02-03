@@ -1,10 +1,10 @@
 """Contains implementation of the Job class"""
+
 import logging
 import os
 import re
 
 from blinker import Signal  # type: ignore
-
 from prusa.connect.printer import Printer
 
 from ..const import (

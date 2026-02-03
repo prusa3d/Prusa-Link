@@ -12,7 +12,6 @@ from time import time
 from typing import Callable
 
 import unidecode
-
 from prusa.connect.printer import Printer
 from prusa.connect.printer.conditions import (
     API,
@@ -377,7 +376,7 @@ class LCDPrinter(metaclass=MCSingleton):
         progress_background = progress_background.ljust(bar_length)
 
         # Put percentage over the background
-        int_progress = int(round(progress))
+        int_progress = round(progress)
         string_progress = f"{int_progress}%"
         centered_progress = string_progress.center(bar_length)
         centering_index = centered_progress.index(string_progress)

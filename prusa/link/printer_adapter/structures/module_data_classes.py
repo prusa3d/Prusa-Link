@@ -2,11 +2,11 @@
 Decided that keeping module data externally will aid with gathering them for
 the api, definitions of which is what this module contains
 """
+
 from typing import Any, Deque, Dict, List, Optional, Set
 
-from pydantic import BaseModel
-
 from prusa.connect.printer.const import State
+from pydantic import BaseModel
 
 from .model_classes import JobState, SDState
 

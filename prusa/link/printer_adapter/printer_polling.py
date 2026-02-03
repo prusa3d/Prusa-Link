@@ -10,7 +10,6 @@ from datetime import timedelta
 from typing import List
 
 from packaging.version import Version
-
 from prusa.connect.printer import Printer
 from prusa.connect.printer.conditions import CondState
 

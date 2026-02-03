@@ -1,4 +1,5 @@
 """Check and modify an input dictionary using recursion"""
+
 from datetime import datetime
 from functools import wraps
 from hashlib import md5
@@ -14,7 +15,6 @@ from gcode_metadata import (
     get_preview,
 )
 from poorwsgi.request import Headers, Request
-
 from prusa.connect.printer import Filesystem
 from prusa.connect.printer.const import (
     GCODE_EXTENSIONS,
@@ -498,8 +498,7 @@ def get_last_modified(file_system: Filesystem) -> datetime:
     """Get last modified datetime"""
     last_updated = 0.0
     for storage in file_system.storage_dict.values():
-        if storage.last_updated > last_updated:
-            last_updated = storage.last_updated
+        last_updated = max(last_updated, storage.last_updated)
     last_modified = datetime.utcfromtimestamp(last_updated)
     return last_modified
 

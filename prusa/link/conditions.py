@@ -7,7 +7,6 @@ from typing import Optional
 
 from poorwsgi import state
 from poorwsgi.response import JSONResponse, TextResponse
-
 from prusa.connect.printer.conditions import (
     COND_TRACKER,
     HTTP,

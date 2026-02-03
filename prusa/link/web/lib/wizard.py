@@ -1,11 +1,11 @@
 """Configuration wizard library."""
+
 import logging
 from socket import gethostbyname
 from threading import Event
 from urllib.request import urlopen
 
 from poorwsgi.digest import hexdigest
-
 from prusa.connect.printer import CondState, Printer
 
 from ...conditions import UPGRADED

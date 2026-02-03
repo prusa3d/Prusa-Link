@@ -1,4 +1,5 @@
 """main() command line function."""
+
 import logging
 import sys
 import threading
@@ -12,7 +13,6 @@ from time import sleep
 
 from daemon import DaemonContext  # type: ignore
 from lockfile.pidlockfile import PIDLockFile  # type: ignore
-
 from prusa.connect.printer import __version__ as sdk_version
 
 from . import __version__ as link_version

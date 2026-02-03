@@ -35,7 +35,7 @@ lint.select = [
     "SLF",  # flake8-self
     "SIM",  # flake8-simplify
     # "TID",  # flake8-tidy-imports
-    "TCH",  # flake8-type-checking
+    # "TCH",  # flake8-type-checking
     "INT",  # flake8-gettext
     "ARG",  # flake8-unused-arguments
     # "PTH",  # flake8-use-pathlib
@@ -72,7 +72,6 @@ lint.ignore = [
     "SIM201",   # Use ` != ` instead of `not ==`
     "PT015",    # Assertion always fails, replace with `pytest.fail()`
     "SLF001",   # Private member accessed: `_running_loop`
-    "PT004",    # Fixture `gcode` does not return anything, add leading underscore
     "ISC003",   # Explicitly concatenated string should be implicitly concatenated
     "PLR0915",  # Too many statements (63 > 50)
     "ARG005",   # Unused lambda argument
@@ -115,18 +114,16 @@ lint.ignore = [
     "PIE804",   # Unnecessary `dict` kwargs
     "S603",     #`subprocess` call: check for execution of untrusted input
     "S310",     # Audit URL open for permitted schemes
-    "TCH001",   # Move application import
     "S701",     # By default, jinja2 sets `autoescape` to `False`
     "S324",     # Probable use of insecure hash functions in `hashlib`: `md5`,
     "PT018",    # Assertion should be broken down into multiple parts
     "A002",     # Argument `format` is shadowing a Python builtin
     "TRY201",   # Use `raise` without specifying exception name
-    "TRY302",   # Remove exception handler; error is immediately re-raised
+    "TRY203",   # Remove exception handler; error is immediately re-raised
     "Q003",     # Change outer quotes to avoid escaping inner quotes
     "PLC1901",  # `line == ""` can be simplified to `not line` as an empty string is falsey
     "B008",     # Do not perform function call `Event` in argument defaults
     "B020",     # Loop control variable `self` overrides iterable it iterates
-    "TCH003",   # Move standard library import `re` into a type-checking block
     "TRY401",   # Redundant exception object included in `logging.exception` call
     "PIE810",   # Call `startswith` once with a `tuple`
     "S607",     # Starting a process with a partial executable path

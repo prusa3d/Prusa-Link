@@ -1,4 +1,5 @@
 """Contains implementation of the Serial class"""
+
 import glob
 import logging
 import os
@@ -10,7 +11,6 @@ from time import sleep, time
 from typing import List, Optional
 
 from blinker import Signal  # type: ignore
-
 from prusa.connect.printer.conditions import CondState
 
 from ..conditions import SERIAL
@@ -381,6 +381,7 @@ class SerialAdapter(metaclass=MCSingleton):
 
         # pylint: disable=import-outside-toplevel
         # pylint: disable=import-error
+        # ruff: noqa: PLC0415
         import wiringpi  # type: ignore
         wiringpi.wiringPiSetupGpio()
         wiringpi.pinMode(RESET_PIN, wiringpi.OUTPUT)

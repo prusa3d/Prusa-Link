@@ -1,7 +1,7 @@
 """/api/printer endpoint handlers"""
+
 from poorwsgi import state
 from poorwsgi.response import JSONResponse
-
 from prusa.connect.printer.const import State
 
 from ..conditions import (
