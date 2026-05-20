@@ -192,22 +192,33 @@ class PrusaLink:
         self.printer.download_mgr.download_finished_cb \
             = self.download_finished_cb
 
-        # Bind command handlers
-        self.printer.set_handler(CommandType.GCODE, self.execute_gcode)
-        self.printer.set_handler(CommandType.PAUSE_PRINT, self.pause_print)
-        self.printer.set_handler(CommandType.RESET_PRINTER, self.reset_printer)
-        self.printer.set_handler(CommandType.UPGRADE, self.upgrade_link)
-        self.printer.set_handler(CommandType.RESUME_PRINT, self.resume_print)
-        self.printer.set_handler(CommandType.START_PRINT, self.start_print)
-        self.printer.set_handler(CommandType.STOP_PRINT, self.stop_print)
-        self.printer.set_handler(CommandType.SEND_JOB_INFO, self.job_info)
-        self.printer.set_handler(CommandType.LOAD_FILAMENT, self.load_filament)
-        self.printer.set_handler(CommandType.UNLOAD_FILAMENT,
-                                 self.unload_filament)
-        self.printer.set_handler(CommandType.SET_PRINTER_READY,
-                                 self.set_printer_ready)
-        self.printer.set_handler(CommandType.CANCEL_PRINTER_READY,
-                                 self.cancel_printer_ready)
+        # Bind command handlers. The same dict is exposed via
+        # ``command_handlers_by_name`` for the xBuddy WebSocket bridge,
+        # so HTTP and WS transports invoke identical Python handlers.
+        self._command_handlers_by_name: Dict[str, Any] = {
+            CommandType.GCODE.name: self.execute_gcode,
+            CommandType.PAUSE_PRINT.name: self.pause_print,
+            CommandType.RESET_PRINTER.name: self.reset_printer,
+            CommandType.UPGRADE.name: self.upgrade_link,
+            CommandType.RESUME_PRINT.name: self.resume_print,
+            CommandType.START_PRINT.name: self.start_print,
+            CommandType.STOP_PRINT.name: self.stop_print,
+            CommandType.SEND_JOB_INFO.name: self.job_info,
+            CommandType.LOAD_FILAMENT.name: self.load_filament,
+            CommandType.UNLOAD_FILAMENT.name: self.unload_filament,
+            CommandType.SET_PRINTER_READY.name: self.set_printer_ready,
+            CommandType.CANCEL_PRINTER_READY.name: self.cancel_printer_ready,
+        }
+        for cmd_type in (
+                CommandType.GCODE, CommandType.PAUSE_PRINT,
+                CommandType.RESET_PRINTER, CommandType.UPGRADE,
+                CommandType.RESUME_PRINT, CommandType.START_PRINT,
+                CommandType.STOP_PRINT, CommandType.SEND_JOB_INFO,
+                CommandType.LOAD_FILAMENT, CommandType.UNLOAD_FILAMENT,
+                CommandType.SET_PRINTER_READY,
+                CommandType.CANCEL_PRINTER_READY):
+            self.printer.set_handler(
+                cmd_type, self._command_handlers_by_name[cmd_type.name])
 
         self.serial_parser.add_decoupled_handler(
             PAUSE_PRINT_REGEX, lambda sender, match: self.fw_pause_print())
@@ -380,8 +391,20 @@ class PrusaLink:
         self.ip_updater.start()
         self.lcd_printer.start()
         self.command_queue.start()
+
+        # xBuddy WebSocket bridge - the default transport. The bridge
+        # is constructed only when transport=websocket; it stays
+        # unconnected until both Token and Fingerprint are available
+        # (set during registration / first telemetry).
+        self.xbuddy_bridge: Optional[Any] = None
+        self.xbuddy_subs: Optional[Any] = None
+        if self.settings.service_connect.transport == 'websocket':
+            self.printer.telemetry_disabled = True
+
         self.telemetry_passer.start()
         self.printer.start()
+
+        self._maybe_start_xbuddy_bridge()
 
         log.debug("Initialization done")
 
@@ -443,6 +466,7 @@ class PrusaLink:
                            == PrintState.SD_PRINTING)
 
         self.quit_evt.set()
+        self._stop_xbuddy_bridge()
         self.camera_governor.stop()
         self.file_printer.stop()
         self.command_queue.stop()
@@ -529,6 +553,96 @@ class PrusaLink:
 
         log.warning("Printer is printing another file.")
         return TransferCallbackState.ANOTHER_PRINTING
+
+    def command_handlers_by_name(self) -> Dict[str, Any]:
+        """SDK ``CommandType.name`` -> bound handler. The xBuddy
+        bridge dispatches inbound J-frames through this dict, so HTTP
+        and WS transports run the exact same handler chain."""
+        return dict(self._command_handlers_by_name)
+
+    def _maybe_start_xbuddy_bridge(self) -> None:
+        """Start the xBuddy WebSocket bridge when its prerequisites
+        are ready: transport=websocket, a Token, and a Fingerprint
+        derived from the printer's SN."""
+        if self.settings.service_connect.transport != 'websocket':
+            return
+        if self.xbuddy_bridge is not None:
+            return  # already started
+        token = self.settings.service_connect.token
+        fingerprint = getattr(self.printer, 'fingerprint', None)
+        if not token or not fingerprint:
+            log.debug(
+                "xbuddy_bridge waiting for token/fingerprint "
+                "(token=%s, fingerprint=%s)",
+                bool(token), bool(fingerprint))
+            return
+
+        # Late imports keep the websockets dependency optional for the
+        # http-only transport.
+        from ..xbuddy_bridge.client import XBuddyClient
+        from ..xbuddy_bridge.commands import CommandDispatcher
+        from ..xbuddy_bridge.subscriptions import BridgeSubscriptions
+        from ..xbuddy_bridge.transfer import TransferRouter
+        from ..xbuddy_bridge import protocol
+
+        transfer_router = TransferRouter()
+        # send_event is supplied to the dispatcher once the client
+        # exists; we bridge with a small closure that captures the
+        # client by reference.
+        client_holder: Dict[str, Any] = {}
+
+        def send_event(payload: dict) -> None:
+            client = client_holder.get('client')
+            if client is not None:
+                client.send_event(payload)
+
+        dispatcher = CommandDispatcher(
+            handlers=self._command_handlers_by_name,
+            send_event=send_event,
+        )
+
+        def on_frame(raw: bytes) -> None:
+            if not raw:
+                return
+            if raw[:1] == protocol.TYPE_TRANSFER_CHUNK.encode('ascii'):
+                transfer_router.handle_frame(raw)
+            else:
+                dispatcher.dispatch(raw)
+
+        client = XBuddyClient(
+            hostname=self.settings.service_connect.hostname,
+            port=self.settings.service_connect.port,
+            tls=self.settings.service_connect.tls,
+            token=token,
+            fingerprint=fingerprint,
+            on_frame=on_frame,
+            reconnect_min=self.cfg.xbuddy_bridge.reconnect_min,
+            reconnect_max=self.cfg.xbuddy_bridge.reconnect_max,
+            ping_interval=self.cfg.xbuddy_bridge.ping_interval,
+        )
+        client_holder['client'] = client
+
+        subs = BridgeSubscriptions(
+            client=client,
+            state_manager=self.state_manager,
+            job=self.job,
+        )
+        subs.attach()
+        self.telemetry_passer.set_bridge_publisher(subs.publish_telemetry)
+
+        client.start()
+        self.xbuddy_bridge = client
+        self.xbuddy_subs = subs
+        log.info("xbuddy_bridge started")
+
+    def _stop_xbuddy_bridge(self) -> None:
+        if self.xbuddy_subs is not None:
+            self.xbuddy_subs.detach()
+            self.xbuddy_subs = None
+        self.telemetry_passer.set_bridge_publisher(None)
+        if self.xbuddy_bridge is not None:
+            self.xbuddy_bridge.stop()
+            self.xbuddy_bridge = None
 
     # --- Command handlers ---
 
@@ -892,6 +1006,7 @@ class PrusaLink:
         if self.printer.sn is None:
             self.printer.sn = serial_number
             self.printer.fingerprint = make_fingerprint(serial_number)
+            self._maybe_start_xbuddy_bridge()
         elif self.printer.sn != serial_number:
             log.error("The new serial number is different from the old one!")
             raise RuntimeError(f"Serial numbers differ original: "
@@ -908,6 +1023,7 @@ class PrusaLink:
         self.keepalive.set_use_connect(use_connect)
         with open(self.cfg.printer.settings, 'w', encoding='utf-8') as ini:
             self.settings.write(ini)
+        self._maybe_start_xbuddy_bridge()
 
     def ip_updated(self, _) -> None:
         """On every ip change from ip updater sends a new info"""

@@ -1,5 +1,24 @@
 # ChangeLog
 
+UNRELEASED
+    * BREAKING: The default transport to Prusa Connect is now the xBuddy
+      WebSocket protocol (`transport = websocket` in
+      [service::connect]). HTTP polling remains available as a fallback
+      via `transport = http`, but is deprecated and will be removed once
+      cloud Prusa Connect drops HTTP polling.
+        - Upgrades pick up the new default automatically; no config edit
+          required.
+        - The Pi needs outbound WebSocket connectivity to the configured
+          Connect host (cloud Prusa Connect or a local Prusa Connect
+          Local instance). Sites with HTTPS-only egress proxies should
+          either allow WS upgrades or pin `transport = http` until the
+          proxy is updated.
+    * Add the xBuddy WebSocket bridge (`prusa.link.xbuddy_bridge`). It
+      translates telemetry, state, and job signals into xBuddy events
+      and dispatches inbound J/G/F frames through the same command
+      handlers the SDK uses, so HTTP and WS modes invoke identical
+      Python logic.
+
 0.8.2 (2024-12-18)
     * Fix crc issue
 

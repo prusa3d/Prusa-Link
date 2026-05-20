@@ -48,6 +48,11 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.snapshot_thread = Thread(target=self.snapshot_loop,
                                       name="snapshot_sender",
                                       daemon=True)
+        # When True, the SDK polling loop (command fetch + telemetry submit)
+        # is skipped because the xbuddy_bridge owns those legs of the wire.
+        # The registration helpers and the file download manager are
+        # unaffected and continue to run.
+        self.telemetry_disabled = False
 
     def parse_command(self, res):
         """Parse telemetry response.
@@ -129,11 +134,15 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
     def start(self):
         """Start SDK related threads.
 
-        * loop
+        * loop (skipped when ``telemetry_disabled`` is set, e.g. when
+          the xbuddy_bridge owns command fetch and telemetry submit)
         * inotify
         """
         self.__inotify_running = True
-        self.loop_thread.start()
+        if not self.telemetry_disabled:
+            self.loop_thread.start()
+        else:
+            log.info("SDK loop disabled; xbuddy_bridge owns the wire")
         self.inotify_thread.start()
         self.download_thread.start()
         self.snapshot_thread.start()
@@ -160,7 +169,8 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         * inotify
         """
         self.inotify_thread.join()
-        self.loop_thread.join()
+        if self.loop_thread.is_alive():
+            self.loop_thread.join()
         self.download_thread.join()
         self.snapshot_thread.join()
 

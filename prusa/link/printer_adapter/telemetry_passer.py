@@ -106,6 +106,17 @@ class TelemetryPasser(metaclass=MCSingleton):
 
         self.last_activity_at = time()
 
+        # When set, telemetry deltas are routed to the xBuddy WebSocket
+        # bridge instead of being enqueued on the SDK's HTTP polling
+        # queue. The daemon wires this up when transport=websocket.
+        self._bridge_publisher: Any = None
+
+    def set_bridge_publisher(self, publisher: Any) -> None:
+        """Install a callable ``publisher(dict)`` that the bridge uses
+        to publish telemetry deltas. Passing ``None`` reverts to the
+        SDK polling path."""
+        self._bridge_publisher = publisher
+
     def start(self):
         """Starts the passer"""
         self.thread.start()
@@ -160,7 +171,12 @@ class TelemetryPasser(metaclass=MCSingleton):
             log.debug("Wizard has not been completed yet -> no telemetry")
             return
 
-        if self.printer.queue.qsize() >= QUEUE_LENGTH_LIMIT:
+        if self._bridge_publisher is None \
+                and self.printer.queue.qsize() >= QUEUE_LENGTH_LIMIT:
+            # In SDK polling mode, back-pressure on the SDK's outbound
+            # queue means we should stop piling on. The WebSocket bridge
+            # has its own send buffer, so this check doesn't apply
+            # there.
             log.debug("SDK queue looks stuck -> no telemetry")
             return
 
@@ -172,7 +188,10 @@ class TelemetryPasser(metaclass=MCSingleton):
             telemetry = self._to_send
             self._to_send = {}
 
-        self.printer.telemetry(**telemetry)
+        if self._bridge_publisher is not None:
+            self._bridge_publisher(telemetry)
+        else:
+            self.printer.telemetry(**telemetry)
 
     def _get_filtered_paths(self):
         state = self.model.state_manager.current_state

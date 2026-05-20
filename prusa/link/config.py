@@ -303,7 +303,29 @@ class Settings(Get):
                     ('tls', bool, True),
                     ('port', int,
                      0),  # 0 means 443 with tls, or 80 without tls
-                    ('token', str, ''))))
+                    ('token', str, ''),
+                    # Transport used to talk to Prusa Connect / Connect Local.
+                    # New default is the xBuddy WebSocket bridge; "http"
+                    # falls back to the legacy SDK HTTP polling path and is
+                    # slated for removal once cloud drops HTTP support.
+                    ('transport', str, 'websocket'),
+                )))
+        if self.service_connect['transport'] not in ('websocket', 'http'):
+            raise ValueError(
+                f"Invalid [service::connect] transport: "
+                f"{self.service_connect['transport']!r}; "
+                f"expected 'websocket' or 'http'")
+
+        # [xbuddy_bridge] - tuning for the WebSocket transport. Connection
+        # target inherits hostname/port/tls/token from [service::connect].
+        self.xbuddy_bridge = Model(
+            self.get_section(
+                'xbuddy_bridge',
+                (
+                    ('reconnect_min', int, 1),
+                    ('reconnect_max', int, 60),
+                    ('ping_interval', int, 30),
+                )))
 
         # [service::local]
         self.service_local = Model(
@@ -332,6 +354,8 @@ class Settings(Get):
         if not connect_skip:
             self.set_section('service::connect', self.service_connect)
         self.set_section('service::local', self.service_local)
+        if hasattr(self, 'xbuddy_bridge'):
+            self.set_section('xbuddy_bridge', self.xbuddy_bridge)
 
     def is_wizard_needed(self):
         """
