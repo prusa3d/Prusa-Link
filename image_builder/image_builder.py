@@ -1,5 +1,6 @@
 """Following a writeup from here:
 https://blog.grandtrunk.net/2023/03/raspberry-pi-4-emulation-with-qemu/"""
+
 import argparse
 import os
 import re
@@ -14,11 +15,14 @@ from urllib.request import urlretrieve
 
 KERNEL_URL_REGEX = re.compile(
     r".*/(?P<file_name>linux-image-(?P<version_name>(?P<version>"
-    r"\d+\.\d+\.\d+-\d+)-armmp-lpae)_\d+\.\d+\.\d+-\d+_armhf.deb)")
+    r"\d+\.\d+\.\d+-\d+)-armmp-lpae)_\d+\.\d+\.\d+-\d+_armhf.deb)",
+)
 
 
-KERNEL_URL = ("http://security.debian.org/debian-security/pool/updates/main/l/"
-              "linux/linux-image-6.1.0-21-armmp-lpae_6.1.90-1_armhf.deb")
+KERNEL_URL = (
+    "http://security.debian.org/debian-security/pool/updates/main/l/"
+    "linux/linux-image-6.1.0-21-armmp-lpae_6.1.90-1_armhf.deb"
+)
 match = KERNEL_URL_REGEX.match(KERNEL_URL)
 
 if match is None:
@@ -30,9 +34,11 @@ KERNEL_FILE_NAME = match.group("file_name")
 INITRD_NAME = f"initrd.img-{KERNEL_VERSION_NAME}"
 VMLINUZ_NAME = f"vmlinuz-{KERNEL_VERSION_NAME}"
 
-IMAGE_URL = ("https://downloads.raspberrypi.org/raspios_lite_armhf/images/"
-             "raspios_lite_armhf-2024-03-15/"
-             "2024-03-15-raspios-bookworm-armhf-lite.img.xz")
+IMAGE_URL = (
+    "https://downloads.raspberrypi.org/raspios_lite_armhf/images/"
+    "raspios_lite_armhf-2024-03-15/"
+    "2024-03-15-raspios-bookworm-armhf-lite.img.xz"
+)
 
 # to update pishrink.sh, grab the latest rev from here:
 #   https://github.com/Drewsif/PiShrink/commits/master/
@@ -64,7 +70,7 @@ RPI_EMULATOR_COMMAND = (
     f"-dtb {DTB_NAME} "
     f"-kernel {KERNEL_NAME} "
     "-drive file=./{image_name},format=raw,if=sd "
-    "-append \"rw dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1\" "
+    '-append "rw dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1" '
     "-netdev user,id=ulan,hostfwd=tcp::2222-:22 "
     "-device usb-net,netdev=ulan "
 )
@@ -80,13 +86,15 @@ VIRT_EMULATOR_COMMAND = (
     "-initrd {initrd} "
     "-drive file={image_name},format=raw,id=hd,if=none,media=disk "
     "-device virtio-scsi-device -device scsi-hd,drive=hd "
-    "-append \"root=/dev/sda2 console=ttyAMA0,115200\" "
+    '-append "root=/dev/sda2 console=ttyAMA0,115200" '
     "-netdev user,id=net0,hostfwd=tcp::2222-:22 "
     "-device virtio-net-device,netdev=net0 "
 )
 
-SSH_COMMAND = "sshpass -p raspberry ssh -o StrictHostKeyChecking=no " \
-              "-o UserKnownHostsFile=/dev/null -q -p 2222 jo@127.0.0.1 "
+SSH_COMMAND = (
+    "sshpass -p raspberry ssh -o StrictHostKeyChecking=no "
+    "-o UserKnownHostsFile=/dev/null -q -p 2222 jo@127.0.0.1 "
+)
 
 DATA_DIRECTORY = "imager_data"
 OUTPUT_DIRECTORY = "generated_images"
@@ -112,14 +120,19 @@ def run_emulator(command):
 
     success = False
     for i in range(EMULATOR_CONNECT_RETRIES):
-        print("attempting to connect to emulator  (%d/%d)" % (i+1,EMULATOR_CONNECT_RETRIES))
+        print(
+            "attempting to connect to emulator  (%d/%d)"
+            % (i + 1, EMULATOR_CONNECT_RETRIES),
+        )
         if not emulator_thread.is_alive():
             raise RuntimeError("The emulator thread has died")
 
         try:
             run_over_ssh("echo Connected to the emulator")
         except subprocess.CalledProcessError:
-            print("could not connect to emulator (yet), sleeping 1s") # note: this might take over a minute
+            print(
+                "could not connect to emulator (yet), sleeping 1s",
+            )  # note: this might take over a minute
             sleep(1)
             continue
         else:
@@ -198,7 +211,8 @@ def mount_image(image_name, expand=False):
     losetup_result = subprocess.run(
         shlex.split(f"sudo losetup --partscan --find --show {image_name}"),
         check=True,
-        capture_output=True)
+        capture_output=True,
+    )
     loop_device = losetup_result.stdout.decode("utf-8").strip()
 
     if expand:
@@ -233,7 +247,8 @@ def basic_image_setup():
     with open(userconf_path, "w", encoding="utf-8") as userconf:
         userconf.write(
             "jo:$6$Jy4tV1H40VvfLZcX$hh/728SqdBocM2FTZ3fJh9Fx1u2FIJD/"
-            "8U075tyNewDDVEDS3e9.Miz213qujfnJ967Zs.43VRRhC4d/FDuKn0")
+            "8U075tyNewDDVEDS3e9.Miz213qujfnJ967Zs.43VRRhC4d/FDuKn0",
+        )
 
     print("Enable SSH")
     ssh_file_path = join(BOOTFS_MOUNT, "ssh")
@@ -257,23 +272,35 @@ def build_image():
     check_binary("parted")
 
     parser = argparse.ArgumentParser(
-        description="PrusaLink RPi image generator")
+        description="PrusaLink RPi image generator",
+    )
 
-    parser.add_argument("-d", "--dev",
-                        action="store_true",
-                        help="Build the image from master (for development)")
+    parser.add_argument(
+        "-d",
+        "--dev",
+        action="store_true",
+        help="Build the image from master (for development)",
+    )
 
-    parser.add_argument("-r", "--refresh",
-                        action="store_true",
-                        help="Re-do everything from scratch")
+    parser.add_argument(
+        "-r",
+        "--refresh",
+        action="store_true",
+        help="Re-do everything from scratch",
+    )
 
-    parser.add_argument("-m", "--multi-instance",
-                        action="store_true",
-                        help="Build the multi-instance image")
+    parser.add_argument(
+        "-m",
+        "--multi-instance",
+        action="store_true",
+        help="Build the multi-instance image",
+    )
 
-    parser.add_argument("-b", "--branch-or-hash",
-                        help="Specify a commit branch name or a hash of "
-                             "PrusaLink to get")
+    parser.add_argument(
+        "-b",
+        "--branch-or-hash",
+        help="Specify a commit branch name or a hash of PrusaLink to get",
+    )
 
     args = parser.parse_args()
 
@@ -281,7 +308,10 @@ def build_image():
         check_binary("pishrink.sh")
     except Exception:  # pylint: disable=broad-except
         print("pishrink is not installed, downloading")
-        run_command("curl -SLO https://raw.githubusercontent.com/Drewsif/PiShrink/%s/pishrink.sh" % PISHRINK_REV)
+        run_command(
+            "curl -SLO https://raw.githubusercontent.com/Drewsif/PiShrink/%s/pishrink.sh"
+            % PISHRINK_REV,
+        )
         run_command("chmod +x pishrink.sh")
 
     # --- Get source image ---
@@ -340,7 +370,8 @@ def build_image():
         unmount_image(sacrificial_loop)
 
         emulator_command = RPI_EMULATOR_COMMAND.format(
-            image_name=SACRIFICIAL_IMAGE_NAME)
+            image_name=SACRIFICIAL_IMAGE_NAME,
+        )
 
         print("Run the initrd generating emulator")
         emulator_thread = run_emulator(emulator_command)
@@ -355,8 +386,9 @@ def build_image():
 
         run_command(f"cp {ROOTFS_MOUNT}/boot/{VMLINUZ_NAME} .")
         run_command(f"cp {ROOTFS_MOUNT}/boot/{INITRD_NAME} .")
-        run_command(f"cp -r {ROOTFS_MOUNT}/lib/modules/"
-                    f"{KERNEL_VERSION_NAME} .")
+        run_command(
+            f"cp -r {ROOTFS_MOUNT}/lib/modules/{KERNEL_VERSION_NAME} .",
+        )
 
         unmount_image(initrd_loop)
 
@@ -374,13 +406,16 @@ def build_image():
 
     print("Write boot-message.service")
     message_service_path = join(
-        ROOTFS_MOUNT, "etc/systemd/system/boot-message.service")
+        ROOTFS_MOUNT, "etc/systemd/system/boot-message.service",
+    )
     boot_message_path = join(BUILDER_DATA_PATH, "boot-message.service")
     run_command(f"cp {boot_message_path} {message_service_path}")
 
     print("Write additional temporary modules")
-    run_command(f"cp -r {KERNEL_VERSION_NAME} "
-                f"{ROOTFS_MOUNT}/lib/modules/{KERNEL_VERSION_NAME}")
+    run_command(
+        f"cp -r {KERNEL_VERSION_NAME} "
+        f"{ROOTFS_MOUNT}/lib/modules/{KERNEL_VERSION_NAME}",
+    )
 
     config_txt_path = join(BOOTFS_MOUNT, "config.txt")
     with open(config_txt_path, "a", encoding="utf-8") as config_txt:
@@ -390,9 +425,8 @@ def build_image():
 
     print("Run the emulator")
     emulator_command = VIRT_EMULATOR_COMMAND.format(
-        image_name=IMAGE_NAME,
-        vmlinuz=VMLINUZ_NAME,
-        initrd=INITRD_NAME)
+        image_name=IMAGE_NAME, vmlinuz=VMLINUZ_NAME, initrd=INITRD_NAME,
+    )
     emulator_thread = run_emulator(emulator_command)
 
     print("Enabling boot-message.service")
@@ -418,9 +452,11 @@ def build_image():
     print("Installing dependencies")
     # I guess we need this for the wi-fi setting to get applied normally
     run_over_ssh("sudo apt-get install -y uuid")
-    run_over_ssh("sudo apt-get install -y git python3-pip pigpio libcap-dev "
-                 "libmagic1 libturbojpeg0 libffi-dev python3-numpy "
-                 "cmake iptables python3-libcamera")
+    run_over_ssh(
+        "sudo apt-get install -y git python3-pip pigpio libcap-dev "
+        "libmagic1 libturbojpeg0 libffi-dev python3-numpy "
+        "cmake iptables python3-libcamera",
+    )
 
     print("Installing PrusaLink")
     # Caution: not tied to requirements-pi.txt
@@ -431,18 +467,26 @@ def build_image():
         hash_part = ""
         if args.branch_or_hash is not None:
             hash_part = f"@{args.branch_or_hash}"
-        run_over_ssh("pip install --break-system-packages git+https://"
-                     "github.com/prusa3d/gcode-metadata.git")
-        run_over_ssh("pip install --break-system-packages git+https://"
-                     "github.com/prusa3d/Prusa-Connect-SDK-Printer.git")
-        run_over_ssh("pip install --break-system-packages git+https://"
-                     f"github.com/prusa3d/Prusa-Link.git{hash_part}")
+        run_over_ssh(
+            "pip install --break-system-packages git+https://"
+            "github.com/prusa3d/gcode-metadata.git",
+        )
+        run_over_ssh(
+            "pip install --break-system-packages git+https://"
+            "github.com/prusa3d/Prusa-Connect-SDK-Printer.git",
+        )
+        run_over_ssh(
+            "pip install --break-system-packages git+https://"
+            f"github.com/prusa3d/Prusa-Link.git{hash_part}",
+        )
     else:
         run_over_ssh("pip install --break-system-packages prusalink")
 
     output = subprocess.run(
         shlex.split(SSH_COMMAND + ".local/bin/prusalink --version"),
-        capture_output=True, check=False)
+        capture_output=True,
+        check=False,
+    )
     version_text = output.stdout.decode("utf-8").split("\n")[0]
     prusalink_version = version_text.split(": ")[1]
 
@@ -470,7 +514,8 @@ def build_image():
     insert_from_file_before_line(
         to_file=rc_local_path,
         from_file=join(BUILDER_DATA_PATH, "first-boot.sh"),
-        index=1)
+        index=1,
+    )
 
     print("Adding the start script")
     if args.multi_instance:
@@ -478,17 +523,18 @@ def build_image():
         insert_from_file_before_line(
             to_file=rc_local_bak_path,
             from_file=join(BUILDER_DATA_PATH, "manager-start-script.sh"),
-            search="exit 0")
+            search="exit 0",
+        )
     else:
         rc_local_bak_path = join(ROOTFS_MOUNT, "etc/rc.local.bak")
         insert_from_file_before_line(
             to_file=rc_local_bak_path,
             from_file=join(BUILDER_DATA_PATH, "prusalink-start-script.sh"),
-            search="exit 0")
+            search="exit 0",
+        )
 
     print("Removing modules needed for virtio")
-    run_command(f"rm -r {ROOTFS_MOUNT}/lib/modules/"
-                f"{KERNEL_VERSION_NAME}")
+    run_command(f"rm -r {ROOTFS_MOUNT}/lib/modules/{KERNEL_VERSION_NAME}")
 
     run_command(f"rm -r {ROOTFS_MOUNT}/var/cache/*", check=False)
     run_command(f"rm -r {ROOTFS_MOUNT}/home/jo/.cache/*", check=False)
@@ -497,7 +543,8 @@ def build_image():
 
     output_image_name = OUTPUT_IMAGE_PATTERN.format(
         mode="-multi-instance" if args.multi_instance else "",
-        version=f"-{prusalink_version}")
+        version=f"-{prusalink_version}",
+    )
 
     run_command(f"mv {SHRUNK_IMAGE_NAME} {output_image_name}")
 
@@ -528,5 +575,5 @@ def main():
         raise
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
