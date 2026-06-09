@@ -11,6 +11,7 @@ from typing import Iterable
 from extendparser.get import Get
 
 from .const import PRINTER_CONF_TYPES
+from .util import sanitize_api_key
 
 CONNECT = 'connect.prusa3d.com'
 
@@ -310,6 +311,8 @@ class Settings(Get):
             self.get_section('service::local',
                              (('enable', int, 1), ('username', str, ''),
                               ('digest', str, ''), ('api_key', str, ''))))
+        self.service_local['api_key'] = sanitize_api_key(
+            self.service_local['api_key'])
 
         Settings.instance = self
 

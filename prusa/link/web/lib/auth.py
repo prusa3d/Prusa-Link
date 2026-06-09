@@ -11,6 +11,7 @@ from ...printer_adapter.structures.regular_expressions import (
     VALID_PASSWORD_REGEX,
     VALID_USERNAME_REGEX,
 )
+from ...util import sanitize_api_key
 from .core import app
 
 log = logging.getLogger(__name__)
@@ -64,8 +65,8 @@ def check_api_digest(func):
             check_digest(req)
             return func(req, *args, **kwargs)
 
-        api_key = req.headers.get('X-Api-Key')
-        if api_key != app.api_key:
+        api_key = sanitize_api_key(req.headers.get('X-Api-Key'))
+        if api_key != sanitize_api_key(app.api_key):
             res = Response(data="Bad X-Api-Key.",
                            status_code=state.HTTP_FORBIDDEN)
             raise HTTPException(res)
