@@ -6,11 +6,11 @@ import threading
 
 import pytest
 
-from prusa.link.const import QUIT_INTERVAL
 from prusa.link.multi_instance.ipc_queue_adapter import IPCConsumer, IPCSender
 from tests.util import EventSetMock
 
 TEST_QUEUE_NAME = "/prusalink_test_ipc_queue"
+WAIT_TIMEOUT = 0.5
 logging.basicConfig(level=logging.DEBUG)
 
 # pylint: disable=redefined-outer-name
@@ -30,7 +30,7 @@ def test_send_and_close(ipc_consumer):
     mock_handler = EventSetMock()
     ipc_consumer.add_handler("test", mock_handler)
     IPCSender.send_and_close(TEST_QUEUE_NAME, "test")
-    mock_handler.event.wait(timeout=QUIT_INTERVAL)
+    mock_handler.event.wait(timeout=WAIT_TIMEOUT)
     mock_handler.assert_called_once()
 
 
@@ -44,8 +44,8 @@ def test_multiple_sends(ipc_consumer):
     ipc_sender.send("test_1")
     ipc_sender.send("test_2")
 
-    mock_handler_1.event.wait(timeout=QUIT_INTERVAL)
-    mock_handler_2.event.wait(timeout=QUIT_INTERVAL)
+    mock_handler_1.event.wait(timeout=WAIT_TIMEOUT)
+    mock_handler_2.event.wait(timeout=WAIT_TIMEOUT)
     mock_handler_1.assert_called_once()
     mock_handler_2.assert_called_once()
 
@@ -59,7 +59,7 @@ def test_args(ipc_consumer):
                              "foo",
                              42,
                              arnold="rimmer")
-    mock_handler.event.wait(timeout=QUIT_INTERVAL)
+    mock_handler.event.wait(timeout=WAIT_TIMEOUT)
     mock_handler.assert_called_once_with("foo", 42, arnold="rimmer")
 
 
@@ -88,14 +88,16 @@ def test_signal_resistance(ipc_consumer):
     mock_handler = EventSetMock()
     ipc_consumer.add_handler("test", mock_handler)
     ipc_sender = IPCSender(TEST_QUEUE_NAME)
-    for _ in range(100):
-        ipc_sender.send("test")
-        mock_handler.event.wait(timeout=QUIT_INTERVAL)
-        mock_handler.assert_called_once()
-        mock_handler.reset_mock()
-    make_noise = False
-    noise_thread.join()
-    ipc_sender.close()
+    try:
+        for _ in range(100):
+            ipc_sender.send("test")
+            mock_handler.event.wait(timeout=WAIT_TIMEOUT)
+            mock_handler.assert_called_once()
+            mock_handler.reset_mock()
+    finally:
+        make_noise = False
+        noise_thread.join()
+        ipc_sender.close()
 
 
 def test_signal_resistance_reverse():
@@ -124,15 +126,17 @@ def test_signal_resistance_reverse():
     def actual_test():
         nonlocal make_noise
 
-        for _ in range(100):
-            ipc_sender.send("test")
-            mock_handler.event.wait(timeout=QUIT_INTERVAL)
-            mock_handler.assert_called_once()
-            mock_handler.reset_mock()
-        make_noise = False
-        noise_thread.join()
-        ipc_sender.close()
-        ipc_consumer.running = False
+        try:
+            for _ in range(100):
+                ipc_sender.send("test")
+                mock_handler.event.wait(timeout=WAIT_TIMEOUT)
+                mock_handler.assert_called_once()
+                mock_handler.reset_mock()
+        finally:
+            make_noise = False
+            noise_thread.join()
+            ipc_sender.close()
+            ipc_consumer.running = False
 
     test_thread = threading.Thread(target=actual_test)
     test_thread.start()
