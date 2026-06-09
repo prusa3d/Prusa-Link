@@ -6,6 +6,7 @@ from poorwsgi.digest import check_digest
 from poorwsgi.response import JSONResponse
 
 from ..conditions import SN
+from ..util import sanitize_api_key
 from .lib.auth import (
     REALM,
     check_api_digest,
@@ -47,6 +48,7 @@ def save_settings():
 
 def update_apikey(api_key):
     """Set new value to api-key"""
+    api_key = sanitize_api_key(api_key)
     # Update API key in the app
     app.api_key = api_key
 
@@ -172,7 +174,7 @@ def api_settings_set(req):
 def regenerate_api_key(req):
     """Regenerate Api-Key and save it to settings and config file"""
     # pylint: disable=unused-argument
-    api_key = req.json.get('api-key')
+    api_key = sanitize_api_key(req.json.get('api-key'))
     if api_key:
         if len(api_key) < 7:
             message = "Api-Key must be at least 7 characters long"

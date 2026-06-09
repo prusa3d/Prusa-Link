@@ -34,6 +34,13 @@ from .printer_adapter.structures.model_classes import (
 log = logging.getLogger(__name__)
 
 
+def sanitize_api_key(api_key):
+    """Strip leading and trailing whitespace from an API key value."""
+    if not api_key:
+        return ''
+    return api_key.strip()
+
+
 def prctl_name():
     """Set system thread name with python thread name."""
     # pylint: disable=deprecated-method
