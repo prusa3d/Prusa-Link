@@ -1,0 +1,15 @@
+[Unit]
+Description=Add ap0 interface
+Requires=sys-subsystem-net-devices-wlan0.device
+Before=dhcpcd.service
+Before=wpa_supplicant.service
+Restart=on-failure
+StartLimitIntervalSec=1
+StartLimitBurst=5
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/iw dev {device} interface add ap0 type __ap
+
+[Install]
+WantedBy=multi-user.target
