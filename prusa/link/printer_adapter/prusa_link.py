@@ -92,6 +92,7 @@ from .structures.regular_expressions import (
     LCD_UPDATE_REGEX,
     MBL_TRIGGER_REGEX,
     NOT_READY_REGEX,
+    TAKE_PHOTO_REGEX,
     PAUSE_PRINT_REGEX,
     POWER_PANIC_REGEX,
     PP_AUTO_RECOVER_REGEX,
@@ -209,6 +210,8 @@ class PrusaLink:
         self.printer.set_handler(CommandType.CANCEL_PRINTER_READY,
                                  self.cancel_printer_ready)
 
+        self.serial_parser.add_decoupled_handler(
+            TAKE_PHOTO_REGEX, lambda sender, match: self.fw_take_photo())
         self.serial_parser.add_decoupled_handler(
             PAUSE_PRINT_REGEX, lambda sender, match: self.fw_pause_print())
         self.serial_parser.add_decoupled_handler(
@@ -616,6 +619,15 @@ class PrusaLink:
         return self.command_queue.do_command(command)
 
     # --- FW Command handlers ---
+
+    def fw_take_photo(self) -> None:
+        """
+        Triggers a photo from the camera and stores it through
+        another command so later a timelapse can be created
+        """
+        prctl_name()
+        log.info("Triggering photo from command")
+        self.printer.camera_controller.timestamp_shot_trigger()
 
     def fw_pause_print(self) -> None:
         """
