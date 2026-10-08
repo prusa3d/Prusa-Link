@@ -309,8 +309,8 @@ def build_image():
     except Exception:  # pylint: disable=broad-except
         print("pishrink is not installed, downloading")
         run_command(
-            "curl -SLO https://raw.githubusercontent.com/Drewsif/PiShrink/%s/pishrink.sh"
-            % PISHRINK_REV,
+            "curl -SLO https://raw.githubusercontent.com/"
+            "Drewsif/PiShrink/%s/pishrink.sh" % PISHRINK_REV,
         )
         run_command("chmod +x pishrink.sh")
 

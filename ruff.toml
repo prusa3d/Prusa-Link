@@ -79,6 +79,7 @@ lint.ignore = [
     "ERA001",   # Found commented-out code
     "RET504",   # Unnecessary variable assignment before `return` statement
     "PLR0913",  # Too many arguments to function call
+    "PLR0917",  # Too many positional arguments
     "RET501",   # Do not explicitly `return None` in function if it is the only possible return value
     "C402",     # Unnecessary generator (rewrite as a `dict` comprehension)
     "PGH004",   # Use specific rule codes when using `noqa`

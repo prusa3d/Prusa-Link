@@ -7,7 +7,7 @@ extendparser~=0.3.1
 jinja2-template-info~=0.2.4
 lockfile~=0.12.2
 packaging~=23.0
-PoorWSGI~=2.5.0
+PoorWSGI~=2.7.0
 pydantic==1.10.12 # to be kept pinned until https://github.com/pydantic/pydantic/issues/7689 is resolved
 pyric~=0.1.6.3
 python-daemon~=3.0.1
