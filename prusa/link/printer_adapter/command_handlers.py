@@ -14,7 +14,7 @@ from subprocess import STDOUT, CalledProcessError, check_call, check_output
 from sys import executable
 from threading import Event
 from time import monotonic, time
-from typing import Dict, Optional, Set
+from typing import ClassVar, Dict, Optional, Set, Tuple
 
 from prusa.connect.printer.const import Event as EventConst
 from prusa.connect.printer.const import Source, State
@@ -25,6 +25,7 @@ from ..const import (
     RESET_PIN,
     SERIAL_QUEUE_TIMEOUT,
     STATE_CHANGE_TIMEOUT,
+    LimitsMK3,
 )
 from ..serial.helpers import enqueue_instruction, enqueue_list_from_str
 from ..util import (
@@ -332,15 +333,13 @@ class ExecuteGcode(Command):
     """Class for executing an arbitrary gcode or gcode list"""
     command_name = "execute_gcode"
 
-    def __init__(self, gcode, force=False, **kwargs):
+    def __init__(self, gcode, **kwargs):
         """
         If all checks pass, runs the specified gcode.
         :param gcode: "\n" separated gcodes to send to the printer""
-        :param force: Whether to skip state checks
         """
         super().__init__(**kwargs)
         self.gcode = gcode
-        self.force = force
 
     def _run_command(self):
         """
@@ -349,14 +348,10 @@ class ExecuteGcode(Command):
         Doesn't renew the expected state change, so the other state changes
         will fall back onto defaults
         """
-        if self.force:
-            log.debug("Force sending gcode: '%s'", self.gcode)
-
         state = self.model.state_manager.current_state
-        if not self.force:
-            if state in {State.PRINTING, State.ATTENTION, State.ERROR}:
-                raise CommandFailed(
-                    f"Can't run '{self.gcode}' while in f{state.name} state.")
+        if state in {State.PRINTING, State.ATTENTION, State.ERROR}:
+            raise CommandFailed(
+                f"Can't run '{self.gcode}' while in f{state.name} state.")
 
         self.state_manager.expect_change(
             StateChange(command_id=self.command_id,
@@ -395,6 +390,63 @@ class ExecuteGcode(Command):
     @staticmethod
     def _get_state_change(default_source):
         return StateChange(default_source=default_source)
+
+
+class SetValue(Command):
+    """Sets one of the values, that used to be set by forced gcodes.
+    Runs right away, even during a print, the way a forced gcode did"""
+    command_name = "set_value"
+
+    # key: (gcode template, minimum, maximum)
+    SETTINGS: ClassVar[Dict[str, Tuple[str, int, int]]] = {
+        "speed": ("M220 S{}", LimitsMK3.print_speed_min,
+                  LimitsMK3.print_speed_max),
+        "flow": ("M221 S{}", LimitsMK3.print_flow_min,
+                 LimitsMK3.print_flow_max),
+        "nozzle_temperature": ("M104 S{}", LimitsMK3.temp_nozzle_min,
+                               LimitsMK3.temp_nozzle_max),
+        "bed_temperature": ("M140 S{}", LimitsMK3.temp_bed_min,
+                            LimitsMK3.temp_bed_max),
+    }
+    ALLOWED_STATES: ClassVar[Set[State]] = {
+        State.IDLE, State.PAUSED, State.FINISHED, State.STOPPED,
+        State.PRINTING, State.READY}
+
+    def __init__(self, parameters: Optional[Dict], **kwargs):
+        """
+        :param parameters: the kwargs of the SET_VALUE command, expected
+            to contain exactly one of the SETTINGS keys
+        """
+        super().__init__(**kwargs)
+        self.parameters = parameters
+
+    def _run_command(self):
+        """Validates the value and the state, then sets the value"""
+        if not self.parameters or len(self.parameters) != 1:
+            raise CommandFailed("SET_VALUE needs exactly one value")
+        key, value = next(iter(self.parameters.items()))
+        if key not in self.SETTINGS:
+            raise CommandFailed(f"Can't set unknown value '{key}'")
+        gcode, minimum, maximum = self.SETTINGS[key]
+
+        # bool is an int, but sending True as a temperature is a mistake
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise CommandFailed(f"'{key}' has to be an integer")
+        if not minimum <= value <= maximum:
+            raise CommandFailed(
+                f"'{key}' has to be between {minimum} and {maximum}")
+
+        state = self.model.state_manager.current_state
+        if state not in self.ALLOWED_STATES:
+            raise CommandFailed(f"Can't set '{key}' while in {state.name} "
+                                f"state.")
+        if (key == "nozzle_temperature" and state == State.PRINTING
+                and value < LimitsMK3.min_temp_nozzle_e):
+            raise CommandFailed(
+                f"Can't set the nozzle below {LimitsMK3.min_temp_nozzle_e} "
+                f"while printing.")
+
+        self.do_instruction(gcode.format(value))
 
 
 class FilamentCommand(Command):
