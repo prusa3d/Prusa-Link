@@ -1,6 +1,6 @@
 # ChangeLog
 
-0.9.0 (unreleased)
+1.0.0 (unreleased)
     * Use the Lazy File Protocol: Connect gets the list of storages and asks for the content of folders (also on the SD card) when it needs it
     * Tell Connect to rescan the SD card when its content changes
     * Report the end of a file upload via PUT, so Connect and other clients get the transfer finished event
@@ -9,6 +9,9 @@
     * Fix a crash when rebooting a multi-instance PrusaLink
     * Fix a CRC issue
     * Point the setup wizard to the Prusa Downloads page and the Prusa-Firmware GitHub releases for the latest stable firmware
+    * Handle the SET_VALUE command for speed, flow and temperatures
+    * Drop the gcode force option
+    * Communicate with Connect over WebSocket instead of the previous protocol, for faster response times
 
 0.8.1 (2024-06-28)
     * Add a v4l2 workaround so broken camera handles are disqualified from scan
