@@ -19,7 +19,7 @@ from shutil import move, rmtree
 import validators  # type: ignore
 from gcode_metadata import FDMMetaData, get_metadata, get_preview
 from poorwsgi import state
-from poorwsgi.request import FieldStorage
+from poorwsgi.fieldstorage import FieldStorageParser
 from poorwsgi.response import FileResponse, JSONResponse, Response
 from poorwsgi.results import hbytes
 from prusa.connect.printer import const
@@ -145,10 +145,12 @@ def api_upload(req, storage):
 
     transfer = app.daemon.prusa_link.printer.transfer
     try:
-        form = FieldStorage(req,
-                            keep_blank_values=app.keep_blank_values,
-                            strict_parsing=app.strict_parsing,
-                            file_callback=callback_factory(req))
+        # bytes_read lives on the parser, not on the parsed form
+        parser = FieldStorageParser(req.input, req.headers,
+                                    keep_blank_values=app.keep_blank_values,
+                                    strict_parsing=app.strict_parsing,
+                                    file_callback=callback_factory(req))
+        form = parser.parse()
     except TimeoutError as exception:
         log.error("Oh no. Upload of a file timed out")
         failed_upload_handler(transfer)
@@ -159,9 +161,9 @@ def api_upload(req, storage):
 
     filename = form['file'].filename
     part_path = partfilepath(filename)
-    transfer.transferred = form.bytes_read
+    transfer.transferred = parser.bytes_read
 
-    if form.bytes_read != req.content_length:
+    if parser.bytes_read != req.content_length:
         log.error("File uploading not complete")
         unlink(part_path)
         failed_upload_handler(transfer)

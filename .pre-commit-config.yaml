@@ -5,21 +5,27 @@ repos:
   #   hooks:
   #     - id: yapf
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v6.0.0
     hooks:
       - id: check-yaml
       - id: end-of-file-fixer
       - id: trailing-whitespace
-  # - repo: https://github.com/pre-commit/mirrors-pylint
-  #  rev: v2.4.4
-  #  hooks:
-  #    - id: pylint
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 'v0.3.5'
+    rev: 'v0.16.10'
     hooks:
     - id: ruff
       args: [--fix]
   - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0
+    rev: 7.4.1
     hooks:
       - id: flake8
+  # Local, so it sees the installed dependencies (pylint needs to import them)
+  - repo: local
+    hooks:
+      - id: pylint
+        name: pylint
+        entry: env PYTHONPATH=. pylint
+        language: system
+        types: [python]
+        pass_filenames: false
+        args: [prusa/link, tests]
