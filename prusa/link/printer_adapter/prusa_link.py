@@ -63,6 +63,7 @@ from .command_handlers import (
     ResetPrinter,
     ResumePrint,
     SetReady,
+    SetValue,
     StartPrint,
     StopPrint,
     UnloadFilament,
@@ -194,6 +195,7 @@ class PrusaLink:
 
         # Bind command handlers
         self.printer.set_handler(CommandType.GCODE, self.execute_gcode)
+        self.printer.set_handler(CommandType.SET_VALUE, self.set_value)
         self.printer.set_handler(CommandType.PAUSE_PRINT, self.pause_print)
         self.printer.set_handler(CommandType.RESET_PRINTER, self.reset_printer)
         self.printer.set_handler(CommandType.UPGRADE, self.upgrade_link)
@@ -538,8 +540,16 @@ class PrusaLink:
         """
         assert caller.kwargs
         command = ExecuteGcode(gcode=caller.kwargs["gcode"],
-                               force=caller.force,
                                command_id=caller.command_id)
+        return self.command_queue.do_command(command)
+
+    def set_value(self, caller: SDKCommand) -> CommandResult:
+        """
+        Connects the command to set speed, flow or temperatures from CONNECT
+        with its handler
+        """
+        command = SetValue(parameters=caller.kwargs,
+                           command_id=caller.command_id)
         return self.command_queue.do_command(command)
 
     def start_print(self, caller: SDKCommand) -> CommandResult:
