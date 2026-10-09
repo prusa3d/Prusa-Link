@@ -1,7 +1,12 @@
 # ChangeLog
 
-0.8.2 (2024-12-18)
-    * Fix crc issue
+0.9.0 (unreleased)
+    * Report the end of a file upload via PUT, so Connect and other clients get the transfer finished event
+    * Accept temperature reports without the PINDA temperature
+    * Strip whitespace from API keys, so keys pasted with a trailing newline no longer cause misleading upload failures
+    * Fix a crash when rebooting a multi-instance PrusaLink
+    * Fix a CRC issue
+    * Point the setup wizard to the Prusa Downloads page and the Prusa-Firmware GitHub releases for the latest stable firmware
 
 0.8.1 (2024-06-28)
     * Add a v4l2 workaround so broken camera handles are disqualified from scan
