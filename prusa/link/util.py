@@ -120,17 +120,6 @@ def ensure_directory(directory, chown_username=None):
         os.chown(directory, user_info.pw_uid, user_info.pw_gid)
 
 
-def get_checksum(message: str):
-    """
-    Goes over each byte of the supplied message and xors it onto the checksum
-    :param message: message to compute the checksum for (usually a gcode)
-    :return the computed checksum
-    """
-    checksum = 0
-    for char in message.encode("ascii"):
-        checksum ^= char
-
-
 def persist_file(file: typing.TextIO):
     """
     Tells the system to write and sync the file
