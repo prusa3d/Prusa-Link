@@ -67,11 +67,11 @@ env.filters['prefixed'] = prefix_filter
 
 
 def package_to_api(pkg):
-    """Convert pkg_resources.DistInfoDistribution to API."""
+    """Convert importlib.metadata.Distribution to API."""
     return {
-        'name': pkg.project_name,
+        'name': pkg.metadata['Name'],
         'version': pkg.version,
-        'path': pkg.module_path,
+        'path': str(pkg.locate_file('')),
     }
 
 
