@@ -131,7 +131,7 @@ setup(
     packages=find_namespace_packages(include=['prusa.*']),
     include_package_data=True,
     data_files=[('share/prusalink',
-                 ['README.md', 'ChangeLog', 'CONTRIBUTION.md'])],
+                 ['README.md', 'ChangeLog', 'CONTRIBUTING.md'])],
     scripts=['prusalink-boot'],
     long_description=doc(),
     long_description_content_type="text/markdown",
