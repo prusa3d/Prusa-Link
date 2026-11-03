@@ -5,6 +5,7 @@ import logging
 import shlex
 import subprocess
 import time
+from importlib.metadata import distributions
 from os import listdir
 from os.path import basename, getmtime, getsize, join
 from socket import gethostname
@@ -13,7 +14,6 @@ from sys import version
 from typing import BinaryIO, cast
 
 from gcode_metadata import get_metadata
-from pkg_resources import working_set  # type: ignore
 from poorwsgi import state
 from poorwsgi.digest import check_digest
 from poorwsgi.response import (
@@ -300,8 +300,7 @@ def api_version(req):
         show_system_info = False
 
     if show_system_info:
-        # pylint: disable=not-an-iterable
-        retval['python'] = [package_to_api(pkg) for pkg in working_set]
+        retval['python'] = [package_to_api(pkg) for pkg in distributions()]
         retval['system'] = {'python': version}
         try:
             # pylint: disable=import-outside-toplevel
