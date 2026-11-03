@@ -103,6 +103,12 @@ def foldername_too_long(req):
     return response_error(req, conditions.FoldernameTooLong())
 
 
+@app.route('/error/sdcard-read-only')
+def sdcard_read_only(req):
+    """Error handler for 409 SD Card storage is read only."""
+    return response_error(req, conditions.SDCardReadOnly())
+
+
 @app.route('/error/sdcard-not-supported')
 def sdcard_not_supported(req):
     """Error handler for 404 Some operations are not possible on SDCard."""
