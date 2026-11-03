@@ -1,0 +1,14 @@
+# Only the tool configuration lives here; the package itself is still built
+# by setup.py.
+
+[tool.pytest.ini_options]
+# Make `prusa.link` importable without setting PYTHONPATH by hand.
+pythonpath = ["."]
+# Show the test coverage on every run (needs pytest-cov).
+addopts = "--cov=prusa.link"
+
+[tool.coverage.run]
+source = ["prusa/link"]
+
+[tool.coverage.report]
+skip_empty = true
