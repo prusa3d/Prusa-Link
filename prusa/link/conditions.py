@@ -484,7 +484,7 @@ class SDCardReadOnly(LinkError):
     """409 SD Card Read Only"""
     title = "SD Card Read Only"
     text = "SD Card storage is read only."
-    id = "entity-too-large"
+    id = "sdcard-read-only"
     status_code = state.HTTP_CONFLICT
 
 
