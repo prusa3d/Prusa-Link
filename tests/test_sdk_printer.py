@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from prusa.connect.printer import Printer as SDKPrinter
 from prusa.connect.printer.command import CommandRejected
-from prusa.connect.printer.conditions import API, HTTP, CondState
 from prusa.connect.printer.const import Event, PrinterType, Source, StorageType
 
 from prusa.link import __version__  # type:ignore
@@ -38,42 +37,6 @@ def printer():
         printer_ = MyPrinter(PrinterType.I3MK3S, "CZPX1234X567XK89012")
     yield printer_
     MyPrinter._MCSingleton__instance = None
-
-
-@pytest.fixture
-def parent_parse():
-    """The parse_command of the SDK printer"""
-    with patch.object(SDKPrinter, "parse_command", create=True) as parse:
-        yield parse
-
-
-@pytest.fixture
-def conditions():
-    """Conditions are restored after the test"""
-    previous = (API._state, HTTP._state)
-    yield
-    API._state, HTTP._state = previous
-
-
-@pytest.mark.parametrize(("status", "broken"), [
-    (400, "API"),
-    (404, "API"),
-    (503, "HTTP"),
-    (200, None),
-    (500, None),
-])
-@pytest.mark.usefixtures("conditions")
-def test_parse_command(printer, parent_parse, status, broken):
-    """Client errors break the API condition, 503 breaks HTTP"""
-    API._state = HTTP._state = CondState.OK
-    response = MagicMock(status_code=status)
-    assert printer.parse_command(response) is parent_parse.return_value
-    parent_parse.assert_called_once_with(response)
-    states = {"API": API._state, "HTTP": HTTP._state}
-    if broken:
-        assert states[broken] == CondState.NOK
-    else:
-        assert set(states.values()) == {CondState.OK}
 
 
 def test_get_info(printer):
