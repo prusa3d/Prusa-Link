@@ -432,19 +432,17 @@ def test_execute_gcode(state_manager):
 @pytest.mark.parametrize("state", [State.PRINTING, State.ATTENTION,
                                    State.ERROR])
 def test_execute_gcode_in_wrong_state(model, state):
-    """Gcodes are not run in these states unless forced"""
+    """Gcodes are never run in these states"""
     model.state_manager.current_state = state
     with pytest.raises(CommandFailed):
         ExecuteGcode("G28").run_command()
 
 
-def test_execute_gcode_forced(model):
-    """Force skips the state checks"""
+def test_execute_gcode_cannot_be_forced(model):
+    """The force flag is gone, so the state checks cannot be skipped"""
     model.state_manager.current_state = State.PRINTING
-    command = ExecuteGcode("G28", force=True)
-    with patch.object(module, "enqueue_list_from_str", return_value=[]), \
-            patch.object(command, "wait_while_running"):
-        command.run_command()
+    with pytest.raises(TypeError):
+        ExecuteGcode("G28", force=True)
 
 
 @pytest.mark.parametrize(("group", "message"), [
