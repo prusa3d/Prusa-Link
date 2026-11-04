@@ -43,21 +43,25 @@ def conditions():
     API._state, HTTP._state = previous
 
 
-@pytest.mark.parametrize(("status", "api", "http"), [
-    (400, CondState.NOK, None),
-    (404, CondState.NOK, None),
-    (503, CondState.NOK, CondState.NOK),  # API is below HTTP
-    (200, None, None),
-    (500, None, None),
+@pytest.mark.parametrize(("status", "broken"), [
+    (400, "API"),
+    (404, "API"),
+    (503, "HTTP"),
+    (200, None),
+    (500, None),
 ])
-def test_parse_command(printer, parent_parse, conditions, status, api, http):
+@pytest.mark.usefixtures("conditions")
+def test_parse_command(printer, parent_parse, status, broken):
     """Client errors break the API condition, 503 breaks HTTP"""
     API._state = HTTP._state = CondState.OK
     response = MagicMock(status_code=status)
     assert printer.parse_command(response) is parent_parse.return_value
     parent_parse.assert_called_once_with(response)
-    assert API._state == (api or CondState.OK)
-    assert HTTP._state == (http or CondState.OK)
+    states = {"API": API._state, "HTTP": HTTP._state}
+    if broken:
+        assert states[broken] == CondState.NOK
+    else:
+        assert set(states.values()) == {CondState.OK}
 
 
 def test_get_info(printer):
