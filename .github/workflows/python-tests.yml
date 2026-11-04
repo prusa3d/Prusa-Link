@@ -55,6 +55,9 @@ jobs:
       run: |
         ruff check .
     - name: Lint with pylint
+      # The pinned pylint (2.17) cannot parse the standard library of
+      # Python 3.13, the other versions check the same code.
+      if: matrix.python-version != '3.13'
       run: |
         PYTHONPATH=`pwd` pylint prusa/link tests
     - name: Lint with mypy and doctests
