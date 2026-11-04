@@ -14,7 +14,7 @@ _LOGGER_CLASS = logging.getLoggerClass()
 module = import_module("prusa.link.__main__")
 logging.setLoggerClass(_LOGGER_CLASS)
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name,unused-argument
 
 PID = 4242
 
