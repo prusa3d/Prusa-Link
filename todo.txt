@@ -1,1 +1,0 @@
-(C) Add missing /error/ pages: 5 errors send Content-Location to a page that does not exist (InvalidIniFileFormat, NotSupportedFileType, GoneError, DirectoryNotEmpty, RequestTimeout); then drop xfail in tests/test_web_errors.py +errors
