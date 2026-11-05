@@ -127,8 +127,6 @@ def test_real_request_unauthorized(server):
     assert error.value.code == 403
 
 
-@pytest.mark.xfail(strict=True, reason="readline() is limited to the same "
-                   "size as the check, so the line is never too long")
 def test_real_request_too_long(server):
     """Too long request line is refused"""
     with socket.create_connection(
