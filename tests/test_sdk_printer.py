@@ -259,3 +259,37 @@ def test_type_string(printer):
     assert printer.type_string == "MK3S"
     with patch.object(MyPrinter, "type", None):
         assert printer.type_string is None
+
+
+def test_replace_sd_tree(printer):
+    """The SDK answers from the new tree, then Connect is told to rescan"""
+    printer.fs.attach(SD_STORAGE_NAME, sd_tree(), "", use_inotify=False)
+    new_tree = SDFile(SD_STORAGE_NAME, is_dir=True)
+    new_tree.add_file("/", "new.gcode", sfn="NEW~1.GCO", size=1)
+    seen = []
+    printer.fs.event_cb = MagicMock(
+        side_effect=lambda *args, **kwargs: seen.append(
+            printer.fs.file_info("/SD Card")))
+    printer.replace_sd_tree(SD_STORAGE_NAME, new_tree)
+    printer.fs.event_cb.assert_called_once_with(
+        Event.FILE_CHANGED, Source.WUI, old_path=None,
+        new_path="/SD Card", rescan=True)
+    # The event was sent after the tree had been swapped
+    assert [child["name"] for child in seen[0]["children"]] == ["new.gcode"]
+
+
+def test_replace_sd_tree_with_the_same_tree(printer):
+    """Nothing changed, so Connect is left alone"""
+    tree = sd_tree()
+    printer.fs.attach(SD_STORAGE_NAME, tree, "", use_inotify=False)
+    printer.fs.event_cb = MagicMock()
+    printer.replace_sd_tree(SD_STORAGE_NAME, tree)
+    printer.fs.event_cb.assert_not_called()
+
+
+def test_replace_sd_tree_without_card(printer):
+    """No card attached, nothing to replace"""
+    printer.fs.event_cb = MagicMock()
+    printer.replace_sd_tree(SD_STORAGE_NAME, sd_tree())
+    printer.fs.event_cb.assert_not_called()
+    assert printer.fs.storages() == []

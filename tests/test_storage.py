@@ -187,7 +187,7 @@ def test_signals_are_passed_through(controller):
     """Signals of the parts are forwarded"""
     got = {}
     for name in ("folder_attached", "folder_detached", "sd_attached",
-                 "sd_detached", "menu_found"):
+                 "sd_detached", "sd_tree_updated", "menu_found"):
         getattr(controller, f"{name}_signal").connect(
             lambda sender, name=name, **kwargs: got.update({name: kwargs}),
             weak=False)
@@ -195,12 +195,14 @@ def test_signals_are_passed_through(controller):
     controller.folder_detached(controller, "/a")
     controller.sd_attached(controller, "files")
     controller.sd_detached(controller)
+    controller.sd_tree_updated(controller, "tree")
     controller.menu_found(None, "MENU")
     assert got == {
         "folder_attached": {"path": "/a"},
         "folder_detached": {"path": "/a"},
         "sd_attached": {"files": "files"},
         "sd_detached": {},
+        "sd_tree_updated": {"tree": "tree"},
         "menu_found": {"menu_sfn": "MENU"},
     }
 
@@ -219,5 +221,7 @@ def test_signals_are_connected(controller):
     sd_card, folder = controller.mocks
     sd_card.sd_attached_signal.connect.assert_called_once_with(
         controller.sd_attached)
+    sd_card.tree_updated_signal.connect.assert_called_once_with(
+        controller.sd_tree_updated)
     folder.attached_signal.connect.assert_called_once_with(
         controller.folder_attached)

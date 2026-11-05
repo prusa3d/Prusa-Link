@@ -34,6 +34,7 @@ class StorageController:
         self.folder_detached_signal = Signal()
         self.sd_attached_signal = Signal()
         self.sd_detached_signal = Signal()
+        self.sd_tree_updated_signal = Signal()
         self.menu_found_signal = Signal()
 
         self.serial_parser = serial_parser
@@ -44,6 +45,7 @@ class StorageController:
                               self.model)
         self.sd_card.sd_attached_signal.connect(self.sd_attached)
         self.sd_card.sd_detached_signal.connect(self.sd_detached)
+        self.sd_card.tree_updated_signal.connect(self.sd_tree_updated)
         self.sd_card.menu_found_signal.connect(self.menu_found)
 
         # self.filesystem_storage = FilesystemStorage(self.model, cfg)
@@ -74,6 +76,11 @@ class StorageController:
         """Signal pass-through"""
         assert sender is not None
         self.sd_detached_signal.send(self)
+
+    def sd_tree_updated(self, sender, tree: File):
+        """Signal pass-through"""
+        assert sender is not None
+        self.sd_tree_updated_signal.send(self, tree=tree)
 
     def menu_found(self, _, menu_sfn):
         """Secret menu has been found signal passthrough"""
