@@ -118,8 +118,6 @@ def test_jog_absolute(client, daemon, gcodes):
     assert gcodes[0] == "G90"
 
 
-@pytest.mark.xfail(strict=True, reason="the axes are formatted as a python "
-                   "list: G1 F2700 ['X10', 'Y20']")
 def test_jog_gcode_format(client, daemon, gcodes):
     """The G1 gcode lists the axes the way Marlin understands"""
     _state(daemon, State.IDLE)
@@ -205,8 +203,6 @@ def test_home_states(client, daemon, gcodes, current, allowed):
     assert bool(gcodes) is allowed
 
 
-@pytest.mark.xfail(strict=True, reason="the axes are formatted as a python "
-                   "list: G28 ['X', 'Y', 'Z']")
 @pytest.mark.parametrize(("axes", "gcode"), [
     (None, "G28 X Y Z"),
     (["x"], "G28 X"),

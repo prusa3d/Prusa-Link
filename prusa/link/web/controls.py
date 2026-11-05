@@ -84,7 +84,7 @@ def jog(req, serial_queue):
         enqueue_instruction(serial_queue, 'G91')
 
     # G1 - linear movement in given axes
-    gcode = f'G1 F{feedrate} {axes}'
+    gcode = f"G1 F{feedrate} {' '.join(axes)}"
     enqueue_instruction(serial_queue, gcode)
 
 
@@ -95,7 +95,7 @@ def home(req, serial_queue):
         axes = list(map(str.upper, axes))
     else:
         axes = ['X', 'Y', 'Z']
-    gcode = f'G28 {axes}'
+    gcode = f"G28 {' '.join(axes)}"
     enqueue_instruction(serial_queue, gcode)
 
 
