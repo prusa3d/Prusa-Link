@@ -1,7 +1,7 @@
 """Tests of the whole file trees built for the web API"""
 from prusa.connect.printer.files import File, Filesystem
 
-from prusa.link.web.lib.file_tree import (  # type:ignore
+from prusa.link.sdk_augmentation.file_tree import (  # type:ignore
     file_to_dict_legacy,
     filesystem_to_dict_legacy,
     storage_to_dict,

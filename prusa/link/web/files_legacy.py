@@ -31,9 +31,12 @@ from ..const import PATH_WAIT_TIMEOUT
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.job import Job, JobState
 from ..printer_adapter.prusa_link import TransferCallbackState
+from ..sdk_augmentation.file_tree import (
+    file_to_dict_legacy,
+    filesystem_to_dict_legacy,
+)
 from .lib.auth import check_api_digest
 from .lib.core import app
-from .lib.file_tree import file_to_dict_legacy, filesystem_to_dict_legacy
 from .lib.files import (
     callback_factory,
     check_cache_headers,
