@@ -293,3 +293,13 @@ def test_replace_sd_tree_without_card(printer):
     printer.replace_sd_tree(SD_STORAGE_NAME, sd_tree())
     printer.fs.event_cb.assert_not_called()
     assert printer.fs.storages() == []
+
+
+def test_replace_sd_tree_with_the_same_content(printer):
+    """A repeated listing of an unchanged card is not worth a rescan"""
+    printer.fs.attach(SD_STORAGE_NAME, sd_tree(), "", use_inotify=False)
+    printer.fs.event_cb = MagicMock()
+    new_tree = sd_tree()
+    printer.replace_sd_tree(SD_STORAGE_NAME, new_tree)
+    printer.fs.event_cb.assert_not_called()
+    assert printer.fs.storage_dict[SD_STORAGE_NAME].tree is new_tree

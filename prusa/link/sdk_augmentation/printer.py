@@ -22,6 +22,7 @@ from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
 from ..printer_adapter.updatable import Thread
 from ..util import file_is_on_sd, prctl_name
+from ..web.lib.file_tree import file_to_dict_legacy
 from .command_handler import CommandHandler
 
 log = getLogger("connect-printer")
@@ -134,7 +135,11 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         storage = self.fs.storage_dict.get(name)
         if storage is None or storage.tree is tree:
             return
+        unchanged = (file_to_dict_legacy(storage.tree)
+                     == file_to_dict_legacy(tree))
         storage.tree = tree
+        if unchanged:  # a repeated listing, Connect knows it all already
+            return
         self.fs.connect_event(const.Event.FILE_CHANGED, {
             "old_path": None,
             "new_path": f"{self.fs.sep}{name}",
