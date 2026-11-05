@@ -328,6 +328,17 @@ def test_api_modify_move_to_existing_folder(client, filesystem, job, gcodes):
     assert (gcodes / "sub" / "a.gcode").exists()
 
 
+def test_api_modify_destination_exists(client, filesystem, job, gcodes):
+    """The existing file is not overwritten by the move"""
+    (gcodes / "b.gcode").write_text("keep")
+    response = client.post("/api/modify/local",
+                           data={"source": "a.gcode",
+                                 "destination": "b.gcode"})
+    assert response.status == 409
+    assert (gcodes / "b.gcode").read_text() == "keep"
+    assert (gcodes / "a.gcode").exists()
+
+
 def test_api_modify_same(client, filesystem, job):
     """Nothing to change"""
     response = client.post("/api/modify/local",

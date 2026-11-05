@@ -46,7 +46,8 @@ class RequestHandler(WSGIRequestHandler):
 
     def log_error(self, format, *args):
         """Log an error."""
-        log.error("%s - %s", self.address_string(), format % args)
+        log.error("%s - %s", self.address_string(),
+                  format % args if args else format)
 
     def handle(self):
         """Handle a single HTTP request"""
