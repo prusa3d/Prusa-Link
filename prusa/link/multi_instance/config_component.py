@@ -58,7 +58,8 @@ class MultiInstanceConfig(Get):
 
             try:
                 self.add_from_section(section)
-            except (FileNotFoundError, AttributeError, ValueError):
+            except (FileNotFoundError, AttributeError, ValueError) as error:
+                log.warning("Skipping printer section %s: %s", section, error)
                 continue
 
     def add(self, printer_number, serial_number, config_path):
@@ -173,7 +174,11 @@ class ConfigComponent:
         except Exception:  # pylint: disable=broad-except
             log.exception("Failed adding printer number %s", printer_number)
             self.remove_printers(numbers_to_remove=[printer_number])
-            self._drop_leftovers(printer_number)
+            try:
+                self._drop_leftovers(printer_number)
+            except Exception:  # pylint: disable=broad-except
+                log.exception("Cleaning of printer number %s failed",
+                              printer_number)
             raise
 
     def _drop_leftovers(self, printer_number):

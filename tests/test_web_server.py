@@ -178,9 +178,11 @@ def test_handler_logging():
     with patch.object(classes.log, "debug") as debug, \
             patch.object(classes.log, "error") as error:
         handler.log_message("%s %s", "GET", "/")
-        handler.log_error("bad")
+        handler.log_error("bad %s", "request")
+        handler.log_error("100% bad")  # no arguments, no formatting
     debug.assert_called_once_with("%s - %s", "10.0.0.1", "GET /")
-    error.assert_called_once()
+    assert [call.args[2] for call in error.call_args_list] == [
+        "bad request", "100% bad"]
 
 
 def test_server_handle_error():

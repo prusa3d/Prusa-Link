@@ -266,6 +266,7 @@ def file_upload(req, storage, path):
         transfer.type = TransferType.NO_TRANSFER
 
         if req.content_length > uploaded:
+            unlink(part_path)
             raise conditions.FileUploadFailed()
 
         # Mine a real mime_type from the file using magic
@@ -277,6 +278,7 @@ def file_upload(req, storage, path):
 
         if not overwrite:
             if exists(abs_path):
+                unlink(part_path)
                 raise conditions.FileAlreadyExists()
 
         replace(part_path, abs_path)

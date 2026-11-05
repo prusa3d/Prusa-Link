@@ -116,6 +116,13 @@ def test_config_loads_valid_after_incomplete_section(env):
     assert [p.number for p in MultiInstanceConfig().printers] == [1]
 
 
+def test_config_logs_skipped_section(env, caplog):
+    """The skipped section is mentioned in the log"""
+    (env.etc / "multi_instance.ini").write_text("[printer2]\nnumber = 2\n")
+    MultiInstanceConfig()
+    assert "printer2" in caplog.text
+
+
 def test_save_drops_removed_printers(env):
     """Sections of removed printers disappear from the file"""
     config_file = env.etc / "p.ini"
