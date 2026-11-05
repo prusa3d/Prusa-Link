@@ -9,7 +9,6 @@ from gcode_metadata import FDMMetaData
 from prusa.connect.printer import Printer as SDKPrinter
 from prusa.connect.printer import const
 from prusa.connect.printer.command import Command
-from prusa.connect.printer.conditions import API, HTTP, CondState
 from prusa.connect.printer.const import Source
 from prusa.connect.printer.files import File
 
@@ -49,22 +48,6 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         self.snapshot_thread = Thread(target=self.snapshot_loop,
                                       name="snapshot_sender",
                                       daemon=True)
-
-    def parse_command(self, res):
-        """Parse telemetry response.
-
-        When response from connect is command (HTTP Status: 200 OK), it
-        will set command object.
-        """
-
-        if 500 > res.status_code >= 400:
-            API.state = CondState.NOK
-        elif res.status_code == 503:
-            HTTP.state = CondState.NOK
-
-        res = super().parse_command(res)
-
-        return res
 
     def get_info(self) -> Dict[str, Any]:
         """Returns a dictionary containing the printers info."""
