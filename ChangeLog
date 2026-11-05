@@ -1,6 +1,8 @@
 # ChangeLog
 
 0.9.0 (unreleased)
+    * Use the Lazy File Protocol: Connect gets the list of storages and asks for the content of folders (also on the SD card) when it needs it
+    * Tell Connect to rescan the SD card when its content changes
     * Report the end of a file upload via PUT, so Connect and other clients get the transfer finished event
     * Accept temperature reports without the PINDA temperature
     * Strip whitespace from API keys, so keys pasted with a trailing newline no longer cause misleading upload failures
