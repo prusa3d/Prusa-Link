@@ -161,8 +161,6 @@ def test_second_printer_has_no_cameras(component, env):
     assert "auto_detect = False" in (env.etc / "prusalink2.ini").read_text()
 
 
-@pytest.mark.xfail(strict=True, reason="The udev rule is written before the "
-                   "printer is saved, so the cleanup does not find it")
 def test_configure_instance_cleans_after_failure(component, env):
     """The half done configuration is removed"""
     with patch.object(component, "wait_for_symlink",
