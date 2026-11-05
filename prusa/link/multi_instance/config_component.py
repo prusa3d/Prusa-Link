@@ -58,7 +58,8 @@ class MultiInstanceConfig(Get):
 
             try:
                 self.add_from_section(section)
-            except (FileNotFoundError, AttributeError):
+            except (FileNotFoundError, AttributeError, ValueError) as error:
+                log.warning("Skipping printer section %s: %s", section, error)
                 continue
 
     def add(self, printer_number, serial_number, config_path):
@@ -173,7 +174,26 @@ class ConfigComponent:
         except Exception:  # pylint: disable=broad-except
             log.exception("Failed adding printer number %s", printer_number)
             self.remove_printers(numbers_to_remove=[printer_number])
+            try:
+                self._drop_leftovers(printer_number)
+            except Exception:  # pylint: disable=broad-except
+                log.exception("Cleaning of printer number %s failed",
+                              printer_number)
             raise
+
+    def _drop_leftovers(self, printer_number):
+        """Removes what remove_printers could not find, because the printer
+        was not fully configured (its config file did not exist yet)"""
+        for path in (RULE_PATH_PATTERN.format(number=printer_number),
+                     CONFIG_PATH_PATTERN.format(number=printer_number)):
+            if os.path.exists(path):
+                self.delete_file(path)
+
+        printers = self.multi_instance_config.printers
+        printers[:] = [printer for printer in printers
+                       if printer.number != printer_number]
+        self.multi_instance_config.save()
+        self.refresh_udev_rules()
 
     def remove_all_printers(self):
         """Clears the configuration of all printers"""

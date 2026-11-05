@@ -319,8 +319,6 @@ def test_api_modify_move_to_new_folder(client, filesystem, job, gcodes):
     assert not (gcodes / "a.gcode").exists()
 
 
-@pytest.mark.xfail(strict=True, reason="The file is moved only when the "
-                   "destination folder does not exist")
 def test_api_modify_move_to_existing_folder(client, filesystem, job, gcodes):
     """The file is moved to an existing folder"""
     response = client.post("/api/modify/local",
@@ -328,6 +326,17 @@ def test_api_modify_move_to_existing_folder(client, filesystem, job, gcodes):
                                  "destination": "sub/a.gcode"})
     assert response.status == 201
     assert (gcodes / "sub" / "a.gcode").exists()
+
+
+def test_api_modify_destination_exists(client, filesystem, job, gcodes):
+    """The existing file is not overwritten by the move"""
+    (gcodes / "b.gcode").write_text("keep")
+    response = client.post("/api/modify/local",
+                           data={"source": "a.gcode",
+                                 "destination": "b.gcode"})
+    assert response.status == 409
+    assert (gcodes / "b.gcode").read_text() == "keep"
+    assert (gcodes / "a.gcode").exists()
 
 
 def test_api_modify_same(client, filesystem, job):

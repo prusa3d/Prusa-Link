@@ -99,12 +99,28 @@ def test_config_skips_missing_config_file(env):
     assert config.web.port_range_start == 9000
 
 
-@pytest.mark.xfail(strict=True, raises=ValueError, reason="Section with "
-                   "missing values stops loading of the whole file")
 def test_config_skips_incomplete_section(env):
     """An incomplete section is ignored like the missing config file"""
     (env.etc / "multi_instance.ini").write_text("[printer2]\nnumber = 2\n")
     assert not MultiInstanceConfig().printers
+
+
+def test_config_loads_valid_after_incomplete_section(env):
+    """An incomplete section does not stop loading of the following ones"""
+    config_file = env.etc / "prusalink1.ini"
+    config_file.write_text("")
+    (env.etc / "multi_instance.ini").write_text(
+        "[printer2]\nnumber = 2\n"
+        "[printer1]\nnumber = 1\nserial_number = SN1\n"
+        f"config_path = {config_file}\n")
+    assert [p.number for p in MultiInstanceConfig().printers] == [1]
+
+
+def test_config_logs_skipped_section(env, caplog):
+    """The skipped section is mentioned in the log"""
+    (env.etc / "multi_instance.ini").write_text("[printer2]\nnumber = 2\n")
+    MultiInstanceConfig()
+    assert "printer2" in caplog.text
 
 
 def test_save_drops_removed_printers(env):
@@ -161,8 +177,6 @@ def test_second_printer_has_no_cameras(component, env):
     assert "auto_detect = False" in (env.etc / "prusalink2.ini").read_text()
 
 
-@pytest.mark.xfail(strict=True, reason="The udev rule is written before the "
-                   "printer is saved, so the cleanup does not find it")
 def test_configure_instance_cleans_after_failure(component, env):
     """The half done configuration is removed"""
     with patch.object(component, "wait_for_symlink",

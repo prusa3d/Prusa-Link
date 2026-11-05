@@ -44,14 +44,15 @@ class RequestHandler(WSGIRequestHandler):
         """Log a message, which is typical content of access.log"""
         log.debug("%s - %s", self.address_string(), format % args)
 
-    def log_error(self, *args):
+    def log_error(self, format, *args):
         """Log an error."""
-        log.error(args, self.address_string())
+        log.error("%s - %s", self.address_string(),
+                  format % args if args else format)
 
     def handle(self):
         """Handle a single HTTP request"""
 
-        self.raw_requestline = self.rfile.readline(MAX_REQUEST_SIZE)
+        self.raw_requestline = self.rfile.readline(MAX_REQUEST_SIZE + 1)
         if len(self.raw_requestline) > MAX_REQUEST_SIZE:
             self.requestline = ''
             self.request_version = ''

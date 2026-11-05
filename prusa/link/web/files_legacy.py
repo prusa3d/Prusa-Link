@@ -474,12 +474,11 @@ def api_modify(req, storage):
     if not exists(source):
         raise conditions.FileNotFound()
 
-    if not exists(path):
-        try:
-            makedirs(path)
-            move(source, destination)
-        except PermissionError as error:
-            raise error
+    if exists(destination):
+        raise conditions.FileAlreadyExists()
+
+    makedirs(path, exist_ok=True)
+    move(source, destination)
 
     return Response(status_code=state.HTTP_CREATED)
 

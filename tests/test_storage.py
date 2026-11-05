@@ -59,8 +59,6 @@ def test_blacklisted_names():
     assert not Storage.is_name_blacklisted("/mnt/usb", ["SD Card"])
 
 
-@pytest.mark.xfail(strict=True, reason="filter_blacklisted_names compares "
-                   "the paths, not the names")
 def test_filter_blacklisted_names():
     """Storage named like the SD card is filtered out"""
     assert Storage.filter_blacklisted_names(
