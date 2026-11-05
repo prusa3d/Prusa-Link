@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
+from prusa.link import conditions  # type:ignore
 from prusa.link.web import errors  # type:ignore
 from prusa.link.web.lib.core import app  # type:ignore
 
@@ -16,17 +17,7 @@ def test_there_are_pages():
     assert len(PAGES) > 30
 
 
-def _json_params():
-    for path in PAGES:
-        marks = []
-        if path == "/error/dir-not-empty":
-            marks.append(pytest.mark.xfail(
-                strict=True, reason="the error points to a different URL "
-                "(/error/directory-not-empty)"))
-        yield pytest.param(path, id=path, marks=marks)
-
-
-@pytest.mark.parametrize("path", _json_params())
+@pytest.mark.parametrize("path", PAGES)
 def test_json_page(client, path):
     """Every error page answers the JSON client with a JSON"""
     response = client.get(path)
@@ -131,3 +122,19 @@ def test_internal_error_in_template(client, broken_view):
         response = client.get(broken_view, accept="text/html")
     assert response.status == 500
     assert response.text
+
+
+def _subclasses(cls):
+    for subclass in cls.__subclasses__():
+        yield subclass
+        yield from _subclasses(subclass)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [e for e in _subclasses(conditions.LinkError)
+     if vars(e).get("id")],
+    ids=lambda e: e.__name__)
+def test_page_matches_error(client, error):
+    """The page of an error answers with the status of that error"""
+    assert client.get(f"/error/{error.id}").status == error.status_code
