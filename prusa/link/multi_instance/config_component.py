@@ -58,7 +58,7 @@ class MultiInstanceConfig(Get):
 
             try:
                 self.add_from_section(section)
-            except (FileNotFoundError, AttributeError):
+            except (FileNotFoundError, AttributeError, ValueError):
                 continue
 
     def add(self, printer_number, serial_number, config_path):
