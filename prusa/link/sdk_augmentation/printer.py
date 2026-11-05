@@ -11,6 +11,7 @@ from prusa.connect.printer import const
 from prusa.connect.printer.command import Command
 from prusa.connect.printer.conditions import API, HTTP, CondState
 from prusa.connect.printer.const import Source
+from prusa.connect.printer.files import File
 
 from .. import __version__
 from ..conditions import use_connect_errors
@@ -122,7 +123,24 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
             }
         return self.from_path(path, info)
 
-    @staticmethod
+    def replace_sd_tree(self, name: str, tree: File) -> None:
+        """Make the SDK use a new tree of the SD card
+
+        The SDK answers SEND_FILE_INFO of the SD card from the tree it was
+        given when the storage was attached. Connect has no tree of its own
+        anymore, so after the swap it is told to forget the card and ask
+        again. The event has to follow the swap, otherwise Connect would get
+        the old data."""
+        storage = self.fs.storage_dict.get(name)
+        if storage is None or storage.tree is tree:
+            return
+        storage.tree = tree
+        self.fs.connect_event(const.Event.FILE_CHANGED, {
+            "old_path": None,
+            "new_path": f"{self.fs.sep}{name}",
+            "rescan": True,
+        })
+
     @staticmethod
     def from_path(path: Path, info: Optional[Dict[str, Any]] = None):
         """Parses SD file metadata from its name only
