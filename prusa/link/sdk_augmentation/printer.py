@@ -3,7 +3,7 @@
 from logging import getLogger
 from pathlib import Path
 from time import sleep
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from gcode_metadata import FDMMetaData
 from prusa.connect.printer import Printer as SDKPrinter
@@ -23,6 +23,7 @@ from ..printer_adapter.structures.mc_singleton import MCSingleton
 from ..printer_adapter.updatable import Thread
 from ..util import file_is_on_sd, prctl_name
 from .command_handler import CommandHandler
+from .file_tree import file_to_dict_legacy
 
 log = getLogger("connect-printer")
 
@@ -69,7 +70,6 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         """Returns a dictionary containing the printers info."""
         info = super().get_info()
         info["nozzle_diameter"] = self.nozzle_diameter
-        info["files"] = self.fs.to_dict_legacy()
         info["prusa_link"] = __version__  # TODO: remove later
         info["prusalink"] = __version__
         return info
@@ -88,8 +88,10 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         use_connect_errors(use_connect)
 
     def get_file_info(self, caller: Command) -> Dict[str, Any]:
-        """Return file info for a given file
-        sometimes only when it exists"""
+        """Return file info for a given file or folder
+
+        A path which does not exist is rejected with the exact reason
+        (raised as CommandRejected by the SDK filesystem)"""
         # pylint: disable=unused-argument
         if not caller.kwargs:
             raise ValueError("SEND_FILE_INFO requires kwargs")
@@ -100,14 +102,55 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
         parts = path.parts
 
         if file_is_on_sd(parts):
-            data = self.from_path(path)
+            data = self.sd_file_info(path)
         else:
             data = super().get_file_info(caller)
         log.info("FILE_INFO: %s", data)
         return data
 
-    def from_path(self, path: Path):
-        """Parses SD file metadata from its name only"""
+    def sd_file_info(self, path: Path) -> Dict[str, Any]:
+        """Return FILE_INFO of a file or a folder on the SD card
+
+        The SD card has no path on the disk, so the SDK answers from the tree
+        of the card. A folder is described by its direct children, a file
+        gets the metadata parsed from its name."""
+        string_path = str(path)
+        info = self.fs.file_info(string_path)
+        if "children" in info:
+            return {
+                "source": Source.CONNECT,
+                "event": const.Event.FILE_INFO,
+                **info,
+            }
+        return self.from_path(path, info)
+
+    def replace_sd_tree(self, name: str, tree: File) -> None:
+        """Make the SDK use a new tree of the SD card
+
+        The SDK answers SEND_FILE_INFO of the SD card from the tree it was
+        given when the storage was attached. Connect has no tree of its own
+        anymore, so after the swap it is told to forget the card and ask
+        again. The event has to follow the swap, otherwise Connect would get
+        the old data."""
+        storage = self.fs.storage_dict.get(name)
+        if storage is None or storage.tree is tree:
+            return
+        unchanged = (file_to_dict_legacy(storage.tree)
+                     == file_to_dict_legacy(tree))
+        storage.tree = tree
+        if unchanged:  # a repeated listing, Connect knows it all already
+            return
+        self.fs.connect_event(const.Event.FILE_CHANGED, {
+            "old_path": None,
+            "new_path": f"{self.fs.sep}{name}",
+            "rescan": True,
+        })
+
+    @staticmethod
+    def from_path(path: Path, info: Optional[Dict[str, Any]] = None):
+        """Parses SD file metadata from its name only
+
+        :param info: Data of the file from the SDK filesystem"""
         string_path = str(path)
 
         meta = FDMMetaData(string_path)
@@ -119,10 +162,8 @@ class MyPrinter(SDKPrinter, metaclass=MCSingleton):
             "event": const.Event.FILE_INFO,
             "path": string_path,
         }
-
-        file: File = self.fs.get(string_path)
-        if file is not None:
-            data.update(file.attrs)
+        if info:
+            data.update(info)
         data.update(meta.data)
         return data
 

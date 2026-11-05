@@ -31,6 +31,10 @@ from ..const import PATH_WAIT_TIMEOUT
 from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.job import Job, JobState
 from ..printer_adapter.prusa_link import TransferCallbackState
+from ..sdk_augmentation.file_tree import (
+    file_to_dict_legacy,
+    filesystem_to_dict_legacy,
+)
 from .lib.auth import check_api_digest
 from .lib.core import app
 from .lib.files import (
@@ -100,12 +104,12 @@ def api_files(req, path=''):
             storage = file_system.storage_dict.get(path)
 
         if files:
-            files_ = files.to_dict_legacy()["children"]
+            files_ = file_to_dict_legacy(files)["children"]
             files = [file_to_api(child) for child in files_]
         else:
             return Response(status_code=state.HTTP_NOT_FOUND, headers=headers)
     else:
-        data = file_system.to_dict_legacy()
+        data = filesystem_to_dict_legacy(file_system)
 
         files = [file_to_api(child) for child in data.get("children", [])]
 
@@ -205,7 +209,8 @@ def api_upload(req, storage):
         raise conditions.ResponseTimeout()
 
     if req.accept_json:
-        data = app.daemon.prusa_link.printer.fs.to_dict_legacy()
+        data = filesystem_to_dict_legacy(
+            app.daemon.prusa_link.printer.fs)
 
         files = [file_to_api(child) for child in data.get("children", [])]
         return JSONResponse(done=True,
