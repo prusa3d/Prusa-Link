@@ -19,26 +19,7 @@ OWN_ID = [e for e in _subclasses(conditions.LinkError)
           if "id" in vars(e) and e.id]
 
 
-# These errors send a Content-Location to a page that does not exist yet
-NO_PAGE_YET = {
-    conditions.InvalidIniFileFormat,
-    conditions.NotSupportedFileType,
-    conditions.GoneError,
-    conditions.DirectoryNotEmpty,
-    conditions.RequestTimeout,
-}
-
-
-def _page_params():
-    for error in OWN_ID:
-        marks = []
-        if error in NO_PAGE_YET:
-            marks.append(pytest.mark.xfail(
-                strict=True, reason="the /error/ page is not implemented"))
-        yield pytest.param(error, id=error.__name__, marks=marks)
-
-
-@pytest.mark.parametrize("error", _page_params())
+@pytest.mark.parametrize("error", OWN_ID, ids=lambda e: e.__name__)
 def test_every_error_has_a_page(error):
     """The Content-Location of an error has to lead somewhere"""
     assert f"/error/{error.id}" in app.routes
