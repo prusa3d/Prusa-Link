@@ -270,9 +270,9 @@ def file_upload(req, storage, path):
 
         # Mine a real mime_type from the file using magic
         if req.mime_type == 'application/octet-stream':
-            mime_type = Magic(mime=True).from_file(abs_path)
+            mime_type = Magic(mime=True).from_file(part_path)
             if mime_type not in allowed_types:
-                unlink(abs_path)
+                unlink(part_path)
                 raise conditions.UnsupportedMediaError()
 
         if not overwrite:
