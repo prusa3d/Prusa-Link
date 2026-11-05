@@ -319,8 +319,6 @@ def test_api_modify_move_to_new_folder(client, filesystem, job, gcodes):
     assert not (gcodes / "a.gcode").exists()
 
 
-@pytest.mark.xfail(strict=True, reason="The file is moved only when the "
-                   "destination folder does not exist")
 def test_api_modify_move_to_existing_folder(client, filesystem, job, gcodes):
     """The file is moved to an existing folder"""
     response = client.post("/api/modify/local",
