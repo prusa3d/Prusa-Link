@@ -22,8 +22,8 @@ from ..printer_adapter.model import Model
 from ..printer_adapter.structures.mc_singleton import MCSingleton
 from ..printer_adapter.updatable import Thread
 from ..util import file_is_on_sd, prctl_name
-from ..web.lib.file_tree import file_to_dict_legacy
 from .command_handler import CommandHandler
+from .file_tree import file_to_dict_legacy
 
 log = getLogger("connect-printer")
 
