@@ -24,6 +24,7 @@ from ..printer_adapter.command_handlers import StartPrint
 from ..printer_adapter.job import Job
 from .lib.auth import check_api_digest
 from .lib.core import app
+from .lib.file_tree import storage_to_dict
 from .lib.files import (
     check_cache_headers,
     check_job,
@@ -63,7 +64,7 @@ def storage_info(req):
     }]
 
     for storage in storage_dict.values():
-        files = storage.to_dict()
+        files = storage_to_dict(storage)
         storage_size = files['size']
         print_files_size = get_files_size(files, FileType.PRINT_FILE.value)
 
