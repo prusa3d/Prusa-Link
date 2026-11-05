@@ -157,6 +157,33 @@ def unsupported_media_type(req):
     return response_error(req, conditions.UnsupportedMediaError())
 
 
+@app.route('/error/invalid-ini-file-format')
+def invalid_ini_file_format(req):
+    """Error handler for 400 Invalid ini file format"""
+    return response_error(req, conditions.InvalidIniFileFormat())
+
+
+@app.route('/error/not-supported-file-type')
+def not_supported_file_type(req):
+    """Error handler for 415 Not supported file type"""
+    return response_error(req, conditions.NotSupportedFileType())
+
+
+@app.route('/error/file-gone')
+def file_gone(req):
+    """Error handler for 410 Target resource unavailable"""
+    return response_error(req, conditions.GoneError())
+
+
+@app.route('/error/request-timeout')
+def request_timeout(req):
+    """Error handler for 408 Request timeout.
+
+    Not the same as /error/response-timeout (500).
+    """
+    return response_error(req, conditions.RequestTimeout())
+
+
 @app.route('/error/response-timeout')
 def response_timeout(req):
     """Error handler for 500 Response Timeout"""
@@ -193,7 +220,7 @@ def destination_same_as_source(req):
     return response_error(req, conditions.DestinationSameAsSource())
 
 
-@app.route('/error/dir-not-empty')
+@app.route('/error/directory-not-empty')
 def directory_not_empty(req):
     """Error handler for 409 Directory not empty"""
     return response_error(req, conditions.DirectoryNotEmpty())
