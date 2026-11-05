@@ -274,8 +274,6 @@ def test_upload_no_length(client, upload):
     assert put(client, "e.gcode", b"").status == 411
 
 
-@pytest.mark.xfail(strict=True, reason="The type is detected on the target "
-                   "path, which does not exist yet (the part file does)")
 def test_upload_wrong_content(client, upload, gcodes):
     """The magic does not recognize the G-code"""
     def from_file(path):
@@ -285,6 +283,7 @@ def test_upload_wrong_content(client, upload, gcodes):
     upload.return_value.from_file.side_effect = from_file
     assert put(client, "bad.gcode").status == 415
     assert not (gcodes / "bad.gcode").exists()
+    assert not list(gcodes.glob(".*.part"))
 
 
 def test_upload_stopped(client, upload, daemon):
