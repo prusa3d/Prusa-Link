@@ -474,6 +474,9 @@ def api_modify(req, storage):
     if not exists(source):
         raise conditions.FileNotFound()
 
+    if exists(destination):
+        raise conditions.FileAlreadyExists()
+
     makedirs(path, exist_ok=True)
     move(source, destination)
 
