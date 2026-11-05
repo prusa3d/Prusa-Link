@@ -4,6 +4,7 @@ from secrets import token_urlsafe
 from poorwsgi import state
 from poorwsgi.digest import check_digest
 from poorwsgi.response import JSONResponse
+from prusa.connect.printer.conditions import CondState
 
 from ..conditions import SN
 from ..util import sanitize_api_key
@@ -212,30 +213,37 @@ def api_sn(req):
     """If printer is in SN error, user can insert new SN"""
     # pylint: disable=unused-argument
     serial_queue = app.daemon.prusa_link.serial_queue
-    status = state.HTTP_CONFLICT
-    msg = "Printer already has a valid S/N"
-
-    if SN:
-        serial = req.json.get('serial')
-        if valid_sn_format(serial):
-            execute_sn_gcode(serial, serial_queue)
-
-            # wait up to five second for S/N to be set
-            if sn_write_success():
-                return JSONResponse(status_code=state.HTTP_OK)
-
-            status = state.HTTP_INSUFFICIENT_STORAGE
-            msg = "S/N was not successfully written to printer"
+    # The S/N can be written only when the printer is in the S/N error,
+    # a valid S/N is never overwritten and an unknown one is not touched
+    if SN.state is not CondState.NOK:
+        if SN:
+            msg = "Printer already has a valid S/N"
         else:
-            status = state.HTTP_BAD_REQUEST
-            if new_sn_format(serial):
-                title = "New S/N format"
-                msg = \
-                    "S/N is in new format. Please contact our Customer support"
-            else:
-                title = "Invalid S/N"
-                msg = "Please provide a valid S/N"
+            msg = "S/N of the printer is not known yet"
+        return JSONResponse(status_code=state.HTTP_CONFLICT, message=msg)
 
-            errors_ = {'title': title, 'message': msg}
-            return JSONResponse(**errors_, status_code=status)
+    serial = req.json.get('serial')
+    if not isinstance(serial, str):
+        serial = ''
+    if valid_sn_format(serial):
+        execute_sn_gcode(serial, serial_queue)
+
+        # wait up to five second for S/N to be set
+        if sn_write_success():
+            return JSONResponse(status_code=state.HTTP_OK)
+
+        status = state.HTTP_INSUFFICIENT_STORAGE
+        msg = "S/N was not successfully written to printer"
+    else:
+        status = state.HTTP_BAD_REQUEST
+        if new_sn_format(serial):
+            title = "New S/N format"
+            msg = \
+                "S/N is in new format. Please contact our Customer support"
+        else:
+            title = "Invalid S/N"
+            msg = "Please provide a valid S/N"
+
+        errors_ = {'title': title, 'message': msg}
+        return JSONResponse(**errors_, status_code=status)
     return JSONResponse(status_code=status, message=msg)
