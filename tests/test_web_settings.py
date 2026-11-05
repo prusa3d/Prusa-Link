@@ -25,13 +25,13 @@ def ini(daemon):
 
 @pytest.fixture
 def sn_ok(monkeypatch):
-    """The S/N condition is OK, this is what the endpoint needs now"""
+    """The printer has a valid serial number"""
     monkeypatch.setattr(SN, "_state", CondState.OK)
 
 
 @pytest.fixture
 def sn_nok(monkeypatch):
-    """The printer has a problem with the serial number"""
+    """The printer has a problem with the serial number, it can be set"""
     monkeypatch.setattr(SN, "_state", CondState.NOK)
 
 
@@ -128,7 +128,7 @@ def test_get_sn(client, daemon):
         "serial": "CZPX1234X567XK89012"}
 
 
-@pytest.mark.usefixtures("sn_ok")
+@pytest.mark.usefixtures("sn_nok")
 def test_set_sn(client, daemon):
     """A valid serial number is written to the printer"""
     with patch.object(settings, "valid_sn_format", return_value=True), \
@@ -141,7 +141,7 @@ def test_set_sn(client, daemon):
                                     daemon.prusa_link.serial_queue)
 
 
-@pytest.mark.usefixtures("sn_ok")
+@pytest.mark.usefixtures("sn_nok")
 def test_set_sn_not_written(client, daemon):
     """The printer did not take the serial number"""
     with patch.object(settings, "valid_sn_format", return_value=True), \
@@ -152,7 +152,7 @@ def test_set_sn_not_written(client, daemon):
     assert response.status == 507
 
 
-@pytest.mark.usefixtures("sn_ok")
+@pytest.mark.usefixtures("sn_nok")
 @pytest.mark.parametrize(("serial", "title"), [
     ("SN30004C123456", "New S/N format"),
     ("rubbish", "Invalid S/N"),
@@ -166,8 +166,6 @@ def test_set_sn_invalid(client, daemon, serial, title):
     execute.assert_not_called()
 
 
-@pytest.mark.xfail(strict=True, reason="the condition is checked the "
-                   "other way round: S/N can be written only if it is OK")
 @pytest.mark.usefixtures("sn_nok")
 def test_set_sn_when_in_error(client, daemon):
     """A printer with a S/N problem can get a new S/N"""
@@ -178,8 +176,6 @@ def test_set_sn_when_in_error(client, daemon):
     assert response.status == 200
 
 
-@pytest.mark.xfail(strict=True, reason="the condition is checked the "
-                   "other way round: S/N can be written only if it is OK")
 @pytest.mark.usefixtures("sn_ok")
 def test_set_sn_when_valid(client, daemon):
     """A printer with a valid S/N keeps it"""
@@ -188,6 +184,28 @@ def test_set_sn_when_valid(client, daemon):
         response = client.post("/api/settings/sn",
                                data={"serial": "CZPX1234X567XK89012"})
     assert response.status == 409
+    execute.assert_not_called()
+
+
+@pytest.mark.usefixtures("sn_nok")
+@pytest.mark.parametrize("data", [{}, {"serial": None}, {"serial": 12}])
+def test_set_sn_missing(client, daemon, data):
+    """A missing or not textual serial number is refused, not crashed on"""
+    with patch.object(settings, "execute_sn_gcode") as execute:
+        response = client.post("/api/settings/sn", data=data)
+    assert response.status == 400
+    assert response.json()["title"] == "Invalid S/N"
+    execute.assert_not_called()
+
+
+def test_set_sn_when_unknown(client, daemon, monkeypatch):
+    """A printer which S/N is not known yet is left alone"""
+    monkeypatch.setattr(SN, "_state", CondState.UNKNOWN)
+    with patch.object(settings, "execute_sn_gcode") as execute:
+        response = client.post("/api/settings/sn",
+                               data={"serial": "CZPX1234X567XK89012"})
+    assert response.status == 409
+    assert "not known" in response.json()["message"]
     execute.assert_not_called()
 
 
