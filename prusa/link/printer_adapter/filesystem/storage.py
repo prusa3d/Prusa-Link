@@ -94,11 +94,11 @@ class Storage(ThreadedUpdatable):
 
     @staticmethod
     def filter_blacklisted_names(candidate_list, black_list):
-        """Filter out anything that is inside of the blacklisted dirs"""
+        """Filter out anything that is named like a blacklisted name"""
         filtered = []
 
         for candidate in candidate_list:
-            if not Storage.is_path_blacklisted(candidate, black_list):
+            if not Storage.is_name_blacklisted(candidate, black_list):
                 filtered.append(candidate)
         return filtered
 
