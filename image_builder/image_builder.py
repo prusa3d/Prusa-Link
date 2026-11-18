@@ -497,6 +497,15 @@ def build_image():
     run_over_ssh("sudo cat /dev/null | sudo tee /var/log/lastlog")
     run_over_ssh("rm ~/.bash_history", check=False)
 
+    # Before pishrink, so the image actually gets smaller
+    print("Removing caches and the emulator-sized swap file")
+    run_over_ssh("sudo apt-get autoremove -y")
+    run_over_ssh("sudo apt-get clean")
+    run_over_ssh("rm -rf ~/.cache")
+    # rpi-resize-swap-file.service recreates it sized for the real Pi
+    run_over_ssh("sudo swapoff -a")
+    run_over_ssh("sudo rm -f /var/swap")
+
     print("Resetting cloud-init, so user's Imager settings apply")
     run_over_ssh("sudo cloud-init clean --logs --seed")
 
@@ -550,9 +559,6 @@ def build_image():
 
     print("Removing modules needed for virtio")
     run_command(f"rm -r {ROOTFS_MOUNT}/lib/modules/{KERNEL_VERSION_NAME}")
-
-    run_command(f"rm -r {ROOTFS_MOUNT}/var/cache/*", check=False)
-    run_command(f"rm -r {ROOTFS_MOUNT}/home/jo/.cache/*", check=False)
 
     unmount_image(shrunk_loop)
 
