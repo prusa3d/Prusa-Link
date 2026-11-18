@@ -16,6 +16,7 @@ import numpy as np
 from turbojpeg import TJSAMP_422, TurboJPEG  # type: ignore
 
 from . import v4l2
+from .huffman import add_huffman_tables
 
 jpeg = TurboJPEG()
 
@@ -388,8 +389,9 @@ class JPEGEncoder(Encoder):
 
 class PassthroughEncoder(Encoder):
     """An encoder, that just transforms the data from the format accepted by
-    encode to the format returned by encoders without touching the data"""
+    encode to the format returned by encoders. The only thing it does to the
+    data is adding the Huffman tables, if the camera left them out"""
 
     def encode(self, bytes_used: int) -> bytes:
         """Reads the source data and outputs as bytes"""
-        return self.source_details.mmap[:bytes_used]
+        return add_huffman_tables(self.source_details.mmap[:bytes_used])
