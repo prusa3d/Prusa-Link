@@ -357,6 +357,8 @@ class PiCameraDriver(CameraDriver):
             # Cannot use returned events for breaking this loop because
             # we would need to handle a negative time remaining as well
             select.select((self.camera_manager.event_fd,), (), (), remaining)
+            # Drains event_fd, otherwise select returns at once and spins
+            self.camera_manager.get_ready_requests()
 
         log.debug("Converting a photo")
         data = self.encoder.encode(self.stream.configuration.frame_size)
