@@ -16,13 +16,14 @@ from urllib.request import urlretrieve
 
 KERNEL_URL_REGEX = re.compile(
     r".*/(?P<file_name>linux-image-(?P<version_name>(?P<version>"
-    r"\d+\.\d+\.\d+-\d+)-armmp-lpae)_\d+\.\d+\.\d+-\d+_armhf.deb)",
+    r"\d+\.\d+\.\d+[-+][\w.]+)-armmp-lpae)_\d+\.\d+\.\d+-\d+_armhf.deb)",
 )
 
 
+# snapshot.debian.org, because the regular pool deletes superseded kernels
 KERNEL_URL = (
-    "http://security.debian.org/debian-security/pool/updates/main/l/"
-    "linux/linux-image-6.1.0-21-armmp-lpae_6.1.90-1_armhf.deb"
+    "https://snapshot.debian.org/archive/debian/20261115T210008Z/pool/main/"
+    "l/linux/linux-image-6.12.117+deb13-armmp-lpae_6.12.117-1_armhf.deb"
 )
 match = KERNEL_URL_REGEX.match(KERNEL_URL)
 
@@ -37,8 +38,8 @@ VMLINUZ_NAME = f"vmlinuz-{KERNEL_VERSION_NAME}"
 
 IMAGE_URL = (
     "https://downloads.raspberrypi.org/raspios_lite_armhf/images/"
-    "raspios_lite_armhf-2024-03-15/"
-    "2024-03-15-raspios-bookworm-armhf-lite.img.xz"
+    "raspios_lite_armhf-2026-10-06/"
+    "2026-10-06-raspios-trixie-armhf-lite.img.xz"
 )
 
 # to update pishrink.sh, grab the latest rev from here:
@@ -54,27 +55,13 @@ SHRUNK_IMAGE_NAME = "shrunk_image.img"
 OUTPUT_IMAGE_PATTERN = "prusalink{mode}{version}.img"
 BOOTFS_MOUNT = "image_bootfs"
 ROOTFS_MOUNT = "image_rootfs"
-KERNEL_NAME = "kernel8.img"
-DTB_NAME = "bcm2710-rpi-3-b-plus.dtb"
 EMULATOR_CONNECT_RETRIES = 200
 EMULATOR_SHUTDOWN_TIMEOUT = 20
 
-BUILDER_DATA_PATH = str(files("prusa.link") / "data" / "image_builder")
+# Trixie images no longer have passwordless sudo, the build needs it
+SUDOERS_PATH = "etc/sudoers.d/010_jo-nopasswd"
 
-RPI_EMULATOR_COMMAND = (
-    "qemu-system-aarch64 "
-    "-nographic "
-    "-machine raspi3b "
-    "-cpu cortex-a72 "
-    "-m 1G "
-    "-smp 4 "
-    f"-dtb {DTB_NAME} "
-    f"-kernel {KERNEL_NAME} "
-    "-drive file=./{image_name},format=raw,if=sd "
-    '-append "rw dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootdelay=1" '
-    "-netdev user,id=ulan,hostfwd=tcp::2222-:22 "
-    "-device usb-net,netdev=ulan "
-)
+BUILDER_DATA_PATH = str(files("prusa.link") / "data" / "image_builder")
 
 VIRT_EMULATOR_COMMAND = (
     "qemu-system-arm "
@@ -243,6 +230,12 @@ def unmount_image(loop_device):
 
 def basic_image_setup():
     """Sets up the image with ssh and a user jo with password raspberry"""
+    print("Allow passwordless sudo for the build")
+    sudoers_path = join(ROOTFS_MOUNT, SUDOERS_PATH)
+    with open(sudoers_path, "w", encoding="utf-8") as sudoers:
+        sudoers.write("jo ALL=(ALL) NOPASSWD: ALL\n")
+    os.chmod(sudoers_path, 0o440)
+
     print("Write userconf.txt")
     userconf_path = join(BOOTFS_MOUNT, "userconf.txt")
     with open(userconf_path, "w", encoding="utf-8") as userconf:
@@ -266,7 +259,7 @@ def build_image():
 
     if os.getuid() != 0:
         raise RuntimeError("This script must be run as root")
-    check_binary("qemu-system-aarch64")
+    check_binary("qemu-system-arm")
     check_binary("sshpass")
     check_binary("ssh")
     check_binary("wget")
@@ -361,42 +354,43 @@ def build_image():
         print("Copying the kernel package into the image")
         run_command(f"cp {KERNEL_FILE_NAME} {ROOTFS_MOUNT}/.")
 
-        print("Extracting kernel and dtb files")
-        run_command(f"cp {BOOTFS_MOUNT}/{KERNEL_NAME} .")
-        run_command(f"cp {BOOTFS_MOUNT}/{DTB_NAME} .")
+        # The initrd has to find the root disk on the virt machine
+        with open(join(ROOTFS_MOUNT, "etc/initramfs-tools/modules"),
+                  "a", encoding="utf-8") as initramfs_modules:
+            initramfs_modules.write("virtio_mmio\nvirtio_scsi\nsd_mod\n")
 
-        basic_image_setup()
-
-        print("Unmounting sacrificial image")
-        unmount_image(sacrificial_loop)
-
-        emulator_command = RPI_EMULATOR_COMMAND.format(
-            image_name=SACRIFICIAL_IMAGE_NAME,
-        )
-
-        print("Run the initrd generating emulator")
-        emulator_thread = run_emulator(emulator_command)
-        print("Generating vmlinuz and initrd, this may take a few minutes")
-        run_over_ssh(f"sudo dpkg -i /{KERNEL_FILE_NAME}")
-        run_over_ssh("sudo poweroff", check=False)
-        print("Waiting for the initrd generating emulator to shut down")
-        emulator_thread.join()
+        chroot_mounts = [
+            ("/proc", "proc"), ("/sys", "sys"), ("/dev", "dev"),
+            (BOOTFS_MOUNT, "boot/firmware"),
+        ]
+        for source, target in chroot_mounts:
+            run_command(f"mount --bind {source} {ROOTFS_MOUNT}/{target}")
+        try:
+            try:
+                run_command(f"chroot {ROOTFS_MOUNT} /bin/true")
+            except subprocess.CalledProcessError as err:
+                raise RuntimeError(
+                    "Cannot run armhf binaries. Install qemu-user-binfmt; "
+                    "on arm64 hosts without AArch32 (e.g. Apple Silicon "
+                    "VMs) also register qemu-arm in /etc/binfmt.d",
+                ) from err
+            print("Generating vmlinuz and initrd, this may take a few minutes")
+            run_command(f"chroot {ROOTFS_MOUNT} dpkg -i /{KERNEL_FILE_NAME}")
+        finally:
+            for _, target in reversed(chroot_mounts):
+                run_command(f"umount {ROOTFS_MOUNT}/{target}", check=False)
 
         print("Copying the generated vmlinuz and initrd")
-        initrd_loop = mount_image(SACRIFICIAL_IMAGE_NAME, expand=False)
-
         run_command(f"cp {ROOTFS_MOUNT}/boot/{VMLINUZ_NAME} .")
         run_command(f"cp {ROOTFS_MOUNT}/boot/{INITRD_NAME} .")
         run_command(
             f"cp -r {ROOTFS_MOUNT}/lib/modules/{KERNEL_VERSION_NAME} .",
         )
 
-        unmount_image(initrd_loop)
+        unmount_image(sacrificial_loop)
 
         print("Cleaning up")
         run_command(f"rm {SACRIFICIAL_IMAGE_NAME}")
-        run_command(f"rm {KERNEL_NAME}")
-        run_command(f"rm {DTB_NAME}")
 
     print("Copying source image")
     run_command(f"cp {SOURCE_IMAGE_NAME} {IMAGE_NAME}")
@@ -422,6 +416,13 @@ def build_image():
     with open(config_txt_path, "a", encoding="utf-8") as config_txt:
         config_txt.write("dtoverlay=disable-bt\n")
 
+    # Trixie ships no rc.local, pishrink moves this one to rc.local.bak
+    # and the start script gets added to it below
+    print("Write rc.local")
+    rc_local_path = join(ROOTFS_MOUNT, "etc/rc.local")
+    copyfile(join(BUILDER_DATA_PATH, "rc.local"), rc_local_path)
+    os.chmod(rc_local_path, 0o755)
+
     unmount_image(raw_loop)
 
     print("Run the emulator")
@@ -432,9 +433,6 @@ def build_image():
 
     print("Enabling boot-message.service")
     run_over_ssh("sudo systemctl enable boot-message.service")
-
-    print("Disabling bluetooth service")
-    run_over_ssh("sudo systemctl disable hciuart.service")
 
     print("Disabling console over serial")
     run_over_ssh("sudo raspi-config nonint do_serial_hw 0")
@@ -447,16 +445,16 @@ def build_image():
     sleep(20)
 
     print("Updating system")
-    run_over_ssh("sudo apt-get update -y")
-    run_over_ssh("sudo apt-get upgrade -y")
+    run_over_ssh("sudo apt-get -o Acquire::Retries=5 update -y")
+    run_over_ssh("sudo apt-get -o Acquire::Retries=5 upgrade -y")
 
     print("Installing dependencies")
     # I guess we need this for the wi-fi setting to get applied normally
-    run_over_ssh("sudo apt-get install -y uuid")
+    run_over_ssh("sudo apt-get -o Acquire::Retries=5 install -y uuid")
     run_over_ssh(
-        "sudo apt-get install -y git python3-pip pigpio libcap-dev "
-        "libmagic1 libturbojpeg0 libffi-dev python3-numpy "
-        "cmake iptables python3-libcamera",
+        "sudo apt-get -o Acquire::Retries=5 install -y git python3-pip "
+        "pigpio libcap-dev libmagic1t64 libturbojpeg0 libffi-dev "
+        "python3-numpy cmake iptables python3-libcamera python3-dev",
     )
 
     print("Installing PrusaLink")
@@ -498,6 +496,18 @@ def build_image():
     run_over_ssh("sudo rm /var/log/*.gz", check=False)
     run_over_ssh("sudo cat /dev/null | sudo tee /var/log/lastlog")
     run_over_ssh("rm ~/.bash_history", check=False)
+
+    # Before pishrink, so the image actually gets smaller
+    print("Removing caches and the emulator-sized swap file")
+    run_over_ssh("sudo apt-get autoremove -y")
+    run_over_ssh("sudo apt-get clean")
+    run_over_ssh("rm -rf ~/.cache")
+    # rpi-resize-swap-file.service recreates it sized for the real Pi
+    run_over_ssh("sudo swapoff -a")
+    run_over_ssh("sudo rm -f /var/swap")
+
+    print("Resetting cloud-init, so user's Imager settings apply")
+    run_over_ssh("sudo cloud-init clean --logs --seed")
 
     print("Shutting down the emulator")
     run_over_ssh("sudo poweroff", check=False)
@@ -544,11 +554,11 @@ def build_image():
             search="exit 0",
         )
 
+    print("Removing build-only passwordless sudo")
+    os.remove(join(ROOTFS_MOUNT, SUDOERS_PATH))
+
     print("Removing modules needed for virtio")
     run_command(f"rm -r {ROOTFS_MOUNT}/lib/modules/{KERNEL_VERSION_NAME}")
-
-    run_command(f"rm -r {ROOTFS_MOUNT}/var/cache/*", check=False)
-    run_command(f"rm -r {ROOTFS_MOUNT}/home/jo/.cache/*", check=False)
 
     unmount_image(shrunk_loop)
 
@@ -581,7 +591,6 @@ def main():
     try:
         build_image()
     except Exception:  # pylint: disable=broad-except
-        run_command("killall qemu-system-aarch64", check=False)
         run_command("killall qemu-system-arm", check=False)
         raise
 

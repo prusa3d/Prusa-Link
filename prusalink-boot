@@ -1,7 +1,10 @@
 #!/bin/bash
 USERNAME=$(id -nu 1000)
 HOME_DIR=$(eval echo "~$USERNAME")
-P_SOURCE="/boot/prusa_printer_settings.ini"
+# Bookworm and newer mount the boot partition at /boot/firmware
+BOOT_DIR=/boot/firmware
+test -d $BOOT_DIR || BOOT_DIR=/boot
+P_SOURCE="$BOOT_DIR/prusa_printer_settings.ini"
 P_DESTINATION="$HOME_DIR/prusa_printer_settings.ini"
 if test -f $P_SOURCE; then
     echo "Using the new printer settings from the boot partition!" | logger
@@ -13,12 +16,12 @@ else
     echo "No file to overwrite the current printer settings with." | logger
 fi
 
-S_SOURCE="/boot/prusalink.ini"
+S_SOURCE="$BOOT_DIR/prusalink.ini"
 S_DESTINATION="/etc/prusalink/prusalink.ini"
 S_DESTINATION_DIR="/etc/prusalink"
 if test -f $S_SOURCE; then
     echo "Using the new app config from the boot partition!" | logger
-    if ! test -d S_DESTINATION_DIR ; then
+    if ! test -d $S_DESTINATION_DIR ; then
         echo "Creating a folder at $S_DESTINATION_DIR" | logger
         mkdir $S_DESTINATION_DIR
     fi

@@ -6,6 +6,9 @@
     * Strip whitespace from API keys, so keys pasted with a trailing newline no longer cause misleading upload failures
     * Fix a crash when rebooting a multi-instance PrusaLink
     * Fix a CRC issue
+    * Base the RPi image on Raspberry Pi OS Trixie (Debian 13, Python 3.13)
+    * Fix prusalink-boot not picking up config files from /boot/firmware
+    * Replace pkg_resources with importlib.metadata, it is gone from recent setuptools
     * Point the setup wizard to the Prusa Downloads page and the Prusa-Firmware GitHub releases for the latest stable firmware
     * Add the standard Huffman tables to camera MJPEG frames that lack them, so the snapshots show up in Safari
 

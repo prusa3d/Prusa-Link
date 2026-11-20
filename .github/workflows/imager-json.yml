@@ -1,0 +1,17 @@
+name: Imager JSON
+
+on:
+  pull_request:
+    paths:
+      - public/prusalink.json
+
+jobs:
+  check-urls:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v6
+    - name: All image URLs are https release links
+      run: |
+        jq -e '[.. | .url? // empty | select(startswith("https://") | not)]
+               | if length > 0 then error("Replace these URLs: \(.)") else true end' \
+          public/prusalink.json
