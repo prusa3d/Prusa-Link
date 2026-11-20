@@ -48,8 +48,15 @@ _TABLES = b"".join(
     ))
 
 SOI = b"\xff\xd8"
+FILL_BYTE = 0xFF
 DHT_MARKER = 0xC4
 SOS_MARKER = 0xDA
+
+# Every marker from C0 to CF starts a frame, except for DHT, JPG and DAC.
+# The standard tables are only meant for the baseline and the extended
+# sequential ones. UVC MJPEG is always baseline, the rest is left alone
+SOF_MARKERS = frozenset(range(0xC0, 0xD0)) - {DHT_MARKER, 0xC8, 0xCC}
+SEQUENTIAL_SOF_MARKERS = frozenset((0xC0, 0xC1))
 
 DHT_SEGMENT = (bytes((0xFF, DHT_MARKER))
                + struct.pack(">H", len(_TABLES) + 2) + _TABLES)
@@ -57,17 +64,26 @@ DHT_SEGMENT = (bytes((0xFF, DHT_MARKER))
 
 def add_huffman_tables(data: bytes) -> bytes:
     """Returns the JPEG with the standard Huffman tables inserted in front
-    of its scan. Data that already has the tables, or that is not a JPEG
-    gets returned as is"""
+    of its scan. Data that already has the tables, that is not a baseline
+    or extended sequential JPEG, or that is not a JPEG at all gets returned
+    as is"""
     if data[:2] != SOI:
         return data
     position = 2
     while position + 4 <= len(data) and data[position] == 0xFF:
         marker = data[position + 1]
+        # A marker can be padded with fill bytes. Cameras do not do that,
+        # so rather than skipping them, the frame is returned untouched
+        if marker == FILL_BYTE:
+            return data
         if marker == DHT_MARKER:
             return data
+        if marker in SOF_MARKERS and marker not in SEQUENTIAL_SOF_MARKERS:
+            return data
         if marker == SOS_MARKER:
-            return data[:position] + DHT_SEGMENT + data[position:]
+            # A single allocation, the frame gets copied only once
+            return b"".join(
+                (data[:position], DHT_SEGMENT, memoryview(data)[position:]))
         length, = struct.unpack(">H", data[position + 2:position + 4])
         position += 2 + length
     return data
