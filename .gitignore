@@ -11,3 +11,6 @@ dist
 *.coverage
 htmlcov
 docs/*.png
+coverage.md
+coverage.json
+todo.txt
