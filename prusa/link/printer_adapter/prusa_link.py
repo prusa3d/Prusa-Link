@@ -13,7 +13,13 @@ from prusa.connect.printer import DownloadMgr
 from prusa.connect.printer.camera_configurator import CameraConfigurator
 from prusa.connect.printer.camera_driver import CameraDriver
 from prusa.connect.printer.conditions import API, CondState
-from prusa.connect.printer.const import MMU_SLOT_COUNTS, MMUType, Source, State
+from prusa.connect.printer.const import (
+    MMU_SLOT_COUNTS,
+    MMUType,
+    Source,
+    State,
+    StorageType,
+)
 from prusa.connect.printer.const import Command as CommandType
 from prusa.connect.printer.const import Event as EventType
 from prusa.connect.printer.files import File
@@ -330,6 +336,8 @@ class PrusaLink:
             connect(self.folder_detach)
         self.storage_controller.sd_attached_signal.connect(self.sd_attach)
         self.storage_controller.sd_detached_signal.connect(self.sd_detach)
+        self.storage_controller.sd_tree_updated_signal.connect(
+            self.sd_tree_updated)
         self.printer_polling.printer_type.became_valid_signal.connect(
             self.printer_type_changed)
         self.printer_polling.print_state.became_valid_signal.connect(
@@ -923,7 +931,12 @@ class PrusaLink:
 
     def sd_attach(self, _, files: File) -> None:
         """Connects the sd being attached to PrusaConnect events"""
-        self.printer.fs.attach(SD_STORAGE_NAME, files, "", use_inotify=False)
+        self.printer.fs.attach(SD_STORAGE_NAME, files, "", use_inotify=False,
+                               storage_type=StorageType.SD_CARD)
+
+    def sd_tree_updated(self, _, tree: File) -> None:
+        """Gives the SDK the freshly listed SD card files"""
+        self.printer.replace_sd_tree(SD_STORAGE_NAME, tree)
 
     def sd_detach(self, _) -> None:
         """Connects the sd being detached to PrusaConnect events"""

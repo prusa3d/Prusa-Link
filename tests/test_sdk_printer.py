@@ -4,16 +4,28 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from prusa.connect.printer import Printer as SDKPrinter
+from prusa.connect.printer.command import CommandRejected
 from prusa.connect.printer.conditions import API, HTTP, CondState
-from prusa.connect.printer.const import PrinterType, Source
+from prusa.connect.printer.const import Event, PrinterType, Source, StorageType
 
 from prusa.link import __version__  # type:ignore
+from prusa.link.const import SD_STORAGE_NAME  # type:ignore
 from prusa.link.sdk_augmentation import (
     printer as printer_module,  # type:ignore  # noqa: E501
 )
+from prusa.link.sdk_augmentation.file import SDFile  # type:ignore
 from prusa.link.sdk_augmentation.printer import MyPrinter  # type:ignore
 
 # pylint: disable=redefined-outer-name,protected-access
+
+
+def sd_tree():
+    """A tree of the SD card with a file and a folder with a file"""
+    root = SDFile(SD_STORAGE_NAME, is_dir=True)
+    root.add_file("/", "a.gcode", sfn="A~1.GCO", size=5)
+    root.add_directory("/", "folder", sfn="FOLDER~1")
+    root.add_file("/folder", "b.gcode", sfn="B~1.GCO", size=7)
+    return root
 
 
 @pytest.fixture
@@ -65,11 +77,16 @@ def test_parse_command(printer, parent_parse, status, broken):
 
 
 def test_get_info(printer):
-    """Info has the diameter, files and the version"""
+    """Info has the diameter, storages without files and the version"""
     printer.nozzle_diameter = 0.4
+    printer.fs.attach(SD_STORAGE_NAME, sd_tree(), "", use_inotify=False,
+                      storage_type=StorageType.SD_CARD)
     info = printer.get_info()
     assert info["nozzle_diameter"] == 0.4
-    assert info["files"] == printer.fs.to_dict_legacy()
+    assert "files" not in info
+    assert info["storages"] == printer.fs.storages()
+    assert info["storages"][0]["mountpoint"] == f"/{SD_STORAGE_NAME}"
+    assert info["storages"][0]["type"] == StorageType.SD_CARD.value
     assert info["prusalink"] == __version__
     assert info["prusa_link"] == __version__
 
@@ -99,12 +116,49 @@ def test_file_info_requires_kwargs(printer):
         printer.get_file_info(MagicMock(kwargs=None))
 
 
-def test_file_info_on_sd_card(printer):
-    """SD card files are described from their names"""
+def test_file_info_on_sd_file(printer):
+    """SD card files are described by the tree and by their names"""
+    printer.fs.attach(SD_STORAGE_NAME, sd_tree(), "", use_inotify=False)
     caller = MagicMock(kwargs={"path": "/SD Card/a.gcode"})
-    with patch.object(printer, "from_path") as from_path:
-        assert printer.get_file_info(caller) is from_path.return_value
-    from_path.assert_called_once_with(Path("/SD Card/a.gcode"))
+    with patch.object(printer_module, "FDMMetaData") as meta:
+        meta.return_value.data = {"layer_height": "0.2"}
+        data = printer.get_file_info(caller)
+    assert data["source"] == Source.CONNECT
+    assert data["event"] == Event.FILE_INFO
+    assert data["path"] == "/SD Card/a.gcode"
+    assert data["size"] == 5
+    assert data["layer_height"] == "0.2"
+    assert "children" not in data
+
+
+def test_file_info_on_sd_folder(printer):
+    """An SD card folder lists its direct children, without their children"""
+    printer.fs.attach(SD_STORAGE_NAME, sd_tree(), "", use_inotify=False)
+    for path in ("/SD Card", "/SD Card/folder"):
+        data = printer.get_file_info(MagicMock(kwargs={"path": path}))
+        assert data["source"] == Source.CONNECT
+        assert data["event"] == Event.FILE_INFO
+        assert data["path"] == path
+    root = printer.get_file_info(MagicMock(kwargs={"path": "/SD Card"}))
+    assert {child["name"] for child in root["children"]} == {
+        "a.gcode", "folder"}
+    assert all("children" not in child for child in root["children"])
+    folder = printer.get_file_info(
+        MagicMock(kwargs={"path": "/SD Card/folder"}))
+    assert [child["name"] for child in folder["children"]] == ["b.gcode"]
+
+
+@pytest.mark.parametrize(("path", "reason"), [
+    ("/SD Card/missing.gcode", "File not found"),
+    ("/SD Card/folder/missing.gcode", "File not found"),
+    ("/SD Card/../etc", "Forbidden path"),
+])
+def test_file_info_on_missing_sd_path(printer, path, reason):
+    """The exact reason is passed on, not wrapped into another error"""
+    printer.fs.attach(SD_STORAGE_NAME, sd_tree(), "", use_inotify=False)
+    with pytest.raises(CommandRejected) as err:
+        printer.get_file_info(MagicMock(kwargs={"path": path}))
+    assert err.value.reason == reason
 
 
 def test_file_info_on_local_storage(printer):
@@ -116,13 +170,11 @@ def test_file_info_on_local_storage(printer):
     parent.assert_called_once_with(caller)
 
 
-def test_from_path(printer):
-    """Metadata, attributes of the file and the event are merged"""
-    node = MagicMock(attrs={"size": 5})
-    with patch.object(printer_module, "FDMMetaData") as meta, \
-            patch.object(printer.fs, "get", return_value=node):
+def test_from_path():
+    """Metadata, data of the file and the event are merged"""
+    with patch.object(printer_module, "FDMMetaData") as meta:
         meta.return_value.data = {"layer_height": "0.2"}
-        data = printer.from_path(Path("/SD Card/a.gcode"))
+        data = MyPrinter.from_path(Path("/SD Card/a.gcode"), {"size": 5})
     meta.return_value.load_from_path.assert_called_once_with(
         "/SD Card/a.gcode")
     assert data["source"] == Source.CONNECT
@@ -131,11 +183,11 @@ def test_from_path(printer):
     assert data["layer_height"] == "0.2"
 
 
-def test_from_path_unknown_file(printer):
-    """The file does not need to be in the tree"""
+def test_from_path_without_info():
+    """The data from the SDK filesystem are optional"""
     with patch.object(printer_module, "FDMMetaData") as meta:
         meta.return_value.data = {}
-        data = printer.from_path(Path("/SD Card/missing.gcode"))
+        data = MyPrinter.from_path(Path("/SD Card/missing.gcode"))
     assert "size" not in data
 
 
@@ -207,3 +259,47 @@ def test_type_string(printer):
     assert printer.type_string == "MK3S"
     with patch.object(MyPrinter, "type", None):
         assert printer.type_string is None
+
+
+def test_replace_sd_tree(printer):
+    """The SDK answers from the new tree, then Connect is told to rescan"""
+    printer.fs.attach(SD_STORAGE_NAME, sd_tree(), "", use_inotify=False)
+    new_tree = SDFile(SD_STORAGE_NAME, is_dir=True)
+    new_tree.add_file("/", "new.gcode", sfn="NEW~1.GCO", size=1)
+    seen = []
+    printer.fs.event_cb = MagicMock(
+        side_effect=lambda *args, **kwargs: seen.append(
+            printer.fs.file_info("/SD Card")))
+    printer.replace_sd_tree(SD_STORAGE_NAME, new_tree)
+    printer.fs.event_cb.assert_called_once_with(
+        Event.FILE_CHANGED, Source.WUI, old_path=None,
+        new_path="/SD Card", rescan=True)
+    # The event was sent after the tree had been swapped
+    assert [child["name"] for child in seen[0]["children"]] == ["new.gcode"]
+
+
+def test_replace_sd_tree_with_the_same_tree(printer):
+    """Nothing changed, so Connect is left alone"""
+    tree = sd_tree()
+    printer.fs.attach(SD_STORAGE_NAME, tree, "", use_inotify=False)
+    printer.fs.event_cb = MagicMock()
+    printer.replace_sd_tree(SD_STORAGE_NAME, tree)
+    printer.fs.event_cb.assert_not_called()
+
+
+def test_replace_sd_tree_without_card(printer):
+    """No card attached, nothing to replace"""
+    printer.fs.event_cb = MagicMock()
+    printer.replace_sd_tree(SD_STORAGE_NAME, sd_tree())
+    printer.fs.event_cb.assert_not_called()
+    assert printer.fs.storages() == []
+
+
+def test_replace_sd_tree_with_the_same_content(printer):
+    """A repeated listing of an unchanged card is not worth a rescan"""
+    printer.fs.attach(SD_STORAGE_NAME, sd_tree(), "", use_inotify=False)
+    printer.fs.event_cb = MagicMock()
+    new_tree = sd_tree()
+    printer.replace_sd_tree(SD_STORAGE_NAME, new_tree)
+    printer.fs.event_cb.assert_not_called()
+    assert printer.fs.storage_dict[SD_STORAGE_NAME].tree is new_tree

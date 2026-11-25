@@ -474,7 +474,8 @@ def build_image():
         )
         run_over_ssh(
             "pip install --break-system-packages git+https://"
-            "github.com/prusa3d/Prusa-Connect-SDK-Printer.git",
+            "github.com/prusa3d/Prusa-Connect-SDK-Printer.git"
+            "@feat/lazy-file-protocol",
         )
         run_over_ssh(
             "pip install --break-system-packages git+https://"
