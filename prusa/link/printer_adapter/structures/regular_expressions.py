@@ -64,6 +64,7 @@ REJECTION_REGEX = re.compile(
 
 BUSY_REGEX = re.compile("^echo:busy: processing$")
 ATTENTION_REGEX = re.compile("^echo:busy: paused for user$")
+TAKE_PHOTO_REGEX = re.compile(r"^// ?action:photo$")
 PAUSE_PRINT_REGEX = re.compile(r"^// ?action:pause$")
 PAUSED_REGEX = re.compile(r"^// ?action:paused$")
 RESUME_PRINT_REGEX = re.compile("^// ?action:resume$")
