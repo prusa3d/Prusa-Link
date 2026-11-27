@@ -89,7 +89,14 @@
                         {% endif %}
                     </div>
 
-                <a href={{ "/wizard" | prefixed }} class="btn btn-outline-light align-center" style="width: 200px;margin: 2em auto;display: block;">Refresh</a>
+                    <div class="row justify-content-center">
+                        <div class="col-auto">
+                            <a href="{{ "/wifi" | prefixed }}" class="btn btn-outline-light pl-4 pr-4" onmouseover="changeIconImage(this, 'img/wifi-icon-dark.svg')" onmouseout="changeIconImage(this, 'img/wifi-icon-white.svg')">Setup wifi <img id="wifi_icon" height="25" src="img/wifi-icon-white.svg"></a>
+                        </div>
+                        <div class="col-auto">
+                            <a href="{{ "/wizard" | prefixed }}" class="btn btn-outline-light pl-4 pr-4">Refresh</a>
+                        </div>
+                    </div>
 
             {% elif not wizard.daemon.prusa_link or not wizard.daemon.prusa_link.printer %}
 
@@ -144,15 +151,23 @@
                     </div>
 
             <div class="container navigation">
-              <div class="row">
-                  <div class="col">
-                    <a id="restore_btn" href={{ "/wizard/restore" | prefixed }} class="btn btn-outline-light full-width" onmouseover="changeIconImage('img/reset-icon-black.svg')" onmouseout="changeIconImage('img/reset-icon-white.svg')">Restore settings <img id="restore_icon" height="25" src="img/reset-icon-white.svg">
-                    </a>
-                  </div>
-                  <div class="col-sm-auto">
-                    <a href={{ "/wizard/credentials" | prefixed }} class="btn btn-outline-light full-width">Setup credentials | NEXT <img src="img/arrow-right.svg" height="16" /></a>
-                  </div>
-              </div>
+                <div class="row">
+                    <div class="col">
+                        <a id="wifi_btn" href={{ "/wifi" | prefixed }} class="btn btn-outline-light full-width" onmouseover="changeIconImage(this, 'img/wifi-icon-black.svg')" onmouseout="changeIconImage(this, 'img/wifi-icon-white.svg')">
+                            Setup wifi <img id="wifi_icon" height="25" src="img/wifi-icon-white.svg">
+                        </a>
+                    </div>
+                    <div class="col">
+                        <a id="restore_btn" href={{ "/wizard/restore" | prefixed }} class="btn btn-outline-light full-width" onmouseover="changeIconImage(this, 'img/reset-icon-black.svg')" onmouseout="changeIconImage(this, 'img/reset-icon-white.svg')">
+                            Restore settings <img id="restore_icon" height="25" src="img/reset-icon-white.svg">
+                        </a>
+                    </div>
+                    <div class="col-sm-auto">
+                        <a href={{ "/wizard/credentials" | prefixed }} class="btn btn-outline-light full-width">
+                            Setup credentials | NEXT <img src="img/arrow-right.svg" height="16" />
+                        </a>
+                    </div>
+                </div>
             </div>
 
                 {% endif %}
@@ -166,8 +181,8 @@
 </div>{# /container #}
 
 <script>
-     function changeIconImage(img) {
-    document.getElementById('restore_icon').style.content = `url(${img})`;
+  function changeIconImage(element, img) {
+    element.querySelectorAll('img')[0].style.content = `url(${img})`;
   }
 </script>
 

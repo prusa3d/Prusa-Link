@@ -35,6 +35,7 @@ from ..const import (
     SD_STORAGE_NAME,
 )
 from ..interesting_logger import InterestingLogRotator
+from ..network_manager import NetworkComponent
 from ..sdk_augmentation.printer import MyPrinter
 from ..serial.helpers import enqueue_instruction, enqueue_matchable
 from ..serial.serial import SerialException
@@ -135,6 +136,7 @@ class PrusaLink:
         self.cfg: Config = cfg
         log.info('Starting adapter for port %s', self.cfg.printer.port)
         self.settings: Settings = settings
+        self.network_component = NetworkComponent()
 
         use_connect_errors(self.settings.use_connect())
 
@@ -453,6 +455,7 @@ class PrusaLink:
         self.storage_controller.stop()
         self.keepalive.stop()
         self.lcd_printer.stop(fast)
+        self.network_component.stop()
         # This is for pylint to stop complaining, I'd like stop(fast) more
         if fast:
             self.ip_updater.stop()
@@ -491,6 +494,7 @@ class PrusaLink:
             self.serial_queue.wait_stopped()
             self.serial_parser.wait_stopped()
             self.serial.wait_stopped()
+            self.network_component.wait_stooped()
 
             log.debug("Remaining threads, that might prevent stopping:")
             for thread in enumerate_threads():

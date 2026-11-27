@@ -1,0 +1,10 @@
+{# vim:set softtabstop=2: -#}
+{% set title = 'Wifi setup' -%}
+{#% set refresh = 15 %#}
+{% include "_header.html" %}
+
+<input type="hidden" id="instance-fingerprint" value="{{ instance_fingerprint }}">
+
+{{ svelte_widget }}
+
+{% include "_footer.html" %}

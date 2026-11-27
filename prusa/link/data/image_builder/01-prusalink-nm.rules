@@ -1,0 +1,6 @@
+polkit.addRule(function(action, subject) {
+    if (action.id.match("org.freedesktop.NetworkManager") &&
+        (subject.isInGroup("sudo") || subject.isInGroup("netdev"))) {
+        return polkit.Result.YES;
+    }
+});
